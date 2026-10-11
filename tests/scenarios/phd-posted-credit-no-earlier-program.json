@@ -1,0 +1,153 @@
+{
+  "name": "phd-posted-credit-no-earlier-program",
+  "description": "Policy review round 4, P4-transfer-2 (DGS 2026-10-11: option (a)). The record of phd-transfer-on-nd-record, but for a student with no earlier graduate program: 9 graduate credits from Purdue are on the Notre Dame transcript as accepted transfer credit. No document states a transfer limit for this record — the page's 6 is a working limit — and the Graduate School has already approved this credit, so all 9 count, outside the working limit, which meters only what the DGS still decides. It used to count 6 and refuse the rest as “over the transfer-credit cap (§5.2)”.",
+  "today": "2026-10-05",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "gpa": 3.7,
+    "courses": [
+      {
+        "courseId": "CS 50100",
+        "title": "Advanced Operating Systems",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true,
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2025
+          },
+          "credits": 3,
+          "level": "graduate",
+          "institution": "Purdue University"
+        }
+      },
+      {
+        "courseId": "CS 52600",
+        "title": "Information Security",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true,
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2025
+          },
+          "credits": 3,
+          "level": "graduate",
+          "institution": "Purdue University"
+        }
+      },
+      {
+        "courseId": "CS 58000",
+        "title": "Algorithm Design and Analysis",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true,
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2025
+          },
+          "credits": 3,
+          "level": "graduate",
+          "institution": "Purdue University"
+        }
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true
+      }
+    ],
+    "milestones": {
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes"
+    },
+    "attestations": {}
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "met",
+      "detailIncludes": [
+        "0 of the 6 credits you may transfer are counted, besides 9 on your Notre Dame record, counted in full",
+        "On your Notre Dame record as accepted transfer credit: CS 50100, CS 52600, CS 58000",
+        "in full: no document states a transfer limit for your record"
+      ],
+      "detailExcludes": [
+        "over the transfer-credit cap"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 52600": [
+      "counts toward regular courses (3 cr)",
+      "it counts in full — no document states a transfer limit for your record"
+    ]
+  }
+}

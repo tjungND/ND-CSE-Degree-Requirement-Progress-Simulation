@@ -1,0 +1,140 @@
+{
+  "name": "phd-posted-thesis-total-only",
+  "description": "Policy review round 4, P4-transfer-8 (DGS 2026-10-11: option (a)). The record of phd-transfer-on-nd-record, but the Notre Dame transcript's accepted transfer credit is a Purdue master's thesis (CS 69800 “Research MS Thesis”, 6 credits) and an independent study (CS 59000, 3 credits). §4.2: research credits and independent study “do not count as regular courses” — the DGS ruled on 2026-09-22 that a prior master's thesis counts toward the 60 but not the 24. Both now count toward the total only, and the staff check names them for the DGS and the Grad Admin; they used to fill the regular-course credits.",
+  "today": "2026-10-05",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "completed",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "gpa": 3.7,
+    "courses": [
+      {
+        "courseId": "CS 69800",
+        "title": "Research MS Thesis",
+        "credits": 6,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true,
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2025
+          },
+          "credits": 6,
+          "level": "graduate",
+          "institution": "Purdue University"
+        }
+      },
+      {
+        "courseId": "CS 59000",
+        "title": "Independent Study",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true,
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2025
+          },
+          "credits": 3,
+          "level": "graduate",
+          "institution": "Purdue University"
+        }
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true
+      }
+    ],
+    "milestones": {
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes"
+    },
+    "attestations": {}
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "met",
+      "detailIncludes": [
+        "On your Notre Dame record as accepted transfer credit: CS 59000, CS 69800"
+      ]
+    },
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "9 of 24 credits complete"
+      ]
+    },
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "18 of 60 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 69800": [
+      "counts toward the total-credit requirement only (6 cr)",
+      "not a regular course — its title reads as research, independent study or a seminar (§4.2)"
+    ],
+    "CS 59000": [
+      "counts toward the total-credit requirement only (3 cr)"
+    ]
+  }
+}

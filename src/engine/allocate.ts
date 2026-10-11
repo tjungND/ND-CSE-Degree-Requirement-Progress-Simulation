@@ -13,6 +13,7 @@ import { approverToken, needsCourseApproval } from './decider.ts';
 import { NOTRE_DAME_ROW_UNIVERSITY, findExternalRule, isCseCourse, isNotreDameInstitution, ndEquivalentCredits, needsApproval, normalizeUniversity, transferableFor, universityCreditSystem, creditSystemFactor, creditSystemFactorLabel } from '../data/external.ts';
 import type { Counts, ExternalRule, RuleCourse, Rules, Transferable } from '../data/types.ts';
 import { coreTitleSuggestion } from './core-title.ts';
+import { looksNonRegularTitle } from '../data/course-checks.ts';
 import { GRADES, GRADE_POINTS, isAudit, isInProgress, isPassed, isWithdrawn, meetsGradeFloor, passesCreditFloor } from './grades.ts';
 import type { Tier, TierSums } from './status.ts';
 import { ZERO_SUMS } from './status.ts';
@@ -228,6 +229,18 @@ export interface ClassifiedCourse {
    * graduate courses taken outside any program — so the DGS decides (DGS
    * 2026-10-03: "route such courses to DGS review"). */
   noPriorProgram?: true;
+  /** Transfer credit already on the Notre Dame record, on a record where no
+   * document states a transfer limit — no earlier graduate program, or an
+   * unfinished Ph.D. (policy review round 4, P4-transfer-2; DGS 2026-10-11:
+   * option (a)): the Graduate School approved and recorded it, so it counts in
+   * full, outside this page's working limit, which meters only the courses the
+   * DGS still decides. It carries no 'transfer' cap but is still transfer
+   * credit: it is totalled with it and listed on the §5.2 row. */
+  transferOutsideCap?: true;
+  /** A posted course whose title reads as research, independent study or a
+   * seminar (P4-transfer-8; DGS 2026-10-11: option (a)): counted toward the
+   * total only, as the DGS ruled for a prior master's thesis (2026-09-22). */
+  postedNonRegular?: true;
   /** §5.2's five-year window for a student who finished the Notre Dame MSCSE
    * before the Ph.D. counts back from the MSCSE admission (policy review round
    * 3, P3-prior-programs-4; DGS 2026-10-07: option (b)), and this record does
@@ -1881,7 +1894,20 @@ export function outsideIncompleteNote(c: Pick<CourseEntry, 'institution'>): stri
  * Handbook §3.14, so this program's own credit is always recorded after entry).
  * §4.2's nine-credit non-CSE allowance follows the sheet as for any transfer. */
 function classifyPosted(env: ClassifyEnv, c: CourseEntry, extBase: ClassifiedCourse, posting: NdPosting, coreNote: string): ClassifiedCourse {
-  const { entry, cseSubjectCodes } = env;
+  const { entry, cseSubjectCodes, student } = env;
+  // No document states a transfer limit for this record (P4-transfer-2 (a)):
+  // no earlier graduate program, or an unfinished Ph.D. — the page's six is a
+  // working limit there (P3-cse-5-6-1), and it no longer cuts credit the
+  // Graduate School has already approved.
+  const noStatedLimit = student.priorMs === 'none' || (student.priorMs === 'unfinished' && student.courses.some((x) => x.origin === 'transfer' && x.degreeLevel === 'phd'));
+  // §4.2 / §3.2: "Research seminar, research credits, independent study, and
+  // other similar courses do not count as regular courses" — a posted thesis
+  // or independent study counts toward the total only (P4-transfer-8 (a)),
+  // and the staff check names it (audit.ts).
+  const nonRegular = looksNonRegularTitle(c.title);
+  const section = env.program === 'mscse' ? '§3.2' : '§4.2';
+  const poolNote = nonRegular ? `; not a regular course — its title reads as research, independent study or a seminar (${section})` : '';
+  const limitNote = noStatedLimit ? '; it counts in full — no document states a transfer limit for your record, so this page’s working limit covers only the courses the DGS still decides' : '';
   const held = [
     ...(posting.level === undefined ? ['the transcript does not show whether it is graduate credit'] : []),
     ...(compareTerm(posting.term, entry) < 0 ? [`it was posted before you entered this program, so it may have been accepted for an earlier program`] : []),
@@ -1898,12 +1924,14 @@ function classifyPosted(env: ClassifyEnv, c: CourseEntry, extBase: ClassifiedCou
     ...(held.length > 0 ? { ndPostingHeld: held.join('; and ') } : {}),
     ...(cseUnknown ? { cseUnknown: true as const } : {}),
     ...(settled && ticked ? { tickApproved: true as const } : {}),
-    pool: 'regular',
-    caps: ['transfer', ...(isCse === false ? (['noncse'] as CapId[]) : [])],
+    pool: nonRegular ? 'total_only' : 'regular',
+    caps: [...(noStatedLimit ? [] : (['transfer'] as CapId[])), ...(isCse === false ? (['noncse'] as CapId[]) : [])],
+    ...(noStatedLimit ? { transferOutsideCap: true as const } : {}),
+    ...(nonRegular ? { postedNonRegular: true as const } : {}),
     tier: settled ? 'definite' : 'provisional',
     effectiveCredits: posting.credits,
     ...(settled
-      ? { approvedNote: `${where} — accepted by the Graduate School${ticked ? ', and the DGS confirmed it counts toward this degree, as you ticked on the course' : ''}; nothing to send (Academic Code §4.6)${coreNote}` }
+      ? { approvedNote: `${where} — accepted by the Graduate School${ticked ? ', and the DGS confirmed it counts toward this degree, as you ticked on the course' : ''}; nothing to send (Academic Code §4.6)${limitNote}${poolNote}${coreNote}` }
       : {
           approvalPending: `${where}${held.length > 0 ? `, but ${held.join(', and ')} — the DGS confirms it counts toward this degree` : ''}${cseUnknown ? `${held.length > 0 ? '; ' : ' — '}the course rules do not say whether this is a CSE course (no is_cse cell on its row, and no cse_subject_codes list) — §4.2’s nine-credit non-CSE allowance depends on it; the DGS decides` : ''}${coreNote}`,
         }),
@@ -2341,7 +2369,7 @@ export function allocate(
     // School put it "above and beyond the usual 24" (2026-09-10). Counting it
     // here made the §5.2 row read "6 of 6 transfer credits counted" for a
     // student with no transfer credit at all.
-    if (cc.entry.origin === 'transfer' && cc.caps.includes('transfer')) sums.transfer[cc.tier] += counted;
+    if (cc.entry.origin === 'transfer' && (cc.caps.includes('transfer') || cc.transferOutsideCap === true)) sums.transfer[cc.tier] += counted;
 
     const excludedReason = unknownCap
       ? `the rules sheet does not say what the ${capLabel(unknownCap)} is, so this course cannot be counted yet — ask the DGS to fill it in (${capById.get(unknownCap)?.section ?? ''})`

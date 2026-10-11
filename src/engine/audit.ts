@@ -295,6 +295,17 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
     if (verdict === undefined) continue; // the rules say no
     staffChecks.push(...transferCourseChecks(c.courseId, c.institution ?? cc.external?.university ?? 'another university', c.title ?? cc.external?.title, student.program === 'mscse' ? '§3.2' : '§4.2', verdict));
   }
+  // Transfer credit on the Notre Dame record whose title reads as research,
+  // independent study or a seminar is counted toward the total only (policy
+  // review round 4, P4-transfer-8; DGS 2026-10-11: option (a)) — said to the
+  // DGS and the Grad Admin, who can see what the course was.
+  for (const cc of classified) {
+    if (cc.postedNonRegular !== true || cc.superseded) continue;
+    const c = cc.entry;
+    staffChecks.push(
+      `${c.courseId}${c.title ? ` “${c.title}”` : ''}: transfer credit on the Notre Dame record, counted toward the total only because its title reads as research, independent study or a seminar, which are not regular courses (${student.program === 'mscse' ? '§3.2' : '§4.2'}; DGS 2026-09-22). If it was in fact a regular course, the DGS decides how it counts.`,
+    );
+  }
   // Academic Code §4.1: three credits at the 60000 level or higher in every
   // full-time semester, unless the associate dean permitted otherwise — routed
   // to the DGS, never a failed term (policy review 2026-10-03, P1-residency-enrollment-c5).

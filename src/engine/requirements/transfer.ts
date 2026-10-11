@@ -37,7 +37,7 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       c.entry.origin === 'transfer' &&
       c.entry.degreeLevel !== 'bachelors' &&
       c.notTransferCredit !== true &&
-      (c.caps.includes('transfer') || c.pool === 'none'),
+      (c.caps.includes('transfer') || c.pool === 'none' || c.transferOutsideCap === true),
   );
   const capKey =
     ctx.student.priorMs === 'completed'
@@ -68,6 +68,11 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // transfer credits counted" (2026-09-11).
     const counted = ctx.alloc.transfer.definite + ctx.alloc.transfer.in_progress;
     const provisional = ctx.alloc.transfer.provisional;
+    // Posted credit outside the working limit (P4-transfer-2 (a)) counts, but
+    // not against the limit: the meter below says what the limit admitted.
+    const outsideCap = ctx.alloc.perCourse
+      .filter((p) => p.course.transferOutsideCap === true && !p.course.superseded && p.course.tier !== 'provisional')
+      .reduce((sum, p) => sum + p.countedRegular + p.countedOther, 0);
     // Split the pending courses by what the DGS's ExternalCourses tab says,
     // so the student knows exactly what to do next (2026-09-01). Ruled
     // transferable already → nothing is left for the DGS to decide: the
@@ -192,7 +197,7 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       const credits = unreviewed.reduce((sum, c) => sum + (c.entry.credits ?? 0), 0);
       parts.push(`Waiting for the DGS: ${unreviewed.map((c) => c.entry.courseId).join(', ')} (${formatCredits(credits)} credits)`, { note: 'Send the review request from the Transcripts card' });
     }
-    parts.push(`${formatCredits(counted)} of the ${cap} credits you may transfer are counted${provisional > 0 ? `; ${formatCredits(provisional)} more pending review` : ''}`, { note: capNote });
+    parts.push(`${formatCredits(counted - outsideCap)} of the ${cap} credits you may transfer are counted${provisional > 0 ? `; ${formatCredits(provisional)} more pending review` : ''}${outsideCap > 0 ? `, besides ${formatCredits(outsideCap)} on your Notre Dame record, counted in full` : ''}`, { note: capNote });
     // Only courses under §5.2's own cap belong on this row: Notre Dame
     // coursework taken as an undergraduate is filed as 'transfer' but is not
     // transfer credit (2026-09-10), and its lines used to be repeated here.
@@ -218,7 +223,7 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // Accepted and recorded already: said as a fact, nothing to send (P3-import-1).
     if (onRecord.length > 0) {
       parts.push(`On your Notre Dame record as accepted transfer credit: ${onRecord.map((c) => c.entry.courseId).join(', ')}`, {
-        note: 'The Graduate School approved this credit and recorded it (Academic Code §4.6), so it counts with no review or processing request',
+        note: `The Graduate School approved this credit and recorded it (Academic Code §4.6), so it counts with no review or processing request${transfers.some((c) => c.transferOutsideCap === true) ? ' — in full: no document states a transfer limit for your record, so this page’s working limit covers only the courses the DGS still decides (DGS 2026-10-11)' : ''}`,
       });
     }
     // A `yes` in the course rules counts outright (2026-09-27); the Grad
