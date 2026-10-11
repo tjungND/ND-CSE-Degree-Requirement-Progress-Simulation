@@ -19,6 +19,7 @@
     "e2e:opera": "E2E_BROWSER=opera node scripts/e2e/run.mjs",
     "diagnose": "node scripts/diagnose-transcript.mjs",
     "replay": "node --experimental-strip-types scripts/dev/replay.mts",
+    "verdicts": "node --experimental-strip-types scripts/dev/verdicts.mts",
     "sanitize": "node scripts/sanitize-transcript.mjs",
     "handbook-text": "node scripts/handbook-text.mjs",
     "ocr-bench": "node --experimental-strip-types scripts/dev/ocr-bench/bench.mjs"

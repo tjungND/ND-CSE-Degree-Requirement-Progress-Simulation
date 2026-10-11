@@ -1,0 +1,203 @@
+{
+  "name": "life-mscse-4plus1-finished",
+  "description": "Whole degree (item 3, 2026-10-11): a Notre Dame 4+1 MSCSE — admitted to the integrated program in the senior year (Fall 2025), bachelor’s awarded Spring 2026, MSCSE Fall 2026 to Spring 2027 by the project route. Two CSE 40000-level courses from the senior year are the six credits shared with the bachelor’s degree (§3.5), approved by the DGS. Every requirement met; the DGS confirms this end state.",
+  "today": "2027-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "msOption": "project",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "none",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2026
+    },
+    "integratedBsMs": true,
+    "integratedAdmitted": {
+      "season": "fall",
+      "year": 2025
+    },
+    "background": {
+      "bachelors": "nd-cse",
+      "ndIntegrated": true,
+      "graduate": "none"
+    },
+    "gpa": 3.8,
+    "milestones": {
+      "advisorIdentified": "2026-09-10",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "projectReportAccepted": "2027-04-30",
+      "msCandidacyApplied": "2027-02-01"
+    },
+    "attestations": {
+      "advisorApprovedPlan": true,
+      "dgsApproved4xxxx": true
+    },
+    "courses": [
+      {
+        "courseId": "CSE 40113",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate"
+      },
+      {
+        "courseId": "CSE 40243",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2027
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2027
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2027
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2027
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ]
+  },
+  "expect": {
+    "shared.gpa": {
+      "status": "met"
+    },
+    "shared.advisor": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "ms.credits.total": {
+      "status": "met"
+    },
+    "ms.credits.regular": {
+      "status": "met"
+    },
+    "ms.credits.project": {
+      "status": "met"
+    },
+    "ms.transfer": {
+      "status": "not_applicable"
+    },
+    "ms.cap.fourk": {
+      "status": "met"
+    },
+    "ms.cap.sharedbs": {
+      "status": "met",
+      "detailIncludes": [
+        "6 of the 6 credits shared with your bachelor’s degree used"
+      ]
+    },
+    "ms.cap.noncse": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "ms.residency": {
+      "status": "met"
+    },
+    "ms.project.report": {
+      "status": "met"
+    },
+    "shared.msCandidacy": {
+      "status": "met"
+    },
+    "ms.timeLimit": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "shared.approvals": {
+      "status": "not_applicable"
+    }
+  },
+  "expectReviewEmpty": true
+}

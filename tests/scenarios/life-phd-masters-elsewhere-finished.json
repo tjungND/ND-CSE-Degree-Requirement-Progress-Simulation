@@ -1,0 +1,396 @@
+{
+  "name": "life-phd-masters-elsewhere-finished",
+  "description": "Whole degree (item 3, 2026-10-11): a Ph.D. who finished a master’s at Purdue (2020–2021) — 15 credits transferred under §5.2 (the DGS’s yes in the course rules, the Graduate School’s approval recorded), Operating Systems and Algorithms confirmed for §4.4.1, nine regular credits at Notre Dame, then the dissertation. Entry Fall 2022, finished Spring 2026. Every requirement met; the DGS confirms this end state.",
+  "today": "2026-06-01",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50300",
+          "course_title": "Operating Systems",
+          "satisfies_core_area": "os",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "decided_on": "2022-09-15"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 58000",
+          "course_title": "Algorithm Design",
+          "satisfies_core_area": "algorithms",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "decided_on": "2022-09-15"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 52500",
+          "course_title": "Parallel Computing",
+          "satisfies_core_area": "none",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "decided_on": "2022-09-15"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 55500",
+          "course_title": "Cryptography",
+          "satisfies_core_area": "none",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "decided_on": "2022-09-15"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 54100",
+          "course_title": "Database Systems",
+          "satisfies_core_area": "none",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "decided_on": "2022-09-15"
+        }
+      ],
+      "universities": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2022
+    },
+    "priorMs": "completed",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2020
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere-finished"
+    },
+    "gpa": 3.8,
+    "milestones": {
+      "advisorIdentified": "2022-10-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "researchQualifierPassed": "2023-12-01",
+      "qualifierFormFiled": "2024-01-10",
+      "rcrTrainingCompleted": "2023-09-15",
+      "candidacyPassed": "2024-04-20",
+      "candidacyAdmitted": "2024-05-01",
+      "defensePassed": "2026-04-10",
+      "dissertationSubmitted": "2026-04-25"
+    },
+    "attestations": {
+      "advisorApprovedPlan": true,
+      "transferRecorded": true
+    },
+    "courses": [
+      {
+        "courseId": "CS 50300",
+        "title": "Operating Systems",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 58000",
+        "title": "Algorithm Design",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 52500",
+        "title": "Parallel Computing",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 55500",
+        "title": "Cryptography",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 54100",
+        "title": "Database Systems",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 63801",
+        "credits": 1,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 63802",
+        "credits": 1,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ]
+  },
+  "expect": {
+    "shared.gpa": {
+      "status": "met"
+    },
+    "shared.advisor": {
+      "status": "met"
+    },
+    "phd.credits.total": {
+      "status": "met"
+    },
+    "phd.credits.regular": {
+      "status": "met"
+    },
+    "phd.seminar": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.cap.fourk": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "phd.cap.noncse": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "phd.credits.nd": {
+      "status": "met"
+    },
+    "phd.transfer": {
+      "status": "met",
+      "detailIncludes": [
+        "15 of the 24 credits you may transfer are counted"
+      ]
+    },
+    "phd.residency": {
+      "status": "met"
+    },
+    "phd.qualifier": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.qualifier.core.os": {
+      "status": "met",
+      "detailIncludes": [
+        "CS 50300 (PURDUE UNIVERSITY)"
+      ]
+    },
+    "phd.qualifier.core.algorithms": {
+      "status": "met"
+    },
+    "phd.qualifier.core.architecture": {
+      "status": "met"
+    },
+    "phd.qualifier.categories": {
+      "status": "met"
+    },
+    "phd.qualifier.research": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.rcr": {
+      "status": "met"
+    },
+    "phd.candidacy": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.candidacyAdmission": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.dissertation.defense": {
+      "status": "met"
+    },
+    "phd.dissertation.submitted": {
+      "status": "met"
+    },
+    "phd.msAlongTheWay": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "12 of 24 regular-course credits"
+      ]
+    },
+    "phd.timeLimit": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "shared.approvals": {
+      "status": "not_applicable"
+    }
+  },
+  "expectReviewEmpty": true
+}

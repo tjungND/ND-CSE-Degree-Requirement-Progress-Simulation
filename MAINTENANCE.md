@@ -260,6 +260,10 @@ last edit (see "Sync" below).
   generator rewrites the others byte for byte, so a new fixture shows up in `git status` alone.
   When a student finds a
   wrong verdict: add a scenario JSON reproducing it, fix, keep the scenario forever.
+  Since 2026-10-11 `tests/verdicts.json` pins every row of every scenario (status, the pill's
+  words, credit count, deadline state): an engine change that moves any of them fails `npm test`
+  with the list of changed rows. Show that list to the DGS; once approved, `npm run verdicts --
+  --update` rewrites the file, and it is committed with the change (`tests/scenarios/README.md`).
 - **Browsers** (cross-browser review, 2026-10-10). The pages are built for Vite's default floor —
   no `build.target` in `vite.config.ts`, so Safari 14, Chrome 87, Firefox 78 — and verified in
   Chrome, Safari's engine (WebKit) and Firefox; Edge, Opera, Brave and Samsung Internet are

@@ -1,0 +1,188 @@
+{
+  "name": "life-mscse-project-finished",
+  "description": "Whole degree (item 3, 2026-10-11): an MSCSE by the project route from entry (Fall 2024) to the end (Spring 2026) — 24 regular credits, 6 project credits, the report accepted, the master’s candidacy application dated. Every requirement met; the DGS confirms this end state.",
+  "today": "2026-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "msOption": "project",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "none"
+    },
+    "gpa": 3.6,
+    "milestones": {
+      "advisorIdentified": "2024-09-15",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "projectReportAccepted": "2026-04-28",
+      "msCandidacyApplied": "2026-02-10"
+    },
+    "attestations": {
+      "advisorApprovedPlan": true
+    },
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B+",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ]
+  },
+  "expect": {
+    "shared.gpa": {
+      "status": "met"
+    },
+    "shared.advisor": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "ms.credits.total": {
+      "status": "met"
+    },
+    "ms.credits.regular": {
+      "status": "met"
+    },
+    "ms.credits.project": {
+      "status": "met"
+    },
+    "ms.transfer": {
+      "status": "not_applicable"
+    },
+    "ms.cap.fourk": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "ms.cap.noncse": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "ms.residency": {
+      "status": "met"
+    },
+    "ms.project.report": {
+      "status": "met",
+      "detailIncludes": [
+        "Project report accepted 2026-04-28"
+      ]
+    },
+    "shared.msCandidacy": {
+      "status": "met"
+    },
+    "ms.timeLimit": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "shared.approvals": {
+      "status": "not_applicable"
+    }
+  },
+  "expectReviewEmpty": true
+}

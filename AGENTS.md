@@ -25,4 +25,4 @@ The non-negotiables, spelled out in `CLAUDE.md`:
 - `npm test` and `npm run build` must pass before you call anything done; run `npm run e2e` for
   UI-visible changes (and `E2E_BROWSER=webkit npm run e2e` — Safari's engine — and
   `E2E_BROWSER=firefox npm run e2e` when layout changed; `E2E_BROWSER=safari npm run e2e` runs
-  real Safari when the Mac is unlocked, `E2E_BROWSER=opera npm run e2e` Opera) and look at the screenshots. Add a scenario in `tests/scenarios/` for every bug fixed.
+  real Safari when the Mac is unlocked, `E2E_BROWSER=opera npm run e2e` Opera) and look at the screenshots. Add a scenario in `tests/scenarios/` for every bug fixed. `tests/verdicts.json` pins every row of every scenario: an engine change that moves one fails `npm test` with the list — show it to the DGS, then `npm run verdicts -- --update` and commit the file with the change.

@@ -113,7 +113,9 @@ it lives in git history only. `DGS-READ-THIS.md` was replaced by `README.md` on 
   transferability — unmatched courses always show "not yet reviewed by the DGS".
 - `tests/` — **node's built-in runner** (`node --test`; that's why relative imports carry `.ts`
   extensions). One JSON fixture per student scenario in `tests/scenarios/`; add a scenario for
-  every bug fixed. `npm run e2e` drives real headless Chrome, `E2E_BROWSER=webkit npm run e2e`
+  every bug fixed. `tests/verdicts.json` pins every row of every scenario (2026-10-11): an engine
+  change that moves one fails `npm test` with the list — show the list to the DGS, then
+  `npm run verdicts -- --update` and commit the file with the change. `npm run e2e` drives real headless Chrome, `E2E_BROWSER=webkit npm run e2e`
   Safari's engine, `E2E_BROWSER=firefox npm run e2e` Firefox, `E2E_BROWSER=opera npm run e2e`
   Opera and `E2E_BROWSER=safari npm run e2e` real Safari (its window opens; the Mac must be
   unlocked) through the same drivers (see

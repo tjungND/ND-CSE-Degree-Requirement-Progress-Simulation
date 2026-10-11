@@ -1,0 +1,326 @@
+{
+  "name": "life-phd-after-nd-mscse-finished",
+  "description": "Whole degree (item 3, 2026-10-11): a student who finished the Notre Dame MSCSE (Fall 2020 – Spring 2021, awarded Spring 2021) and then the Ph.D. (entry Fall 2021, finished Spring 2025). The MSCSE coursework is Ph.D. coursework, not transfer credit (one graduate program); no MSCSE along the way. Every requirement met; the DGS confirms this end state.",
+  "today": "2025-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2021
+    },
+    "priorMs": "none",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2020
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2021
+      }
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-mscse"
+    },
+    "gpa": 3.7,
+    "milestones": {
+      "advisorIdentified": "2021-10-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "researchQualifierPassed": "2022-12-01",
+      "qualifierFormFiled": "2023-01-15",
+      "rcrTrainingCompleted": "2022-09-15",
+      "candidacyPassed": "2023-04-15",
+      "candidacyAdmitted": "2023-05-01",
+      "defensePassed": "2025-04-10",
+      "dissertationSubmitted": "2025-04-25"
+    },
+    "attestations": {
+      "advisorApprovedPlan": true
+    },
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 63801",
+        "credits": 1,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 63802",
+        "credits": 1,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ]
+  },
+  "expect": {
+    "shared.gpa": {
+      "status": "met"
+    },
+    "shared.advisor": {
+      "status": "met"
+    },
+    "phd.credits.total": {
+      "status": "met"
+    },
+    "phd.credits.regular": {
+      "status": "met"
+    },
+    "phd.seminar": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.cap.fourk": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "phd.cap.noncse": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "phd.credits.nd": {
+      "status": "met"
+    },
+    "phd.transfer": {
+      "status": "not_applicable",
+      "detailIncludes": [
+        "are not transfer credit"
+      ]
+    },
+    "phd.residency": {
+      "status": "met"
+    },
+    "phd.qualifier": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.qualifier.core.os": {
+      "status": "met",
+      "detailIncludes": [
+        "Notre Dame, before entering the program"
+      ]
+    },
+    "phd.qualifier.core.algorithms": {
+      "status": "met"
+    },
+    "phd.qualifier.core.architecture": {
+      "status": "met"
+    },
+    "phd.qualifier.categories": {
+      "status": "met"
+    },
+    "phd.qualifier.research": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.rcr": {
+      "status": "met"
+    },
+    "phd.candidacy": {
+      "status": "met",
+      "deadlineState": "done",
+      "detailIncludes": [
+        "the MSCSE you finished before it does not count toward the eight"
+      ]
+    },
+    "phd.candidacyAdmission": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.dissertation.defense": {
+      "status": "met"
+    },
+    "phd.dissertation.submitted": {
+      "status": "met"
+    },
+    "phd.timeLimit": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "shared.approvals": {
+      "status": "not_applicable"
+    }
+  },
+  "expectReviewEmpty": true
+}

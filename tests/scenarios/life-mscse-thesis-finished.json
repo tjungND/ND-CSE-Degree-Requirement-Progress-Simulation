@@ -1,0 +1,197 @@
+{
+  "name": "life-mscse-thesis-finished",
+  "description": "Whole degree (item 3, 2026-10-11): an MSCSE by the thesis route from entry (Fall 2024) to the end (Spring 2026) — topic approved, both readers tenured or tenure-track CSE faculty, the defense passed and the thesis submitted, the master’s candidacy application dated. Every requirement met; the DGS confirms this end state.",
+  "today": "2026-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "msOption": "thesis",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "none"
+    },
+    "gpa": 3.7,
+    "milestones": {
+      "advisorIdentified": "2024-09-15",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "thesisTopicApproved": "2025-09-20",
+      "thesisReadersTtt": "yes",
+      "thesisDefensePassed": "2026-04-20",
+      "thesisSubmitted": "2026-05-01",
+      "msCandidacyApplied": "2026-02-10"
+    },
+    "attestations": {
+      "advisorApprovedPlan": true
+    },
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68901",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68901",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ]
+  },
+  "expect": {
+    "shared.gpa": {
+      "status": "met"
+    },
+    "shared.advisor": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "ms.credits.total": {
+      "status": "met"
+    },
+    "ms.credits.regular": {
+      "status": "met"
+    },
+    "ms.credits.project": {
+      "status": "met"
+    },
+    "ms.transfer": {
+      "status": "not_applicable"
+    },
+    "ms.cap.fourk": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "ms.cap.noncse": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "ms.residency": {
+      "status": "met"
+    },
+    "ms.thesis.topic": {
+      "status": "met"
+    },
+    "ms.thesis.defense": {
+      "status": "met",
+      "detailIncludes": [
+        "Thesis defense passed 2026-04-20"
+      ]
+    },
+    "ms.thesis.submitted": {
+      "status": "met"
+    },
+    "shared.msCandidacy": {
+      "status": "met"
+    },
+    "ms.timeLimit": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "shared.approvals": {
+      "status": "not_applicable"
+    }
+  },
+  "expectReviewEmpty": true
+}

@@ -2160,6 +2160,12 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
 - `npm test` — scenario fixtures in `tests/scenarios/*.json` (schema: student + pinned
   `today` + rules patch + expected status/detail substrings per requirement id). Add one per
   bug, forever.
+  `tests/verdicts.json` (2026-10-11, item 3) pins EVERY row of every scenario — status, statusLabel,
+  `progress.have/need`, deadline state (`tests/verdict-table.ts` `verdictOf`); `tests/verdicts.test.ts`
+  lists each change. An engine change that moves a verdict: put the list in the reply for the DGS,
+  then `npm run verdicts -- --update` and commit the file with the change. The `life-*` scenarios
+  are whole degrees with every row pinned; `tests/missing-parameter-never-passes.test.ts` (item 1)
+  re-runs every scenario with each engine key removed.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

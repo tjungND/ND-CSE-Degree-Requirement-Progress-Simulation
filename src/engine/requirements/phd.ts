@@ -2317,14 +2317,16 @@ function dissertationRows(ctx: Ctx): RequirementResult[] {
                 { note: '§4.3 makes that a forfeiture of degree eligibility unless the Graduate School granted an extension, so confirm it with the DGS' },
                 ...noteOf(gpaAtDefense),
                 ...defenseRegistrationNote(ctx, m.defensePassed),
-                { note: 'Then submit the final dissertation electronically by the Graduate School calendar’s deadline (§4.7; Academic Code §6.2.12) — the next row' },
+                // Only until the submission is dated (found building the whole-degree
+                // scenarios, 2026-10-11: a finished record still read "Then submit").
+                ...(m.dissertationSubmitted ? [] : [{ note: 'Then submit the final dissertation electronically by the Graduate School calendar’s deadline (§4.7; Academic Code §6.2.12) — the next row' }]),
               ]
             : [
                 `Defense passed ${m.defensePassed}`,
                 ...(defenseBeforeOce ? [orderNote('defense', 'Oral Candidacy Exam (OCE)', m.candidacyPassed!, '§4.5, §4.6', 'OCE')] : []),
                 ...noteOf(gpaAtDefense),
                 ...defenseRegistrationNote(ctx, m.defensePassed),
-                { note: 'Next: submit the final dissertation electronically by the Graduate School calendar’s deadline (§4.7; Academic Code §6.2.12) — the next row' },
+                ...(m.dissertationSubmitted ? [] : [{ note: 'Next: submit the final dissertation electronically by the Graduate School calendar’s deadline (§4.7; Academic Code §6.2.12) — the next row' }]),
               ]
           : m.dissertationSubmitted
             ? ['Defense date not entered', { note: `Your final dissertation is submitted (${m.dissertationSubmitted}), so enter the date you passed the defense under Milestones — the submission comes after it (§4.7; Academic Code §6.2.12)` }]
