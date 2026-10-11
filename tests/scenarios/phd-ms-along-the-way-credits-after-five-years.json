@@ -1,0 +1,209 @@
+{
+  "name": "phd-ms-along-the-way-credits-after-five-years",
+  "description": "Policy review round 4, P4-mscse-3 (DGS 2026-10-11: apply the suggested handling): the MSCSE along the way needs its Notre Dame credits completed within the master’s five years too (DGS Handbook §3.21.1: “All requirements for the master’s degree must be completed within five years”; Academic Code §6.1.4). This Ph.D. student entered Fall 2020 and passed the OCE in April 2023, inside the five years (its coursework, short at the exam, confirmed by the DGS), but the 24th Notre Dame regular-course credit came in Spring 2026, after the five years ended at the start of Fall 2025. The award is held for the DGS, so neither it nor the master’s candidacy application goes to the Grad Admin.",
+  "today": "2026-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2020
+    },
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2020
+    },
+    "priorMs": "none",
+    "gpa": 3.7,
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {
+      "advisorIdentified": "2020-10-01",
+      "advisorName": "Prof. Example",
+      "candidacyPassed": "2023-04-15"
+    },
+    "attestations": {
+      "wantsMsAlongTheWay": true,
+      "oceConfirmedByDgs": true
+    }
+  },
+  "expect": {
+    "phd.msAlongTheWay": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "Earned at Notre Dame: 24 regular-course credits and 48 research credits",
+        "The 24 regular-course credits at Notre Dame were completed in Spring 2026 (CSE 60876), more than 5 years after you entered",
+        "confirm with the DGS before the award is requested"
+      ],
+      "detailExcludes": [
+        "which waits for the DGS"
+      ]
+    }
+  },
+  "expectAbsent": [
+    "shared.msCandidacy"
+  ]
+}

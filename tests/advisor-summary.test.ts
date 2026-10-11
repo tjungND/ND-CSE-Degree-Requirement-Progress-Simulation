@@ -11,7 +11,7 @@ import type { AuditReport, RequirementResult } from '../src/engine/types.ts';
 import { actionItems, advisorSummary, approvalItems, whyFor } from '../src/ui/advisor-summary.ts';
 import { BADGE_STYLE, htmlRequirementBlock } from '../src/ui/email-html.ts';
 import { audit } from '../src/engine/audit.ts';
-import { buildRules } from './helpers.ts';
+import { buildRules, loadScenario } from './helpers.ts';
 import { ndCourse, phdStudent } from './helpers/student.ts';
 
 function req(id: string, title: string, status: RequirementResult['status'], detail = '', group = 'Coursework — §4.2', section = '§4.2'): RequirementResult {
@@ -438,5 +438,56 @@ describe('a lapsed Incomplete in the advisor email (P3-emails-7)', () => {
     assert.deepEqual(approvalItems('CSE 60641', 'Incomplete (I) past its deadline (about 2026-02-01) — it became an F unless the Graduate School extended it (Academic Code §4.4); the DGS confirms', 'phd'), {
       incomplete: 'Confirm whether the Graduate School extended my Incomplete in CSE 60641, or the grade was posted (Academic Code §4.4).',
     });
+  });
+});
+
+// Every requirement complete, the last one after the time limit: the card
+// reads "Eligibility at risk" and asks for the DGS, so the email must not say
+// "Complete all requirements" or "Nothing is pending with the DGS" (policy
+// review round 4, P4-phd-1 and P4-mscse-1; DGS 2026-10-11).
+describe('a time limit completed late in the advisor email (P4-phd-1)', () => {
+  const emailOf = (report: AuditReport) => advisorSummary(report, { todayIso: '2030-01-15', entryTerm: 'Fall 2021', priorStudy: 'No earlier graduate program' }).text;
+  it('Ph.D.: defense and submission after the eight years', () => {
+    const sc = loadScenario('life-phd-finished');
+    const s = structuredClone(sc.student);
+    s.milestones.defensePassed = '2029-10-01';
+    s.milestones.dissertationSubmitted = '2029-10-20';
+    const report = audit(s, buildRules(sc.rules.patch), '2030-01-15');
+    const row = report.requirements.find((r) => r.id === 'phd.timeLimit')!;
+    assert.equal(row.statusLabel, 'Eligibility at risk');
+    const todo = actionItems(report);
+    assert.ok(!todo.student.some((t) => /^Complete all requirements/.test(t)), JSON.stringify(todo.student));
+    assert.ok(todo.student.some((t) => /^Confirm with the DGS whether the Graduate School extended my time limit/.test(t)), JSON.stringify(todo.student));
+    assert.ok(todo.dgs.some((t) => /dissertation completion status or an eligibility extension/.test(t)), JSON.stringify(todo.dgs));
+    assert.doesNotMatch(emailOf(report), /Nothing is pending with the DGS/);
+  });
+  it('MSCSE: the thesis after the five years', () => {
+    const sc = loadScenario('mscse-thesis-after-the-limit');
+    const report = audit(sc.student, buildRules(sc.rules.patch), sc.today);
+    assert.equal(report.requirements.find((r) => r.id === 'ms.timeLimit')!.statusLabel, 'Eligibility at risk');
+    const todo = actionItems(report);
+    assert.ok(!todo.student.some((t) => /^Complete all requirements/.test(t)), JSON.stringify(todo.student));
+    assert.ok(todo.dgs.some((t) => /^Confirm whether the Graduate School extended the student’s time limit, or advise the student on an eligibility extension/.test(t)), JSON.stringify(todo.dgs));
+    assert.doesNotMatch(emailOf(report), /Nothing is pending with the DGS\b/);
+  });
+});
+
+// A dual-degree shared course waits for the Graduate School, not the DGS: its
+// credits carry their own kind (the fold title says "waiting for the Graduate
+// School"), and the advisor email's "Why" never sends it to the DGS (policy
+// review round 4, P4-ac-5; DGS 2026-10-11).
+describe('a dual-degree shared course in the advisor email (P4-ac-5)', () => {
+  const sc = loadScenario('phd-dual-degree-plan-pending-candidacy');
+  const report = audit(sc.student, buildRules(sc.rules.patch), sc.today);
+  it('its credits wait for the plan, not the DGS', () => {
+    for (const id of ['phd.credits.regular', 'phd.credits.total', 'phd.cap.otherdegree']) {
+      const c = report.requirements.find((r) => r.id === id)?.contributions?.find((x) => x.courseId === 'CSE 60641');
+      assert.equal(c?.kind, 'plan', `${id}: ${JSON.stringify(c)}`);
+    }
+  });
+  it('the email names the Graduate School', () => {
+    const text = advisorSummary(report, { todayIso: sc.today, entryTerm: 'Fall 2024', priorStudy: 'No earlier graduate program' }).text;
+    assert.doesNotMatch(text, /waiting for a DGS decision \(CSE 60641\)|the DGS’s decision on CSE 60641/);
+    assert.match(text, /waiting for the Graduate School’s approval of (?:your|my) dual-degree plan of study/);
   });
 });

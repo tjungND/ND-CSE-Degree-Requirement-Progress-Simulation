@@ -409,6 +409,19 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
           ? `Advise the student on applying to the Graduate School for dissertation completion status or an eligibility extension ${section(r)}.`
           : `Advise the student on applying to the Graduate School for an eligibility extension ${section(r)}.`,
       );
+    } else if (r.status === 'needs_dgs_review' && r.deadline?.state === 'done') {
+      // Every requirement complete, the last one after the limit — the card's
+      // "Eligibility at risk" (context.ts timeLimitRow). Nothing is left to
+      // complete; the open question is the Graduate School's extension, so the
+      // email names it and gives the DGS the item the card does (policy review
+      // round 4, P4-phd-1 and P4-mscse-1; DGS 2026-10-11: "apply the suggested
+      // handling").
+      out.student.push(`Confirm with the DGS whether the Graduate School extended my time limit — every requirement is complete, but the last one came after the limit ${section(r)}.`);
+      out.dgs.push(
+        id === 'phd.timeLimit'
+          ? `Confirm whether the Graduate School extended the student’s time limit, or advise the student on dissertation completion status or an eligibility extension ${section(r)}.`
+          : `Confirm whether the Graduate School extended the student’s time limit, or advise the student on an eligibility extension ${section(r)}.`,
+      );
     } else if (r.deadline) out.student.push(`Complete all requirements${due(r)} ${section(r)}.`);
   }
 

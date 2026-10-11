@@ -639,8 +639,11 @@ export interface Contribution {
   pending?: true;
   /** Why it is pending — in progress, or waiting for a decision (UI review
    * item 6; DGS 2026-10-08: "pending" named in-progress courses in the fold
-   * title and DGS-waiting ones in the score head). */
-  kind?: 'in_progress' | 'waiting';
+   * title and DGS-waiting ones in the score head). 'plan' is a dual-degree
+   * shared course waiting only for the Graduate School's approval of the
+   * plan of study — not the DGS (policy review round 4, P4-ac-5; DGS
+   * 2026-10-11; DGS Handbook §2.9). */
+  kind?: 'in_progress' | 'waiting' | 'plan';
 }
 
 export interface RequirementResult {

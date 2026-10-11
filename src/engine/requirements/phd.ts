@@ -1664,18 +1664,17 @@ function oceReadiness(ctx: Ctx, rows: RequirementResult[]): OceReadiness {
       // needed" beside a Coursework card reading "3 pending review/approval".
       // The shortfall is still counted without them (a "no" would leave it);
       // the card names the decision first.
-      const pendingCourses = ctx.alloc.perCourse.filter((p) => !p.course.superseded && p.course.tier === 'provisional' && p.countedRegular > 0);
-      const pending = pendingCourses.reduce((n, p) => n + p.countedRegular, 0);
-      const pendingIds = [...new Set(pendingCourses.map((p) => p.course.entry.courseId))].join(', ');
+      const waitingRegular = pendingRegular(ctx.alloc);
+      const pending = waitingRegular.credits;
       const credits = (n: number) => `${formatCredits(n)} more regular-course ${n === 1 ? 'credit' : 'credits'}`;
       if (counted < need) {
         const more = need - counted;
         if (pending > 0 && pending >= more) {
-          missing.push(`the DGS’s decision on ${pendingIds}, or ${credits(more)}`);
-          item('waiting', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${formatCredits(pending)} waiting for a DGS decision (${pendingIds}) — ${formatCredits(more)} more needed unless the DGS approves them (transferred regular-course credits count)`);
+          missing.push(`${waitingRegular.decision}, or ${credits(more)}`);
+          item('waiting', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${waitingRegular.waiting} — ${formatCredits(more)} more needed unless ${waitingRegular.unless} (transferred regular-course credits count)`);
         } else if (pending > 0) {
-          missing.push(`${credits(more - pending)}, and the DGS’s decision on ${pendingIds} or ${formatCredits(pending)} more`);
-          item('not_yet', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${formatCredits(pending)} waiting for a DGS decision (${pendingIds}) — ${formatCredits(more)} more needed, ${formatCredits(more - pending)} if the DGS approves them (transferred regular-course credits count)`);
+          missing.push(`${credits(more - pending)}, and ${waitingRegular.decision} or ${formatCredits(pending)} more`);
+          item('not_yet', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${waitingRegular.waiting} — ${formatCredits(more)} more needed, ${formatCredits(more - pending)} if ${waitingRegular.unless} (transferred regular-course credits count)`);
         } else {
           missing.push(credits(more));
           item('not_yet', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText} — ${formatCredits(more)} more needed (transferred regular-course credits count)`);
@@ -1799,6 +1798,39 @@ function oceWhenSentence(r: OceReadiness): string {
   );
 }
 
+/** Provisional regular-course credits, split by who they wait for (policy
+ * review round 4, P4-ac-5; DGS 2026-10-11: "apply the suggested handling"):
+ * a dual-degree shared course waits only for the Graduate School's approval
+ * of the plan of study (`dualPlanOnly`; DGS Handbook §2.9: "The plan must
+ * then be approved by the Graduate School"), every other one for the DGS.
+ * `waiting` is the count phrase, `unless` who approves, `decision` the
+ * missing-list phrase. `withIds` names the courses. */
+function pendingRegular(alloc: Ctx['alloc'], withIds = true): { credits: number; waiting: string; unless: string; decision: string } {
+  const pend = alloc.perCourse.filter((p) => !p.course.superseded && p.course.tier === 'provisional' && p.countedRegular > 0);
+  const split = (list: typeof pend) => ({ credits: list.reduce((n, p) => n + p.countedRegular, 0), ids: [...new Set(list.map((p) => p.course.entry.courseId))].join(', ') });
+  const dgs = split(pend.filter((p) => p.course.dualPlanOnly !== true));
+  const plan = split(pend.filter((p) => p.course.dualPlanOnly === true));
+  const ids = (x: { ids: string }) => (withIds ? ` (${x.ids})` : '');
+  const waiting = [
+    ...(dgs.credits > 0 ? [`${formatCredits(dgs.credits)} waiting for a DGS decision${ids(dgs)}`] : []),
+    ...(plan.credits > 0 ? [`${formatCredits(plan.credits)} waiting for the Graduate School’s approval of your dual-degree plan of study${ids(plan)}`] : []),
+  ].join(', ');
+  const unless = dgs.credits > 0 && plan.credits > 0 ? 'the DGS and the Graduate School approve them' : plan.credits > 0 ? 'the Graduate School approves your dual-degree plan' : 'the DGS approves them';
+  const decision = [
+    ...(dgs.credits > 0 ? [`the DGS’s decision on ${dgs.ids}`] : []),
+    ...(plan.credits > 0 ? [`the Graduate School’s approval of your dual-degree plan of study (${plan.ids})`] : []),
+  ].join(' and ');
+  return { credits: dgs.credits + plan.credits, waiting, unless, decision };
+}
+
+/** "; a course shared with your other degree …" — the policy sentence's
+ * second approver, said only when such a course waits (P4-ac-5). */
+function dualPlanClause(ctx: Ctx): string {
+  return ctx.alloc.perCourse.some((p) => !p.course.superseded && p.course.dualPlanOnly === true && p.countedRegular > 0)
+    ? '; a course shared with your other degree counts once the Graduate School approves your dual-degree plan of study (DGS Handbook §2.9)'
+    : '';
+}
+
 /** What the coursework lacked at a dated OCE (policy review round 3,
  * P3-cse-4b-1; DGS 2026-10-06). CSE §4.5: "All coursework for the Ph.D. must
  * be completed (or in progress the same semester) before the candidacy exam
@@ -1817,8 +1849,8 @@ function courseworkAtExam(ctx: Ctx): string[] {
   if (min !== undefined) {
     const done = at.alloc.regular.definite + at.alloc.regular.in_progress;
     if (done < min) {
-      const pending = at.alloc.regular.provisional;
-      out.push(`${formatCredits(done)} of ${min} regular-course credits${pending > 0 ? ` (${formatCredits(pending)} more waiting for a DGS decision)` : ''}`);
+      const pending = pendingRegular(at.alloc, false);
+      out.push(`${formatCredits(done)} of ${min} regular-course credits${pending.credits > 0 ? ` (${pending.waiting.replace(/^([\d.]+) /, '$1 more ')})` : ''}`);
     }
   }
   if (!qualifierPassedUnderPriorRules(ctx)) {
@@ -1906,7 +1938,7 @@ function candidacyRow(ctx: Ctx, coursework: OceReadiness): RequirementResult {
       ...joinedDetail([
         'Not started',
         ...oceWaitFact(coursework),
-        { note: 'The Oral Candidacy Exam (OCE) can be taken once your coursework is complete or in progress the same semester — the 24 regular-course credits (transferred regular-course credits count) and the qualifying examination’s core-knowledge and specialization courses (§4.5) — and you have a tenured or tenure-track advisor (§2.3). A course waiting for the DGS’s decision counts once the DGS approves it' },
+        { note: `The Oral Candidacy Exam (OCE) can be taken once your coursework is complete or in progress the same semester — the 24 regular-course credits (transferred regular-course credits count) and the qualifying examination’s core-knowledge and specialization courses (§4.5) — and you have a tenured or tenure-track advisor (§2.3). A course waiting for the DGS’s decision counts once the DGS approves it${dualPlanClause(ctx)}` },
         ...eighthSemesterNotes(ctx, sem, effectiveSem, true, 'oce'),
       ]),
       deadline: r.deadline,
@@ -2023,7 +2055,7 @@ function admissionPolicyNotes(ctx: Ctx, args: { semesterWord: string; probationC
     policy(`The department’s coursework: the ${regularMin ?? 24} regular-course credits (§4.2) — transferred regular-course credits count, and approved CSE 4xxxx credits count within §4.2’s allowance (Academic Code §6.2.9; DGS Handbook §3.22.3)`),
     policy(`A cumulative GPA of ${(gpaMin ?? 3).toFixed(1)} or better (§2.2; Academic Code §6.2.9; DGS Handbook §3.22.3)`),
     policy('All training modules for the Responsible Conduct of Research and ethics: the Graduate School’s 3-hour ethics workshop for every Ph.D. student, and any training your role or your research funding requires (Academic Code §6.2.4; DGS Handbook §3.22.3, §6.3.1)'),
-    policy('The doctoral candidacy examination passed, its written and oral parts: in CSE the written part is the dissertation proposal, so passing the Oral Candidacy Exam (OCE) normally also approves the proposal. The OCE can be taken once your coursework is complete or in progress the same semester — the regular-course credits and the qualifying examination’s core-knowledge and specialization courses — and you have a tenured or tenure-track advisor (§2.3, §4.5; Academic Code §6.2.8, §6.2.9). A course waiting for the DGS’s decision counts once the DGS approves it'),
+    policy(`The doctoral candidacy examination passed, its written and oral parts: in CSE the written part is the dissertation proposal, so passing the Oral Candidacy Exam (OCE) normally also approves the proposal. The OCE can be taken once your coursework is complete or in progress the same semester — the regular-course credits and the qualifying examination’s core-knowledge and specialization courses — and you have a tenured or tenure-track advisor (§2.3, §4.5; Academic Code §6.2.8, §6.2.9). A course waiting for the DGS’s decision counts once the DGS approves it${dualPlanClause(ctx)}`),
     policy('Before the OCE: send the DGS a written request naming your committee — your advisor and at least three voting members, with CVs for members from outside Notre Dame — and give the committee your written proposal at least two weeks before the exam, which is held on campus (§4.5)'),
     // P3-cross-doc-2 (DGS 2026-10-07, department policy): the DGS's exception
     // is for a tenured or tenure-track advisor from another department only.
@@ -2182,12 +2214,13 @@ function candidacyAdmissionRow(ctx: Ctx, merged: { oce: RequirementResult; rcr: 
     else {
       const definite = ctx.alloc.regular.definite;
       const ip = ctx.alloc.regular.in_progress;
-      const pending = ctx.alloc.regular.provisional;
+      const waitingRegular = pendingRegular(ctx.alloc, false);
+      const pending = waitingRegular.credits;
       conditions.push({
         // Transferred regular-course credits are in this count (DGS 2026-10-05:
         // "somehow state that … can be satisfied with the transferred
         // regular-course credits").
-        text: `Coursework: ${formatCredits(definite)} of ${regularMin} regular-course credits complete${ip > 0 && definite < regularMin ? `, ${formatCredits(ip)} in progress` : ''}${pending > 0 && definite < regularMin ? `, ${formatCredits(pending)} waiting for a DGS decision` : ''} (transferred regular-course credits count)`,
+        text: `Coursework: ${formatCredits(definite)} of ${regularMin} regular-course credits complete${ip > 0 && definite < regularMin ? `, ${formatCredits(ip)} in progress` : ''}${pending > 0 && definite < regularMin ? `, ${waitingRegular.waiting}` : ''} (transferred regular-course credits count)`,
         mark: definite >= regularMin ? 'met' : definite + ip >= regularMin ? 'in_progress' : definite + ip + pending >= regularMin ? 'waiting' : 'not_yet',
       });
     }
@@ -2508,6 +2541,26 @@ function msAlongTheWayRow(ctx: Ctx): RequirementResult {
   const msLimit = msYears === undefined ? undefined : addMonthsIso(startOfTerm(ctx.entry).date, msYears * 12 + ctx.clockShift * 6);
   const msShift = clockShiftNote({ ...ctx, covidCohort: false });
   const afterMsLimit = passed !== undefined && msLimit !== undefined && passed > msLimit;
+  // The award's own Notre Dame credits are among "all requirements for the
+  // master's degree" too (DGS Handbook §3.21.1: "All requirements for the
+  // master's degree must be completed within five years"; Academic Code
+  // §6.1.4), dated as P3-cse-3-1 dates the MSCSE's coursework — the term in
+  // which each count first reached its number. Credits finished after the
+  // five years hold the award for the DGS, as a late OCE does (policy review
+  // round 4, P4-mscse-3; DGS 2026-10-11: "apply the suggested handling").
+  const lateCredits =
+    msLimit === undefined
+      ? undefined
+      : lastCompletion([
+          creditsReachedAt(ctx, (a) => (atNotreDame(a.course) && a.course.pool === 'regular' ? a.countedRegular : 0), reqReg, `the ${reqReg} regular-course credits at Notre Dame`),
+          creditsReachedAt(
+            ctx,
+            (a) => (a.course.entry.origin === 'nd' && (a.course.rule?.courseType === 'research' || a.course.rule?.courseType === 'project') ? a.countedOther - (a.overCapToTotal ?? 0) : 0),
+            reqRes,
+            `the ${reqRes} research credits at Notre Dame`,
+          ),
+        ]);
+  const creditsAfterMsLimit = lateCredits !== undefined && msLimit !== undefined && lateCredits.date > msLimit ? lateCredits : undefined;
   // The award is earned "on successfully passing the candidacy exam" (§4.5):
   // while that exam waits for the DGS — its coursework short at the exam
   // (P3-cse-4b-1) or dated before an interruption of five years or more
@@ -2517,11 +2570,14 @@ function msAlongTheWayRow(ctx: Ctx): RequirementResult {
   if (reqReg === undefined || reqRes === undefined) {
     status = 'cannot_evaluate';
     parts = [missingParamDetail(reqReg === undefined ? 'ms_regular_credits_min' : 'ms_project_credits_min')];
-  } else if (passed && doneReg >= reqReg && doneRes >= reqRes && (gpaShort || afterMsLimit || oceWaiting)) {
+  } else if (passed && doneReg >= reqReg && doneRes >= reqRes && (gpaShort || afterMsLimit || creditsAfterMsLimit !== undefined || oceWaiting)) {
     status = 'needs_dgs_review';
     const why = [
         ...(gpaShort ? [gpa === undefined ? 'no cumulative GPA is entered, and the award needs at least the 3.0 minimum (§2.2)' : `your cumulative GPA is ${gpaText(gpa)}, below the 3.0 the award needs (§2.2)`] : []),
         ...(afterMsLimit ? [`the exam came more than ${msYears} years after you entered${msShift}, and the master’s five-year limit may apply to the award (Academic Code §6.1.4; DGS Handbook §3.21.1)`] : []),
+        ...(creditsAfterMsLimit?.course
+          ? [`${creditsAfterMsLimit.course.requirement} were completed in ${termLabel(creditsAfterMsLimit.course.term)} (${creditsAfterMsLimit.course.courseId}), more than ${msYears} years after you entered${msShift}, and the master’s five-year limit may apply to the award (Academic Code §6.1.4; DGS Handbook §3.21.1)`]
+          : []),
         ...(oceWaiting ? [`the award rests on your Oral Candidacy Exam (OCE), which waits for the DGS — ${beforeForfeiture(ctx, passed) ? `it came ${FORFEIT_FACT} (Academic Code §5.5)` : 'its coursework was short at the exam (§4.5)'}`] : []),
       ].join(', and ');
     parts = [
