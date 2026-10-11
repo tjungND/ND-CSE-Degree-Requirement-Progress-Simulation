@@ -1,6 +1,7 @@
 // §4 — Requirements for the Doctor of Philosophy Degree.
 // Every builder quotes the handbook sentence it implements.
 import { formatCredits } from '../credits.ts';
+import { PHD_TOTAL_CREDITS_FLOOR } from '../../data/params.ts';
 import { isNotreDameInstitution } from '../../data/external.ts';
 import { coreTitleMatchesArea } from '../core-title.ts';
 import { isInProgress, isPassed, meetsGradeFloor, passesCreditFloor } from '../grades.ts';
@@ -46,6 +47,20 @@ const QUALIFIER = 'Qualifying examination — §4.4';
 const CANDIDACY = 'Oral Candidacy Exam (OCE) and candidacy — §4.5';
 const DISSERTATION = 'Dissertation and defense — §4.7';
 
+/** The Ph.D.'s total credits (§4.2's 60, from the sheet), held at the
+ * Graduate School's sixty for a student without a previously awarded master's
+ * (policy review round 4, P4-data-1; DGS 2026-10-11: option (a)). Academic Code
+ * §6.2.1: "At least sixty (60) credit hours, or a minimum of 30 credit hours
+ * beyond a previously awarded master's degree, are required for the Ph.D." —
+ * so a lower row stands for a student who holds a master's, and the sheet check
+ * warns about it either way. */
+export function phdTotalRequired(ctx: Ctx): number | undefined {
+  const n = ctx.params.number('phd_total_credits_min');
+  if (n === undefined) return undefined;
+  const heldMasters = ctx.student.priorMs === 'completed' || ctx.student.ndMasters !== undefined;
+  return heldMasters ? n : Math.max(n, PHD_TOTAL_CREDITS_FLOOR);
+}
+
 /** Taken at Notre Dame for §4.2's nine: in this program, or in the student's
  * own Notre Dame MSCSE (DGS 2026-09-22). */
 const atNotreDame = (c: { entry: { origin: string }; ndMastersCredit?: true }): boolean => c.entry.origin === 'nd' || c.ndMastersCredit === true;
@@ -67,7 +82,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
       pendingBy: pendingCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
       contributions: courseContributions(ctx, (p) => p.countedRegular + p.countedOther),
-      required: ctx.params.number('phd_total_credits_min'),
+      required: phdTotalRequired(ctx),
       requiredKey: 'phd_total_credits_min',
       section: '§4.2',
       quote: 'The graduate school requires a total of sixty (60) credits of courses and research for the Ph.D.',
@@ -537,7 +552,7 @@ export function phdTimeLimitRow(ctx: Ctx, others: { allMet: boolean; anyCannotEv
   // a course was finished after the limit.
   const m = ctx.student.milestones;
   const p = ctx.params;
-  const total = p.number('phd_total_credits_min');
+  const total = phdTotalRequired(ctx);
   const regular = p.number('phd_regular_credits_min');
   const nd = p.number('phd_nd_credits_min');
   const completed = lastCompletion([

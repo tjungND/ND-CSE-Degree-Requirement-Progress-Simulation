@@ -17,7 +17,30 @@ const GRADUATE_SCHOOL_FLOORS: { key: string; floor: number; looser: (n: number) 
   { key: 'fulltime_credits_min', floor: 9, looser: (n) => n < 9, limit: 'at least 9 credits', source: 'Academic Code §3.3: “A full-time student is one who registers for at least nine credit hours per semester.”' },
   { key: 'summer_fulltime_credits_min', floor: 6, looser: (n) => n < 6, limit: 'at least 6 credits', source: 'DGS Handbook §10.3.2: “may include summer session if the student is registered for six or more credits” — the DGS kept this row on the sheet on 2026-10-04, never to be set below six' },
   { key: 'phd_time_limit_years', floor: 8, looser: (n) => n > 8, limit: 'at most 8 years', source: 'Academic Code §6.2.6: “The student must fulfill all doctoral requirements, including the dissertation, its defense, and the official submission within eight years from the time of matriculation”' },
+  // Seven more rows that carry an Academic Code number themselves (policy
+  // review round 4, P4-data-1; DGS 2026-10-11: option (a), the rule of
+  // 2026-10-07 — "a row may tighten the rule, never loosen it"): the §4.6
+  // transfer caps and five-year windows, and §4.1's six credits below 60000.
+  // transfer_min_grade (§4.6's B) is held in gradeLetter(), below; the Ph.D.'s
+  // sixty credits (§6.2.1, with its branch for a previously awarded master's)
+  // in the engine (phd.ts phdTotalRequired) and warned about here.
+  { key: 'transfer_unfinished_ms_credits_max', floor: 6, looser: (n) => n > 6, limit: 'at most 6 credits', source: 'Academic Code §4.6: “A student transferring from an unfinished master’s program may not transfer more than six (6) semester credit hours”' },
+  { key: 'ms_transfer_completed_ms_credits_max', floor: 9, looser: (n) => n > 9, limit: 'at most 9 credits', source: 'Academic Code §4.6: “If the student has completed a master’s or Ph.D. program, he or she may transfer up to nine (9) semester credit hours to a Notre Dame master’s program”' },
+  { key: 'phd_transfer_completed_ms_credits_max', floor: 24, looser: (n) => n > 24, limit: 'at most 24 credits', source: 'Academic Code §4.6: “… and up to 24 semester-credit hours to a Notre Dame Ph.D. program”' },
+  { key: 'ms_transfer_window_years', floor: 5, looser: (n) => n > 5, limit: 'at most 5 years', source: 'Academic Code §4.6: “the courses were completed within a five-year period prior to admission to a graduate degree program at Notre Dame”' },
+  { key: 'phd_transfer_window_years', floor: 5, looser: (n) => n > 5, limit: 'at most 5 years', source: 'Academic Code §4.6: “the courses were completed within a five-year period prior to admission to a graduate degree program at Notre Dame”' },
+  { key: 'ms_4xxxx_credits_max', floor: 6, looser: (n) => n > 6, limit: 'at most 6 credits', source: 'Academic Code §4.1: “The advanced undergraduate courses numbered 40000 – 59999 may be taken to satisfy up to six hours of graduate credit requirements.”' },
+  { key: 'phd_4xxxx_cse_credits_max', floor: 6, looser: (n) => n > 6, limit: 'at most 6 credits', source: 'Academic Code §4.1: “The advanced undergraduate courses numbered 40000 – 59999 may be taken to satisfy up to six hours of graduate credit requirements.”' },
 ];
+
+/** §4.6's grade floor for transfer credit (P4-data-1 (a)): a letter below B is
+ * looser than the Graduate School allows, so the app holds B. */
+const TRANSFER_GRADE_FLOOR = { key: 'transfer_min_grade', floor: 'B', source: 'Academic Code §4.6: “grades of B (3.0 on 4.0 scale) or better were achieved”' };
+const letterPoints = (v: string): number => ({ A: 4, B: 3, C: 2, D: 1 })[v.charAt(0) as 'A' | 'B' | 'C' | 'D'] + (v.endsWith('+') ? 0.3 : v.endsWith('-') ? -0.3 : 0);
+/** The Academic Code's Ph.D. credit floor (§6.2.1): sixty, or 30 beyond a
+ * previously awarded master's — so a lower row is warned about, and the engine
+ * holds sixty for a student without such a master's (P4-data-1 (a)). */
+export const PHD_TOTAL_CREDITS_FLOOR = 60;
 const FLOOR_OF = new Map(GRADUATE_SCHOOL_FLOORS.map((f) => [f.key, f]));
 
 export function makeParameters(
@@ -106,6 +129,27 @@ export function makeParameters(
     });
   }
 
+  const grade = raw.get(TRANSFER_GRADE_FLOOR.key);
+  if (grade && /^[A-D][+-]?$/.test(grade.value.trim().toUpperCase()) && letterPoints(grade.value.trim().toUpperCase()) < letterPoints(TRANSFER_GRADE_FLOOR.floor)) {
+    issues.push({
+      severity: 'warning',
+      tab: 'Parameters',
+      row: grade.row,
+      column: 'value',
+      message: `Parameters row ${grade.row}: '${TRANSFER_GRADE_FLOOR.key}' is ${grade.value.trim()}, looser than the Graduate School allows — B or better (${TRANSFER_GRADE_FLOOR.source}). The app uses B instead: a program may set a higher standard, never a lower one. Set the row to B or stricter.`,
+    });
+  }
+  const phdTotal = raw.get('phd_total_credits_min');
+  if (phdTotal && phdTotal.value.trim() !== '' && Number.isFinite(Number(phdTotal.value)) && Number(phdTotal.value) < PHD_TOTAL_CREDITS_FLOOR) {
+    issues.push({
+      severity: 'warning',
+      tab: 'Parameters',
+      row: phdTotal.row,
+      column: 'value',
+      message: `Parameters row ${phdTotal.row}: 'phd_total_credits_min' is ${phdTotal.value.trim()}, below the Graduate School's sixty — Academic Code §6.2.1: “At least sixty (60) credit hours, or a minimum of 30 credit hours beyond a previously awarded master’s degree, are required for the Ph.D.” The app holds 60 for a student without an earlier master's and follows this row for one with it. Check the row.`,
+    });
+  }
+
   const reported = new Set<string>();
   /** `consequence` names what the reader loses, since a display-only key does
    * not make any requirement "cannot evaluate" (2026-09-09). */
@@ -149,6 +193,8 @@ export function makeParameters(
         badValue(key, "a letter grade like 'B'");
         return undefined;
       }
+      // §4.6's B held (P4-data-1 (a)).
+      if (key === TRANSFER_GRADE_FLOOR.key && letterPoints(v) < letterPoints(TRANSFER_GRADE_FLOOR.floor)) return TRANSFER_GRADE_FLOOR.floor;
       return v;
     },
     // A list of SUBJECT codes — "CS; CSCI; COMPSCI" (2026-09-09). Forgiving

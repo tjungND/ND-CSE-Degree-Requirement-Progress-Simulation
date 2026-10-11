@@ -189,14 +189,21 @@ Graduate School's** (the four semesters of §4.3's residency, the eighth semeste
 the sheet row is the department's and the code constant is the Graduate School's: changing the
 sheet changes only the department's rule.
 
-Six rows are different: they carry the Graduate School's minimum **themselves**, with no constant
+Some rows are different: they carry the Graduate School's limit **themselves**, with no constant
 in the code behind them — `ms_time_limit_years` (5 years, Academic Code §6.1.4),
 `ms_total_credits_min` (30, §6.1.1), `gpa_min` (3.0, §4.5), `fulltime_credits_min` (9, §3.3),
 `summer_fulltime_credits_min` (6, DGS Handbook §10.3.2 — a sheet row by the DGS's choice,
-2026-10-04) and `phd_time_limit_years` (8, §6.2.6). The Academic Code calls its figures "minimum
-standards": a program may set higher ones, never lower. So these rows may be **tightened, never
-loosened**: a stricter value is followed; a looser one is warned about in the sheet diagnostics and
-the app uses the Graduate School's value instead (2026-10-07).
+2026-10-04), `phd_time_limit_years` (8, §6.2.6); and since 2026-10-11 the transfer caps
+`transfer_unfinished_ms_credits_max` (6), `ms_transfer_completed_ms_credits_max` (9) and
+`phd_transfer_completed_ms_credits_max` (24), the windows `ms_transfer_window_years` and
+`phd_transfer_window_years` (5) and `transfer_min_grade` (B), all §4.6, and the allowances below
+60000, `ms_4xxxx_credits_max` and `phd_4xxxx_cse_credits_max` (6, §4.1). The Academic Code calls its
+figures "minimum standards": a program may set higher ones, never lower. So these rows may be
+**tightened, never loosened**: a stricter value is followed; a looser one is warned about in the
+sheet diagnostics and the app uses the Graduate School's value instead (2026-10-07, 2026-10-11).
+`phd_total_credits_min` (60) is warned about below sixty, and the app holds 60 for a student
+without an earlier master's — §6.2.1 allows "30 credit hours beyond a previously awarded master's
+degree", so a lower row stands for one with it.
 
 ### A6. Log the change and date it
 
