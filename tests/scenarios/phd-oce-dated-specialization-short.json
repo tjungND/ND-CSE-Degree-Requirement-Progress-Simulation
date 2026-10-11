@@ -1,0 +1,140 @@
+{
+  "name": "phd-oce-dated-specialization-short",
+  "description": "Policy review round 4, P4-phd-4 (2026-10-11). CSE §4.5: \"All coursework for the Ph.D. must be completed (or in progress the same semester) before the candidacy exam can be taken\" — the qualifier's specialization courses included (P3-cse-4b-1). A Fall 2024 entrant has the 24 regular-course credits and all three core areas by Spring 2025, but only one specialization course at B or better, and passes the OCE in Fall 2025; the specialization is finished in Spring 2026. The OCE waits for the DGS (Conditionally met). With a specialization number missing from the Parameters tab the exam's check could not read the specialization and the OCE used to read Met — now it cannot be evaluated (tests/missing-parameter-never-passes.test.ts runs every key across this student).",
+  "today": "2026-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "gpa": 3.3,
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60868",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60868",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {
+      "advisorIdentified": "2024-10-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "rcrTrainingCompleted": "2025-09-01",
+      "candidacyPassed": "2025-12-10"
+    },
+    "attestations": {}
+  },
+  "expect": {
+    "phd.candidacy": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "Oral Candidacy Exam (OCE) passed 2025-12-10",
+        "At the exam (Fall 2025) you show the specialization courses not complete"
+      ]
+    },
+    "phd.qualifier.categories": {
+      "status": "met"
+    }
+  }
+}

@@ -106,6 +106,29 @@ export function missingParamDetail(key: string): string {
   return `Cannot evaluate — the rules sheet is missing '${key}'. Ask the DGS to add it to the Parameters tab`;
 }
 
+/** The Parameters keys read as something other than a number, each with its
+ * reader (P4-data-2): a held key is checked with the reader the engine uses
+ * for it. Every other engine key is a number. */
+const PARAMETER_READERS: Record<string, 'grade' | 'codes' | 'courses'> = {
+  category_min_grade: 'grade',
+  transfer_min_grade: 'grade',
+  cse_subject_codes: 'codes',
+  phd_seminar_courses: 'courses',
+};
+
+function readParameter(ctx: Ctx, key: string): unknown {
+  switch (PARAMETER_READERS[key]) {
+    case 'grade':
+      return ctx.params.gradeLetter(key);
+    case 'codes':
+      return ctx.params.codeList(key);
+    case 'courses':
+      return ctx.params.courseList(key);
+    default:
+      return ctx.params.number(key);
+  }
+}
+
 /** A row whose verdict passed through a check that needs a sheet number the
  * Parameters tab lacks: held at "cannot evaluate", with one sentence per
  * missing key (CLAUDE.md: "A missing parameter renders 'cannot evaluate',
@@ -118,9 +141,12 @@ export function missingParamDetail(key: string): string {
  * status it described. */
 export function heldForMissingParams(row: RequirementResult, ctx: Ctx, keys: readonly string[]): RequirementResult {
   if (row.status !== 'met' && row.status !== 'needs_dgs_review') return row;
-  // A key is missing when none of the typed readers finds a value: the
-  // number keys here, a grade or a code list elsewhere.
-  const missing = keys.filter((k) => ctx.params.number(k) === undefined && ctx.params.gradeLetter(k) === undefined && ctx.params.codeList(k) === undefined);
+  // A key is missing when ITS OWN reader finds no value (policy review round
+  // 4, P4-data-2, 2026-10-11): a mistyped "3.0 (B)" in gpa_min is no number —
+  // the GPA check is skipped, exactly as for a deleted row — though any text
+  // reads as a code list, which is how the first version of this test let 18
+  // rows read Met. params.ts promises a malformed value reads as a missing one.
+  const missing = keys.filter((k) => readParameter(ctx, k) === undefined);
   if (missing.length === 0) return row;
   const base: DetailPart[] = row.detailParts ?? (row.detail ? [row.detail.replace(/\.$/, '')] : []);
   const { statusLabel: _label, completedLate: _late, ...rest } = row;

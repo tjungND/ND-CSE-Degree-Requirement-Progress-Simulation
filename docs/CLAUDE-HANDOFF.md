@@ -2165,7 +2165,11 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   lists each change. An engine change that moves a verdict: put the list in the reply for the DGS,
   then `npm run verdicts -- --update` and commit the file with the change. The `life-*` scenarios
   are whole degrees with every row pinned; `tests/missing-parameter-never-passes.test.ts` (item 1)
-  re-runs every scenario with each engine key removed.
+  re-runs every scenario with each engine key removed, and (round 4, P4-data-2) with each number or
+  grade cell mistyped. `heldForMissingParams` (context.ts) reads each key with ITS reader
+  (`PARAMETER_READERS`: grade / codes / courses, else number) — any text is a code list, so the
+  first version let a mistyped number pass; a dated OCE is held for the three specialization keys
+  too (P4-phd-4). A new hold on a non-number key needs its entry in `PARAMETER_READERS`.
 - **Stamps** (2026-10-11, item 8): `Rules.fingerprint` is set in `rulesFromCsvTexts` from the texts
   it was given (`rulesFingerprint`, FNV-1a over `normalizeCsvText` of each tab, a fixed tab order,
   a name separator; an absent optional tab is skipped). `src/ui/stamp.ts` `resultStamp(rules)` +

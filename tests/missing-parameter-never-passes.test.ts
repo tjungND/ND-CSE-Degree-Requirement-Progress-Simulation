@@ -9,6 +9,7 @@
 // "conditionally met" (needs_dgs_review), or newly "does not apply".
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { makeParameters } from '../src/data/params.ts';
 import { KNOWN_PARAMETER_KEYS, type Parameters, type Rules } from '../src/data/types.ts';
 import { audit } from '../src/engine/audit.ts';
 import type { RequirementResult, Status } from '../src/engine/types.ts';
@@ -62,6 +63,44 @@ describe('a missing Parameters row never passes a requirement', () => {
     }
     assert.ok(runs > 4000, `expected the full matrix, ran ${runs}`);
     assert.deepEqual(raised, [], `${raised.length} row(s) read better with a Parameters row missing:\n${raised.join('\n')}`);
+  });
+});
+
+/** The same rules with one Parameters cell MISTYPED — "3.0 (B)" for 3.0, "B or
+ * better" for B — read by the app's own readers (policy review round 4,
+ * P4-data-2, 2026-10-11): params.ts promises a malformed value reads as a
+ * missing one, so it must never pass a requirement either. */
+export function withMistypedParameter(rules: Rules, key: string): Rules | undefined {
+  const entry = rules.parameters.raw.get(key);
+  if (entry === undefined) return undefined;
+  const v = entry.value.trim();
+  const mistyped = /^-?\d+(\.\d+)?$/.test(v) ? `${v} (see note)` : /^[A-D][+-]?$/i.test(v) ? `${v} or better` : undefined;
+  if (mistyped === undefined) return undefined; // a list cell: any text is a list
+  const raw = new Map(rules.parameters.raw);
+  raw.set(key, { ...entry, value: mistyped });
+  return { ...rules, parameters: makeParameters(raw, []) };
+}
+
+describe('a mistyped Parameters cell never passes a requirement (policy review round 4, P4-data-2)', () => {
+  it('every number or grade key, mistyped in turn, across every scenario', () => {
+    const raised: string[] = [];
+    let runs = 0;
+    for (const sc of allScenarios()) {
+      const rules = buildRules(sc.rules.patch);
+      const base = new Map(audit(sc.student, rules, sc.today).requirements.map((r) => [r.id, r]));
+      for (const key of KNOWN_PARAMETER_KEYS) {
+        const mistyped = withMistypedParameter(rules, key);
+        if (mistyped === undefined) continue;
+        runs++;
+        for (const r of audit(sc.student, mistyped, sc.today).requirements) {
+          const before = base.get(r.id);
+          if (before === undefined || outsideTheRule(r)) continue;
+          if (PASSING.includes(r.status) && passOf(r) > passOf(before)) raised.push(`${sc.name}: ${key} mistyped, ${r.id} ${before.status} → ${r.status}`);
+        }
+      }
+    }
+    assert.ok(runs > 4000, `expected the full matrix, ran ${runs}`);
+    assert.deepEqual(raised, [], `${raised.length} row(s) read better with a Parameters cell mistyped:\n${raised.join('\n')}`);
   });
 });
 

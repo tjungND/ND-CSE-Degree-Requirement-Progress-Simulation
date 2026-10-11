@@ -278,10 +278,16 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
   // A missing sheet number never lets a dated row read Met (item 1, review
   // 2026-10-10): a dated OCE is read against the regular-course credits (§4.5),
   // a dated admission against §2.2's GPA bar, the award along the way against
-  // both the GPA bar and the master's five years.
+  // both the GPA bar and the master's five years. The dated OCE is read against
+  // the specialization at the exam too (P3-cse-4b-1), so its three numbers hold
+  // it as well — unless the qualifier was passed under the earlier
+  // requirements, which the exam's check then skips (policy review round 4,
+  // P4-phd-4, 2026-10-11: with category_courses_required gone, an exam short of
+  // its specialization read Met and the admission card said "apply now").
   const m = ctx.student.milestones;
   const oceRow = candidacyRow(ctx, ready);
-  const oce = m.candidacyPassed ? heldForMissingParams(oceRow, ctx, ['phd_regular_credits_min']) : oceRow;
+  const oceKeys = ['phd_regular_credits_min', ...(qualifierPassedUnderPriorRules(ctx) ? [] : ['category_courses_required', 'category_distinct_groups_required', 'category_min_grade'])];
+  const oce = m.candidacyPassed ? heldForMissingParams(oceRow, ctx, oceKeys) : oceRow;
   rows.push({ ...rcr, unscored: true, mergedInto: 'phd.candidacyAdmission' });
   rows.push({ ...oce, unscored: true, mergedInto: 'phd.candidacyAdmission' });
   const admission = candidacyAdmissionRow(ctx, { oce, rcr, coursework: ready });
