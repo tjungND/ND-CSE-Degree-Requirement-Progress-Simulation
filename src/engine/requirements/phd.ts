@@ -753,14 +753,20 @@ function qualifierUmbrellaRow(ctx: Ctx, children: RequirementResult[], ndCredits
       // A deadline cannot make a MISSING PARAMETER into a missed requirement,
       // though (red-team 2026-09-13): "cannot evaluate" survives the override,
       // so a blank rules-sheet cell never reads as "overdue — forfeiture".
-      if (status === 'cannot_evaluate') {
+      // A research component whose date is missing beside a dated
+      // dissertation (P4-phd-3, DGS 2026-10-11) is not late either: the card
+      // asks for the date, with no Overdue chip.
+      const researchDateMissing = children.some((c) => c.id === 'phd.qualifier.research' && c.status === 'cannot_evaluate' && c.detailParts?.[0] === RESEARCH_DATE_MISSING);
+      if (status === 'cannot_evaluate' && researchDateMissing) {
+        parts.push({ note: 'Enter the research component’s date under Milestones — the dissertation comes after the qualifier, so it was passed (§4.6)' });
+      } else if (status === 'cannot_evaluate') {
         parts.push(`The deadline (${extendedTerm ? `the DGS’s extension, the end of ${termLabel(extendedTerm)}` : `the end of ${termLabel(term)}`}) has passed, but a component above cannot be evaluated until the rules sheet is complete — so this row cannot be judged either`);
       } else {
         status = 'unmet';
         // The deadline chip carries the when (2026-09-03).
         parts.push({ note: 'Overdue — talk to the DGS' });
       }
-      deadline = due.deadline;
+      deadline = status === 'cannot_evaluate' && researchDateMissing ? undefined : due.deadline;
     } else {
       deadline = due.deadline;
       if (extendedTerm) {
@@ -1203,6 +1209,10 @@ function categoriesRow(ctx: Ctx): RequirementResult {
 /** §4.4.3: "Within 18 months of the student entering the program, the research
  * advisor must determine whether the student has passed or failed the research
  * component of the qualiﬁer." */
+/** The research row's first fact when its date is missing beside a dated
+ * dissertation (P4-phd-3); the qualifier card reads it. */
+const RESEARCH_DATE_MISSING = 'Date not entered';
+
 function researchQualifierRow(ctx: Ctx): RequirementResult {
   const quote =
     'Within 18 months of the student entering the program, the research advisor must determine whether the student has passed or failed the research component of the qualifier.';
@@ -1214,6 +1224,26 @@ function researchQualifierRow(ctx: Ctx): RequirementResult {
       title: 'Research component: a significant research contribution',
       status: 'cannot_evaluate',
       detail: missingParamDetail('research_qualifier_deadline_months'),
+      citation: { section: '§4.4.3', quote },
+    };
+  }
+  const m0 = ctx.student.milestones;
+  // A dated defense or submission with no research-component date (policy
+  // review round 4, P4-phd-3; DGS 2026-10-11: option (a)): §4.6, "After
+  // satisfying the above requirements … the Ph.D. student can start writing
+  // the dissertation" — the qualifier, research component included, comes
+  // first, so its date is missing, not late. The OCE's rule (P3-cse-4b-3)
+  // applied to §4.4.3: no Overdue, no extension asked of the DGS.
+  if ((m0.defensePassed || m0.dissertationSubmitted) && !m0.researchQualifierPassed && !m0.researchQualifierFailed && !qualifierPassedUnderPriorRules(ctx)) {
+    return {
+      id: 'phd.qualifier.research',
+      group: QUALIFIER,
+      title: 'Research component: a significant research contribution',
+      status: 'cannot_evaluate',
+      ...joinedDetail([
+        RESEARCH_DATE_MISSING,
+        { note: 'Enter the date your advisor filed the Research-Qualifier form under Milestones — the dissertation comes after the qualifier (§4.6)' },
+      ]),
       citation: { section: '§4.4.3', quote },
     };
   }

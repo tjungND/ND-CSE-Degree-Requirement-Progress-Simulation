@@ -103,7 +103,9 @@ export function phdMilestoneDeadlines(ctx: Ctx, rows: readonly RequirementResult
         out.researchQualifierPassed = at(ctx, remediation, 'after the fail, the DGS’s committee decides within six months (§4.4.3)', m.researchQualifierPassed);
         out.researchQualifierFailed = at(ctx, remediation, 'the DGS’s committee decides within six months of the fail (§4.4.3)', undefined, false);
       } else {
-        out.researchQualifierPassed = at(ctx, effective, `${months} months after ${from}${extensionClause(extra)} (§4.4.3)`, m.researchQualifierPassed);
+        // With the dissertation dated and no date here, the date is missing,
+        // not late (P4-phd-3, DGS 2026-10-11) — no state, as the OCE's box.
+        out.researchQualifierPassed = at(ctx, effective, `${months} months after ${from}${extensionClause(extra)} (§4.4.3)`, m.researchQualifierPassed, dissertationDated && !m.researchQualifierPassed ? false : 'auto');
         out.researchQualifierFailed = at(ctx, effective, `the advisor’s pass or fail, ${months} months after ${from}${extensionClause(extra)} (§4.4.3)`, undefined, false);
       }
     }
