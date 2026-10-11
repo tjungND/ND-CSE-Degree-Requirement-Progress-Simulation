@@ -724,9 +724,12 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   ABOVE the base rules it overrides loses at equal specificity — the phone block near the end of
   style.css is the live one. The e2e now pins the first-visit headline, the folded list, the phone
   touch targets, the one-column pill, the one-track course form and the surviving § quote.
-- **Credits can be fractional** (DGS 2026-09-08). `credit_system` on ExternalCourses marks a
-  university as quarter-based; `universityCreditSystem` / `ndEquivalentCredits` in data/external.ts
-  resolve it (a fixed `nd_credits` still wins), and `classify` sets `effectiveCredits` plus
+- **Credits can be fractional** (DGS 2026-09-08). A university's `credit_system` marks it as
+  quarter- or trimester-based — in the **Universities** tab since 2026-10-10 (one row per
+  university; `parseUniversitiesTab`, then `universityCreditSystems` in data/assemble.ts builds
+  `rules.universityCreditSystems`, reading the old per-course ExternalCourses cells only when a
+  sheet has no Universities tab and otherwise warning that they are no longer read);
+  `universityCreditSystem` / `ndEquivalentCredits` in data/external.ts resolve it (a fixed `nd_credits` still wins), and `classify` sets `effectiveCredits` plus
   `creditsConverted`. The arithmetic keeps FULL precision — 9 quarter hours must total exactly 6
   against the §5.2 cap — so never round in the engine; print through `formatCredits`
   (src/engine/credits.ts), which is already wired into the threshold rows, the course line and the

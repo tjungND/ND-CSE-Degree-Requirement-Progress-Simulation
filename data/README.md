@@ -153,7 +153,7 @@ is reported, with its row number, in the app's diagnostics panel.
 
 ### `snapshot.json`
 Written by `npm run sync-sheet` (and the six-hourly Action): `{ schemaVersion, syncedAt, csv:
-{ courses, parameters, categories, external } }` — the **raw CSV text** of the four tabs (`external` = ExternalCourses, kept from the previous snapshot if that tab alone fails), so the app's one
+{ courses, parameters, categories, external, universities } }` — the **raw CSV text** of the five tabs (`external` = ExternalCourses, `universities` = Universities, each kept from the previous snapshot if that tab alone fails), so the app's one
 parser handles live and fallback data identically, and each commit diff reads as "what the DGS
 changed". The script leaves the file **untouched while the sheet content is unchanged** (line
 endings and trailing whitespace ignored), so `syncedAt` is the moment the current rules were first
@@ -185,8 +185,8 @@ transcript will read the same, so the rows must keep it to match.
 | `transferable_PhD` | `yes` / `no` / `dgs_approval` / `adgs_approval` / blank | §5.2, for a **Ph.D.** student. `yes` = pre-approved, though each student still makes the formal request (DGS recommendation + Graduate School approval). `no` = never transfers. `dgs_approval` / `adgs_approval` = this one needs an approval, so the app keeps it in the review request as an open decision and tells the student "needs DGS approval"; it does not ask them to argue the case, which is between the advisor and the DGS. Blank = not looked at for that program |
 | `transferable_MSCSE` | the same four values, or blank | The same question for an **MSCSE** student, answered separately (2026-09-09). The app reads whichever column matches the student's own program. The two approval words mean the same thing for now and both read as "needs DGS approval"; the sheet's own word is kept, so the MSCSE message can name the ADGS later without another sheet change |
 | `is_cse` | `yes` / `no` / blank | Is this a **CSE course**, for §4.2's nine-credit allowance for courses "taken from a department other than CSE"? Fill it in only where the code list should not decide — e.g. `no` for a course the DGS rules outside computing although its code is listed (since 2026-10-04 `ECE` is in the list: the department reads “a department other than CSE” as “outside computing”). Blank = the `cse_subject_codes` parameter decides; this cell wins over it (2026-09-09) |
-| `nd_credits` | number or blank | A **fixed** Notre Dame credit value for this one course (§5.2 pro-rata). It wins over the printed credits and over `credit_system`'s ×.66 / ×.88 conversion — so it must be **the figure the Graduate School approved** for the course, not the DGS's own rounding: the DGS Handbook's pro-rata table (quarter ×.66, trimester ×.88) is mandatory and the final number is the Graduate School's (policy review 2026-10-03, P1-units-4plus1-4). Use it only when one number is right every time — it cannot describe a course that is worth 2 credits one term and 4 the next; `credit_system` handles those. Blank = credits as printed, unless `credit_system` says otherwise |
-| `credit_system` | `quarter` / `trimester` / `semester` / blank | The system this **university** awards in. `quarter` / `trimester` convert whatever the student's own transcript prints by the Graduate School's factors — × 0.66 / × 0.88, the DGS Handbook's §3.14 pro-rata table, kept in the code (README § A5b), so a course whose credits vary converts correctly every time. Set it on any one row of a university and it applies to every course from that university, listed here or not. Blank = credits count as printed Blank, or a value the diagnostics reject (2026-10-03): the course’s credits count as printed and its line says “credits shown as your transcript prints them …” until `credit_system` or `nd_credits` settles it. |
+| `nd_credits` | number or blank | A **fixed** Notre Dame credit value for this one course (§5.2 pro-rata). It wins over the printed credits and over the university's ×.66 / ×.88 conversion (its `credit_system` in the Universities tab) — so it must be **the figure the Graduate School approved** for the course, not the DGS's own rounding: the DGS Handbook's pro-rata table (quarter ×.66, trimester ×.88) is mandatory and the final number is the Graduate School's (policy review 2026-10-03, P1-units-4plus1-4). Use it only when one number is right every time — it cannot describe a course that is worth 2 credits one term and 4 the next; `credit_system` handles those. Blank = credits as printed, unless the university's `credit_system` (Universities tab) says otherwise |
+| `credit_system` | — | **No longer read** (DGS 2026-10-10): each university's credit system is set ONCE in the **Universities** tab (below). While a Universities tab exists the app ignores this column and its diagnostics name any rows still carrying a value, so the column can be deleted. A sheet or saved copy without a Universities tab still reads it, as before. |
 | `decided_on`, `notes` | text | for the record |
 
 Anything a student uploads that has NO row here shows "not yet reviewed by the
@@ -213,6 +213,33 @@ point of the value: the DGS wants to see each student's case for it.
 **One-time setup:** create the tab, publish it to the web as
 CSV (File → Share → Publish to web → ExternalCourses → CSV) and paste the URL
 into `sheet-urls.json` as `external`. Until then the app runs without it.
+
+### `Universities` tab (optional — each university's credit system)
+One row per university (DGS 2026-10-10: "I want to enter the credit system for
+each university" — until then it was a `credit_system` cell on every
+ExternalCourses row; sample: `universities.sample.csv`). The app matches a
+student's course to its row by university name the same way ExternalCourses
+does (case, punctuation, diacritics and spacing ignored).
+
+| column | values | meaning |
+|---|---|---|
+| `university` | text | the name **exactly as in ExternalCourses** — the import's reading of the official transcript. Paste it; never retype, tidy or shorten it (DGS 2026-10-07) |
+| `credit_system` | `quarter` / `trimester` / `semester` / blank | The system this university awards in. `quarter` / `trimester` convert whatever the student's own transcript prints by the Graduate School's factors — × 0.66 / × 0.88, the DGS Handbook's §3.14 pro-rata table, kept in the code (README § A5b) — so a course whose credits vary converts correctly every time. It applies to **every** course from the university: those ruled on in ExternalCourses and those not yet ruled on. Blank, a missing row, or a value the diagnostics reject: the course's credits count as printed and its line says “credits shown as your transcript prints them — the DGS converts …”. A course's own `nd_credits` (ExternalCourses) still wins |
+| `notes` | text | for the record; not shown to students |
+
+A university can be listed here before any of its courses is ruled on. Two rows
+for one university: the **last** wins, and the diagnostics warn (the ExternalCourses
+rule, 2026-09-06). A student's review request asks for this tab's row for each university
+in the request whose system the sheet does not give yet: a paste-ready new row
+(prefilled with `quarter` or `trimester` when their record carries one, and
+saying whether the transcript read it or the student chose it), or — for a
+university listed with a blank `credit_system` — completing that row.
+
+**Setup — DONE 2026-10-10:** the tab sits after ExternalCourses (sheet gid
+714661529, a drop-down on `credit_system`); the whole document is published, so
+its CSV link is the ExternalCourses link with that gid, in `sheet-urls.json` as
+`universities`. It started with the 11 universities the ExternalCourses column
+named — UC San Diego on quarters, the other ten on semesters.
 
 ## Validation the app must do on load
 - unknown value in an enumerated column → row is skipped and reported ("Courses row 14, column

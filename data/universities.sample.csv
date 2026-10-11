@@ -1,0 +1,4 @@
+university,credit_system,notes
+PURDUE UNIVERSITY,semester,
+UNIVERSITY OF CALIFORNIA SAN DIEGO,quarter,credits convert from the transcript (4 qtr = 2.64 ND)
+"One row per university — the name exactly as in ExternalCourses. credit_system: quarter, trimester, semester or blank (credits count as printed).",,

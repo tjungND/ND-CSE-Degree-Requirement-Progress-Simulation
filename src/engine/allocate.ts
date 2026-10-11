@@ -1326,10 +1326,11 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   const external =
     findExternalRule(rules.external, c.institution ?? '', c.courseId) ??
     (isNotreDameInstitution(c.institution) ? findExternalRule(rules.external, NOTRE_DAME_ROW_UNIVERSITY, c.courseId) : undefined);
-  // Set once per university in the sheet; applies to every course from it.
-  // The DGS's row for the university decides the credit system; failing
-  // that, what the transcript itself announced at import (2026-09-11).
-  const sheetCreditSystem = universityCreditSystem(rules.external, c.institution);
+  // Set once per university in the sheet's Universities tab (DGS 2026-10-10;
+  // a cell on every ExternalCourses row until then); applies to every course
+  // from it. The DGS's row for the university decides the credit system;
+  // failing that, what the transcript itself announced at import (2026-09-11).
+  const sheetCreditSystem = universityCreditSystem(rules.universityCreditSystems, c.institution);
   const creditSystem = sheetCreditSystem ?? c.creditSystem;
   // §5.2 pro-rata: the Graduate School's factors, in code (DGS 2026-10-04).
   const conversionFactor = creditSystemFactor(creditSystem);

@@ -163,8 +163,11 @@ the student to argue that the course serves their research — that is settled b
 and the DGS (DGS 2026-09-08). Use `yes` for a course any student may transfer; use `dgs_approval`
 when the answer depends on the student.
 
-Since 2026-09-08 the ExternalCourses tab has a `credit_system` column (`quarter` / `semester` /
-blank; `trimester` since 2026-09-12, × 0.88). Set it on any one row of a university and every course from that university converts from
+Each other university's credit system (`quarter` / `semester` / blank; `trimester` since
+2026-09-12, × 0.88) is set ONCE in the **Universities** tab, one row per university (DGS
+2026-10-10; from 2026-09-08 it was a `credit_system` cell on every ExternalCourses row, which the
+app reads now only from a sheet or saved copy without a Universities tab, and otherwise reports
+as no longer read). Every course from that university, ruled on or not, converts from
 the credits printed on the student's transcript (by 0.66 and 0.88, the DGS Handbook's §3.14 pro-rata
 table — Parameters rows from 2026-09-12, constants in `src/data/external.ts` since 2026-10-04, as
 Graduate School numbers; README § A5b) — the way to handle a

@@ -33,8 +33,9 @@ export const ATTEMPT_TIMEOUTS_MS: readonly number[] = [6_000, 10_000, 14_000];
 const MAX_ATTEMPTS = ATTEMPT_TIMEOUTS_MS.length;
 /** Tabs fetched at the same time: all of them (DGS 2026-09-06, after the
  * measurement above showed no rate limiting and no extra stalls from
- * simultaneous requests). Lower it here if Google ever changes that. */
-export const FETCH_CONCURRENCY = 4;
+ * simultaneous requests) — five since the Universities tab (2026-10-10).
+ * Lower it here if Google ever changes that. */
+export const FETCH_CONCURRENCY = 5;
 /** What the loading card calls the upper bound ("usually a few seconds, up to
  * about 30"): the three attempts end to end, plus the pauses between them. */
 export const LOAD_BUDGET_MS = 30_000;
@@ -46,15 +47,22 @@ export const TAB_LABELS: Record<TabName, string> = {
   parameters: 'the parameters',
   categories: 'the categories',
   external: 'the course rules',
+  universities: 'the university list',
 };
 
 /** The published-CSV URL of each tab (data/sheet-urls.json), typed once. */
-const SHEET_URLS = sheetUrls as { courses: string; parameters: string; categories: string; external?: string };
+const SHEET_URLS = sheetUrls as { courses: string; parameters: string; categories: string; external?: string; universities?: string };
 
 /** Is the ExternalCourses tab published and configured? Until the DGS creates
  * the tab and pastes its published-CSV URL into data/sheet-urls.json, the app
  * runs without it and every external course shows as "not yet reviewed". */
 export const EXTERNAL_TAB_CONFIGURED: boolean = typeof SHEET_URLS.external === 'string' && SHEET_URLS.external !== '';
+/** Is the Universities tab (DGS 2026-10-10: each university's credit system)
+ * published and configured? Optional like ExternalCourses: without it the old
+ * per-course credit_system cells are read (assemble.ts). */
+export const UNIVERSITIES_TAB_CONFIGURED: boolean = typeof SHEET_URLS.universities === 'string' && SHEET_URLS.universities !== '';
+/** The optional tabs: if one of them alone fails, the app still runs. */
+const OPTIONAL_TABS: readonly TabName[] = ['external', 'universities'];
 
 /** What the loader reports while it works (drives the loading card). */
 export type LoadProgress =
@@ -294,29 +302,43 @@ export async function loadLiveRules(nowIso: string, onProgress: (p: LoadProgress
   // so the queue below runs FETCH_CONCURRENCY = all four; the constant stays
   // so a future DGS can throttle it without touching the logic.
   const got: Partial<Record<TabName, string>> = {};
-  let externalIssue: string | undefined;
+  const optionalIssues: Partial<Record<TabName, string>> = {};
   let failed = false;
-  const queue: TabName[] = ['courses', 'parameters', 'categories', ...(EXTERNAL_TAB_CONFIGURED ? (['external'] as TabName[]) : [])];
+  const queue: TabName[] = [
+    'courses',
+    'parameters',
+    'categories',
+    ...(EXTERNAL_TAB_CONFIGURED ? (['external'] as TabName[]) : []),
+    ...(UNIVERSITIES_TAB_CONFIGURED ? (['universities'] as TabName[]) : []),
+  ];
   const worker = async (): Promise<void> => {
     for (let tab = queue.shift(); tab !== undefined && !failed; tab = queue.shift()) {
       try {
         got[tab] = await fetchCsv(tab, urls[tab]!, onProgress);
       } catch (e: unknown) {
-        // The optional tab degrades; a required one fails the load (and the
+        // An optional tab degrades; a required one fails the load (and the
         // other worker stops taking tabs — the card is already reporting).
-        if (tab !== 'external') {
+        if (!OPTIONAL_TABS.includes(tab)) {
           failed = true;
           throw e;
         }
-        externalIssue = e instanceof Error ? e.message : String(e);
+        optionalIssues[tab] = e instanceof Error ? e.message : String(e);
       }
     }
   };
   await Promise.all(Array.from({ length: FETCH_CONCURRENCY }, worker));
-  const { courses, parameters, categories, external } = got as { courses: string; parameters: string; categories: string; external?: string };
+  const { courses, parameters, categories, external, universities } = got as { courses: string; parameters: string; categories: string; external?: string; universities?: string };
   onProgress({ step: 'check' });
-  const live: CsvTexts = { courses, parameters, categories, ...(external !== undefined ? { external } : {}) };
-  const rules = rulesFromCsvTexts(live, { source: 'live', syncedAt: nowIso, rulesDate: dateLiveRules(live, snapshot) });
+  const live: CsvTexts = { courses, parameters, categories, ...(external !== undefined ? { external } : {}), ...(universities !== undefined ? { universities } : {}) };
+  // An optional tab that failed to load is not evidence that the rules changed:
+  // it is dated against the saved copy as if it matched (review 2026-10-10 —
+  // otherwise the page said the rules were updated after the saved copy).
+  const forDating: CsvTexts = { ...live };
+  for (const tab of OPTIONAL_TABS) {
+    const saved = (snapshot.csv as CsvTexts)[tab];
+    if (optionalIssues[tab] !== undefined && saved !== undefined) forDating[tab] = saved;
+  }
+  const rules = rulesFromCsvTexts(live, { source: 'live', syncedAt: nowIso, rulesDate: dateLiveRules(forDating, snapshot) });
   // A tab that answered but holds no data (cleared by accident, or unpublished
   // on its own) is a failure to report, not "there are no courses".
   // The Categories tab is two lists side by side and BOTH are load-bearing:
@@ -349,11 +371,18 @@ export async function loadLiveRules(nowIso: string, onProgress: (p: LoadProgress
             : `${TAB_LABELS[emptyTab]} tab is empty`;
     throw new RulesLoadError('empty', emptyTab, `The spreadsheet answered, but ${what} — the DGS needs to check the sheet. Reloading will not help until then.`, false);
   }
-  if (externalIssue !== undefined) {
+  if (optionalIssues.external !== undefined) {
     rules.issues.push({
       severity: 'warning',
       tab: 'ExternalCourses',
-      message: `The ExternalCourses tab could not be loaded (${externalIssue}) — courses from other universities show as "not yet reviewed by the DGS" until it is reachable again.`,
+      message: `The ExternalCourses tab could not be loaded (${optionalIssues.external}) — courses from other universities show as "not yet reviewed by the DGS" until it is reachable again.`,
+    });
+  }
+  if (optionalIssues.universities !== undefined) {
+    rules.issues.push({
+      severity: 'warning',
+      tab: 'Universities',
+      message: `The Universities tab could not be loaded (${optionalIssues.universities}) — each university's credit system is read from the old ExternalCourses credit_system cells, if any, until it is reachable again.`,
     });
   }
   return noteNewerSheet(rules);

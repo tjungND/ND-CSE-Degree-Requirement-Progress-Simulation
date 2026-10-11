@@ -64,11 +64,10 @@ export interface ExternalRule {
   /** A FIXED Notre Dame credit value for this one course, when the conversion
    * below cannot express it. Overrides everything. */
   ndCredits?: number;
-  /** The credit system this university awards in (DGS 2026-09-08). 'quarter'
-   * converts the credits printed on the student's own transcript, which is the
-   * only thing that works for a course whose credits vary from term to term
-   * (2 to 4); a fixed `nd_credits` cannot. Set it on any row of a university
-   * and it applies to every course from that university. */
+  /** The OLD per-course `credit_system` cell (DGS 2026-09-08 until
+   * 2026-10-10). Each university's system is set once in the Universities tab
+   * now; this is read only when a sheet has no Universities tab (a saved copy
+   * from before the move) — see `universityCreditSystems` in assemble.ts. */
   creditSystem?: 'quarter' | 'semester' | 'trimester';
   /** Is this a CSE course, for §4.2's nine-credit allowance for courses "taken
    * from a department other than CSE"? (DGS 2026-09-09.) Other universities
@@ -132,6 +131,19 @@ export interface RuleCourse {
   sheetRow: number;
 }
 
+/** One row of the Universities tab (DGS 2026-10-10: "I want to enter the
+ * credit system for each university" — it was a cell on every ExternalCourses
+ * row until then). The name is the one the transcript import reads, exactly as
+ * in ExternalCourses (never renamed — CLAUDE.md). */
+export interface UniversityRow {
+  university: string;
+  universityKey: string;
+  /** Undefined = blank: the sheet has not said, and credits count as printed. */
+  creditSystem?: 'quarter' | 'semester' | 'trimester';
+  notes?: string;
+  sheetRow: number;
+}
+
 export interface SheetIssue {
   severity: 'error' | 'warning';
   tab: string;
@@ -162,6 +174,14 @@ export interface Rules {
   /** The DGS's rulings on courses from other universities (§4.4.1/§5.2);
    * empty until the ExternalCourses tab exists and is published. */
   external: ExternalRule[];
+  /** The Universities tab (DGS 2026-10-10): one row per university, with the
+   * credit system it awards in. Empty when the tab is absent. */
+  universities: UniversityRow[];
+  /** Each university's credit system, by `normalizeUniversity` key: from the
+   * Universities tab, or — only when that tab is absent — from the old
+   * ExternalCourses `credit_system` cells. Read it through
+   * `universityCreditSystem` (src/data/external.ts). */
+  universityCreditSystems: ReadonlyMap<string, 'quarter' | 'semester' | 'trimester'>;
   issues: SheetIssue[];
   source: 'live' | 'snapshot';
   syncedAt: string;

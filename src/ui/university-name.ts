@@ -38,11 +38,13 @@ export function canonicalUniversityName(typed: string): string {
   return titleCaseUniversity(expandInstitutionAbbreviations(typed));
 }
 
-/** The distinct universities of the ExternalCourses tab, Title-Cased for
- * display and sorted — the datalist behind both University boxes. */
-export function knownUniversities(external: readonly ExternalRule[]): string[] {
+/** The distinct universities of the ExternalCourses and Universities tabs
+ * (the latter since 2026-10-10: a university the DGS has set a credit system
+ * for, even before ruling on any of its courses), Title-Cased for display and
+ * sorted — the datalist behind both University boxes. */
+export function knownUniversities(external: readonly ExternalRule[], universities: readonly { university: string }[] = []): string[] {
   const byKey = new Map<string, string>();
-  for (const r of external) {
+  for (const r of [...external, ...universities]) {
     const key = normalizeUniversity(r.university);
     if (key === '' || byKey.has(key)) continue;
     byKey.set(key, titleCaseUniversity(expandInstitutionAbbreviations(r.university).toLowerCase()));

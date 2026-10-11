@@ -6,7 +6,7 @@
 // offered as a second choice and is never shown automatically.
 import { deviceNow, notreDameNow, type NotreDameNow } from '../data/clock.ts';
 import {
-  EXTERNAL_TAB_CONFIGURED,
+  EXTERNAL_TAB_CONFIGURED, UNIVERSITIES_TAB_CONFIGURED,
   LOAD_BUDGET_MS,
   RulesLoadError,
   SNAPSHOT_SAVED_ON,
@@ -52,6 +52,7 @@ export function loadRulesWithCard(root: HTMLElement, nowIso: string): Promise<Lo
       parameters: makeStep('Reading the parameters'),
       categories: makeStep('Reading the categories'),
       ...(EXTERNAL_TAB_CONFIGURED ? { external: makeStep('Reading the course rules') } : {}),
+      ...(UNIVERSITIES_TAB_CONFIGURED ? { universities: makeStep('Reading the university list') } : {}),
     };
     const steps = {
       clock: makeStep('Checking today’s date at Notre Dame'),

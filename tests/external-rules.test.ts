@@ -4,10 +4,12 @@
 // pre-approved / denied / undecided (§5.2), pro-rata nd_credits, and the
 // Bachelor's-level rule (core knowledge yes, transfer credit never).
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { QUARTER_CREDIT_FACTOR, TRIMESTER_CREDIT_FACTOR, findExternalRule, normalizeCourseId, normalizeUniversity } from '../src/data/external.ts';
+import { QUARTER_CREDIT_FACTOR, TRIMESTER_CREDIT_FACTOR, findExternalRule, normalizeCourseId, normalizeUniversity, universityCreditSystem } from '../src/data/external.ts';
+import { knownUniversities } from '../src/ui/university-name.ts';
 import { buildCombinedReviewRequest } from '../src/transcript/external.ts';
-import { parseExternalTab } from '../src/data/parse.ts';
+import { parseExternalTab, parseUniversitiesTab } from '../src/data/parse.ts';
 import type { SheetIssue } from '../src/data/types.ts';
 import { audit } from '../src/engine/audit.ts';
 import { classify } from '../src/engine/allocate.ts';
@@ -593,20 +595,78 @@ describe('credit_system: quarter hours become Notre Dame hours', () => {
   const usc = (courseId: string, credits: number): Student =>
     student([{ courseId, title: 'Analysis of Algorithms', credits, institution: 'University of Southern California', term: { season: 'fall', year: 2024 } }]);
 
-  it('reads the column, and rejects anything but quarter/trimester/semester/blank', () => {
-    const rule = rules.external.find((r) => r.courseId === 'CSCI 570')!;
-    assert.equal(rule.creditSystem, 'quarter');
-    assert.equal(rules.external.find((r) => r.courseId === 'CS 50300')?.creditSystem, undefined);
+  it('is set once per university in the Universities tab (DGS 2026-10-10), and rejects anything but quarter/trimester/semester/blank', () => {
+    assert.equal(universityCreditSystem(rules.universityCreditSystems, 'University of Southern California'), 'quarter', 'matched as ExternalCourses matches names');
+    assert.equal(universityCreditSystem(rules.universityCreditSystems, 'Purdue University'), undefined, 'not in the tab: the sheet has not said');
+    assert.deepEqual(rules.issues.filter((i) => i.tab === 'Universities'), []);
     // `trimester` is a value since 2026-09-12 (red-team F6).
-    assert.equal(parseExternalTab('university,course_id,transferable,credit_system\nX UNIVERSITY,CS 1,yes,trimester\n', CORE, [])[0]?.creditSystem, 'trimester');
+    assert.equal(parseUniversitiesTab('university,credit_system\nX UNIVERSITY,trimester\n', [])[0]?.creditSystem, 'trimester');
     const issues: SheetIssue[] = [];
-    const parsed = parseExternalTab(
-      'university,course_id,transferable,credit_system\nX UNIVERSITY,CS 1,yes,fortnight\n',
-      CORE,
-      issues,
-    );
+    const parsed = parseUniversitiesTab('university,credit_system,notes\nX UNIVERSITY,fortnight,\n,quarter,\nY UNIVERSITY,,listed, system not decided\n', issues);
+    assert.equal(parsed.length, 2, 'the row without a university is skipped; the others are kept');
     assert.equal(parsed[0]?.creditSystem, undefined, 'a bad value is ignored, the row is kept');
+    assert.equal(parsed[1]?.creditSystem, undefined, 'blank = not said');
+    assert.match(issues[0]?.message ?? '', /Universities row 2 \(X UNIVERSITY\): credit_system must be 'quarter', 'trimester', 'semester' or blank — got 'fortnight'/);
+    assert.match(issues[1]?.message ?? '', /Universities row 3 has no university/);
+  });
+
+  it('a renamed or missing column is an error, an empty tab a warning, and a note row at the foot is skipped', () => {
+    const renamed: SheetIssue[] = [];
+    assert.deepEqual(parseUniversitiesTab('University,Credit System,Notes\nX UNIVERSITY,quarter,\n', renamed), []);
+    assert.equal(renamed[0]?.severity, 'error');
+    assert.match(renamed[0]?.message ?? '', /The Universities tab has no 'credit_system' column \(the header row names: university, credit system, notes\)\. No university's credit system can be read/);
+    for (const text of ['', 'university,credit_system,notes\n']) {
+      const issues: SheetIssue[] = [];
+      parseUniversitiesTab(text, issues);
+      assert.ok(issues.some((i) => /The Universities tab (has no rows|has no 'university' column)/.test(i.message)), JSON.stringify(issues));
+    }
+    const noted: SheetIssue[] = [];
+    const rows = parseUniversitiesTab(readFileSync(new URL('../data/universities.sample.csv', import.meta.url), 'utf8'), noted);
+    assert.deepEqual(rows.map((r) => r.university), ['PURDUE UNIVERSITY', 'UNIVERSITY OF CALIFORNIA SAN DIEGO'], 'the sample’s closing sentence is a note, not a university');
+    assert.deepEqual(noted, []);
+    assert.equal(parseUniversitiesTab('university,credit_system\nSt. John’s University,\n', [])[0]?.university, 'St. John’s University', 'a listed university with no system yet is kept');
+  });
+
+  it('two rows for one university: the last wins, with a warning (the ExternalCourses rule)', () => {
+    const issues: SheetIssue[] = [];
+    const parsed = parseUniversitiesTab('university,credit_system\nX UNIVERSITY,semester\nx university,quarter\n', issues);
+    assert.equal(parsed.length, 1);
+    assert.equal(parsed[0]?.creditSystem, 'quarter');
+    assert.match(issues[0]?.message ?? '', /Universities row 3 repeats x university \(already in row 2\) — the last row wins/);
+  });
+
+  it('with the Universities tab, the old ExternalCourses credit_system column is not read — and the sheet check says so', () => {
+    const r = buildRules({
+      external: [{ university: 'UNIVERSITY OF SOUTHERN CALIFORNIA', course_id: 'CSCI 570', transferable_PhD: 'yes', credit_system: 'semester' }],
+      universities: [{ university: 'UNIVERSITY OF SOUTHERN CALIFORNIA', credit_system: 'quarter' }],
+    });
+    assert.equal(universityCreditSystem(r.universityCreditSystems, 'UNIVERSITY OF SOUTHERN CALIFORNIA'), 'quarter', 'the tab decides');
+    const w = r.issues.find((i) => i.tab === 'ExternalCourses' && i.column === 'credit_system')!;
+    assert.equal(w.severity, 'warning');
+    assert.match(w.message, /The ExternalCourses credit_system column is no longer read \(DGS 2026-10-10\)/);
+    assert.match(w.message, /1 row still has a value there — delete the column\. For UNIVERSITY OF SOUTHERN CALIFORNIA the column says something the Universities tab does not/);
+  });
+
+  it('a sheet or saved copy from before the Universities tab still converts from the old column', () => {
+    const old = buildRules({
+      external: [{ university: 'UNIVERSITY OF SOUTHERN CALIFORNIA', course_id: 'CSCI 570', transferable_PhD: 'yes', credit_system: 'quarter' }],
+      universities: null,
+    });
+    assert.deepEqual(old.universities, []);
+    assert.equal(universityCreditSystem(old.universityCreditSystems, 'University of Southern California'), 'quarter');
+    assert.ok(Math.abs((classify(usc('CSCI 570', 4), old).classified[0]?.effectiveCredits ?? 0) - 4 * 0.66) < 1e-9);
+    assert.deepEqual(old.issues.filter((i) => i.column === 'credit_system'), [], 'nothing to report: the column is still the source');
+    // A bad old value is still reported on its row.
+    const issues: SheetIssue[] = [];
+    parseExternalTab('university,course_id,transferable,credit_system\nX UNIVERSITY,CS 1,yes,fortnight\n', CORE, issues);
     assert.match(issues[0]?.message ?? '', /credit_system must be 'quarter', 'trimester', 'semester' or blank/);
+  });
+
+  it('a university the sheet has set but not ruled on yet is still converted, and offered in the University boxes', () => {
+    const r = buildRules({ universities: [{ university: 'UNIVERSITY OF CALIFORNIA, SAN DIEGO', credit_system: 'quarter' }] });
+    const ucsd = student([{ courseId: 'CSE 250A', credits: 4, institution: 'University of California, San Diego', term: { season: 'fall', year: 2024 } }]);
+    assert.ok(Math.abs((classify(ucsd, r).classified[0]?.effectiveCredits ?? 0) - 4 * 0.66) < 1e-9);
+    assert.ok(knownUniversities(r.external, r.universities).includes('University of California, San Diego'));
   });
 
   it('converts the credits the transcript prints — the exact value, whatever the course is worth', () => {
@@ -655,5 +715,58 @@ describe('credit_system: quarter hours become Notre Dame hours', () => {
     assert.match(issue.message, /'quarter_credit_factor' is no longer read — the quarter factor \(0\.66\) is the Graduate School’s — the DGS Handbook’s §3\.14 pro-rata table — and has lived in the code since 2026-10-04 \(README § A5b\)\. Changing the row changes nothing; delete it\./);
     // The current sheet has no row, and nothing is missing.
     assert.deepEqual(buildRules().issues.filter((i) => /credit_factor/.test(i.message)), []);
+  });
+});
+
+// The review request asks for a university's credit system once, when the
+// university first arrives (DGS 2026-10-10: the Universities tab).
+describe('review request: a Universities-tab row for a university the sheet does not give a system for', () => {
+  const course = (institution: string, courseId: string, creditSystem?: 'quarter' | 'trimester', chosen = false) => ({
+    institution,
+    courseId,
+    title: 'Some Course',
+    credits: 4,
+    grade: 'A',
+    termText: 'Fall 2024',
+    slotLabel: 'Previous Master’s Transcript',
+    reason: 'not in the course rules yet',
+    unlisted: true,
+    ...(creditSystem ? { creditSystem, ...(chosen ? { creditSystemChosen: true as const } : {}) } : {}),
+  });
+  const known = new Set(['UNIVERSITY OF SOUTHERN CALIFORNIA']);
+  const listedBlank = new Set(['PRINCETON UNIVERSITY']);
+  const build = (withCallback: boolean) =>
+    buildCombinedReviewRequest({
+      priorStudy: 'Master’s elsewhere',
+      nd: [],
+      external: [
+        course('University of California, San Diego', 'CSE 250A', 'quarter'),
+        course('University of California, San Diego', 'CSE 256'),
+        course('Rice University', 'COMP 540'),
+        course('UNIVERSITY OF SOUTHERN CALIFORNIA', 'CSCI 999'),
+        course('UNIVERSITY OF NOTRE DAME', 'CSE 60641'),
+        course('Princeton University', 'COS 521', 'trimester', true),
+      ],
+      ...(withCallback ? { universityRow: (u: string) => (known.has(u.toUpperCase()) ? ('set' as const) : listedBlank.has(u.toUpperCase()) ? ('blank' as const) : ('absent' as const)) } : {}),
+    });
+
+  it('one row per such university, prefilled with what the transcript reads; none for a known one or for Notre Dame', () => {
+    const { text, html } = build(true);
+    assert.match(text, /Rows for the rules sheet — Universities tab \(university, credit_system\):\n\nUniversity of California, San Diego\tquarter\nRice University\t\n/);
+    assert.doesNotMatch(text.split('Universities tab')[1] ?? '', /SOUTHERN CALIFORNIA|NOTRE DAME/);
+    assert.match(text, /University of California, San Diego — new row in the Universities tab: its credit system \(quarter, trimester or semester\); my transcript reads as quarter hours/);
+    assert.match(text, /Rice University — new row in the Universities tab: its credit system \(quarter, trimester or semester\)\n/);
+    assert.match(html, /<p>Rows for the rules sheet — Universities tab \(university, credit_system\):<\/p><table/);
+  });
+
+  it('a university listed with a blank system is asked to be completed, not added again; a system the student chose says so', () => {
+    const { text } = build(true);
+    assert.match(text, /Princeton University — complete its row in the Universities tab: credit_system \(quarter, trimester or semester\); I chose trimester hours when importing/);
+    const table = (text.split('Universities tab (university, credit_system):')[1] ?? '').split('Course details:')[0] ?? '';
+    assert.doesNotMatch(table, /Princeton/, 'no second row to paste');
+  });
+
+  it('an older caller without the check gets no Universities rows', () => {
+    assert.doesNotMatch(build(false).text, /Universities tab/);
   });
 });

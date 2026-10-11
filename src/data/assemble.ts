@@ -3,8 +3,8 @@
 import type { Term } from '../engine/types.ts';
 import { compareTerm, termIndex } from '../engine/term.ts';
 import { makeParameters } from './params.ts';
-import { parseCategoriesTab, parseCoursesTab, parseExternalTab, parseParametersTab } from './parse.ts';
-import type { RuleCourse, Rules, RulesDate, SheetIssue } from './types.ts';
+import { parseCategoriesTab, parseCoursesTab, parseExternalTab, parseParametersTab, parseUniversitiesTab } from './parse.ts';
+import type { ExternalRule, RuleCourse, Rules, RulesDate, SheetIssue, UniversityRow } from './types.ts';
 import { validateCourses } from './validate.ts';
 
 export interface CsvTexts {
@@ -14,6 +14,45 @@ export interface CsvTexts {
   /** The ExternalCourses tab — optional: absent until the DGS creates and
    * publishes it (the app then treats every external course as unreviewed). */
   external?: string;
+  /** The Universities tab (DGS 2026-10-10) — optional: absent in a sheet or a
+   * saved copy from before it existed, when the old ExternalCourses
+   * `credit_system` cells are read instead. */
+  universities?: string;
+}
+
+/** Each university's credit system (DGS 2026-10-10). With a Universities tab,
+ * that tab alone decides, and any value still in the old ExternalCourses
+ * `credit_system` column is reported as no longer read (naming any university
+ * where it disagrees). Without the tab — a sheet or saved copy from before the
+ * move — the old cells are read as before: the first row of a university that
+ * names a system sets it for all its courses. */
+export function universityCreditSystems(
+  universities: readonly UniversityRow[] | undefined,
+  external: readonly ExternalRule[],
+  issues: SheetIssue[],
+): Map<string, 'quarter' | 'semester' | 'trimester'> {
+  const out = new Map<string, 'quarter' | 'semester' | 'trimester'>();
+  if (universities === undefined) {
+    for (const r of external) if (r.creditSystem !== undefined && !out.has(r.universityKey)) out.set(r.universityKey, r.creditSystem);
+    return out;
+  }
+  for (const u of universities) if (u.creditSystem !== undefined) out.set(u.universityKey, u.creditSystem);
+  const leftover = external.filter((r) => r.creditSystem !== undefined);
+  if (leftover.length > 0) {
+    const disagree = [...new Set(leftover.filter((r) => out.get(r.universityKey) !== r.creditSystem).map((r) => r.university))];
+    issues.push({
+      severity: 'warning',
+      tab: 'ExternalCourses',
+      column: 'credit_system',
+      message:
+        `The ExternalCourses credit_system column is no longer read (DGS 2026-10-10): each university's credit system is set once in the Universities tab. ` +
+        `${leftover.length} row${leftover.length === 1 ? '' : 's'} still ${leftover.length === 1 ? 'has' : 'have'} a value there — delete the column.` +
+        (disagree.length > 0
+          ? ` For ${disagree.join('; ')} the column says something the Universities tab does not — the Universities tab is what counts; check it.`
+          : ''),
+    });
+  }
+  return out;
 }
 
 export function rulesFromCsvTexts(
@@ -23,6 +62,8 @@ export function rulesFromCsvTexts(
   const issues: SheetIssue[] = [];
   const { coreAreas, categoryGroups } = parseCategoriesTab(texts.categories, issues);
   const external = texts.external !== undefined ? parseExternalTab(texts.external, coreAreas, issues) : [];
+  const universitiesTab = texts.universities !== undefined ? parseUniversitiesTab(texts.universities, issues) : undefined;
+  const creditSystems = universityCreditSystems(universitiesTab, external, issues);
   const rawCourses = parseCoursesTab(texts.courses, issues);
   const courses = validateCourses(rawCourses, coreAreas, categoryGroups, issues);
   const parameters = makeParameters(parseParametersTab(texts.parameters, issues), issues);
@@ -49,6 +90,8 @@ export function rulesFromCsvTexts(
     coreAreas,
     categoryGroups,
     external,
+    universities: universitiesTab ?? [],
+    universityCreditSystems: creditSystems,
     issues,
     source: meta.source,
     syncedAt: meta.syncedAt,

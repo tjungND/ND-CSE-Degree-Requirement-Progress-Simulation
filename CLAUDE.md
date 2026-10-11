@@ -56,7 +56,7 @@ touching code and without the original author.
    replacing it, run `npm run handbook-text` and commit `src/ui/handbook-text.ts` — the section
    chips' hover text (DGS 2026-10-05); `tests/handbook-text.test.ts` fails until you do.
 2. Google Sheet **CSE-Degree-Checking-Rules** (renamed from CSE-Degree-Audit-Rules, 2026-09-05) — the DGS-editable data (tabs Courses, Parameters,
-   Categories). Published-CSV URLs: `data/sheet-urls.json`. Schema: `data/README.md`.
+   Categories, ExternalCourses, Universities). Published-CSV URLs: `data/sheet-urls.json`. Schema: `data/README.md`.
 3. `docs/DECISIONS.md` — every interpretation decision already made, with dates and reasons.
    Read it before re-deciding anything; append when a new call is made. Its companion
    `docs/HANDBOOK-REVISIONS.md` is the other direction: the questions the audit forced whose

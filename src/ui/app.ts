@@ -3,7 +3,7 @@
 // All rule logic lives in src/engine/ — this file only collects input and renders.
 import type { NotreDameNow } from '../data/clock.ts';
 import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
-import { findExternalRule, isNotreDameInstitution } from '../data/external.ts';
+import { findExternalRule, isNotreDameInstitution, normalizeUniversity, universityCreditSystem } from '../data/external.ts';
 import { CORE_TITLE_RE } from '../engine/core-title.ts';
 import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, mscseSeparation, ndUndergraduateCounting, overMaxTerms, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
 import { ndPostingOf } from '../engine/nd-posting.ts';
@@ -388,12 +388,12 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   // the Parameters row missing the residency rows cannot be evaluated, and
   // the Full-time terms list says so instead of counting from a built-in 9.
   const fullTimeFloor = rules.parameters.number('fulltime_credits_min');
-  // The universities the ExternalCourses tab knows, for both University
+  // The universities the ExternalCourses and Universities tabs know, for both University
   // boxes (manual course form, previous-transcript preview) — one
   // datalist per page (2026-09-06 evening). Built once, like the course list
   // below: both depend on the rules alone, and render() re-attaches the same
   // nodes on every rebuild.
-  const knownUniversitiesList = el('datalist', { id: 'known-universities' }, ...knownUniversities(rules.external).map((u) => el('option', { value: u })));
+  const knownUniversitiesList = el('datalist', { id: 'known-universities' }, ...knownUniversities(rules.external, rules.universities).map((u) => el('option', { value: u })));
   const knownCoursesList = el('datalist', { id: 'known-courses' });
   for (const [id, rows] of rules.courses) {
     const row = rows[rows.length - 1]!;
@@ -2223,7 +2223,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
               // Copy, then the check-before-you-send dialog (DGS request 2026-09-06 evening).
               void import('../transcript/external.ts').then(({ buildCombinedReviewRequest, reviewRequestCourses }) => {
                 const { nd: ndReq, external: extReq } = reviewRequestCourses(pending, slotOf);
-                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses), decider: deciderTitle(student.program) });
+                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses), decider: deciderTitle(student.program), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
                 return copyDialog({
                   what: 'Review request',
                   recipient: { role: decider.role, name: decider.name, email: decider.email },

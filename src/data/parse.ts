@@ -7,7 +7,7 @@ import type { Term } from '../engine/types.ts';
 import { looksNonRegularTitle, looksUndergraduateNumber } from './course-checks.ts';
 import { parseCsv } from './csv.ts';
 import { normalizeCourseId, normalizeUniversity } from './external.ts';
-import type { CourseType, Counts, ExternalRule, RuleCourse, SheetIssue, Transferable } from './types.ts';
+import type { CourseType, Counts, ExternalRule, RuleCourse, SheetIssue, Transferable, UniversityRow } from './types.ts';
 import { RESERVED_GROUP_CODES } from './types.ts';
 
 const COURSE_ID_RE = /^[A-Z]{2,5} \d{5}$/;
@@ -546,9 +546,10 @@ export function parseExternalTab(
       else err(rowNum, 'nd_credits', `ExternalCourses row ${rowNum} (${university} ${courseId}): nd_credits '${nd}' is not a number between 0 and 30. That cell is ignored (credits as printed will count).`);
     }
 
-    // credit_system: the university's own system. 'quarter' converts whatever
-    // the student's transcript prints, so a 2-to-4-credit course converts
-    // correctly every time (DGS 2026-09-08).
+    // credit_system: the OLD per-course cell (DGS 2026-09-08 until
+    // 2026-10-10). Each university's system is set once in the Universities tab
+    // now; this cell is kept on the rule so a sheet without that tab still
+    // converts, and so assemble.ts can say the column is no longer read.
     const system = (cells['credit_system'] ?? '').trim().toLowerCase();
     if (system === 'quarter' || system === 'semester' || system === 'trimester') rule.creditSystem = system;
     else if (system !== '') {
@@ -613,6 +614,80 @@ export function parseExternalTab(
       message:
         'The university_aliases column is no longer used (decision 2026-09-03): courses are matched by the ' +
         'university name exactly as the transcript prints it. The column can be deleted.',
+    });
+  }
+  return out;
+}
+
+/** The Universities tab (DGS 2026-10-10): one row per university —
+ * `university` (exactly as the ExternalCourses tab and the transcript import
+ * read it), `credit_system` (quarter, trimester, semester or blank) and
+ * `notes` (the DGS's own; not shown). It replaces the per-course
+ * `credit_system` cell of ExternalCourses, so a university's system is entered
+ * once and also covers its courses the DGS has not ruled on yet.
+ *
+ * 'quarter' converts whatever the student's transcript prints, so a
+ * 2-to-4-credit course converts correctly every time (DGS 2026-09-08; §5.2
+ * "pro-rata"). Two rows for one university: the LAST wins, with a warning —
+ * the ExternalCourses tab's rule (DGS 2026-09-06). */
+export function parseUniversitiesTab(text: string, issues: SheetIssue[]): UniversityRow[] {
+  const tab = readTab(text, 'Universities', issues);
+  const out: UniversityRow[] = [];
+  const err = (rowNum: number, column: string, message: string) =>
+    issues.push({ severity: 'error', tab: 'Universities', row: rowNum, column, message });
+  // A renamed or missing column must not pass for "no system set" (review
+  // 2026-10-10): every quarter university would then count its credits as
+  // printed with nothing said.
+  const missing = ['university', 'credit_system'].filter((name) => !tab.header.includes(name));
+  for (const name of missing) {
+    err(1, name,
+      `The Universities tab has no '${name}' column (the header row names: ${tab.header.filter((h) => h).join(', ') || 'nothing'}). ` +
+        `No university's credit system can be read — every other university's credits count as printed until the column is named '${name}' again.`);
+  }
+  if (missing.length > 0) return out;
+  for (const [rowNum, cells] of tab.rows) {
+    if (isBlankRow(cells)) continue;
+    const university = cells['university'] ?? '';
+    // A sentence at the foot of the tab (the sheets end with explanatory
+    // notes): every other cell empty and the text reads as prose — long, or a
+    // sentence that ends in a full stop. A university listed with its system
+    // still blank is a real row and is kept.
+    if (Object.entries(cells).every(([k, v]) => k === 'university' || v === '') && (university.length > 90 || (/[.!?:]\s*$/.test(university) && university.split(/\s+/).length >= 6))) continue;
+    if (university === '') {
+      err(rowNum, 'university', `Universities row ${rowNum} has no university — row skipped.`);
+      continue;
+    }
+    const row: UniversityRow = { university, universityKey: normalizeUniversity(university), sheetRow: rowNum };
+    if (row.universityKey === '') {
+      err(rowNum, 'university', `Universities row ${rowNum}: '${university}' is not a university name the app can match — row skipped.`);
+      continue;
+    }
+    const system = (cells['credit_system'] ?? '').trim().toLowerCase();
+    if (system === 'quarter' || system === 'semester' || system === 'trimester') row.creditSystem = system;
+    else if (system !== '') {
+      err(rowNum, 'credit_system',
+        `Universities row ${rowNum} (${university}): credit_system must be 'quarter', 'trimester', 'semester' or blank — got '${cells['credit_system']}'. That cell is ignored (credits from ${university} count as printed).`);
+    }
+    if (cells['notes']) row.notes = cells['notes'];
+    const dupIndex = out.findIndex((r) => r.universityKey === row.universityKey);
+    if (dupIndex >= 0) {
+      const dup = out[dupIndex]!;
+      issues.push({
+        severity: 'warning',
+        tab: 'Universities',
+        row: rowNum,
+        message: `Universities row ${rowNum} repeats ${university} (already in row ${dup.sheetRow}) — the last row wins: row ${rowNum} replaces row ${dup.sheetRow}; delete the older one.`,
+      });
+      out.splice(dupIndex, 1, row);
+      continue;
+    }
+    out.push(row);
+  }
+  if (out.length === 0) {
+    issues.push({
+      severity: 'warning',
+      tab: 'Universities',
+      message: 'The Universities tab has no rows — every other university’s credits count as printed (a quarter or trimester university needs its row there).',
     });
   }
   return out;

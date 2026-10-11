@@ -70,7 +70,7 @@ load, about five minutes after you make them. Nothing needs to be deployed.
    its owner, so they should survive either change — verify with A7 afterwards.
 2. Open the sheet and read its **README** tab once. It explains every column and the color coding
    (light-yellow cells are yours to decide; grey columns are informational copies from Banner).
-3. The app reads four tabs — **Courses**, **Parameters**, **Categories**, **ExternalCourses** — and ignores the rest.
+3. The app reads five tabs — **Courses**, **Parameters**, **Categories**, **ExternalCourses**, **Universities** (each other university's credit system, one row per university, since 2026-10-10) — and ignores the rest.
    **Changelog** is for humans: log every edit there.
 
 ### A1. Know the columns you will touch (Courses tab)
@@ -236,8 +236,15 @@ satisfies (`satisfies_core_area`, if any), whether its credits can transfer
 never transfers, `dgs_approval` for one you want to decide student by student,
 which keeps it in their review request as an open decision; you and the
 advisor settle whether it serves their research, and the page does not ask
-them to argue it), and — for quarter/ECTS systems — the ND-equivalent
-`nd_credits` (§5.2 pro-rata). The student's page
+them to argue it), and — only where one fixed number is right every time — the
+ND-equivalent `nd_credits` (§5.2 pro-rata). A university on quarters or
+trimesters is set ONCE in the **Universities** tab (since 2026-10-10): one row,
+the name exactly as in ExternalCourses, `credit_system` = `quarter`,
+`trimester` or `semester`; every course from it then converts from what the
+student's transcript prints. When the request includes a university the sheet
+gives no system for, list A asks for it: a paste-ready Universities row
+(prefilled when the student's record carries quarter or trimester hours), or,
+if the university is listed with a blank system, completing that row. The student's page
 updates within minutes; anything without a row honestly shows "not yet reviewed
 by the DGS". Bachelor's-level courses can satisfy core knowledge (§4.4.1) but
 never transfer credit (§5.2). Schema and one-time setup: `data/README.md`.
@@ -427,8 +434,8 @@ Approve the commands it proposes (`npm test`, `npm run build`, …) when it asks
   Update src/transcript/parse.ts and its tests so this file parses, without breaking the existing
   fixtures. Do not commit the sample."*
 - **The sheet was re-published or replaced.** In the sheet, *File → Share → Publish to web →
-  Link*, pick Courses, Parameters, Categories, ExternalCourses in turn as *Comma-separated values*, copy the four
-  URLs. Then: *"Replace the four URLs in data/sheet-urls.json with these, run npm run
+  Link*, pick Courses, Parameters, Categories, ExternalCourses, Universities in turn as *Comma-separated values*, copy the five
+  URLs. Then: *"Replace the five URLs in data/sheet-urls.json with these, run npm run
   sync-sheet, and confirm the diagnostics are clean."*
 - **A number should apply only to new students.** *"Parameters have no rules_effective_term. Plan how
   to grandfather `<key>` by entry term, mirroring the Courses-row versioning, and tell me the

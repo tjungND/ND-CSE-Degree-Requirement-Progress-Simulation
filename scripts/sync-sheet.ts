@@ -80,7 +80,27 @@ if (typeof urls.external === 'string' && urls.external !== '') {
     );
   }
 }
-const live: CsvTexts = { courses, parameters, categories, ...(external !== undefined ? { external } : {}) };
+// The Universities tab (DGS 2026-10-10: each university's credit system) is
+// optional in the same way: if it alone fails, keep the previous copy.
+let universities: string | undefined;
+if (typeof urls.universities === 'string' && urls.universities !== '') {
+  try {
+    universities = await fetchCsv('Universities', urls.universities);
+  } catch (e) {
+    universities = readPrevious()?.csv.universities;
+    console.warn(
+      `Universities could not be fetched (${e instanceof Error ? e.message : String(e)}) — ` +
+        (universities !== undefined ? 'keeping the copy from the previous snapshot.' : 'there is no previous copy to keep.'),
+    );
+  }
+}
+const live: CsvTexts = {
+  courses,
+  parameters,
+  categories,
+  ...(external !== undefined ? { external } : {}),
+  ...(universities !== undefined ? { universities } : {}),
+};
 
 const syncedAt = new Date().toISOString();
 const rules = rulesFromCsvTexts(live, { source: 'live', syncedAt });

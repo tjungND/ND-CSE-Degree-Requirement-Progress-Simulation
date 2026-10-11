@@ -175,7 +175,7 @@ export function normalizeCourseId(id: string): string {
  * every course the engine classifies. First row wins on both levels, exactly
  * as the linear scans it replaces did. */
 interface ExternalIndex {
-  byUniversity: Map<string, { byCourse: Map<string, ExternalRule>; creditSystem?: CreditSystem }>;
+  byUniversity: Map<string, { byCourse: Map<string, ExternalRule> }>;
 }
 const EXTERNAL_INDEX = new WeakMap<readonly ExternalRule[], ExternalIndex>();
 function externalIndex(rules: readonly ExternalRule[]): ExternalIndex {
@@ -190,7 +190,6 @@ function externalIndex(rules: readonly ExternalRule[]): ExternalIndex {
     }
     const id = normalizeCourseId(r.courseId);
     if (!uni.byCourse.has(id)) uni.byCourse.set(id, r);
-    if (uni.creditSystem === undefined && r.creditSystem !== undefined) uni.creditSystem = r.creditSystem;
   }
   EXTERNAL_INDEX.set(rules, index);
   return index;
@@ -230,17 +229,20 @@ export function creditSystemFactorLabel(factor: number): string {
   return factor.toFixed(2);
 }
 
-/** The credit system a university awards in, from ANY of its ExternalCourses
- * rows (the DGS sets it once; it applies to every course from that university,
- * listed or not). Undefined when no row says — credits then count as printed. */
+/** The credit system a university awards in, from the sheet's Universities
+ * tab (DGS 2026-10-10; the old per-course ExternalCourses cells only when a
+ * sheet has no such tab — `universityCreditSystems` in assemble.ts). It applies
+ * to every course from that university, ruled on or not. Undefined when the
+ * sheet does not say — credits then count as printed, and the course line says
+ * the DGS converts them. */
 export function universityCreditSystem(
-  external: readonly ExternalRule[],
+  systems: ReadonlyMap<string, CreditSystem>,
   university: string | undefined,
 ): CreditSystem | undefined {
   if (university === undefined) return undefined;
   const key = normalizeUniversity(university);
   if (key === '') return undefined;
-  return externalIndex(external).byUniversity.get(key)?.creditSystem;
+  return systems.get(key);
 }
 
 /** What one course counts for at Notre Dame: the DGS's fixed value for this

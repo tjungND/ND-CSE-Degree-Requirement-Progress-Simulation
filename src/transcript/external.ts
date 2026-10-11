@@ -5,7 +5,7 @@
 // System-generated PDFs are read exactly; a PDF with no text layer is offered
 // the opt-in English-only OCR instead (decision 2026-09-02; src/transcript/ocr.ts).
 import { joinSpacedSubject } from '../data/assemble.ts';
-import { NOTRE_DAME_ROW_UNIVERSITY, expandInstitutionAbbreviations, normalizeCourseId, normalizeUniversity } from '../data/external.ts';
+import { NOTRE_DAME_ROW_UNIVERSITY, expandInstitutionAbbreviations, isNotreDameInstitution, normalizeCourseId, normalizeUniversity } from '../data/external.ts';
 import type { PendingDgsReview } from '../engine/review.ts';
 import { shortenAfterFirst } from '../ui/first-mention.ts';
 import { ACTION_HEADING, STUDENT_LINE, studentLineHtml } from '../ui/email-html.ts';
@@ -3405,6 +3405,14 @@ interface ReviewRequestCourse {
   grade: string;
   termText: string;
   slotLabel?: string;
+  /** The credit system the student's record carries for this course —
+   * quarter or trimester, read from the transcript or chosen in the preview;
+   * undefined = semester or not stated. Fills a Universities-tab row the
+   * request suggests (DGS 2026-10-10). */
+  creditSystem?: 'quarter' | 'trimester';
+  /** The student chose `creditSystem` in the preview; the transcript reader
+   * had not read it (DGS 2026-10-10, item 3) — the request says "I chose". */
+  creditSystemChosen?: true;
   /** What the DGS is asked to do (engine/review.ts ReviewAsk, 2026-09-28).
    * Optional for older callers: then a new row is asked for when `unlisted`,
    * with no reply. */
@@ -3539,7 +3547,19 @@ export function reviewRequestCourses(
   return {
     nd: pending.filter((p) => p.kind !== 'external' && (p.transferRow === undefined || p.ask.decide.length > 0)).map(request),
     external: [
-      ...pending.filter((p) => p.kind === 'external').map((p) => ({ ...request(p), institution: p.course.entry.institution, slotLabel: slotLabel(p) })),
+      ...pending
+        .filter((p) => p.kind === 'external')
+        .map((p) => {
+          const system = p.course.entry.creditSystem;
+          return {
+            ...request(p),
+            institution: p.course.entry.institution,
+            slotLabel: slotLabel(p),
+            ...(system === 'quarter' || system === 'trimester'
+              ? { creditSystem: system, ...(p.course.entry.creditSystemChosen ? { creditSystemChosen: true as const } : {}) }
+              : {}),
+          };
+        }),
       ...pending
         .filter((p) => p.transferRow !== undefined)
         .map((p) => ({
@@ -3612,6 +3632,13 @@ export function buildCombinedReviewRequest(opts: {
    * turn a course's deliberate "DGS" into "ADGS" (2026-09-13). Defaults to
    * the DGS for older callers. */
   decider?: 'DGS' | 'ADGS';
+  /** Where the rules sheet stands on this university's credit system (the
+   * Universities tab, DGS 2026-10-10): `set`; `blank` — listed, credit_system
+   * empty or rejected, so list A asks to complete that row; `absent` — no row,
+   * so list A asks for one and a paste-ready row goes in the tables. The
+   * system is entered once, when the university first arrives. Omitted by
+   * older callers: nothing is asked. */
+  universityRow?: (university: string) => 'set' | 'blank' | 'absent';
 }): { text: string; html: string; subject: string } {
   // The student is writing to the DGS: "your advisor" is "my advisor".
   const voiced = (reason: string): string => reason.replace(/\byour advisor/g, 'my advisor').replace(/\bYour advisor/g, 'My advisor');
@@ -3659,6 +3686,36 @@ export function buildCombinedReviewRequest(opts: {
       return true;
     });
   };
+  // The Universities tab (DGS 2026-10-10): for each university of the request
+  // whose credit system the sheet does not give, an item in list A — a new row
+  // (with a paste-ready one in the tables, prefilled with what this student's
+  // record carries: quarter or trimester) or, when the row exists with a blank
+  // system, completing it. Not for the Notre Dame transfer rows.
+  const uniRows: string[][] = [];
+  const uniItems: string[] = [];
+  if (opts.universityRow) {
+    const seen = new Set<string>();
+    for (const c of opts.external) {
+      const university = c.institution ?? '';
+      const key = normalizeUniversity(university);
+      if (key === '' || seen.has(key) || isNotreDameInstitution(university)) continue;
+      seen.add(key);
+      const state = opts.universityRow(university);
+      if (state === 'set') continue;
+      const carried = opts.external.find((x) => normalizeUniversity(x.institution ?? '') === key && x.creditSystem);
+      const clause = carried?.creditSystem
+        ? carried.creditSystemChosen
+          ? `; I chose ${carried.creditSystem} hours when importing`
+          : `; my transcript reads as ${carried.creditSystem} hours`
+        : '';
+      if (state === 'absent') {
+        uniRows.push([university, carried?.creditSystem ?? '']);
+        uniItems.push(`${university} — new row in the Universities tab: its credit system (quarter, trimester or semester)${clause}`);
+      } else {
+        uniItems.push(`${university} — complete its row in the Universities tab: credit_system (quarter, trimester or semester)${clause}`);
+      }
+    }
+  }
   const sheetItems = distinct(all)
     .map((c) => {
       const a = askOf(c);
@@ -3689,7 +3746,7 @@ export function buildCombinedReviewRequest(opts: {
       ...(opts.notes ?? []).map((n) => `Please also check: ${n}`),
     ],
     actions: [
-      { heading: 'A. Please enter or complete these in the course rules — no reply needed; the self-check reads the rules the next time I open it:', items: sheetItems },
+      { heading: 'A. Please enter or complete these in the course rules — no reply needed; the self-check reads the rules the next time I open it:', items: [...sheetItems, ...uniItems] },
       { heading: 'B. Please decide these for me — a reply is needed:', items: replyItems },
     ],
     // The reader owns the sheet (DGS 2026-09-03 wording, shortened in the trim
@@ -3703,6 +3760,10 @@ export function buildCombinedReviewRequest(opts: {
       {
         rowsIntro: `Rows for the rules sheet — ExternalCourses tab:${repeatNote(extRows, opts.external)}`,
         rows: extRows.map((c) => [c.institution ?? '', c.courseId, c.title ?? '']),
+      },
+      {
+        rowsIntro: 'Rows for the rules sheet — Universities tab (university, credit_system):',
+        rows: uniRows,
       },
     ],
     detailsTitle: 'Course details:',

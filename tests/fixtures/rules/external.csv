@@ -5,5 +5,5 @@ UNIVERSITE DE MONTREAL,IFT-2125,Introduction à l'algorithmique,algorithms,,,,,,
 PURDUE UNIVERSITY,CS 59000,Special Topics,,no,no,,,,2026-09-01,seminar-style topics course — not transferable
 PURDUE UNIVERSITY,CS 47300,Web Information Search and Management,none,no,no,,,,2026-09-06,decided: no core area — `none` stops the review request asking (2026-09-06)
 "Every row is a DGS decision about a course at another university. Enter the university in capital English exactly as its transcripts print it — the review-request emails contain paste-ready rows. The app treats anything not listed as ""not yet reviewed"".",,,,,,,,,,
-UNIVERSITY OF SOUTHERN CALIFORNIA,CSCI 570,Analysis of Algorithms,algorithms,yes,adgs_approval,,,quarter,2026-09-08,quarter system — credits convert from the transcript (4 qtr = 2.67 ND)
+UNIVERSITY OF SOUTHERN CALIFORNIA,CSCI 570,Analysis of Algorithms,algorithms,yes,adgs_approval,,,,2026-09-08,quarter system (Universities tab) — credits convert from the transcript (4 qtr = 2.64 ND)
 PURDUE UNIVERSITY,STAT 51200,Applied Regression Analysis,none,dgs_approval,adgs_approval,,,,2026-09-08,outside the usual CSE ground — transfers when the student shows it serves their dissertation

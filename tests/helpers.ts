@@ -56,6 +56,13 @@ export interface RulesPatch {
   /** Replace the ExternalCourses tab entirely: an array of row objects keyed by
    * column name ([] = an empty tab); undefined leaves the fixture rows. */
   external?: Record<string, string>[];
+  /** Replace the Universities tab (DGS 2026-10-10): rows keyed by column name
+   * (university, credit_system, notes). When undefined, a `credit_system` on a
+   * patched ExternalCourses row stands for that university's Universities row
+   * (the first row naming one wins), so a test still says "this university is
+   * on quarters" next to its course; `null` drops the tab entirely, for a
+   * sheet from before it existed (the old column is then read). */
+  universities?: Record<string, string>[] | null;
 }
 
 /** One scenario fixture by file name (without `.json`). */
@@ -71,7 +78,7 @@ export function allScenarios(): ScenarioFile[] {
     .map((f) => loadScenario(f.slice(0, -'.json'.length)));
 }
 
-type FixtureCsvTexts = { courses: string; parameters: string; categories: string; external: string };
+type FixtureCsvTexts = { courses: string; parameters: string; categories: string; external: string; universities: string };
 let cachedCsvTexts: FixtureCsvTexts | undefined;
 
 /** The fixture CSVs, read once per process (the strings are immutable; a fresh
@@ -82,6 +89,7 @@ export function fixtureCsvTexts(): FixtureCsvTexts {
     parameters: readFileSync(join(fixtureDir, 'parameters.csv'), 'utf8'),
     categories: readFileSync(join(fixtureDir, 'categories.csv'), 'utf8'),
     external: readFileSync(join(fixtureDir, 'external.csv'), 'utf8'),
+    universities: readFileSync(join(fixtureDir, 'universities.csv'), 'utf8'),
   };
   return { ...cachedCsvTexts };
 }
@@ -89,9 +97,9 @@ export function fixtureCsvTexts(): FixtureCsvTexts {
 /** Apply a scenario's inline patch at the CSV level, so patched rules still go
  * through the one true parse/validate pipeline. */
 export function applyPatch(
-  texts: { courses: string; parameters: string; categories: string; external?: string },
+  texts: { courses: string; parameters: string; categories: string; external?: string; universities?: string },
   patch?: RulesPatch,
-): { courses: string; parameters: string; categories: string; external?: string } {
+): { courses: string; parameters: string; categories: string; external?: string; universities?: string } {
   if (!patch) return texts;
   let parameters = texts.parameters;
   let courses = texts.courses;
@@ -143,7 +151,30 @@ export function applyPatch(
     const header = ['university', 'university_aliases', 'course_id', 'course_title', 'satisfies_core_area', 'transferable', 'transferable_PhD', 'transferable_MSCSE', 'is_cse', 'credit_system', 'nd_credits', 'decided_on', 'notes'];
     external = serializeCsv([header, ...patch.external.map((row) => header.map((h) => row[h] ?? ''))]);
   }
-  return { courses, parameters, categories: texts.categories, ...(external !== undefined ? { external } : {}) };
+  let universities = texts.universities;
+  const uniHeader = ['university', 'credit_system', 'notes'];
+  if (patch.universities === null) universities = undefined;
+  else if (patch.universities) universities = serializeCsv([uniHeader, ...patch.universities.map((row) => uniHeader.map((h) => row[h] ?? ''))]);
+  else if (patch.external && universities !== undefined) {
+    // The shorthand: each university's first patched row that names a credit
+    // system becomes its Universities row.
+    const seen = new Set<string>();
+    const rows: string[][] = [];
+    for (const row of patch.external) {
+      const system = (row['credit_system'] ?? '').trim();
+      if (!system || seen.has(row['university'] ?? '')) continue;
+      seen.add(row['university'] ?? '');
+      rows.push([row['university'] ?? '', system, '']);
+    }
+    if (rows.length > 0) universities = serializeCsv([uniHeader, ...rows]);
+  }
+  return {
+    courses,
+    parameters,
+    categories: texts.categories,
+    ...(external !== undefined ? { external } : {}),
+    ...(universities !== undefined ? { universities } : {}),
+  };
 }
 
 export function buildRules(patch?: RulesPatch): Rules {
