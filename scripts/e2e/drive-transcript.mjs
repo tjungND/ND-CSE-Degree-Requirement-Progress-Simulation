@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { STAMP_RE } from './session-common.mjs';
 
 export async function driveTranscript(s, baseUrl, pdfs) {
-  const { nd: ndPdf, other: otherPdf, external: externalPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf, totalsMismatch: totalsMismatchPdf } = pdfs;
+  const { nd: ndPdf, other: otherPdf, external: externalPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf, totalsMismatch: totalsMismatchPdf, scanClean: scanCleanPdf, scannerLayer: scannerLayerPdf } = pdfs;
   await s.open(baseUrl, '.transcript-upload');
   await s.evalJs(`localStorage.clear()`);
   await s.open(baseUrl, '.transcript-upload');
@@ -800,6 +800,56 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     await s.shotElement('totals-check-preview', '.external-card .transcript-preview');
     await s.evalJs(`document.querySelector('[data-key="ext.preview.cancel"]').click()`);
     await s.waitFor(`!document.querySelector('[data-key="ext.preview.totals"]')`);
+  }
+
+  // A CLEAN scan (item 13, 2026-10-11): a row the engine read with confidence,
+  // and no cell evidence against it, is NOT flagged — its scanned line stays
+  // behind "show the scanned line" until asked for, and opening it draws the
+  // line. (The noisy scan above flags every row, so this leg never ran.)
+  {
+    await s.evalJs(`localStorage.clear()`);
+    await s.open(baseUrl, '.transcript-upload');
+    await s.setFileInput('.external-file-masters', scanCleanPdf);
+    await s.waitFor(`document.querySelector('.ocr-optin')`);
+    await s.evalJs(`[...document.querySelectorAll('.ocr-optin button')].find(b => b.textContent === 'Try OCR (English only)').click()`);
+    await s.waitFor(`document.querySelector('.external-card .transcript-preview')`, 120000);
+    const rowsNow = () => s.evalJs(`JSON.stringify([...document.querySelectorAll('.external-card .transcript-preview table tr')].slice(1).map((tr) => ({ id: tr.querySelector('input[data-key$=".id"]')?.value ?? '', flagged: tr.classList.contains('ocr-low'), toggle: tr.querySelector('td.cell-scan details.scan-line > summary')?.textContent ?? null, canvas: !!tr.querySelector('td.cell-scan .scan-strip > canvas'), why: tr.querySelector('td.cell-check span[title]')?.getAttribute('title') ?? '' })))`);
+    const clean = JSON.parse(await rowsNow());
+    console.log('  clean scan rows:', JSON.stringify(clean));
+    // A flagged row says why: the line read poorly, or one of the three facts
+    // of the document (item 13's evidence).
+    const REASONS = ['OCR read this line poorly — check it carefully', 'No other row of this transcript has this credit value — check it against the scan', 'The grade cell holds a number or a stray sign, not a grade — check it against the scan', 'This term’s rows do not add up to the transcript’s own totals — check it against the scan'];
+    for (const r of clean.filter((x) => x.flagged)) if (!REASONS.includes(r.why)) throw new Error('a flagged OCR row says why it is flagged: ' + JSON.stringify(r));
+    const unflagged = clean.filter((r) => !r.flagged);
+    if (unflagged.length === 0) throw new Error('the clean scan must read at least one row with confidence (unflagged): ' + JSON.stringify(clean));
+    for (const r of unflagged) if (r.toggle !== 'show the scanned line' || r.canvas) throw new Error('an unflagged OCR row keeps its scanned line behind the toggle: ' + JSON.stringify(r));
+    await s.evalJs(`[...document.querySelectorAll('.external-card .transcript-preview table tr')].slice(1).find((t) => !t.classList.contains('ocr-low')).querySelector('td.cell-scan details.scan-line > summary').click()`);
+    await s.waitFor(`[...document.querySelectorAll('.external-card .transcript-preview table tr')].slice(1).some((t) => !t.classList.contains('ocr-low') && t.querySelector('td.cell-scan .scan-strip > canvas'))`, 15000);
+    console.log('  unflagged row: its scanned line opens from the toggle and is drawn');
+    await s.shotElement('external-ocr-clean', '.external-card .transcript-preview');
+    await s.evalJs(`document.querySelector('[data-key="ext.preview.cancel"]').click()`);
+    await s.waitFor(`!document.querySelector('.external-card .transcript-preview')`);
+  }
+
+  // Another university's scan that carries its SCANNER's own text layer (item
+  // 13, 2026-10-11 — the leg the e2e lacked; the PDF is the OCR bench's L7 of
+  // the generator's external transcript): the preview says the text is the
+  // scanner's reading, and every row is marked ⚠ to be checked.
+  {
+    await s.evalJs(`localStorage.clear()`);
+    await s.open(baseUrl, '.transcript-upload');
+    await s.setFileInput('.external-file-masters', scannerLayerPdf);
+    await s.waitFor(`document.querySelector('.external-card .transcript-preview')`, 30000);
+    const layer = JSON.parse(await s.evalJs(`JSON.stringify({
+      text: document.querySelector('.external-card')?.textContent ?? '',
+      rows: [...document.querySelectorAll('.external-card .transcript-preview table tr')].slice(1).map((tr) => ({ flagged: tr.classList.contains('ocr-low'), title: tr.querySelector('td.cell-check span[title]')?.getAttribute('title') ?? '' })),
+    })`));
+    console.log('  scanner text layer:', JSON.stringify({ rows: layer.rows.length, flagged: layer.rows.filter((r) => r.flagged).length, said: /scanner/.test(layer.text) }));
+    if (!/carries its scanner’s own reading of the text|Read from the text your scanner embedded in this scan/.test(layer.text)) throw new Error('the preview must say the text is the scanner’s own reading');
+    if (layer.rows.length === 0 || !layer.rows.every((r) => r.flagged && r.title === 'Read from the scanner’s embedded text — check it carefully')) throw new Error('every row of a scanner’s text layer is marked ⚠: ' + JSON.stringify(layer.rows));
+    await s.shotElement('external-scanner-layer', '.external-card .transcript-preview');
+    await s.evalJs(`document.querySelector('[data-key="ext.preview.cancel"]').click()`);
+    await s.waitFor(`!document.querySelector('.external-card .transcript-preview')`);
   }
 
   // A transcript that prints no course numbers (CC15, DGS 2026-10-09; the e2e

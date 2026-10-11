@@ -503,3 +503,84 @@ The e2e now looks at the strips in a real browser on both engines (plan §5 “N
 records”): the e2e scan's two rows are both flagged, each strip a drawn 815–829 × 40 px canvas shown at 780 ×
 40 px at 1400 px wide and 489 × 26 px at 390 px (where the line's right end — credits, grade — sits behind a
 sideways scroll inside the strip; put to the DGS).
+
+## Item 13 — why the flag figures fell, and flags on cell evidence (2026-10-11)
+
+**Why both flag figures fell** (the open item above). The same saved OCR lines (`final-20261010-medium/`, the
+medium set at L2 / L5) read by each parser since the sign-off run, scored on the other universities'
+documents — the Notre Dame import refuses a scan, so its seeds' rows never reach a student (the bench's own
+figures count them, never flagged, which is why its recall reads lower):
+
+| parser | L2 wrong rows | flagged | flagged and wrong | flag P / R | L5 wrong rows | flagged | flagged and wrong | flag P / R |
+|---|---|---|---|---|---|---|---|---|
+| before step 2.5 (`5620628^`) | 99 | 96 | 68 | 70.8 / 68.7 % | 98 | 88 | 70 | 79.5 / 71.4 % |
+| step 2.5 (a), (d), (b) (`81b038d`) | 84 | 93 | 57 | 61.3 / 67.9 % | 79 | 78 | 52 | 66.7 / 65.8 % |
+| Batch C (4), the review fixes (`21c56f9`, `5b8b521`) | 84 | 93 | 57 | unchanged | 79 | 78 | 52 | unchanged |
+| item 14 (`308e304`) | 83 | 92 | 56 | 60.9 / 67.5 % | 79 | 78 | 52 | 66.7 / 65.8 % |
+
+Both figures fell at step 2.5 and nowhere else, because the parser got better. Step 2.5 removed 15 wrong rows
+at L2 and 19 at L5 (net), and 11 and 18 of them were rows the flag had rightly marked. Most of those rows still
+sit on a line the engine read poorly, so they stay flagged now that they read right: flags on right rows went
+28 → 36 at L2 and 18 → 26 at L5, and precision fell. The rows left wrong were more often read with confidence,
+so recall fell a little. The junk-code guard explains little of it: with the guard off (`item13-reparse-nojunk/`)
+the bench reads 62.5 / 62.5 % at L2 and 69.4 / 62.8 % at L5, against 61.3 / 61.3 and 66.7 / 59.8 %.
+
+**Flags on the document's own evidence (adopted).** What stays wrong and unflagged — 27 rows at each level — is
+a confident misread: a credit read as another value ("3" as "8"), a grade cell that took the credits' "3.0", a
+term whose rows do not add up. Three facts of the document now flag such a row on OCR lines (`evidence` on the
+row, after the rows are read; the preview's ⚠ says which in its hover text; a text layer is never touched):
+
+- `credits` — a credit value no other row of the document has, on a document of four rows or more;
+- `mark` — a mark that is not a grade the app reads and has a digit or a stray sign in it;
+- `totals` — a term whose rows do not add up to the transcript's own totals line (item 11's check).
+
+Each rule on the medium set, item 14's parser plus the rule, other universities' documents (rows flagged / of
+them wrong):
+
+| rule | L2 | L5 |
+|---|---|---|
+| before: a poorly read line, a corrected cell, a scanner's layer | 92 / 56 | 78 / 52 |
+| + `credits` | 24 / 15 | 21 / 13 |
+| + `mark` as first written: any mark not read as a grade | 11 / 2 | 14 / 6 |
+| + `mark` adopted: a digit or a stray sign in it | 0 / 0 | 5 / 5 |
+| + `totals` | 1 / 1 | 1 / 0 |
+| + an empty grade where three in four rows have one (tried) | 1 / 0 | 1 / 0 |
+
+The first form of `mark` flagged McGill's deferred, incomplete, no-grade-reported and withdrawn marks (K, L, KE,
+NR, KF, WL, WF, J) and Banner's NG — real marks, read right. A mark of letters alone is now no evidence. The
+empty-grade rule flagged one in-progress course and caught nothing, so it is not used.
+
+The result, the same lines re-parsed by item 14's parser and then item 13's (`item13-base308-medium/` →
+`item13-final-medium/`):
+
+| level | flag P / R, bench (all documents) | flag P / R, other universities' documents |
+|---|---|---|
+| L2 | 60.9 / 60.9 % → 61.5 / 78.3 % | 60.9 / 67.5 % → 61.5 / 86.7 % |
+| L5 | 66.7 / 59.8 % → 66.7 / 80.5 % | 66.7 / 65.8 % → 66.7 / 88.6 % |
+
+The whole ladder, the saved lines of L0–L6 (`ocr-step25-lines-auto/`) and L7 (`step26c-l7-app/`), the bench's
+figures (`item13-base308-ladder/`, `-l7/` → `item13-final-ladder/`, `-l7/`):
+
+| level | flag precision | flag recall |
+|---|---|---|
+| L0 clean | 59.3 → 57.3 % | 50.0 → 72.9 % |
+| L1 good scan | 62.0 → 60.2 % | 57.1 → 76.6 % |
+| L2 office scan | 60.9 → 61.5 % | 60.9 → 78.3 % |
+| L3 photocopy | 59.1 → 63.7 % | 59.5 → 79.4 % |
+| L4 stamped | 85.3 → 85.6 % | 70.7 → 89.3 % |
+| L5 phone photo | 66.7 → 66.7 % | 59.8 → 80.5 % |
+| L6-90 / L6-180 rotated | 57.1 → 55.9 / 60.7 → 60.2 % | 49.3 → 71.2 / 48.7 → 73.7 % |
+| L7 scanner's layer | 99.0 → 99.0 % | 100 → 100 % |
+
+Rows, false rows and field accuracy are unchanged at every level, with no regression line: a flag changes no
+row. The e2e now reads a clean scan (`tests/fixtures/external-transcript-scan-clean.pdf`, written by
+`make-scan-fixture.py`: three of its four rows unflagged, each one's scanned-line strip drawn only when its toggle
+opens; the engine scores the fourth line below its floor though it reads it right, and that row's ⚠ says so) and a scanner's own text layer (`tests/fixtures/scanner-layer-transcript.pdf`, byte for byte the bench's
+L7 of `external-transcript.pdf` — `npm run ocr-bench -- --levels L7 --only external-transcript --out <dir>` writes
+it again: the preview says the reading is the scanner's, and every row is flagged), on Chrome, Safari's engine
+and Firefox.
+
+**What the full-ladder check found besides.** Against yesterday's parser (`q4-after2-ladder/`), three regression
+lines that item 14 made and its L2 / L5 check could not see: one more false row each on Duke's grading key at
+L3 ("LP 2.5" read "LP 2S") and Tokyo's grading page at L3 and L4 ("RE 1", "HPAL 6"). Each was read by item 14's
+rule for UCLA's one-digit course numbers alone in their cell; the next commit reads that rule on text layers only.

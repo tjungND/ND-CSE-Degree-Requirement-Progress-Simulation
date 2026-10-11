@@ -36,3 +36,36 @@ line('CS 58000    Algorithm Design               3.0    B+', f_mono, 115)
 line('Cumulative GPA: 3.83', f, 55)
 img.convert('RGB').save('tests/fixtures/external-transcript-scan.pdf', 'PDF', resolution=150.0)
 print('wrote tests/fixtures/external-transcript-scan.pdf')
+
+
+# A CLEAN scan (2026-10-11, item 13): the same kind of image-only PDF, printed
+# large and sharp at 300 dpi, so the engine reads three of its four rows with
+# confidence — the e2e's leg for an UNFLAGGED scanned row (its scanned line
+# stays behind the "show the scanned line" toggle), which the noisy scan above
+# never exercised. (The engine scores the "Parallel Computing" line below its
+# confidence floor although it reads it right: that row is flagged and its ⚠
+# says so.) Four rows of 3.0 credits: no credit value stands alone (the
+# cell-evidence flag), every grade a plain letter.
+W2, H2 = 2550, 3300
+clean = Image.new('L', (W2, H2), 255)
+d2 = ImageDraw.Draw(clean)
+g_big = font(['/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', '/System/Library/Fonts/Supplemental/Arial Bold.ttf', '/System/Library/Fonts/Supplemental/Arial.ttf'], 64)
+g = font(['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/System/Library/Fonts/Supplemental/Arial.ttf'], 52)
+g_mono = font(['/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf', '/System/Library/Fonts/Supplemental/Courier New.ttf', '/System/Library/Fonts/Supplemental/Arial.ttf'], 52)
+y2 = 200
+def line2(text, fnt, dy):
+    global y2
+    d2.text((200, y2), text, font=fnt, fill=0)
+    y2 += dy
+line2('Purdue University', g_big, 110)
+line2('Office of the Registrar', g, 85)
+line2('Official Transcript', g, 85)
+line2('Program: Master of Science, Computer Science', g, 140)
+line2('Fall 2023', g_big, 110)
+line2('CS 50300    Operating Systems         3.0    A', g_mono, 90)
+line2('CS 58000    Algorithm Design          3.0    A', g_mono, 150)
+line2('Spring 2024', g_big, 110)
+line2('CS 52500    Parallel Computing        3.0    A', g_mono, 90)
+line2('CS 54100    Database Systems          3.0    A', g_mono, 150)
+clean.convert('RGB').save('tests/fixtures/external-transcript-scan-clean.pdf', 'PDF', resolution=300.0)
+print('wrote tests/fixtures/external-transcript-scan-clean.pdf')

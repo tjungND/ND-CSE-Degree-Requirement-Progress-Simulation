@@ -74,6 +74,8 @@ interface PreviewRow {
   year: number | undefined;
   /** OCR read this row's line poorly — the preview marks it for checking. */
   lowConfidence?: boolean;
+  /** Why a confidently read row is flagged all the same (item 13, 2026-10-11). */
+  evidence?: 'credits' | 'mark' | 'totals';
   /** OCR only (Batch C answer (4), DGS 2026-10-09): what the scan showed in a
    * credits or grade cell the parser corrected ("3.O", "Bt") — shown beside
    * the value, never saved (the Add builds each course field by field,
@@ -825,6 +827,7 @@ export function previewRowOf(c: ExternalCourseCandidate, slot: DegreeLevel): Pre
     season: c.season ?? ('fall' as Season),
     year: c.year,
     lowConfidence: c.lowConfidence,
+    ...(c.evidence ? { evidence: c.evidence } : {}),
     ...(c.ocrRead ? { ocrRead: { ...c.ocrRead } } : {}),
     level: c.level ?? slotDefaultLevel(slot),
     levelSource: (c.level ? 'transcript' : 'slot') as PreviewRow['levelSource'],
@@ -1411,7 +1414,7 @@ function previewRow(
       r.lowConfidence
         ? p.scannerLayer
           ? el('span', { title: SCANNER_LAYER_ROW_FLAG, 'aria-label': SCANNER_LAYER_ROW_FLAG_NAME }, '⚠')
-          : el('span', { title: 'OCR read this line poorly — check it carefully', 'aria-label': 'low OCR confidence' }, '⚠')
+          : el('span', { title: OCR_FLAG_TITLE[r.evidence ?? 'confidence'], 'aria-label': r.evidence ? 'check this row' : 'low OCR confidence' }, '⚠')
         : null,
       cb,
       blocked ? el('span', { id: noteId, class: 'visually-hidden' }, blockedNote) : null,
@@ -1939,6 +1942,14 @@ function previewTotalsCheck(p: ExternalPreview): TotalsMismatch[] {
   });
   return checkTotals([...(p.allRows ?? []).map(toRow), ...typed], p.printedTotals);
 }
+
+/** The ⚠'s words on a scanned row, by why it is flagged (item 13, 2026-10-11). */
+const OCR_FLAG_TITLE: Record<'confidence' | 'credits' | 'mark' | 'totals', string> = {
+  confidence: 'OCR read this line poorly — check it carefully',
+  credits: 'No other row of this transcript has this credit value — check it against the scan',
+  mark: 'The grade cell holds a number or a stray sign, not a grade — check it against the scan',
+  totals: 'This term’s rows do not add up to the transcript’s own totals — check it against the scan',
+};
 
 const FIELD_WORDS: Record<ImportedField, string> = { course: 'course number', title: 'title', credits: 'credits', term: 'term', grade: 'grade', level: 'level' };
 

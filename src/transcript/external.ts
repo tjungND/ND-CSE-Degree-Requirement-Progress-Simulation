@@ -4,7 +4,7 @@
 // added without their review, and unmatched grades must be chosen by hand.
 // System-generated PDFs are read exactly; a PDF with no text layer is offered
 // the opt-in English-only OCR instead (decision 2026-09-02; src/transcript/ocr.ts).
-import type { PrintedTotals } from './totals-check.ts';
+import { checkTotals, type PrintedTotals } from './totals-check.ts';
 import { joinSpacedSubject } from '../data/assemble.ts';
 import { NOTRE_DAME_ROW_UNIVERSITY, expandInstitutionAbbreviations, isNotreDameInstitution, normalizeCourseId, normalizeUniversity } from '../data/external.ts';
 import type { PendingDgsReview } from '../engine/review.ts';
@@ -39,8 +39,16 @@ export interface ExternalCourseCandidate {
   season?: Season;
   /** OCR only: the source line read below the confidence floor — the preview
    * marks the row so the student checks it against the paper. Also set on a
-   * row whose credits or grade the parser corrected (`ocrRead`). */
+   * row whose credits or grade the parser corrected (`ocrRead`), and on the
+   * cell evidence below (`evidence`). */
   lowConfidence?: boolean;
+  /** OCR only (DGS 2026-10-11, item 13): why a row the engine read with
+   * confidence is flagged all the same — `credits`, a credit value no other
+   * row of the document has; `mark`, a mark that is not a grade the app
+   * reads and has a digit or a stray sign in it; `totals`, a term whose rows
+   * do not add up to the transcript's own totals. The engine's confidence misses a confident
+   * misread; these facts of the document do not. */
+  evidence?: 'credits' | 'mark' | 'totals';
   /** OCR only (Batch C answer (4), DGS 2026-10-09): the scan's OWN reading of
    * a cell the parser corrected from an unambiguous letter-for-digit shape —
    * credits "3.O" read as 3.0, a grade "Bt" read as B+ (`ocrCellCorrection`).
@@ -3514,6 +3522,41 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     !lines.some((l) => RECORD_FIGURES_RE.test(l));
   // The totals lines with the rows each names (item 11).
   const totalsRead: PrintedTotals[] = printedTotals.map(({ block, ...t }) => (block === undefined ? t : { ...t, rows: rowBlocks.flatMap((b, i) => (b === block ? [i] : [])) }));
+  // Cell evidence on a scan (DGS 2026-10-11, item 13). The engine's confidence
+  // flags a line it read poorly; a confident misread — "3" read as "8", a
+  // grade cell that took the credits' "3.0" — passes it. Three facts of the
+  // document flag such a row all the same: a credit value no other row of the
+  // document has (four rows or more); a mark that is not a grade the app
+  // reads AND has a digit or a stray sign in it (a mark of letters alone —
+  // McGill's K, L, NR, WL, Banner's NG — is one the school prints, not
+  // evidence: flagging those cost 9–11 right rows for 1–2 wrong ones); a term
+  // whose rows do not add up to the transcript's own totals line. Measured on
+  // the OCR bench's medium set (L2 and L5, the other universities' documents,
+  // the same OCR lines before and after): the wrong rows flagged rose from
+  // two thirds to nearly nine in ten (L2 67.5 → 86.7 %, L5 65.8 → 88.6 %) at
+  // no cost in flag precision (60.9 → 61.5 %, 66.7 → 66.7 %). A text layer is
+  // never touched.
+  if (confidences !== undefined && !notATranscript) {
+    const counts = new Map<number, number>();
+    for (const c of courses) if (c.credits !== undefined) counts.set(c.credits, (counts.get(c.credits) ?? 0) + 1);
+    const withCredits = courses.filter((c) => c.credits !== undefined).length;
+    const offTotals = new Set<number>();
+    if (totalsRead.length > 0) {
+      const aligned = courses.map((c) => (c.season !== undefined && c.year !== undefined && c.credits !== undefined ? { term: { season: c.season, year: c.year }, credits: c.credits, grade: c.grade ?? '' } : undefined));
+      for (const m of checkTotals(aligned, totalsRead)) {
+        const t = totalsRead.find((x) => x.scope === m.scope && x.term === m.term);
+        for (const i of t?.rows ?? []) offTotals.add(i);
+      }
+    }
+    courses.forEach((c, i) => {
+      if (c.lowConfidence) return;
+      const evidence = withCredits >= 4 && c.credits !== undefined && counts.get(c.credits) === 1 ? 'credits' : c.grade === undefined && c.rawGrade !== undefined && /[^\p{L}+\-\u2212 ]/u.test(c.rawGrade) ? 'mark' : offTotals.has(i) ? 'totals' : undefined;
+      if (evidence) {
+        c.lowConfidence = true;
+        c.evidence = evidence;
+      }
+    });
+  }
   return {
     ...(quarterSystem ? { quarterSystem } : {}),
     ...(trimesterSystem ? { trimesterSystem } : {}),

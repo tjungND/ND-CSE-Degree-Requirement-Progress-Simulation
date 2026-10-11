@@ -2221,6 +2221,12 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   `numericFillsRest` with a term column; `fallWinterSession` + the [BGST] suffix; the semester-parity
   rule; the Ladok module filter after CC15; `issuedDegree`; tokensOf strips Oregon's `>N` and P/N `*`;
   the present-tense quarter-hours key. Every one was replayed against the corpora with zero regressions.
+- **OCR cell evidence** (2026-10-11, item 13): external.ts sets `evidence` ('credits' | 'mark' | 'totals')
+  with `lowConfidence` after the rows are read, on OCR lines only and never on a not-a-transcript document;
+  `totals` re-uses item 11's `checkTotals` on `totalsRead`. external-upload.ts titles the ⚠ with
+  `OCR_FLAG_TITLE[r.evidence ?? 'confidence']`. tests/ocr-evidence.test.ts. The bench's flag recall counts the
+  Notre Dame seeds, which are never flagged (the Notre Dame import refuses a scan): OCR-BENCHMARK.md gives
+  both counts. e2e: the `scanClean` and `scannerLayer` fixtures in scripts/e2e/run.mjs.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

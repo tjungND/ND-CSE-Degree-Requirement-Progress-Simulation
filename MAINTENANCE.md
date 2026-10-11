@@ -255,7 +255,11 @@ last edit (see "Sync" below).
   driver also checks, on both engines, the OCR preview's scanned-line strips (drawn at once on a
   ⚠ row, gone after Add, never in the saved record; a crop at 390 px) and a transcript that prints
   no course numbers (`tests/fixtures/codeless-transcript.pdf`: the empty, required id box keeps the
-  row unticked and Add refuses until an id is typed). Every fixture PDF comes from
+  row unticked and Add refuses until an id is typed); since 2026-10-11 (item 13) also a clean scan
+  (`external-transcript-scan-clean.pdf`: an unflagged row's strip drawn only when opened, a flagged
+  row's ⚠ saying why) and a scanner's own
+  text layer (`scanner-layer-transcript.pdf`, the bench's L7 of `external-transcript.pdf`: every row
+  flagged as the scanner's reading). Every fixture PDF comes from
   `node tests/fixtures/make-transcript-pdfs.mjs` (the scan from `make-scan-fixture.py`); the
   generator rewrites the others byte for byte, so a new fixture shows up in `git status` alone.
   When a student finds a

@@ -290,6 +290,8 @@ try {
       ndInsideNd: 'nd-insidend-transcript.pdf',
       codeless: 'codeless-transcript.pdf',
       totalsMismatch: 'totals-mismatch-transcript.pdf',
+      scanClean: 'external-transcript-scan-clean.pdf',
+      scannerLayer: 'scanner-layer-transcript.pdf',
       outline: 'course-outline.pdf',
     }).map(([name, file]) => [name, join(root, 'tests', 'fixtures', file)]),
   );
