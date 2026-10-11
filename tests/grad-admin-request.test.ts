@@ -205,3 +205,21 @@ describe('gradAdminRequest', () => {
     assert.match(built.html, /<span style="[^"]*background:#eef0f3;color:#5a6472">Not started<\/span>/);
   });
 });
+
+describe('the master’s candidacy item past the MSCSE’s time limit (policy review round 4, P4-mscse-2 (b), DGS 2026-10-11)', () => {
+  it('stays in the request and the advisor email, with the passed limit named beside it and the 30 credits cited to DGS Handbook §3.21.1', async () => {
+    const { loadScenario } = await import('./helpers.ts');
+    const { actionItems } = await import('../src/ui/advisor-summary.ts');
+    const sc = loadScenario('mscse-last-course-after-the-limit');
+    const r = buildRules(sc.rules?.patch);
+    const report = audit(sc.student, r, sc.today);
+    const req = gradAdminRequest(report, sc.student, r, { ...opts, todayIso: sc.today });
+    assert.match(req.text, /Initiate my Application for Admission to Master’s Degree Candidacy \(Academic Code §6\.1\.6\) — the self-check shows a 3\.0 GPA and 30 credits, counting this semester’s \(DGS Handbook §3\.21\.1\) — the MSCSE’s time limit \(§3\.3\) passed at the start of Fall 2026 \(approximate\); an extension is the Graduate School’s to grant\./);
+    assert.ok(actionItems(report).gradAdmin.some((x) => /Master’s Degree Candidacy .*time limit \(§3\.3\) passed at the start of Fall 2026/.test(x)));
+  });
+  it('a record inside its time limit has no such clause', () => {
+    const sc = { student: { schemaVersion: 1, program: 'mscse', entryTerm: { season: 'fall', year: 2025 }, priorMs: 'none', gpa: 3.5, courses: [], milestones: {}, attestations: {} } as unknown as Student };
+    const report = audit(sc.student, rules, '2026-10-11');
+    assert.doesNotMatch(gradAdminRequest(report, sc.student, rules, opts).text, /time limit \(§3\.3\) passed/);
+  });
+});

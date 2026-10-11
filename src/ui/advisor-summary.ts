@@ -307,6 +307,19 @@ export interface ActionItems {
  * the advisor is the advisor's, one naming the DGS (or a review) the DGS's,
  * and the student sends the review request. Dissertation items appear only
  * once candidacy is passed — they are not this semester's work before that. */
+/** The MSCSE's time limit when it has passed — Overdue, or every requirement
+ * complete after it (“Eligibility at risk”) — named beside the master's
+ * candidacy item in the advisor email and the processing request (policy
+ * review round 4, P4-mscse-2; DGS 2026-10-11: option (b)). No document bars
+ * filing the application while an extension is sought, so the item stays and
+ * the Grad Admin sees the one fact they need beside it. Empty otherwise. */
+export function msLimitPassedClause(report: AuditReport): string {
+  if (report.program !== 'mscse') return '';
+  const r = report.requirements.find((x) => x.id === 'ms.timeLimit');
+  if (!r?.deadline || !(r.deadline.state === 'overdue' || r.statusLabel === 'Eligibility at risk')) return '';
+  return ` — the MSCSE’s time limit (§3.3) passed at ${deadlineTermLabel(r.deadline.date)} (approximate); an extension is the Graduate School’s to grant`;
+}
+
 export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): ActionItems {
   const out: ActionItems = { student: [], advisor: [], dgs: [], gradAdmin: [] };
   const byId = new Map(report.requirements.map((r) => [r.id, r]));
@@ -516,8 +529,9 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
   // The master's candidacy application, the MSCSE's or the MSCSE along the
   // way's (Academic Code §6.1.6; 2026-10-04): open while its row is.
   if (byId.get('shared.msCandidacy')?.status === 'unmet') {
-    out.student.push('Ask the Grad Admin to submit the Application for Admission to Master’s Degree Candidacy by the Graduate School calendar’s deadline (Academic Code §6.1.6).');
-    out.gradAdmin.push('Submit my Application for Admission to Master’s Degree Candidacy to the Graduate School (Academic Code §6.1.6).');
+    const late = msLimitPassedClause(report);
+    out.student.push(`Ask the Grad Admin to submit the Application for Admission to Master’s Degree Candidacy by the Graduate School calendar’s deadline (Academic Code §6.1.6)${late}.`);
+    out.gradAdmin.push(`Submit my Application for Admission to Master’s Degree Candidacy to the Graduate School (Academic Code §6.1.6)${late}.`);
   }
   // Once the course components are complete (P3-cse-4a-3; DGS 2026-10-07: option (a)).
   if (qualifier?.qualifierCourseComponentsDone === true && /qualifier (completion )?form/.test(textOf(qualifier))) {

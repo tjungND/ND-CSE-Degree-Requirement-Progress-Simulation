@@ -35,7 +35,7 @@ import type { ProgramHistory } from './program-history.ts';
 import { formatYmdLong } from './handbook.ts';
 import { allRequirementsMet } from './next-steps.ts';
 import { deadlineAlert, isNotStarted, standingColor, scoredRows, statusWord } from './report.ts';
-import { whyFor } from './advisor-summary.ts';
+import { msLimitPassedClause, whyFor } from './advisor-summary.ts';
 import { compareTerm } from '../engine/term.ts';
 import { sourceOf, sourcesLine } from './provenance.ts';
 
@@ -433,7 +433,10 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
     ...(qualifierFormDue ? ['Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet (§4.4).'] : []),
     ...(msAlongTheWay ? ['Process the MSCSE along the way — the self-check, which is the DGS’s review of the award (§3.1), shows its requirements met (§4.5).'] : []),
     ...(candidacyApplicationDue ? ['Initiate my Application for Admission to Doctoral Candidacy — the self-check shows every condition met (DGS Handbook §3.22.3).'] : []),
-    ...(msCandidacyDue ? ['Initiate my Application for Admission to Master’s Degree Candidacy — the self-check shows a 3.0 GPA and 30 credits, counting this semester’s (Academic Code §6.1.6).'] : []),
+    // The 30 credits are DGS Handbook §3.21.1's, the application Academic Code
+    // §6.1.6's (P4-mscse-2, with P4-text-2's citation); a passed time limit is
+    // named beside it (option (b), DGS 2026-10-11).
+    ...(msCandidacyDue ? [`Initiate my Application for Admission to Master’s Degree Candidacy (Academic Code §6.1.6) — the self-check shows a 3.0 GPA and 30 credits, counting this semester’s (DGS Handbook §3.21.1)${msLimitPassedClause(report)}.`] : []),
     ...(met.length > 0 ? [`Keep my standing below on file: ${tallyText}.`] : []),
   ];
   const lines = [
@@ -446,7 +449,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
     ...(qualifierFormDue ? ['Qualifier completion form — not filed yet (§4.4)'] : []),
     ...(msAlongTheWay ? ['MSCSE along the way — the self-check, which is the DGS’s review of the award (§3.1), shows its requirements met (§4.5)'] : []),
     ...(candidacyApplicationDue ? ['Application for Admission to Doctoral Candidacy — the self-check shows every condition met (DGS Handbook §3.22.3)'] : []),
-    ...(msCandidacyDue ? ['Application for Admission to Master’s Degree Candidacy — the self-check shows a 3.0 GPA and 30 credits, counting this semester’s (Academic Code §6.1.6)'] : []),
+    ...(msCandidacyDue ? [`Application for Admission to Master’s Degree Candidacy (Academic Code §6.1.6) — the self-check shows a 3.0 GPA and 30 credits, counting this semester’s (DGS Handbook §3.21.1)${msLimitPassedClause(report)}`] : []),
     ...(met.length > 0
       ? [`${tallyText} — listed in the request with their standing and deadlines${tally.dueSoon > 0 ? ` (${plural(tally.dueSoon, 'deadline')} this semester or next, highlighted)` : ''}, for the record`]
       : []),
@@ -609,7 +612,7 @@ export function gradAdminRequest(
       lines: [
         report.program === 'phd'
           ? 'The self-check shows the requirements for the MSCSE along the way met — please initiate my Application for Admission to Master’s Degree Candidacy as well (DGS Handbook §3.21.1), by the Graduate School calendar’s deadline for the semester I graduate in.'
-          : 'The self-check shows a cumulative GPA of 3.0 or better and 30 credits, counting this semester’s — please initiate my Application for Admission to Master’s Degree Candidacy by the Graduate School calendar’s deadline for the semester I graduate in.',
+          : `The self-check shows a cumulative GPA of 3.0 or better and 30 credits, counting this semester’s (DGS Handbook §3.21.1) — please initiate my Application for Admission to Master’s Degree Candidacy by the Graduate School calendar’s deadline for the semester I graduate in${msLimitPassedClause(report)}.`,
       ],
     });
   }
