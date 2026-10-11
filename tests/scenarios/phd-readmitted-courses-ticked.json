@@ -1,0 +1,79 @@
+{
+  "name": "phd-readmitted-courses-ticked",
+  "description": "Policy review round 4, P4-ac-2 (DGS 2026-10-11: option (a)). The readmitted student of phd-readmitted-after-five-years, after the DGS and the Graduate School ruled that the Fall 2019 and Spring 2020 courses stand: each such course now offers “The DGS approved this course for me”, and ticked it counts (Academic Code §5.5), named “as you ticked on the course”. Before, those courses waited for good — the page had no place to record the ruling.",
+  "today": "2026-10-03",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2019
+    },
+    "priorMs": "none",
+    "gpa": 3.6,
+    "milestones": {},
+    "attestations": {},
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2019
+        },
+        "grade": "A",
+        "origin": "nd",
+        "dgsApproved": true
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "nd",
+        "dgsApproved": true
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "readmittedTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2019
+    }
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "9 of 24"
+      ],
+      "detailExcludes": [
+        "pending review/approval"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 60641": [
+      "the DGS and the Graduate School confirmed it stands, as you ticked on the course (Academic Code §5.5)"
+    ]
+  },
+  "expectReviewEmpty": true
+}

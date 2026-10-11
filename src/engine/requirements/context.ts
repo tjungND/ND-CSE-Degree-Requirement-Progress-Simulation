@@ -85,6 +85,9 @@ export function isCovidCohort(student: Student, entry: Term): boolean {
  * interrupts his or her program of study for five years or more." Routed to
  * the DGS, never reset. */
 export function beforeForfeiture(ctx: Ctx, date: string | undefined): boolean {
+  // The DGS's ruling that the examinations stand, ticked under Approvals
+  // (policy review round 4, P4-ac-2; DGS 2026-10-11: option (a)).
+  if (ctx.student.attestations.examsBeforeInterruptionStand === true) return false;
   return ctx.forfeitBefore !== undefined && date !== undefined && date < startOfTerm(ctx.forfeitBefore).date;
 }
 /** The fact such an examination or course carries on its card, and the rule. */

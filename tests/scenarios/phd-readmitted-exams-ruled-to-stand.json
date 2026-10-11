@@ -1,0 +1,105 @@
+{
+  "name": "phd-readmitted-exams-ruled-to-stand",
+  "description": "Policy review round 4, P4-ac-2 (DGS 2026-10-11: option (a)). The student of phd-readmitted-exams-before-gap after the DGS and the Graduate School ruled that the examinations from before the nine-year interruption stand: one tick under Approvals (“… my examinations from before the interruption stand”) releases the research qualifier and the OCE, which no longer read “before an interruption of five years or more”. The OCE still waits for the DGS, for a different reason: its coursework at the exam was short (§4.5) — the courses from before the interruption have their own ticks.",
+  "today": "2024-10-15",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2015
+    },
+    "priorMs": "none",
+    "gpa": 3.7,
+    "readmittedTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2015
+    },
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2015
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2016
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 63801",
+        "credits": 1,
+        "term": {
+          "season": "spring",
+          "year": 2016
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 63802",
+        "credits": 1,
+        "term": {
+          "season": "spring",
+          "year": 2016
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "IP",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {
+      "advisorIdentified": "2015-10-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "researchQualifierPassed": "2017-02-01",
+      "candidacyPassed": "2018-04-20"
+    },
+    "attestations": {
+      "examsBeforeInterruptionStand": true
+    }
+  },
+  "expect": {
+    "phd.candidacy": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "At the exam (Spring 2018) you show"
+      ],
+      "detailExcludes": [
+        "before an interruption of five years or more"
+      ]
+    },
+    "phd.qualifier.research": {
+      "status": "met",
+      "detailExcludes": [
+        "before an interruption"
+      ]
+    }
+  }
+}

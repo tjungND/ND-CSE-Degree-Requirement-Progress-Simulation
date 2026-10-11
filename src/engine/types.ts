@@ -320,6 +320,16 @@ export interface Attestations {
    * (DGS 2026-09-21). Offered only to students in their third year or later;
    * the engine honours it only then (`qualifierPriorRulesEligible`). */
   qualifierPassedUnderPriorRules?: boolean;
+  /** The DGS and the Graduate School ruled that the student's examinations
+   * from before an interruption of five years or more stand (Academic Code
+   * §5.5) — the record-level answer to the examinations held since P3-ac-5a-3
+   * (policy review round 4, P4-ac-2; DGS 2026-10-11: option (a)). */
+  examsBeforeInterruptionStand?: boolean;
+  /** The DGS confirmed the Oral Candidacy Exam whose coursework was short at
+   * the exam (§4.5, as of the exam's semester — P3-cse-4b-1): the exam, the
+   * admission card and the MSCSE along the way stop waiting (policy review
+   * round 4, P4-phd-5; DGS 2026-10-11: option (a)). */
+  oceConfirmedByDgs?: boolean;
 }
 
 export interface Student {

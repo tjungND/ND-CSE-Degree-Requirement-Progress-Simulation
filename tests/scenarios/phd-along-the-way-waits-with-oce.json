@@ -1,0 +1,152 @@
+{
+  "name": "phd-along-the-way-waits-with-oce",
+  "description": "Policy review round 4, P4-phd-5 and P4-ac-4 (DGS 2026-10-11: option (a)). The student of phd-oce-dated-specialization-short — OCE passed in Fall 2025 with the specialization short at the exam, waiting for the DGS — with six research credits too, so the MSCSE along the way's credits are all earned at Notre Dame. The award is earned “on successfully passing the candidacy exam” (§4.5), so it now waits with the exam (Conditionally met) and leaves the processing request; it used to read Met and go to the Grad Admin with “no further DGS step”.",
+  "today": "2026-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "gpa": 3.3,
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60868",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60868",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {
+      "advisorIdentified": "2024-10-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "rcrTrainingCompleted": "2025-09-01",
+      "candidacyPassed": "2025-12-10"
+    },
+    "attestations": {}
+  },
+  "expect": {
+    "phd.candidacy": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "the specialization courses not complete"
+      ]
+    },
+    "phd.msAlongTheWay": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "which waits for the DGS — its coursework was short at the exam (§4.5)"
+      ]
+    }
+  }
+}

@@ -237,6 +237,14 @@ export interface ClassifiedCourse {
    * DGS still decides. It carries no 'transfer' cap but is still transfer
    * credit: it is totalled with it and listed on the §5.2 row. */
   transferOutsideCap?: true;
+  /** A course held for the DGS by a record-level fact — before a readmission,
+   * before an interruption of five years or more, from a Notre Dame MSCSE five
+   * years or more before the Ph.D., non-degree coursework, or Notre Dame
+   * coursework from before admission when the earlier program was elsewhere —
+   * whose DGS ruling the student recorded with the course's tick (policy
+   * review round 4, P4-ac-2; DGS 2026-10-11: option (a), as every other DGS
+   * answer is recorded). The hold is released, and the tick box stays. */
+  dgsHoldTicked?: true;
   /** A posted course whose title reads as research, independent study or a
    * seminar (P4-transfer-8; DGS 2026-10-11: option (a)): counted toward the
    * total only, as the DGS ruled for a prior master's thesis (2026-09-22). */
@@ -716,6 +724,13 @@ export function decidedCaseByCase(c: ClassifiedCourse, program: Program): boolea
   // Notre Dame coursework taken as an undergraduate that waits on an approval
   // the DGS gives for this student (DGS 2026-10-08).
   if (c.dgsApprovalAsked) return true;
+  // A course held by a record-level fact — a readmission, an interruption of
+  // five years or more, a separated Notre Dame MSCSE, non-degree status, Notre
+  // Dame coursework before admission — or one whose hold the tick released
+  // (policy review round 4, P4-ac-2; DGS 2026-10-11: option (a)). Non-degree
+  // and before-admission courses need their Courses-tab row first.
+  if (c.dgsHoldTicked || c.beforeReadmission || c.interrupted) return true;
+  if ((c.nonDegree || c.ndBeforeAdmission) && c.rule !== undefined) return true;
   if (!c.rule) return false;
   return needsCourseApproval(program === 'mscse' ? c.rule.countsTowardMscse : c.rule.countsTowardPhd);
 }
@@ -1009,7 +1024,15 @@ export function classify(student: Student, rules: Rules, today?: string): {
         approvalPending: `also counts toward your other degree — the Graduate School must approve your dual-degree plan of study (DGS Handbook §2.9)${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
       };
     };
+    // The DGS's ruling on a held course, recorded with its tick (P4-ac-2 (a)).
+    const ticked = (cc: ClassifiedCourse, note: string): ClassifiedCourse => ({ ...cc, dgsHoldTicked: true, approvedNote: cc.approvedNote ? `${cc.approvedNote}; ${note}` : note });
     const withInterruption = (cc: ClassifiedCourse): ClassifiedCourse => {
+      if (c.dgsApproved === true && cc.ineligibleReason === undefined) {
+        if (beforeShortReadmission(c)) return ticked(cc, `taken before your readmission (${termLabel(readmitted!)}) — the DGS confirmed it still counts, as you ticked on the course (DGS Handbook §3.3)`);
+        if (separatedSince !== undefined && !interruptedCourse(c) && isOwnMscseCoursework(student, c))
+          return ticked(cc, `from your Notre Dame MSCSE, five years or more before the Ph.D. — the DGS and the Graduate School confirmed it counts, as you ticked on the course (Academic Code §5.5)`);
+        if (interruptedCourse(c)) return ticked(cc, `taken before an interruption of five years or more — the DGS and the Graduate School confirmed it stands, as you ticked on the course (Academic Code §5.5)`);
+      }
       if (beforeShortReadmission(c) && cc.ineligibleReason === undefined) {
         return {
           ...cc,
@@ -1448,6 +1471,21 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     if (student.ndNonDegree === true) {
       const shape = rule ? priorNdShape(c.courseId, rule, program, c.dgsApproved === true) : undefined;
       if (shape && 'ineligibleReason' in shape) return { ...extBase, notTransferCredit: true, nonDegree: true, ineligibleReason: `${shape.ineligibleReason}${coreNote}` };
+      // The DGS's ruling, recorded with the course's tick (P4-ac-2 (a)); a
+      // course not in the course rules has no tick — the DGS enters its row first.
+      if (c.dgsApproved === true && rule !== undefined) {
+        return {
+          ...extBase,
+          notTransferCredit: true,
+          nonDegree: true,
+          dgsHoldTicked: true,
+          reviewed: true,
+          pool: shape?.pool ?? 'regular',
+          caps: ['nondegree', ...(shape?.caps ?? [])],
+          tier: 'definite',
+          approvedNote: `taken at Notre Dame as a non-degree student before you were admitted — the DGS ruled it counts, as you ticked on the course; at most ${NON_DEGREE_CREDITS_MAX} such credits count (Academic Code §2.3)${coreNote}`,
+        };
+      }
       return {
         ...extBase,
         notTransferCredit: true,
@@ -1497,6 +1535,21 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   if (isNotreDameInstitution(c.institution) && c.degreeLevel !== 'bachelors' && student.ndMasters === undefined && earlierElsewhere) {
     const shape = rule ? priorNdShape(c.courseId, rule, program, c.dgsApproved === true) : undefined;
     if (shape && 'ineligibleReason' in shape) return { ...extBase, notTransferCredit: true, ndBeforeAdmission: true, ineligibleReason: `${shape.ineligibleReason}${coreNote}` };
+    // The DGS's ruling — after asking the Graduate School, as he said he would
+    // (2026-10-06) — recorded with the course's tick (P4-ac-2 (a)).
+    if (c.dgsApproved === true && rule !== undefined) {
+      return {
+        ...extBase,
+        notTransferCredit: true,
+        ndBeforeAdmission: true,
+        dgsHoldTicked: true,
+        reviewed: true,
+        pool: shape?.pool ?? 'regular',
+        caps: [...(shape?.caps ?? [])],
+        tier: 'definite',
+        approvedNote: `taken at Notre Dame before you were admitted — the DGS ruled it counts, as you ticked on the course (Academic Code §2.3)${coreNote}`,
+      };
+    }
     return {
       ...extBase,
       notTransferCredit: true,

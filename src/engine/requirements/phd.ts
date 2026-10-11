@@ -314,7 +314,9 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
   // their credits from zero toward it (DGS 2026-09-09).
   if (ctx.student.ndMasters === undefined) {
     const alongRow = msAlongTheWayRow(ctx);
-    const along = m.candidacyPassed ? heldForMissingParams(alongRow, ctx, ['gpa_min', 'ms_time_limit_years']) : alongRow;
+    // …and, since the award waits with its exam (P4-phd-5), on the numbers the
+    // exam's coursework check reads at the exam (oceKeys).
+    const along = m.candidacyPassed ? heldForMissingParams(alongRow, ctx, ['gpa_min', 'ms_time_limit_years', ...oceKeys.slice(1)]) : alongRow;
     rows.push(along);
     // The MSCSE along the way needs the master's candidacy application too
     // (DGS Handbook §3.21.1; 2026-10-04): shown once the award's
@@ -1947,10 +1949,13 @@ function candidacyRow(ctx: Ctx, coursework: OceReadiness): RequirementResult {
   let courseworkReview: string | undefined;
   if (passed !== undefined) {
     const short = courseworkAtExam(ctx);
-    if (short.length > 0) {
+    if (short.length > 0 && ctx.student.attestations.oceConfirmedByDgs === true) {
+      // The DGS's confirmation, ticked under Approvals (P4-phd-5 (a)).
+      parts.push({ note: `At the exam (${termLabel(termOfDate(passed))}) you showed ${listAnd(short)} — the DGS confirmed the exam could be taken, as you ticked under Approvals (§4.5)` });
+    } else if (short.length > 0) {
       status = status === 'met' ? 'needs_dgs_review' : status;
       courseworkReview = listAnd(short);
-      parts.push({ note: `At the exam (${termLabel(termOfDate(passed))}) you show ${courseworkReview} — §4.5 requires the coursework complete, or in progress that semester, before the exam; confirm with the DGS that it could be taken` });
+      parts.push({ note: `At the exam (${termLabel(termOfDate(passed))}) you show ${courseworkReview} — §4.5 requires the coursework complete, or in progress that semester, before the exam; confirm with the DGS that it could be taken — once the DGS has, tick “The DGS confirmed my Oral Candidacy Exam” under Approvals` });
     }
   } else if (!coursework.ready) {
     // Not taken, and not ready — only the overdue card reaches here (the
@@ -2494,14 +2499,21 @@ function msAlongTheWayRow(ctx: Ctx): RequirementResult {
   const msLimit = msYears === undefined ? undefined : addMonthsIso(startOfTerm(ctx.entry).date, msYears * 12 + ctx.clockShift * 6);
   const msShift = clockShiftNote({ ...ctx, covidCohort: false });
   const afterMsLimit = passed !== undefined && msLimit !== undefined && passed > msLimit;
+  // The award is earned "on successfully passing the candidacy exam" (§4.5):
+  // while that exam waits for the DGS — its coursework short at the exam
+  // (P3-cse-4b-1) or dated before an interruption of five years or more
+  // (P3-ac-5a-3) — the award waits with it, and leaves the processing request
+  // (policy review round 4, P4-phd-5 and P4-ac-4; DGS 2026-10-11: option (a)).
+  const oceWaiting = passed !== undefined && ((courseworkAtExam(ctx).length > 0 && ctx.student.attestations.oceConfirmedByDgs !== true) || beforeForfeiture(ctx, passed));
   if (reqReg === undefined || reqRes === undefined) {
     status = 'cannot_evaluate';
     parts = [missingParamDetail(reqReg === undefined ? 'ms_regular_credits_min' : 'ms_project_credits_min')];
-  } else if (passed && doneReg >= reqReg && doneRes >= reqRes && (gpaShort || afterMsLimit)) {
+  } else if (passed && doneReg >= reqReg && doneRes >= reqRes && (gpaShort || afterMsLimit || oceWaiting)) {
     status = 'needs_dgs_review';
     const why = [
         ...(gpaShort ? [gpa === undefined ? 'no cumulative GPA is entered, and the award needs at least the 3.0 minimum (§2.2)' : `your cumulative GPA is ${gpaText(gpa)}, below the 3.0 the award needs (§2.2)`] : []),
         ...(afterMsLimit ? [`the exam came more than ${msYears} years after you entered${msShift}, and the master’s five-year limit may apply to the award (Academic Code §6.1.4; DGS Handbook §3.21.1)`] : []),
+        ...(oceWaiting ? [`the award rests on your Oral Candidacy Exam (OCE), which waits for the DGS — ${beforeForfeiture(ctx, passed) ? `it came ${FORFEIT_FACT} (Academic Code §5.5)` : 'its coursework was short at the exam (§4.5)'}`] : []),
       ].join(', and ');
     parts = [
       `Oral Candidacy Exam (OCE) passed ${passed}`,

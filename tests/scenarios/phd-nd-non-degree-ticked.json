@@ -1,0 +1,70 @@
+{
+  "name": "phd-nd-non-degree-ticked",
+  "description": "Policy review round 4, P4-ac-2 (DGS 2026-10-11: option (a), merged with P4-transfer-9). The non-degree student of phd-nd-non-degree-before-admission after the DGS ruled the Spring 2026 course counts: it offers the course's tick, and ticked it counts inside the 12 non-degree credits (Academic Code §2.3). Before, it waited for good.",
+  "today": "2027-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "none",
+    "gpa": 3.6,
+    "milestones": {},
+    "attestations": {},
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate",
+        "dgsApproved": true
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "ndNonDegree": true,
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    }
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 24"
+      ],
+      "detailExcludes": [
+        "pending review/approval"
+      ]
+    },
+    "phd.transfer": {
+      "status": "not_applicable"
+    }
+  },
+  "expectCourseLines": {
+    "CSE 60641": [
+      "the DGS ruled it counts, as you ticked on the course; at most 12 such credits count (Academic Code §2.3)"
+    ]
+  }
+}

@@ -5,10 +5,10 @@ import type { NotreDameNow } from '../data/clock.ts';
 import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { findExternalRule, isNotreDameInstitution, normalizeUniversity, universityCreditSystem } from '../data/external.ts';
 import { CORE_TITLE_RE } from '../engine/core-title.ts';
-import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, mscseSeparation, ndUndergraduateCounting, overMaxTerms, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
+import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, longInterruptionReadmission, mscseSeparation, ndUndergraduateCounting, overMaxTerms, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
 import { ndPostingOf } from '../engine/nd-posting.ts';
 import { fullTimeRecordsFrom, summerFullTimeFloor } from '../engine/requirements/residency.ts';
-import { compareTerm, normalizeEntryTerm, semesterSeq } from '../engine/term.ts';
+import { compareTerm, normalizeEntryTerm, semesterSeq, startOfTerm } from '../engine/term.ts';
 import type { Rules } from '../data/types.ts';
 import { coursesNeedingDgsReviewFor, reviewRequestSummary, type PendingDgsReview } from '../engine/review.ts';
 import { shortName } from '../engine/short-names.ts';
@@ -3144,6 +3144,20 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // student who said they are in two programs at once.
     if (student.concurrentDegree === true || a.dualPlanApproved === true) {
       card.append(attestation('The Graduate School approved my dual-degree plan of study (DGS Handbook §2.9)', a.dualPlanApproved, (v, s) => (s.attestations.dualPlanApproved = v)));
+    }
+    // The DGS's answers that belong to no one course (policy review round 4;
+    // DGS 2026-10-11: option (a) of P4-ac-2 and P4-phd-5) — each shown only
+    // while it is the question, or once ticked: the examinations held before
+    // an interruption of five years or more (Academic Code §5.5), and an
+    // Oral Candidacy Exam whose coursework was short at the exam (§4.5).
+    const forfeitTerm = longInterruptionReadmission(student);
+    const examsHeld = forfeitTerm !== undefined && Object.values(student.milestones).some((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && d < startOfTerm(forfeitTerm).date);
+    if (examsHeld || a.examsBeforeInterruptionStand === true) {
+      card.append(attestation('The DGS and the Graduate School ruled that my examinations from before the interruption stand (Academic Code §5.5)', a.examsBeforeInterruptionStand, (v, s) => (s.attestations.examsBeforeInterruptionStand = v)));
+    }
+    const oce = report.requirements.find((r) => r.id === 'phd.candidacy');
+    if (student.program === 'phd' && (oce?.courseworkReview !== undefined || a.oceConfirmedByDgs === true)) {
+      card.append(attestation('The DGS confirmed my Oral Candidacy Exam (OCE) — the coursework short at the exam (§4.5)', a.oceConfirmedByDgs, (v, s) => (s.attestations.oceConfirmedByDgs = v)));
     }
     // §5.2 criterion 5 — the Graduate School's approval — recorded here once
     // the Grad Admin has processed the transfer (policy review 2026-10-03);
