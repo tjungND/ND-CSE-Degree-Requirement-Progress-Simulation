@@ -590,3 +590,14 @@ grade, or an in-progress term; a text layer reads as item 14 left it. On the sam
 the ladder, L7, the medium set and the pinned pages; the text-path replay unchanged (public 162 / 168, master's 48 /
 48, Notre Dame 7 / 7, PDFs 49 / 49). Reading the rule on text layers only would have removed the same three rows,
 but a scanned UCLA transcript would then lose its one-digit courses.
+
+Against yesterday's parser (`q4-after2-ladder/`, `q4-after2-l7/` → `now-vs-yesterday-*`), after that fix: L0–L6 0
+regressions and 1 improvement (the watermarked Banner page at L2, extra 1 → 0); L7 five regression lines, each one
+more extra row. Each is a real course whose code the scanner's own layer garbled with a digit look-alike — "CS
+5O00", "PHYS 1O1", "MAT 2Z2", "ECSE 2O3", "FAC 1O0" — which item 14's digit-letter-digit shape for McMaster's codes
+now reads, where yesterday's parser dropped the row. Each is flagged, as every row of a scanner's layer is, with its
+garbled title beside it; the scorer counts it extra because its code matches no expected row, and the expected row
+stays missing. A real course shown for the student to correct is kept over one silently dropped (DECISIONS
+2026-10-11). Reading such a code corrected, with the raw reading beside it as Batch C (4) does for credits and
+grades, is a question for the DGS. The fresh engine run of the whole ladder (`item13-ladder/`, 75.9 min) reproduces
+the saved lines' boards wherever the parser was the same.
