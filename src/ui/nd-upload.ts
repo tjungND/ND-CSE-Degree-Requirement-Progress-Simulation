@@ -6,6 +6,8 @@
 // Everything else — the record, the rules, the toasts, the render — arrives in
 // `NdUploadArgs` on every call, so this module never captures the reassignable
 // `student`.
+import { deciderContact } from './contacts.ts';
+import { readerProblemLink } from './external-upload.ts';
 import { APP_BUILD } from './build-info.ts';
 import { resolveRuleRow } from '../data/assemble.ts';
 import { findExternalRule } from '../data/external.ts';
@@ -50,6 +52,8 @@ export interface NdUploadArgs {
   /** Today at Notre Dame (YYYY-MM-DD): the date each imported row records
    * (`CourseEntry.imported`; DGS 2026-10-11, item 6). */
   todayIso?: string;
+  /** "Checked with: …" (src/ui/stamp.ts) for the reader-problem email (item 18). */
+  checkedWith?: string;
 }
 
 /** Parsed-transcript preview awaiting the student's confirmation. */
@@ -737,6 +741,9 @@ export function ndTranscriptPreviewBlock(args: NdUploadArgs): HTMLElement {
       ),
       el('button', { class: 'btn', 'data-key': 'preview.cancel', onclick: cancel }, 'Cancel'),
     ),
+    // "Did the reader get this transcript wrong?" (DGS 2026-10-11, item 18).
+    // The Notre Dame preview's rows cannot be edited, so it reports counts only.
+    ...readerProblemLink('preview.problem', () => ({ which: 'Notre Dame transcript', university: 'University of Notre Dame', readBy: 'the PDF’s text', rowsRead: tp.courses.length, rowsTicked: tp.selected.filter(Boolean).length, rowsTyped: 0, changed: [] }), args.checkedWith, deciderContact(args.student.program), false),
   );
   return box;
 }

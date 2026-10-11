@@ -9,6 +9,8 @@
 // rules say" block was removed as redundant, 2026-09-06); anything unruled is
 // picked up by app.ts's single "Ask the DGS to review" card (the page itself
 // transmits nothing — FERPA).
+import { deciderContact, type Contact } from './contacts.ts';
+import { transcriptProblemHref, type TranscriptProblem } from './report-problem.ts';
 import { APP_BUILD } from './build-info.ts';
 import { bachelorsPrefill, ocrReducedPagesNote, ocrTurnedNote, rowIsCompact, type OcrReducedPage } from '../transcript/preview-layout.ts';
 import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
@@ -327,6 +329,8 @@ export interface ExternalCardArgs {
   /** Today at Notre Dame (YYYY-MM-DD): the date each imported row records
    * (`CourseEntry.imported`; DGS 2026-10-11, item 6). */
   todayIso?: string;
+  /** "Checked with: …" (src/ui/stamp.ts) for the reader-problem email (item 18). */
+  checkedWith?: string;
 }
 
 /** The student is answering the earlier-degrees questions on the page: they
@@ -1883,8 +1887,48 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       ),
       el('button', { class: 'btn', 'data-key': 'ext.preview.cancel', onclick: () => { preview = undefined; releaseScanStrips(); withdrawScannerLayerOffer(); previewError = undefined; render(); } }, 'Cancel'),
     ),
+    // "Does this look wrong?" for the reader (DGS 2026-10-11, item 18): the
+    // message is built when clicked, so it carries the edits made so far.
+    ...readerProblemLink('ext.preview.problem', () => ({
+      which: DEGREE_SLOTS.find((sl) => sl.level === p.slot)?.label ?? 'Previous transcript',
+      university: p.university.trim(),
+      readBy: p.fromOcr ? (p.scannerLayer ? 'the scanner’s own text layer' : 'text recognition (OCR) of a scan') : 'the PDF’s text',
+      rowsRead: p.rows.filter((r) => !r.manual).length,
+      rowsTicked: p.rows.filter((r) => r.include).length,
+      rowsTyped: p.rows.filter((r) => r.manual).length,
+      changed: p.rows
+        .filter((r) => !r.manual && changedFields(r).length > 0)
+        .map((r) => ({ read: [r.read!.course, r.read!.title, String(r.read!.credits ?? ''), `${seasonName(r.read!.season)} ${r.read!.year ?? ''}`, r.read!.grade || '(none)'], fields: changedFields(r).map((f) => FIELD_WORDS[f]) })),
+    }), args.checkedWith, deciderContact(student.program)),
   );
   return box;
+}
+
+const FIELD_WORDS: Record<ImportedField, string> = { course: 'course number', title: 'title', credits: 'credits', term: 'term', grade: 'grade', level: 'level' };
+
+/** The preview's "Did the reader get this transcript wrong?" link — a mailto
+ * to the DGS (src/ui/report-problem.ts), its message built at the click.
+ * Shared with the Notre Dame preview. Nothing when the DGS's address in the
+ * rules sheet is unusable. */
+export function readerProblemLink(key: string, problem: () => TranscriptProblem, checkedWith: string | undefined, to: Contact, editable = true): HTMLElement[] {
+  if (transcriptProblemHref(problem(), checkedWith ?? '', to) === undefined) return [];
+  const a = el(
+    'a',
+    {
+      href: '#',
+      'data-key': key,
+      // Built when clicked: the rows may have been corrected since the render.
+      onclick: () => {
+        a.setAttribute('href', transcriptProblemHref(problem(), checkedWith ?? '', to) ?? '#');
+      },
+    },
+    editable ? 'tell the DGS' : 'Tell the DGS',
+  );
+  return [
+    editable
+      ? el('p', { class: 'hint reader-problem' }, 'Did the reader get this transcript wrong? Correct the rows above, then ', a, ' — the email names the university and the shape of each row you changed, never your courses or grades.')
+      : el('p', { class: 'hint reader-problem' }, 'Did the reader get this transcript wrong? ', a, ' — the email gives the counts of rows read and ticked, never your courses or grades.'),
+  ];
 }
 
 

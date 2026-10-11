@@ -132,6 +132,16 @@ export async function driveApp(s, baseUrl) {
   const reopened = await s.evalJs(`document.querySelector('details.req-more[data-key="${moreKey}"]')?.open === true`);
   console.log('  disclosure after an edit: still open =', reopened, '(opened:', moreKey + ')');
   if (reopened !== true) throw new Error('an opened card Details must survive the next edit: ' + moreKey);
+  // "Does this look wrong? Tell the DGS" (DGS 2026-10-11, item 18): last in
+  // every card's fold, a mailto naming the requirement and the stamp.
+  const problem = JSON.parse(await s.evalJs(`JSON.stringify({
+    href: document.querySelector('details.req-more[data-key="${moreKey}"] .req-problem a[href^="mailto:"]')?.getAttribute('href') ?? '',
+    links: document.querySelectorAll('.req .req-more .req-problem a[href^="mailto:"]').length,
+    cards: document.querySelectorAll('.req .req-more').length,
+  })`));
+  const problemBody = problem.href ? (new URL(problem.href).searchParams.get('body') ?? '') : '';
+  if (problem.links !== problem.cards || !/^Requirement: .+ — [a-z]+\.[A-Za-z.]+$/m.test(problemBody) || !/^The page shows: .+ \((met|unmet|in_progress|needs_dgs_review|cannot_evaluate|not_applicable)\b/m.test(problemBody) || !/^Checked with: course rules [0-9a-f]{8} /m.test(problemBody)) throw new Error('every card fold must end with the "Does this look wrong?" mailto, naming the requirement and the stamp: ' + JSON.stringify({ ...problem, problemBody }));
+  console.log(`  "Does this look wrong?": a mailto in each of ${problem.cards} card folds — ${problemBody.split('\n').find((l) => l.startsWith('Requirement:'))}`);
   await s.evalJs(`document.querySelector('.ft-terms input[type="checkbox"]')?.click()`); // put it back
   await s.waitFor(`document.querySelectorAll('.req').length > 5`);
   await s.evalJs(`document.querySelector('details.req-more[data-key="${moreKey}"] > summary')?.click()`); // and close it again
@@ -1010,6 +1020,7 @@ async function driveSimulation(s, baseUrl) {
       counts: !!tr?.querySelector('td.counts .mark-counts'),
       countsText: tr?.querySelector('td.counts')?.textContent ?? '',
       planNote: tr?.querySelector('td.counts .plan-note')?.textContent ?? null,
+      problemLinks: document.querySelectorAll('.req-problem').length,
       reviewed: !!document.querySelector('#dgs-review .cid'),
       reviewSentence: /In simulation mode nothing is sent: these are the courses this plan would put before the DGS/.test(document.querySelector('#dgs-review')?.textContent ?? ''),
       gradAdminSentence: /In simulation mode nothing is sent/.test(document.querySelector('#grad-admin')?.textContent ?? ''),
@@ -1027,6 +1038,7 @@ async function driveSimulation(s, baseUrl) {
   // says so and a fall plan says nothing.
   if (laterSeason === 'Spring' ? planned.planNote !== `Schedule: typically offered in fall; planned for ${later}.` : planned.planNote !== null) throw new Error(`a ${later} plan of CSE 60772 (typically offered in fall) — wrong schedule note: ` + JSON.stringify(planned.planNote));
   console.log('  schedule note on the planned CSE 60772:', JSON.stringify(planned.planNote));
+  if (planned.problemLinks !== 0) throw new Error('a plan sends nothing: no "Does this look wrong?" links in simulation mode, got ' + planned.problemLinks);
   if (planned.planNote) await s.shotElement('simulation-plan-note', 'table.courses tr:has(.plan-note)');
   if (!planned.reviewed || !planned.reviewSentence || !planned.gradAdminSentence || !planned.cardChips.every(Boolean)) throw new Error('the review and Grad Admin cards must keep their lists, say nothing is sent, and carry the chip: ' + JSON.stringify(planned));
   for (const [k, v] of Object.entries(planned.inert)) {

@@ -273,7 +273,10 @@ printout's header and of every email the page writes (since 2026-10-11):
 > Studies Handbook (Updated September 2026) · app version fe64bda of October 11, 2026.
 
 `3f9a2c1b` names the exact content of the rules sheet the student's page read; `fe64bda` names
-the code. Ask the student for their saved file ("Save to a file" — it holds the same line, the
+the code. Students can also report from the page itself: every result card's “Relevant Policies”
+ends with “Does this look wrong? Tell the DGS”, and each transcript preview with “Did the reader
+get this transcript wrong?” — both open the student's email app addressed to you, with that line
+filled in. Record each report in `docs/ACCURACY-LOG.md` (no names). Ask the student for their saved file ("Save to a file" — it holds the same line, the
 date it was checked and how every row read). With a working copy of the repository (Track B1),
 re-run it:
 

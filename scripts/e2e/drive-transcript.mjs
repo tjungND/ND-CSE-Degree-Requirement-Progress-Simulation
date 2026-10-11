@@ -123,6 +123,10 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   const againTicked = JSON.parse(await s.evalJs(`JSON.stringify([...document.querySelectorAll('.transcript-preview table tr')].slice(1).map(tr => tr.querySelector('.cell-check input')?.checked))`));
   const againNotes = await s.evalJs(`document.querySelector('.transcript-preview')?.textContent ?? ''`);
   if (againTicked.filter((on) => on === true).length !== 7 || /already entered|already on your record/i.test(againNotes)) throw new Error('re-importing the same transcript must offer the same rows again (the earlier import is replaced): ' + JSON.stringify(againTicked) + ' ' + againNotes.slice(0, 160));
+  // "Did the reader get this transcript wrong?" (DGS 2026-10-11, item 18): counts only for Notre Dame.
+  const ndProblem = await readerProblemBody(s, 'preview.problem');
+  if (!/^Transcript: Notre Dame transcript — University of Notre Dame\nRead from: the PDF’s text\nRows read: \d+; ticked to add: 7; changed by me: 0; typed by me: 0$/m.test(ndProblem)) throw new Error('the Notre Dame preview’s reader-problem email: ' + ndProblem);
+  console.log('  Notre Dame preview: "Did the reader get this transcript wrong?" —', ndProblem.split('\n').find((l) => l.startsWith('Rows read')));
   await s.evalJs(`document.querySelector('[data-key="preview.add"]').click()`);
   await s.waitFor(`!document.querySelector('.transcript-preview')`);
   const againToast = await s.evalJs(`[...document.querySelectorAll('.toast')].map(t => t.textContent).join(' | ')`);
@@ -755,6 +759,15 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     if (before.uni !== 'University of California' || before.chosen !== '') throw new Error('the system name alone must not pass as the university: ' + JSON.stringify(before));
     if (!/names only the University of California system/.test(before.note)) throw new Error('the campus hint must say why it is asked: ' + before.note);
     if (!before.options.includes('University of California, San Diego') || !before.options.includes('University of California, Berkeley')) throw new Error('the campus list is incomplete: ' + JSON.stringify(before.options));
+    // The reader-problem email (DGS 2026-10-11, item 18): after one corrected
+    // row (its "Taken as" level), it names the university and the shape of
+    // that row — never a course number or a grade in clear.
+    const ucIds = JSON.parse(await s.evalJs(`JSON.stringify([...document.querySelectorAll('[data-key^="ext.row."][data-key$=".id"]')].map((e) => e.value || e.textContent).filter(Boolean))`));
+    await s.evalJs(`(() => { const l = document.querySelector('select[data-key="ext.row.0.level"]'); l.value = l.value === 'graduate' ? 'undergraduate' : 'graduate'; l.dispatchEvent(new Event('change')); })()`);
+    const ucProblem = await readerProblemBody(s, 'ext.preview.problem');
+    if (!/^Transcript: Previous Master’s Transcript — University of California$/m.test(ucProblem) || !/^Rows read: \d+; ticked to add: \d+; changed by me: 1; typed by me: 0$/m.test(ucProblem) || !/^ {2}1\. [Aa9 |+-]+ — I changed: level$/m.test(ucProblem) || ucIds.length === 0 || ucIds.some((id) => ucProblem.includes(id))) throw new Error('the reader-problem email must name the university, the counts and the changed row’s shape, and no course in clear: ' + JSON.stringify({ ucIds, ucProblem }));
+    await s.evalJs(`(() => { const l = document.querySelector('select[data-key="ext.row.0.level"]'); l.value = l.value === 'graduate' ? 'undergraduate' : 'graduate'; l.dispatchEvent(new Event('change')); })()`); // put it back
+    console.log('  external preview: "Did the reader get this transcript wrong?" —', ucProblem.split('\n').find((l) => l.startsWith('Rows read')), '| shapes:', ucProblem.split('\n').filter((l) => /^ {2}\d+\. /.test(l)).join(' / ') || '(none)');
     await s.evalJs(`document.querySelector('[data-key="ext.preview.add"]').click()`);
     await s.waitFor(`/Choose the University of California campus/.test(document.querySelector('.external-card .import-error')?.textContent ?? '')`);
     console.log('  UC system transcript: campus required — Add refused with a reason');
@@ -1259,3 +1272,18 @@ async function checkUnreadablePdf(s) {
   console.log('  unreadable file: "could not be read" on both rows; W-CL425 on both when the browser cannot run the PDF reader');
 }
 
+/** The reader-problem link's email body (item 18): its message is built when
+ * it is clicked, so the click runs with the navigation prevented and the
+ * address read back. */
+async function readerProblemBody(s, key) {
+  const href = await s.evalJs(`(() => {
+    const a = document.querySelector('[data-key="${key}"]');
+    if (!a) return '';
+    const stop = (e) => e.preventDefault();
+    window.addEventListener('click', stop, { capture: true, once: true });
+    a.click();
+    return a.getAttribute('href') ?? '';
+  })()`);
+  if (!href.startsWith('mailto:')) throw new Error(`the preview must offer "Did the reader get this transcript wrong?" (${key}): ` + href);
+  return new URL(href).searchParams.get('body') ?? '';
+}

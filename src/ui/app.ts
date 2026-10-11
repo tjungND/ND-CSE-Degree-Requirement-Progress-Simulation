@@ -42,6 +42,7 @@ import { BETA_SCOPE_NOTICE, RULES_ACCURACY_NOTICE, betaNotice, handbookLink, rul
 import { checkedWithLine, resultStamp, savedStamp } from './stamp.ts';
 import { sourcesLine } from './provenance.ts';
 import { planNotes } from './plan-notes.ts';
+import { requirementProblemHref } from './report-problem.ts';
 import { DGS, GRAD_ADMIN, LICENSE_URL, REPO_URL, applyContactOverrides, contactCard, mailto, reportToDgs, deciderContact } from './contacts.ts';
 import { isEmbedded, openFullPageLink, placeInFrame } from './embed.ts';
 import { themeToggle } from './theme.ts';
@@ -717,7 +718,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             el('h2', { class: 'visually-hidden' }, 'Your report'),
             // The warnings live inside the report since 2026-09-27, folded
             // under the meters (report.ts).
-            renderReport(report, untouched, next),
+            // "Does this look wrong?" on every card (item 18), except in a plan.
+            renderReport(report, untouched, next, simulation ? {} : { problemHref: (r, pill) => requirementProblemHref(r, pill, checkedWithLine(stamp), deciderContact(student.program)) }),
             // The finish card that stood here (R7, 2026-09-18: Reset at the
             // end for a shared machine) repeated the storage card's sentence
             // and its Save button; the DGS removed it on 2026-09-22 — Reset
@@ -2106,7 +2108,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // In simulation mode every import is inactive with its reason (D6): a
     // transcript is real data; the mode holds a plan.
     const inSimulation = simulation !== undefined;
-    const ndArgs: NdUploadArgs = { student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, refusedValues, todayIso: realTodayIso };
+    const ndArgs: NdUploadArgs = { student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, refusedValues, todayIso: realTodayIso, checkedWith: checkedWithLine(stamp) };
     // "Start here" made prominent (DGS 2026-09-15): a filled badge in the
     // heading and a bold callout line above the hint — until a transcript is
     // on the record (UI review item 4; DGS 2026-10-08: option (b)): a prompt
@@ -2142,7 +2144,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       inSimulation ? el('p', { class: 'hint simulation-hint' }, 'In simulation mode the imports are off — a transcript is real data; exit the simulation to import it into your record.') : null,
       ndTranscriptUpload(ndArgs),
       ndPreviewOpen() ? ndTranscriptPreviewBlock(ndArgs) : null,
-      ...priorTranscriptSection({ student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, todayIso: realTodayIso }),
+      ...priorTranscriptSection({ student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, todayIso: realTodayIso, checkedWith: checkedWithLine(stamp) }),
     );
   }
 

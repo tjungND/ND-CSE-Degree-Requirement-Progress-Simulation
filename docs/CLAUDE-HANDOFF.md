@@ -2194,6 +2194,13 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   course-rules page means. `LAST_OFFERED_RECENT_SEMESTERS = 4`. The `clock-*` scenarios cross each
   deadline the day before and after; regenerate any of them only with the DGS's approval of the
   verdict list.
+- **Problem links** (2026-10-11, item 18): `src/ui/report-problem.ts` builds both mailtos (to
+  `deciderContact(program)` — the ADGS on the MSCSE tab, whose DOM rewrite turns “Tell the DGS”
+  into “Tell the ADGS”; undefined when `looksLikeEmail` fails). report.ts `renderReport(…, {
+  problemHref })` sets the card line (`.req-problem`); app.ts passes none in simulation mode. The previews
+  use external-upload.ts `readerProblemLink(key, problem, checkedWith, editable)`, whose href is
+  rebuilt in the click handler (the rows change without a re-render). `maskShape` is
+  diagnose-transcript.mjs's mask, Unicode-aware. Reports are logged in docs/ACCURACY-LOG.md.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

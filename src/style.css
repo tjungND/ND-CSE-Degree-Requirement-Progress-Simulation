@@ -632,6 +632,8 @@ details.policy-fold > .hint { margin-top: 2px; }
 .req .req-notes { margin: 4px 0 0; padding-left: 18px; color: var(--ink); }
 .req .req-notes li { margin: 2px 0; }
 .req .req-more .course-link { display: inline-block; margin: 4px 0 0; }
+/* "Does this look wrong? Tell the DGS" — last in the fold (DGS 2026-10-11, item 18). */
+.req .req-more .req-problem { margin: 6px 0 0; color: var(--muted); }
 .req .req-more .rule-quote { margin-top: 6px; }
 .rule-source { font-style: normal; font-weight: 600; }
 /* An uncommon case behind a selector (DGS 2026-10-03): one quiet line until opened. */

@@ -20,6 +20,10 @@ export interface NextInfo {
   nearest?: string;
 }
 let currentNext: NextInfo | undefined;
+/** The "Does this look wrong?" link's address for a card (DGS 2026-10-11,
+ * item 18; src/ui/report-problem.ts), set by renderReport; none in
+ * simulation mode, where nothing is sent from a plan. */
+let problemHrefOf: ((r: RequirementResult, pill: string) => string | undefined) | undefined;
 
 // Plain words in sentence case (usability review 2026-09-05, item 16): no
 // abbreviations — "N/A" became "Does not apply" — and the pill CSS no longer
@@ -423,6 +427,9 @@ function requirementCard(r: RequirementResult): HTMLElement {
     // qualifier passed under the earlier rules — DGS 2026-10-03): no empty
     // quotation marks.
     r.citation.quote !== '' ? el('p', { class: 'rule-quote' }, el('span', { class: 'rule-source' }, sourceName(r.citation.section)), `: “${r.citation.quote}”`) : null,
+    // "Does this look wrong?" (DGS 2026-10-11, item 18): a mailto to the DGS
+    // with the requirement, what the card shows and what it was checked with.
+    problemLine(r),
   );
   return el(
     'div',
@@ -436,6 +443,15 @@ function requirementCard(r: RequirementResult): HTMLElement {
     contribNode,
     more,
   );
+}
+
+/** The card's "Does this look wrong? Tell the DGS" line — "Tell the ADGS" on
+ * the MSCSE tab, by the page's own rewrite, and addressed to the ADGS there
+ * (app.ts passes deciderContact). */
+function problemLine(r: RequirementResult): HTMLElement | null {
+  const href = problemHrefOf?.(r, r.allowance ? (r.statusLabel ?? statusWord(r)) : statusWord(r));
+  if (!href) return null;
+  return el('p', { class: 'req-problem' }, 'Does this look wrong? ', el('a', { href, 'data-key': `problem.${r.id}` }, 'Tell the DGS'), ' — the email names this requirement and what the page shows, nothing else from your record.');
 }
 
 /** "Courses counted (4 · 12 credits)", plus the pending ones when there are
@@ -506,8 +522,9 @@ export function scoreLine(report: AuditReport): string {
   return `${met} of ${scored} met${conditional > 0 ? ` · ${conditional} conditionally met` : ''}`;
 }
 
-export function renderReport(report: AuditReport, untouched = false, next?: NextInfo): HTMLElement {
+export function renderReport(report: AuditReport, untouched = false, next?: NextInfo, opts: { problemHref?: (r: RequirementResult, pill: string) => string | undefined } = {}): HTMLElement {
   currentNext = next;
+  problemHrefOf = opts.problemHref;
   // "Your report", matching the column's own label in app.ts and the page's
   // second-person voice — not "Audit report", the one place a screen reader
   // was told this is the audit the page says three times it is not (trim
