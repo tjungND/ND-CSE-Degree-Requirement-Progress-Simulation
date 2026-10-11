@@ -388,6 +388,15 @@ outputs are git-ignored (`sanitized-*.pdf`, `sanitized-scan-*.png`, and the olde
 remain the judge of what leaves your computer. The tools preserve page rotation, so a landscape
 transcript sanitizes to a landscape copy the app reads the same way (2026-09-05).
 
+## Which reading errors matter
+
+`npm run audit-impact` (2026-10-11, DGS item 14) checks, for every document in the line-list
+corpora, the degree check twice — once with the transcript's true rows, once with the rows the
+reader read — and lists the documents whose misreads change a requirement's verdict or the
+transfer credit counted, most impact first; `-- --ocr <bench run>` adds a bench run's saved OCR
+reads, `-- --only <name>` prints every changed row. Fix in that order: a misread that moves no
+verdict still shows the student a wrong row, but it can wait behind one that changes the check.
+
 ## Measuring the Notre Dame import
 
 Since 2026-10-11 (DGS item 12) the Notre Dame transcript reader (`src/transcript/parse.ts`) has a

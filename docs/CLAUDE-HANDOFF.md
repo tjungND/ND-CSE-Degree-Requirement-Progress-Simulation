@@ -2214,6 +2214,13 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   labelled term line and TOTAL INSTITUTION only. nd-upload.ts stores `totalsCheck` on the preview;
   external-upload.ts computes `previewTotalsCheck(p)` at render from `allRows` (the same objects as
   the shown rows). Any new recorded shape needs the corpus guard to stay silent first.
+- **Reading fixes by impact** (2026-10-11, item 14): scripts/dev/audit-impact.mts (true vs read rows → two
+  audits; unmapped marks left out alike, `rawMarksOf`). external.ts: LEAD_CODE_RE's first branches
+  (McMaster, SNU) and last (a one-digit number alone in its cell, `(?=$)`); DIGIT_LED_CODE_RE's SNU
+  shapes; `inProgressByTermLine`; the winter-range rule in readTermLine; TR rows → transferRowsSkipped;
+  `numericFillsRest` with a term column; `fallWinterSession` + the [BGST] suffix; the semester-parity
+  rule; the Ladok module filter after CC15; `issuedDegree`; tokensOf strips Oregon's `>N` and P/N `*`;
+  the present-tense quarter-hours key. Every one was replayed against the corpora with zero regressions.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

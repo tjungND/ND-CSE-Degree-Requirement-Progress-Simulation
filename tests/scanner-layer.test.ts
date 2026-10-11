@@ -83,7 +83,9 @@ describe('on real PDFs', () => {
       const file = new URL(name, dir).pathname;
       const hasText = (await pdfToLinesNode(file)).some((l) => /\S/.test(l));
       const { everyPageScanned } = await pdfScanPagesNode(file);
-      if (name === 'external-transcript-scan.pdf') assert.deepEqual({ hasText, everyPageScanned }, { hasText: false, everyPageScanned: true }, name);
+      if (name === 'external-transcript-scan.pdf' || name === 'external-transcript-scan-clean.pdf') assert.deepEqual({ hasText, everyPageScanned }, { hasText: false, everyPageScanned: true }, name);
+      // The one fixture that IS a scan with its scanner's text (item 13, 2026-10-11 — the OCR bench's L7).
+      else if (name === 'scanner-layer-transcript.pdf') assert.deepEqual({ hasText, everyPageScanned }, { hasText: true, everyPageScanned: true }, name);
       else assert.equal(everyPageScanned && hasText, false, name);
     }
   });
@@ -115,10 +117,11 @@ describe('the parser reads a scanner\'s text OCR-grade', () => {
     assert.equal(text.length, 7);
     assert.deepEqual(ids(scanner), ids(text));
     assert.ok(scanner.every((c) => c.lowConfidence === true));
-    // SNU prints decimal course numbers ("4190.669"): all ten rows, as on the text path.
+    // SNU prints decimal course numbers ("4190.669"): all its rows — sixteen
+    // since item 14 read its "M1522.001000" codes too — as on the text path.
     const snu = JSON.parse(readFileSync(new URL('./fixtures/public-transcripts/snu-english-transcript.json', import.meta.url), 'utf8')) as string[];
     assert.deepEqual(ids(asScanner(snu)), ids(parseExternalTranscript(snu).courses));
-    assert.equal(asScanner(snu).length, 10);
+    assert.equal(asScanner(snu).length, 16);
   });
 
   it('our own engine\'s poorly read lines keep the guard (OCR plan step 2.5 (b)): the option is the scanner layer\'s alone', () => {

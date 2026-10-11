@@ -286,12 +286,17 @@ function seasonOf(text: string): Season | undefined {
   return FALL_RE.test(text) ? 'fall' : SPRING_RE.test(text) ? 'spring' : SUMMER_RE.test(text) ? 'summer' : undefined;
 }
 
-/** Whitespace-split tokens of a row's cells (joined at column gaps). */
+/** Whitespace-split tokens of a row's cells (joined at column gaps). A
+ * symbol printed "immediately following the grade" (Oregon's key, item 14,
+ * 2026-10-11) is no part of it: a group mark ">1" … ">5" ("B>1", "C+>3"),
+ * and the P/N-only star ("P*") — a star after any other letter (Cambridge's
+ * "A*") is kept. */
 const tokensOf = (parts: string[]): string[] =>
   parts
     .join('  ')
     .split(/\s+/)
-    .filter((t) => t !== '');
+    .filter((t) => t !== '')
+    .map((t) => t.replace(/^([A-F][+-]?|P|N)>[1-9]$/, '$1').replace(/^([PN])\*$/, '$1'));
 
 /** What one row's tokens yield (scanTokens): the title's words, then the
  * credits and the grade — or the printed grade token when it maps to none. */
@@ -347,7 +352,7 @@ function readLegend(lines: string[]): LegendHints {
     // "E 0.00" only where the E opens a legend entry — on a course row ("MATH
     // 1210   Calculus I   4.000   E   0.00") it is a grade and its points.
     if (/^(?:.{0,24}[\s,;|])?E\s*[=:–-]?\s*(?:\()?0\.0+\)?(?:\s|$)/.test(l) && !/^[A-Z]{2,10}\s+\d{2,5}\b/.test(l)) hints.eFails = true;
-    if (/(?:^|[\s,;|])N\s*[=:–-]?\s*(?:\()?\s*(?:not\s+satisfactory|no\s+credit|non-?credit|unsatisfactory)\b/i.test(l)) hints.nUnsatisfactory = true;
+    if (/(?:^|[\s,;|])N\s*[=:–-]?\s*(?:\()?\s*(?:not\s+satisfactory|no\s+credit|non-?credit|unsatisfactory|no\s+pass)\b/i.test(l)) hints.nUnsatisfactory = true; // "N No Pass" (Oregon, item 14)
     // "S 10", "S = 10", "S (10)", "S – Outstanding (10 points)".
     if (/(?:^|[\s,;|])S\s*(?:[=:–-]|\()?\s*(?:outstanding\s*\(?)?10\b/i.test(l)) hints.sIsTop = true;
     if (/(?:^|[\s,;|])NP\s*[=:–-]?\s*\(?\s*(?:no\s+grade\s*[-–:]?\s*pass|pass(?:ed|ing)?(?:\s*[,;)]|\s+without|\s*$))/i.test(l)) hints.npPasses = true;
@@ -1381,12 +1386,18 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   // be printed as a capital — "Use a 2019 edition" is prose); and Workday's
   // dash after the number, "CS 101 - Title", dropped from the tail so the
   // title's own words and numbers are read as on any other row.
+  // Item 14 (DGS 2026-10-11, in order of their effect on the degree check):
+  // Seoul National University's "4190.669" and "M1522.001000" (four digits,
+  // a dot, three; a letter, four digits, a dot, six — each needing a title,
+  // DIGIT_LED_CODE_RE), and McMaster's digit-letter-digit numbers, "COMPSCI
+  // 1MD3", "ENGINEER 1P13", "SFWRENG 4G06A/B" (a digit, one or two letters,
+  // one or two digits, an optional letter and "/B").
   const LEAD_CODE_RE =
-    /^((?:[A-Z]{2,10}|[A-Z]{2,4}\d[A-Z]{2,6})[- ]?\d{2,6}(?:\.\d{1,3})?[A-Z]{0,3}\d?|[A-Z]{2,10}-[A-Z]{1,2}[. ]\d{2,5}[A-Z]{0,3}|[A-Z]{2,10} [A-Z]{1,4} \d{2,5}[A-Z]{0,3}|[A-Z]{2,10}(?: [A-Z]{2,4})? [A-Z]{1,2}\d{2,5}(?:\.\d{1,2})?[A-Z]?|[A-Z]\d \d{3,4}|\d{2}-\d{3}|[A-Z]{2,4}\.\d{2,5}\.\d{1,3}[A-Z]{0,3}|[A-Z]{2}\d\.\d{3}|\d{1,2}\.(?:\d{3,4}|[A-Z]{1,3}\d{0,3})[A-Z]?|\d{4}-\d{4}|\d{3}-\d{4}-\d{2}[A-Z]?|[A-Z]\d[A-Z0-9]{3}[A-Z]|\d{2}[A-Z]{2,6}\d{2,4}[A-Z]{0,2}|\d{5,10}|\d{4})\b[.:]?\s*(?:[-–—]\s+)?(.*)$/;
+    /^([A-Z]{2,10} \d[A-Z]{1,2}\d{1,2}[A-Z]?(?:\/[A-Z])?|[A-Z]\d{4}\.\d{6}|\d{4}\.\d{3}|(?:[A-Z]{2,10}|[A-Z]{2,4}\d[A-Z]{2,6})[- ]?\d{2,6}(?:\.\d{1,3})?[A-Z]{0,3}\d?|[A-Z]{2,10}-[A-Z]{1,2}[. ]\d{2,5}[A-Z]{0,3}|[A-Z]{2,10} [A-Z]{1,4} \d{2,5}[A-Z]{0,3}|[A-Z]{2,10}(?: [A-Z]{2,4})? [A-Z]{1,2}\d{2,5}(?:\.\d{1,2})?[A-Z]?|[A-Z]\d \d{3,4}|\d{2}-\d{3}|[A-Z]{2,4}\.\d{2,5}\.\d{1,3}[A-Z]{0,3}|[A-Z]{2}\d\.\d{3}|\d{1,2}\.(?:\d{3,4}|[A-Z]{1,3}\d{0,3})[A-Z]?|\d{4}-\d{4}|\d{3}-\d{4}-\d{2}[A-Z]?|[A-Z]\d[A-Z0-9]{3}[A-Z]|\d{2}[A-Z]{2,6}\d{2,4}[A-Z]{0,2}|\d{5,10}|\d{4}|[A-Z]{2,10} \d[A-Z]{0,2}(?=$))\b[.:]?\s*(?:[-–—]\s+)?(.*)$/;
   /** Codes that are digits with a dot or dash, or a four-digit key: taken only
    * when a wordy title follows, so a totals line ("12.000   3.000") or a bare
    * year never starts a row. */
-  const DIGIT_LED_CODE_RE = /^(?:\d{1,2}\.|\d{4}$|\d{4}-\d{4}|\d{3}-\d{4}-\d{2}|[A-Z]\d[A-Z0-9]{3}[A-Z])/;
+  const DIGIT_LED_CODE_RE = /^(?:\d{1,2}\.|\d{4}$|\d{4}\.\d{3}$|[A-Z]\d{4}\.\d{6}$|\d{4}-\d{4}|\d{3}-\d{4}-\d{2}|[A-Z]\d[A-Z0-9]{3}[A-Z])/;
   // Codes are matched case-insensitively (2026-09-04 — some registrars print
   // "cs 5321"), so common words that would then look like codes are refused:
   // term headers and summary lines such as "Fall 2023  GPA 3.85" — and,
@@ -1794,7 +1805,17 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
         // Exactly as many tokens as numeric columns: "3.5   3.00" under
         // "Grade   Units" keeps its numeric grade.
         const numericAfter = post.slice(c + 1).filter((k) => k === 'credits' || k === 'attempted' || k === 'earned' || k === 'points' || k === 'ects' || k === 'mark' || k === 'workload' || k === 'stat').length;
-        const numericFillsRest = kind === 'grade' && t !== undefined && numericToken(t) && numericAfter > 0 && tail.length - i === numericAfter;
+        // …and so it is when a term column follows and the row's last token is
+        // its term (Colleague's "Grade   Credits   Term": an ungraded current
+        // row "Graduate Project   3.00   2026FA" put its credits in the grade
+        // — item 14, 2026-10-11).
+        const termAfter = post.slice(c + 1).filter((k) => k === 'term').length;
+        const numericFillsRest =
+          kind === 'grade' &&
+          t !== undefined &&
+          numericToken(t) &&
+          numericAfter > 0 &&
+          (tail.length - i === numericAfter || (termAfter > 0 && tail.length - i === numericAfter + termAfter && fits('term', tail[tail.length - 1]!)));
         // A letter token under a MARK column, with a grade column still to
         // come, is that column's (Toronto "0.50   SDF": the mark is blank).
         const gradeFollows = kind === 'mark' && t !== undefined && /^[A-Za-z]/.test(t) && post.slice(post.indexOf(kind) + 1).includes('grade');
@@ -2246,6 +2267,10 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   // print credits and no grade — they are in progress until the next term
   // header or section heading, as the Notre Dame parser reads its own.
   let inProgressBlock = false;
+  /** The block was opened by a term header's own "IN PROGRESS" (item 14). */
+  let inProgressByTermLine = false;
+  /** Under a FALL/WINTER session header, the year it starts (item 14). */
+  let fallWinterSession: number | undefined;
   const IN_PROGRESS_HEADING_RE = /^\s*(?:\*+\s*)?(?:courses?\s+in\s+progress|(?:work\s+)?in[- ]progress(?:\s+courses?)?)\b/i;
   const SECTION_HEADING_RE = /^\s*(?:\*+\s*)?(?:transcript\s+totals|total\s+institution|totals?\b|overall\b|cumulative\b|end\s+of\s+(?:transcript|record)|transfer\s+credit|degrees?\s+awarded|academic\s+standing)/i;
   let transferRowsSkipped = 0;
@@ -2373,6 +2398,19 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     const term: TermRead | undefined = lone ? { ...lone, explicit: true } : twoColumns || codelessRowShape(line) ? undefined : readTermLine(line);
     termLineHere = term !== undefined;
     if (termLineHere) termBlock += 1;
+    // A term header that says so itself — UCLA's "SPRING QUARTER 2024   IN
+    // PROGRESS" (item 14, 2026-10-11) — opens an in-progress block for its
+    // rows; the next term header without the words ends one opened this way
+    // (a "COURSES IN PROGRESS" section still ends only at a section heading).
+    if (term !== undefined) {
+      if (/\s{2,}in\s+progress\s*$/i.test(line)) {
+        inProgressBlock = true;
+        inProgressByTermLine = true;
+      } else if (inProgressByTermLine) {
+        inProgressBlock = false;
+        inProgressByTermLine = false;
+      }
+    }
     if (term) semesterColumns = undefined;
     if (term && !lone) {
       const alone = ACADEMIC_YEAR_ALONE_RE.exec(line.replace(/\s+/g, ' ').trim());
@@ -2391,6 +2429,9 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       // header's (2026-09-26 — BITS Pilani's fall rows inherited "Summer").
       currentSeason = term.season;
       headerSeasonExplicit = term.explicit === true;
+      // Western's "FALL/WINTER 2019-2020" session (item 14, 2026-10-11): its
+      // rows say their own term in the course number's suffix (below).
+      fallWinterSession = /\bfall\s*\/\s*winter\b/i.test(line) ? term.year : undefined;
       const suffix = LEVEL_SUFFIX_RE.exec(line.trim());
       if (suffix) blockLevel = levelWord(suffix[1]!);
     }
@@ -2504,6 +2545,21 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     const flat = parenYear === undefined ? outside : `${outside} ${parenYear}`.trim();
     // A course row never opens a term ("ENGL 2010   Intermediate Writing").
     if (leadCode(line.replace(/\s{2,}/g, '  ').trim())) return undefined;
+    // A "Winter" term dated by its own range (item 14, 2026-10-11): Workday's
+    // "2024-25 Winter Term 1 (09/03/2024-12/20/2024)" is UBC's Term 1, the
+    // FALL of 2024 — its dates say so, while "Winter" and "2024-25" read as
+    // the spring of 2025. A winter term starting August to December is that
+    // fall; one starting in December is the next year's spring (a December–
+    // March winter term, the review of F2); January to April, that spring.
+    // Day-first when the document is.
+    const winterRange = /\bwinter\b/i.test(outside) ? /(\d{1,2})[/.-](\d{1,2})[/.-]((?:19|20)\d{2})/.exec(joined.match(PAREN_DATES_RE)?.[0] ?? '') : null;
+    if (winterRange) {
+      const month = Number(dayFirstDocument ? winterRange[2] : winterRange[1]);
+      const year = Number(winterRange[3]);
+      if (month >= 8 && month <= 11) return { year, season: 'fall', explicit: true };
+      if (month === 12) return { year: year + 1, season: 'spring', explicit: true };
+      if (month >= 1 && month <= 4) return { year, season: 'spring', explicit: true };
+    }
     // Long lines are prose — unless bilingual (the Latin half before a
     // separator decides) or made only of term words, years and an ordinal.
     const latin = flat.split(/\s+[/|]\s+/)[0]!;
@@ -2611,6 +2667,13 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     }
     if (ordinal === undefined && range && /\b(academic\s+year|session|year)\b/i.test(flat)) return { year, season: 'fall' }; // a whole academic year (KU Leuven "Academic year 2022-2023"): it opens in the fall — not explicit, a dated row may override it
     if (ordinal !== undefined) {
+      // Semesters numbered through the whole program — Tribhuvan's "Semester:
+      // III" and "Semester: IV" under "Academic Year: 2081/082 B.S.
+      // (2024/2025 A.D.)" (item 14, 2026-10-11) — alternate: an odd one is
+      // its academic year's first (the fall), an even one its second (the
+      // spring). Only "semester" says so; a third TERM or trimester is still
+      // the year's summer.
+      if (range && ordinal >= 3 && /\bsem(?:ester)?\b/i.test(flat) && !/\btrimester\b/i.test(flat)) return ordinal % 2 === 1 ? { year, season: 'fall' } : { year: secondYear(range), season: 'spring' };
       if (range) return ordinal === 1 ? { year, season: 'fall' } : ordinal === 2 ? { year: secondYear(range), season: 'spring' } : { year: secondYear(range), season: 'summer' };
       // One calendar year, numbered terms: in calendar order — the first is
       // the spring, the last the fall, a middle one the summer (UNSW's three
@@ -2677,7 +2740,12 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // the status line under a bare degree name in the block (2026-09-20).
     const notConferred =
       NOT_CONFERRED_STATUS_RE.test(flat) || (degreeBlock > 0 && !CONFER_RE.test(flat) && NOT_CONFERRED_STATUS_RE.test(lines[lineIndex + 1] ?? ''));
-    const conferredHere = namesDegree && (saysConferred(flat) || degreeBlock > 0) && !NOT_YET_RE.test(flat) && !NOT_COMPLETE_RE.test(flat) && !notConferred;
+    // Ladok's degree certificate line (item 14, 2026-10-11): "Degree of
+    // Master of Science (120 credits) … Date of issue: 2025-06-27" — a degree
+    // ISSUED on that date. Only on a line that opens "Degree of" and dates the
+    // issue itself: a transcript's own "Date of Issue" header is no award.
+    const issuedDegree = /^degree\s+of\s+/i.test(flat) && /\bdate\s+of\s+issue\s*:?\s*\d{4}-\d{2}-\d{2}\b/i.test(flat);
+    const conferredHere = namesDegree && (saysConferred(flat) || degreeBlock > 0 || issuedDegree) && !NOT_YET_RE.test(flat) && !NOT_COMPLETE_RE.test(flat) && !notConferred;
     if (degreeBlock > 0 && !lead) degreeBlock -= 1;
     if (conferredHere && gradDegreeIn(flat)) blockConferredGrad = true;
     // Named, not necessarily conferred: "Degree Sought: Bachelor of Science"
@@ -3158,6 +3226,15 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // A candidate needs a code plus at least a credit value or a grade —
     // otherwise it is a header/footer line that happened to start with a code.
     if (into.credits === undefined && into.grade === undefined && into.rawGrade === undefined) return lineIndex;
+    // A row graded TR is credit transferred in from another school (item 14,
+    // 2026-10-11): Colleague prints such rows among the student's own, under
+    // no transfer heading ("MATH-1200   Calculus I   TR   4.00   2021FA").
+    // Left out like a transfer block's rows — the course belongs on its own
+    // school's transcript — and counted in the note that says so.
+    if ((into.rawGrade ?? into.gradeText ?? '').toUpperCase() === 'TR' && into.grade === undefined) {
+      transferRowsSkipped += 1;
+      return lineIndex;
+    }
     // A row printed without its title, or with an unreadable one (a bilingual
     // transcript's non-Latin title), takes the plain wordy line just above
     // and/or the one after the row (after a consumed continuation line).
@@ -3211,8 +3288,17 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       credits: into.credits,
       grade: into.grade,
       rawGrade: into.rawGrade,
-      year: cellTerm?.year ?? (rowYear ? Number(rowYear[1]) : currentYear),
-      season: cellTerm?.season ?? (rowYear ? (seasonOf(yearLine) ?? currentSeason) : currentSeason),
+      // Inside a FALL/WINTER session a course number's suffix names its term
+      // (Western's calendar, item 14, 2026-10-11): B, G, S and T are the second
+      // term — the winter, read as the spring of the session's second year —
+      // while A, F, Q, R (the first term) and E, Y, Z (the whole year) keep the
+      // session's fall.
+      ...(cellTerm === undefined && !rowYear && fallWinterSession !== undefined && /\d[BGST]$/.test(lead.code)
+        ? { year: fallWinterSession + 1, season: 'spring' as const }
+        : {
+            year: cellTerm?.year ?? (rowYear ? Number(rowYear[1]) : currentYear),
+            season: cellTerm?.season ?? (rowYear ? (seasonOf(yearLine) ?? currentSeason) : currentSeason),
+          }),
       // A corrected cell keeps the row flagged (Batch C answer (4)).
       lowConfidence: (confidence !== undefined && confidence < OCR_CONFIDENCE_FLOOR) || oddCredits || ocrRead !== undefined ? true : undefined,
       ...(ocrRead !== undefined ? { ocrRead } : {}),
@@ -3275,6 +3361,25 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       }
     }
   } else transferRowsSkipped += codelessSkipped;
+  // Ladok's module lines (item 14, 2026-10-11): under a course, its parts
+  // print with a four-digit module code ("EDAN70   Project in Computer
+  // Science   7.5 hp   G" and then "0107   Project report   4.5 hp   G").
+  // In a document whose course codes lead with letters, a row whose whole
+  // code is four digits is such a part, never a course of its own (UNAM's
+  // all-numeric "0001" codes are a document of numeric codes, untouched).
+  const letterLed = courses.filter((c) => /^[A-Z]/.test(c.courseId)).length;
+  if (courses.length >= 5 && letterLed / courses.length >= 0.8) {
+    const moduleCode = (i: number): boolean => /^\d{4}$/.test(courses[i]!.courseId);
+    for (let i = courses.length - 1; i >= 0; i--) {
+      let above = i - 1;
+      while (above >= 0 && moduleCode(above)) above -= 1; // a course's modules print one after another
+      if (moduleCode(i) && above >= 0 && /^[A-Z]/.test(courses[above]!.courseId)) {
+        courses.splice(i, 1);
+        rowLevels.splice(i, 1);
+        rowBlocks.splice(i, 1);
+      }
+    }
+  }
   // Per-row level (2026-09-05): the row's or block's own marker first; else,
   // with a dated bachelor's conferral, the row's term against that date; else
   // the closing totals line's level.
@@ -3371,7 +3476,11 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     lines.slice(0, legendStart).some((l) => /\b(quarter|qtr)\s+(units?|hours?|hrs?|credits?)\b/i.test(l) && l.replace(/\s{2,}/g, ' ').trim().length < 60 && !/\b(is|are|was|were|show|shown|prior|converted|conversion|equal|equals)\b/i.test(l)) ||
     autumnWinterSpring ||
     wpiTerms.size >= 2 ||
-    termGpaLabel(/\b(?:quarter|qtr)/i)
+    termGpaLabel(/\b(?:quarter|qtr)/i) ||
+    // A key that says this record's credits ARE quarter hours — Oregon's
+    // "Undergraduate and graduate credits are recorded in quarter hours"
+    // (item 14, 2026-10-11) — in the present tense, never "prior …".
+    lines.some((l) => /\bcredits?\s+(?:are|is)\s+(?:recorded|given|reported|expressed)\s+in\s+quarter\s+(?:hours|units|credits)\b/i.test(l) && !/\b(prior|before|until|converted|conversion)\b/i.test(l))
       ? (true as const)
       : undefined;
   const trimesterSystem =

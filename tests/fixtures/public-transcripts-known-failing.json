@@ -2,34 +2,8 @@
  "sjtu-lifelong-template": [
   "CC16 read since Batch C (2026-10-09): both halves of every side-by-side row are read, each under its column\u2019s semester, and a one-group line\u2019s term is left blank (its column cannot be told from the text). Still open: \u20182001 Academic Year\u2019 with \u20181st Semester   2nd Semester\u2019 is a single-year academic year whose first semester is the fall in China and the spring in Korea or Japan \u2014 only a country calendar places it, and the template prints no country (\u2018SHANGHAI\u2019 in the university\u2019s name only): 14 rows read with a blank term, want fall/spring"
  ],
- "workday-student-ubc": [
-  "F2 (Batch B) \u2014 the Workday period header '2024-25 Winter Term 1 (09/03/2024-12/20/2024)' reads as spring of the range's END year although its dates (and UBC's Term 1) say fall: rows 1-5 read spring 2025, want fall 2024 (ten rows in all)"
- ],
- "colleague-lesley-style": [
-  "F5 (Batch B) \u2014 Colleague's transfer rows (grade TR, no 'Transfer Credit' heading before them) read as course rows: 'MATH 1200 | Calculus I | 4 | TR' and 'CSCIE 1100 | Introduction to Computer Science | 3 | TR' are read ahead of the 23 expected rows (25 read)",
-  "F1c (Batch B) \u2014 an ungraded current-term row 'ECOMP-6900 01 Graduate Project   3.00   2026FA' under the header-mapped Grade / Credits / Term reads credits ? and grade 3.00 (want 3 and ?)"
- ],
- "uoregon-banner-quarter": [
-  "new (Batch B): UO's group and P/N-only symbols glued to the grade ('immediately following the grade', the key says) leave it unread or raw \u2014 'B>1' and 'C+>3' read ?, 'P*' stays raw (want S), 'N' stays raw (want U: the key tail's 'N No Pass' does not set the legend's N-means-fail hint, whose regex wants 'not satisfactory', 'no credit' or 'unsatisfactory')",
-  "new (Batch B): 'credits are recorded in quarter hours' on the key page does not set quarterSystem (the rule reads only term headers and credits headings; the term lines never say 'Quarter')"
- ],
- "ucla-etranscript": [
-  "F3 (Batch B) \u2014 a one-digit course number is not read as a code: 'PHYSICS 1A' and 'ENGCOMP 3' yield no row (31 rows read of 33; 'ENGCOMP 30' reads)",
-  "F1 (Batch B) \u2014 a term header ending in 'IN PROGRESS' ('SPRING QUARTER 2024   IN PROGRESS') does not open an in-progress block: its rows read grade ? instead of IP"
- ],
  "mcmaster-mosaic": [
-  "F3 (Batch B) \u2014 McMaster's digit-letter-digit course numbers ('COMPSCI 1MD3', 'SFWRENG 4G06A/B', 'COMPSCI 6F03') are not codes to leadCode: 27 of the 31 rows yield no row at all (only the CAS 701 / 790 / 791 rows read)"
- ],
- "western-ontario-rows": [
-  "new (Batch B): Western's course-number suffix letter decides the term inside a FALL/WINTER session (A / Q / R / F = first term = fall, B = second term = spring) and nothing in readTermLine reads a row's suffix: the nine B-suffix rows read the session's fall ('MATH 1600B | Linear Algebra I | 0.5 | 71 | fall 2019', want spring 2020); the other 25 rows exact"
- ],
- "ladok-verifiable": [
-  "new (Batch B): Ladok's module lines \u2014 a 4-digit module code under its course ('0107   Project report   4.5 hp   G', '0207   Oral presentation   3.0 hp   G') \u2014 read as course rows (18 rows read, 16 expected)",
-  "new (Batch B): the Degrees block's 'Degree of Master of Science (120 credits) \u2026   Date of issue:   2025-06-27' is a conferral CONFER_RE does not read ('Date of issue' is not an award word): degreeConferred null, want true"
- ],
- "snu-english-transcript": [
-  "F3 (Batch B) \u2014 SNU's dotted course numbers are not read as codes: '4190.669' reads id '4190' (the '.669' dropped) and the six 'M1522.001000' rows are lost entirely (10 rows read of 16)",
-  "F1c (Batch B) \u2014 a title ending in a digit loses it to the credits: '4190.701   Research in Computer Science 2   3   U' reads credits 2 \u2014 the F6 header mapping (the Classification column is a course-type cell since 2026-10-09) reads such a row right once the F3 code shape lands; re-check then"
+  "F3 fixed (item 14, 2026-10-11): the digit-letter-digit numbers read \u2014 31 of 31 rows found. Still open: MOSAIC's term column (1, 2, 3 = fall, winter, summer of the session) \u2014 a repeated course's row ('SFWRENG 2FA3 \u2026 3   3   B   C+ (62)   (R)', want summer 2021) and 'MUSIC 2MT3   Music Theory I   2   3   C' (the '2' read into the title, want spring 2023) take the session's fall"
  ],
  "sabanci-dual-credit": [
   "open question (g) \u2014 the legend-defined P (Progressing) on 'CS 593   Master Thesis' must read IP, not the pass S a bare P means, once the header maps"
@@ -41,9 +15,6 @@
  "algeria-lmd-releve": [
   "CC15 \u2014 DGS decision: the 16 mati\u00e8re rows are code-less and are imported with an empty id box (0 rows read today; the UE lines' 'UEF 1.1' codes open no false row)",
   "new (Batch B): French LMD headings 'Note / Cr\u00e9dits / session', decimal-comma marks ('14,50', '09,75'), 'Semestre I' / 'Semestre II' under 'Ann\u00e9e Universitaire : 2022/2023', and the UE line carrying its first mati\u00e8re"
- ],
- "nepal-tribhuvan-ioe-semester": [
-  "F2 (Batch B) \u2014 'Semester: III' / 'Semester: IV' under 'Academic Year: 2081/082 B.S. (2024/2025 A.D.)' read as the range's summer (the three-terms-in-one-year rule: an ordinal above 2 under an academic-year range), while continuously numbered semesters run odd = first (fall 2024) and even = second (spring 2025) term of their academic year \u2014 ten rows"
  ],
  "cairo": [
   "Batch C review (2026-10-10): the transcript prints its bachelor's 'Date of Graduation' (2022-07-15) 19 lines below the degree name \u2014 beyond the adjacent-line rule \u2014 so the parser reads no conferral date and therefore no undergraduate level; the expectation keeps the printed truth"
