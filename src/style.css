@@ -787,6 +787,8 @@ ul.req-detail.detail-list li.check > .mark { position: absolute; left: -1.3em; t
 /* What the results were checked with (DGS 2026-10-11, item 8): one small line,
    last in the footer; the fingerprint and commit wrap like words. */
 .legal-stamp { margin: 10px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+/* Simulation mode: the course rules' word on a planned course (DGS 2026-10-11, item 19). */
+.plan-note { margin-top: 4px; color: var(--warn-ink); font-size: 13px; }
 /* the rules-spreadsheet line under the dated line (both mastheads) */
 .masthead .effective.sheet-source { margin-top: 4px; }
 

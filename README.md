@@ -675,6 +675,13 @@ to be in. If a stored plan ever fails to show (a page that cannot draw it), the 
 discard the simulation alone and show the record — the record is never cleared to recover from a
 plan.
 
+A planned Notre Dame course carries a **Schedule** line when the Courses tab says it may not run
+then (since 2026-10-11): retired (`active` = no), last offered more than two academic years ago
+(`last_offered`), explicitly not on next semester's schedule (`offered_next` = no, dated as the
+course-rules page dates it), or outside its usual season (`typically_offered` fall / spring /
+both). These are the sheet's own facts, so keep those columns current; a blank cell says nothing,
+and no note changes a requirement.
+
 ## Where things live
 
 `src/engine/` — rule engine, one pure function per requirement with the handbook sentence quoted

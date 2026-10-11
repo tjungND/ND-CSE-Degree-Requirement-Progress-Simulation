@@ -42,7 +42,10 @@ listed as "new scenario (N rows)" until the copy is rewritten.
 The `life-*.json` scenarios are whole degrees, entry to the end (MSCSE project, thesis and 4+1;
 Ph.D. straight through, with a master's elsewhere, after a Notre Dame MSCSE, with a semester of
 medical leave, and mid-degree with the MSCSE along the way). Every row of each is pinned in its
-own `expect` as well, and the DGS confirms each end state.
+own `expect` as well, and the DGS confirms each end state. The `clock-*.json` pairs cross each
+deadline — the qualifier's four semesters, the research qualifier's eighteen months, the
+eighth-semester candidacy, the 5- and 8-year limits — the day before (due soon) and the day after
+(overdue), every row pinned too.
 
 On a failure the runner prints the row's full detail next to the substring it expected, so a
 pin can be shortened to the clause that distinguishes the row.

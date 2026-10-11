@@ -1,0 +1,184 @@
+{
+  "name": "clock-ms-5-year-limit-before",
+  "description": "MSCSE, entered Fall 2024, the project report never accepted: the five-year limit (CSE §3.3), Fall 2029 — the day BEFORE the clock runs out (2029-07-01): the row is open and due, not overdue. Pinned in full (DGS 2026-10-11, item 19: scenarios whose today crosses each clock).",
+  "today": "2029-07-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "msOption": "project",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "none"
+    },
+    "gpa": 3.6,
+    "milestones": {
+      "advisorIdentified": "2024-09-15",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes"
+    },
+    "attestations": {
+      "advisorApprovedPlan": true
+    },
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B+",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "B",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ]
+  },
+  "expect": {
+    "shared.gpa": {
+      "status": "met"
+    },
+    "shared.advisor": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "ms.credits.total": {
+      "status": "met"
+    },
+    "ms.credits.regular": {
+      "status": "met"
+    },
+    "ms.credits.project": {
+      "status": "met"
+    },
+    "ms.transfer": {
+      "status": "not_applicable"
+    },
+    "ms.cap.fourk": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "ms.cap.noncse": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "ms.residency": {
+      "status": "met"
+    },
+    "ms.project.report": {
+      "status": "unmet"
+    },
+    "shared.msCandidacy": {
+      "status": "unmet"
+    },
+    "ms.timeLimit": {
+      "status": "in_progress",
+      "deadlineState": "due_soon",
+      "deadlineLabelIncludes": "Due before Fall 2029 — 5 years after entry (approximate)"
+    },
+    "shared.approvals": {
+      "status": "not_applicable"
+    }
+  },
+  "expectReviewEmpty": true
+}

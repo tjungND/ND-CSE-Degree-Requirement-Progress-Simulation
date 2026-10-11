@@ -1,0 +1,328 @@
+{
+  "name": "clock-phd-8-year-limit-after",
+  "description": "Ph.D., entered Fall 2021, no defense: the eight-year limit (Academic Code §6.2.6; CSE §4.3), Fall 2029 — just AFTER the clock ran out (2029-09-01): the row reads overdue. Pinned in full (DGS 2026-10-11, item 19).",
+  "today": "2029-09-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2021
+    },
+    "priorMs": "none",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2021
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "none"
+    },
+    "gpa": 3.7,
+    "milestones": {
+      "advisorIdentified": "2021-10-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "researchQualifierPassed": "2022-12-01",
+      "qualifierFormFiled": "2023-01-15",
+      "rcrTrainingCompleted": "2022-09-15",
+      "candidacyPassed": "2023-11-15",
+      "candidacyAdmitted": "2023-12-01"
+    },
+    "attestations": {
+      "advisorApprovedPlan": true
+    },
+    "courses": [
+      {
+        "courseId": "CSE 63801",
+        "credits": 1,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 63802",
+        "credits": 1,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2022
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ]
+  },
+  "expect": {
+    "shared.gpa": {
+      "status": "met"
+    },
+    "shared.advisor": {
+      "status": "met"
+    },
+    "phd.credits.total": {
+      "status": "met"
+    },
+    "phd.credits.regular": {
+      "status": "met"
+    },
+    "phd.seminar": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.cap.fourk": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "phd.cap.noncse": {
+      "status": "not_applicable",
+      "statusLabel": "Not used yet"
+    },
+    "phd.credits.nd": {
+      "status": "met"
+    },
+    "phd.transfer": {
+      "status": "not_applicable"
+    },
+    "phd.residency": {
+      "status": "met"
+    },
+    "phd.qualifier": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.qualifier.core.os": {
+      "status": "met"
+    },
+    "phd.qualifier.core.algorithms": {
+      "status": "met"
+    },
+    "phd.qualifier.core.architecture": {
+      "status": "met"
+    },
+    "phd.qualifier.categories": {
+      "status": "met"
+    },
+    "phd.qualifier.research": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.rcr": {
+      "status": "met"
+    },
+    "phd.candidacy": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.candidacyAdmission": {
+      "status": "met",
+      "deadlineState": "done"
+    },
+    "phd.dissertation.defense": {
+      "status": "unmet"
+    },
+    "phd.dissertation.submitted": {
+      "status": "unmet"
+    },
+    "phd.msAlongTheWay": {
+      "status": "met"
+    },
+    "shared.msCandidacy": {
+      "status": "unmet"
+    },
+    "phd.timeLimit": {
+      "status": "unmet",
+      "deadlineState": "overdue",
+      "deadlineLabelIncludes": "Overdue — the 8-year limit passed at the start of Fall 2029"
+    },
+    "shared.approvals": {
+      "status": "not_applicable"
+    }
+  },
+  "expectReviewEmpty": true
+}

@@ -2188,6 +2188,12 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   course table is one row per REGISTRATION (`StandingTable.courseEntries`, the k-th listing of an
   id = the k-th definite, non-superseded classified entry). `betaNotice(program)` adds
   `ALONG_THE_WAY_NOTICE` on the Ph.D. tab; BETA_NOTICE itself is the DGS's wording — never edit it.
+- **Plan notes** (2026-10-11, item 19): `src/ui/plan-notes.ts` `planNotes(c, rules, realTerm)` — Notre Dame
+  courses in a semester after the REAL current one, only in simulation mode (app.ts course cell,
+  `.plan-note`). `offered_next` goes through schedule-terms.ts `rowSchedule` so it means what the
+  course-rules page means. `LAST_OFFERED_RECENT_SEMESTERS = 4`. The `clock-*` scenarios cross each
+  deadline the day before and after; regenerate any of them only with the DGS's approval of the
+  verdict list.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

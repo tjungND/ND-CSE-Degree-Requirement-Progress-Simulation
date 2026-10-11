@@ -1009,6 +1009,7 @@ async function driveSimulation(s, baseUrl) {
       row: sim && sim.student.courses.find((c) => c.courseId === 'CSE 60772'),
       counts: !!tr?.querySelector('td.counts .mark-counts'),
       countsText: tr?.querySelector('td.counts')?.textContent ?? '',
+      planNote: tr?.querySelector('td.counts .plan-note')?.textContent ?? null,
       reviewed: !!document.querySelector('#dgs-review .cid'),
       reviewSentence: /In simulation mode nothing is sent: these are the courses this plan would put before the DGS/.test(document.querySelector('#dgs-review')?.textContent ?? ''),
       gradAdminSentence: /In simulation mode nothing is sent/.test(document.querySelector('#grad-admin')?.textContent ?? ''),
@@ -1021,6 +1022,12 @@ async function driveSimulation(s, baseUrl) {
   console.log('  planned:', JSON.stringify({ ...planned, real: planned.real === realBefore ? 'unchanged' : 'CHANGED' }));
   if (!planned.row || planned.row.grade !== 'A' || planned.row.term.season !== laterSeason.toLowerCase() || planned.row.term.year !== Number(laterYear)) throw new Error('the planned course must be in the simulation key with its semester and grade: ' + JSON.stringify(planned.row));
   if (!planned.counts) throw new Error('a course planned with the grade expected must count: ' + JSON.stringify(planned.countsText));
+  // The course rules' word on a planned course (DGS 2026-10-11, item 19): the
+  // live sheet has CSE 60772 typically offered in the fall, so a spring plan
+  // says so and a fall plan says nothing.
+  if (laterSeason === 'Spring' ? planned.planNote !== `Schedule: typically offered in fall; planned for ${later}.` : planned.planNote !== null) throw new Error(`a ${later} plan of CSE 60772 (typically offered in fall) — wrong schedule note: ` + JSON.stringify(planned.planNote));
+  console.log('  schedule note on the planned CSE 60772:', JSON.stringify(planned.planNote));
+  if (planned.planNote) await s.shotElement('simulation-plan-note', 'table.courses tr:has(.plan-note)');
   if (!planned.reviewed || !planned.reviewSentence || !planned.gradAdminSentence || !planned.cardChips.every(Boolean)) throw new Error('the review and Grad Admin cards must keep their lists, say nothing is sent, and carry the chip: ' + JSON.stringify(planned));
   for (const [k, v] of Object.entries(planned.inert)) {
     if (v === 'absent' || v.disabled !== 'true' || !/^Not available in simulation mode — nothing is sent from a plan\./.test(v.reason)) throw new Error(`${k} must be inactive in the mode with the sending reason, got ${JSON.stringify(v)}`);
@@ -1190,13 +1197,14 @@ async function driveSimulation(s, baseUrl) {
     marked: document.documentElement.classList.contains('simulation'),
     title: document.title,
     chips: document.querySelectorAll('.chip-simulation').length,
+    planNotes: document.querySelectorAll('.plan-note').length,
     focused: document.activeElement?.dataset?.key ?? '',
     status: document.querySelector('.visually-hidden[role="status"]')?.textContent ?? '',
     sendActive: document.querySelector('[data-key="save.copy"]')?.getAttribute('aria-disabled') ?? 'none',
     wayIn: !!document.querySelector('[data-key="tools.simulate"]') && !!document.querySelector('[data-key="coursework.simulate"]'),
   })`));
   console.log('  exited:', JSON.stringify({ ...exited, real: exited.real === realBefore ? 'unchanged' : 'CHANGED' }));
-  if (exited.sim !== null || exited.planned || exited.marked || exited.chips !== 0 || !exited.wayIn) throw new Error('Exit must drop the plan and unmark the page: ' + JSON.stringify(exited));
+  if (exited.sim !== null || exited.planned || exited.marked || exited.chips !== 0 || exited.planNotes !== 0 || !exited.wayIn) throw new Error('Exit must drop the plan and unmark the page: ' + JSON.stringify(exited));
   if (exited.courses !== outside.courses || exited.title !== outside.title) throw new Error('Exit must bring back the record’s courses and the tab title: ' + JSON.stringify([exited.courses, outside.courses, exited.title, outside.title]));
   if (exited.real !== realBefore) throw new Error('the real record must come back byte-identical to what it was before the simulation');
   if (exited.focused !== 'tools.simulate') throw new Error('Exit must return focus to the way in, not ' + exited.focused);

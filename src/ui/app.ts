@@ -41,6 +41,7 @@ import { siblingAnchorAttrs } from './sibling-links.ts';
 import { BETA_SCOPE_NOTICE, RULES_ACCURACY_NOTICE, betaNotice, handbookLink, rulesDateLine } from './handbook.ts';
 import { checkedWithLine, resultStamp, savedStamp } from './stamp.ts';
 import { sourcesLine } from './provenance.ts';
+import { planNotes } from './plan-notes.ts';
 import { DGS, GRAD_ADMIN, LICENSE_URL, REPO_URL, applyContactOverrides, contactCard, mailto, reportToDgs, deciderContact } from './contacts.ts';
 import { isEmbedded, openFullPageLink, placeInFrame } from './embed.ts';
 import { themeToggle } from './theme.ts';
@@ -2548,6 +2549,13 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           list.append(el('a', { class: 'req-link', href: `#${reqAnchorId(r.id)}`, title: r.long }, r.title));
         });
         countsCell.append(list);
+      }
+      // Simulation mode: what the course rules say about running a planned
+      // course (DGS 2026-10-11, item 19) — retired, last offered long ago,
+      // off next semester's schedule, or outside its usual season.
+      if (simulation) {
+        const notes = planNotes(c, rules, termOfDate(realTodayIso));
+        if (notes.length > 0) countsCell.append(el('div', { class: 'plan-note' }, el('span', { class: 'line-label' }, 'Schedule: '), `${notes.join('; ')}.`));
       }
       // The DGS's case-by-case approval, recorded on the course it concerns
       // (DGS 2026-09-27): only a course the sheet marks dgs_approval /
