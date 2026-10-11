@@ -1,6 +1,7 @@
 // Student state: localStorage autosave plus explicit save-to-file / load-file
 // (DGS-requested, 2026-08-31) so a student can move between devices/browsers.
 // Nothing ever leaves the browser (CLAUDE.md).
+import type { SavedStamp } from './stamp.ts';
 import { COURSE_CREDITS_RANGE, GPA_RANGE, inRange, rangeRefusal } from '../engine/ranges.ts';
 import type { Season, Student, Term } from '../engine/types.ts';
 import { asksAlsoElsewhere, refileEarlyStartCourses, settleAnsweredPriorMs } from './prior-nd.ts';
@@ -512,8 +513,11 @@ export function clearLocal(): void {
   }
 }
 
-export function exportFile(student: Student): void {
-  downloadJson(selfCheckFileName(student.program), { savedAt: new Date().toISOString(), student });
+/** The record's file: when it was saved, what it was checked with and how
+ * every row read then (the stamp — DGS 2026-10-11, item 8; `npm run
+ * reproduce` re-runs it), and the record. Loading reads `student` alone. */
+export function exportFile(student: Student, stamp?: SavedStamp): void {
+  downloadJson(selfCheckFileName(student.program), { savedAt: new Date().toISOString(), ...(stamp ? { stamp } : {}), student });
 }
 
 /** Hand the browser a JSON file to save — the record's (exportFile) or, in

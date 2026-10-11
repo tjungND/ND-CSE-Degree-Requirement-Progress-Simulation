@@ -17,6 +17,7 @@
 //
 // Everything in this file is DOM-free except the three localStorage calls
 // (mirroring state.ts), so tests/simulation.test.ts can cover the rest.
+import type { SavedStamp } from './stamp.ts';
 import { compareTerm, nthSemester, parseTermCode, startOfTerm, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
 import type { Season, Student, Term } from '../engine/types.ts';
 import { plural } from './email-html.ts';
@@ -107,11 +108,13 @@ export function simulationFileName(program: Student['program'], term: Term): str
  * reopen it in the mode; an older build, which knows neither key, reads the
  * `student` inside as an ordinary record (state.ts validateStudent accepts
  * the { savedAt, student } wrapper and ignores the rest). */
-export function simulationFilePayload(student: Student, term: Term, savedAt: string): { note: string; simulation: { term: Term }; savedAt: string; student: Student } {
+export function simulationFilePayload(student: Student, term: Term, savedAt: string, stamp?: SavedStamp): { note: string; simulation: { term: Term }; savedAt: string; stamp?: SavedStamp; student: Student } {
   return {
     note: `SIMULATION of ${termLabel(term)} — a planning copy, not this student's record`,
     simulation: { term },
     savedAt,
+    // What the plan was checked with (item 8, 2026-10-11), as in the record's file.
+    ...(stamp ? { stamp } : {}),
     student,
   };
 }

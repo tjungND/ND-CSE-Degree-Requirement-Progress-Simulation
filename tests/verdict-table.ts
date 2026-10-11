@@ -3,13 +3,13 @@
 // a median of two of its ~40 — so an engine change that moved any other row
 // passed silently. This table pins EVERY row of EVERY scenario: its status,
 // the pill's own wording when the row has one, its credit count and its
-// deadline state. tests/verdicts.test.ts compares the engine with the
+// deadline state (src/engine/verdict.ts). tests/verdicts.test.ts compares the engine with the
 // approved copy in tests/verdicts.json and prints each changed verdict;
 // `npm run verdicts -- --update` rewrites the copy once the DGS has approved
 // the list. Shared by the test and scripts/dev/verdicts.mts.
 import { readFileSync } from 'node:fs';
 import { audit } from '../src/engine/audit.ts';
-import type { RequirementResult } from '../src/engine/types.ts';
+import { verdictsOf } from '../src/engine/verdict.ts';
 import { allScenarios, buildRules } from './helpers.ts';
 
 export const VERDICTS_FILE = new URL('./verdicts.json', import.meta.url);
@@ -17,22 +17,11 @@ export const VERDICTS_FILE = new URL('./verdicts.json', import.meta.url);
 /** scenario name → requirement id → verdict. */
 export type VerdictTable = Record<string, Record<string, string>>;
 
-/** One row in one line: "met", "needs_dgs_review “Waiting for the DGS”",
- * "in_progress 18/24", "unmet [overdue]". */
-export function verdictOf(r: RequirementResult): string {
-  return [
-    r.status,
-    ...(r.statusLabel ? [`“${r.statusLabel}”`] : []),
-    ...(r.progress ? [`${+r.progress.have.toFixed(2)}/${r.progress.need}`] : []),
-    ...(r.deadline ? [`[${r.deadline.state}]`] : []),
-  ].join(' ');
-}
-
 export function verdictTable(): VerdictTable {
   const out: VerdictTable = {};
   for (const sc of allScenarios()) {
     const report = audit(sc.student, buildRules(sc.rules.patch), sc.today);
-    out[sc.name] = Object.fromEntries(report.requirements.map((r) => [r.id, verdictOf(r)]));
+    out[sc.name] = verdictsOf(report.requirements);
   }
   return out;
 }

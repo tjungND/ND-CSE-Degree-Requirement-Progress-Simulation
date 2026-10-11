@@ -53,6 +53,9 @@ export interface AdvisorSummaryOptions {
    * while every other deadline keeps the entry term (policy review round 3,
    * P3-text-ui-8, the optional footer). */
   qualifierFrom?: string;
+  /** "Checked with: …" (src/ui/stamp.ts; DGS 2026-10-11, item 8): the
+   * summary's last line. Optional for older callers. */
+  stamp?: string;
 }
 
 /** P3-emails-1: what the processing request would carry for transfer credit. */
@@ -234,7 +237,7 @@ export function advisorSummary(report: AuditReport, opts: AdvisorSummaryOptions)
     (todo.dgs.length > 0 ? todoText('WHAT THE DGS NEEDS TO DO', todo.dgs) : '') +
     (todo.gradAdmin.length > 0 ? todoText('WHAT THE GRAD ADMIN NEEDS TO DO', todo.gradAdmin) : '') +
     (pendingText ? `${pendingText}\n\n` : '') +
-    `Thank you!\n\n${deadlineNote ? `${deadlineNote}\n` : ''}${statusNote}\n`;
+    `Thank you!\n\n${deadlineNote ? `${deadlineNote}\n` : ''}${statusNote}\n${opts.stamp ? `${opts.stamp}\n` : ''}`;
 
   // ---- HTML ----
   // One bordered block per requirement, not a five-column table (DGS
@@ -266,7 +269,8 @@ export function advisorSummary(report: AuditReport, opts: AdvisorSummaryOptions)
     (pendingText ? `<p>${esc(pendingText)}</p>` : '') +
     `<p>Thank you!</p>` +
     (deadlineNote ? `<p>${esc(deadlineNote)}</p>` : '') +
-    `<p>${esc(statusNote)}</p>`;
+    `<p>${esc(statusNote)}</p>` +
+    (opts.stamp ? `<p>${esc(opts.stamp)}</p>` : '');
   // "Oral Candidacy Exam (OCE)" once per flavour, then "OCE" (2026-09-06 evening).
   return { text: decisionWording(report.program, shortenAfterFirst(text)), html: decisionWording(report.program, shortenAfterFirst(html)), subject: decisionWording(report.program, subject) };
 }

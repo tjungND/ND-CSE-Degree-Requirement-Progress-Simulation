@@ -39,6 +39,7 @@ import {
 } from './simulation.ts';
 import { siblingAnchorAttrs } from './sibling-links.ts';
 import { BETA_NOTICE, BETA_SCOPE_NOTICE, RULES_ACCURACY_NOTICE, handbookLink, rulesDateLine } from './handbook.ts';
+import { checkedWithLine, resultStamp, savedStamp } from './stamp.ts';
 import { DGS, GRAD_ADMIN, LICENSE_URL, REPO_URL, applyContactOverrides, contactCard, mailto, reportToDgs, deciderContact } from './contacts.ts';
 import { isEmbedded, openFullPageLink, placeInFrame } from './embed.ts';
 import { themeToggle } from './theme.ts';
@@ -393,6 +394,10 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   // datalist per page (2026-09-06 evening). Built once, like the course list
   // below: both depend on the rules alone, and render() re-attaches the same
   // nodes on every rebuild.
+  // What every result on this page was checked with (DGS 2026-10-11, item 8):
+  // the rules' fingerprint, live or saved copy and date, the handbook's
+  // edition and this build. The rules are read once, so it is made once.
+  const stamp = resultStamp(rules);
   const knownUniversitiesList = el('datalist', { id: 'known-universities' }, ...knownUniversities(rules.external, rules.universities).map((u) => el('option', { value: u })));
   const knownCoursesList = el('datalist', { id: 'known-courses' });
   for (const [id, rows] of rules.courses) {
@@ -622,7 +627,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // the next-steps list counts its items, and the Grad Admin card shows and
     // copies it. Its count comes from processingItems, which `history` does
     // not touch, so this one call (the card's, with history) serves both.
-    const gaRequest = gradAdminRequest(report, student, rules, { todayIso: todayIso(), entryTerm: termLabel(student.entryTerm), priorStudy: priorStudyLabel(student), gpa: student.gpa, history: programHistory(student) }, classified);
+    const gaRequest = gradAdminRequest(report, student, rules, { todayIso: todayIso(), entryTerm: termLabel(student.entryTerm), priorStudy: priorStudyLabel(student), gpa: student.gpa, history: programHistory(student), stamp: checkedWithLine(stamp) }, classified);
     // What the record calls for next (DGS 2026-09-27): read once here, drawn
     // under the dial, in the phone summary and as the numbered list.
     // The courses waiting for the STUDENT's answer, not the DGS (UI review,
@@ -661,6 +666,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           simulation
             ? `SIMULATION — not your real record. Printed on ${realTodayIso}; the current semester in this simulation is ${termLabel(simulation.term)} — ${student.program === 'mscse' ? 'M.S. in CSE (§3)' : 'Ph.D. (§4)'}, entered ${termLabel(student.entryTerm)} — not an official audit; the DGS decides eligibility, the Grad Admin processes it.`
             : `Self-check printed on ${realTodayIso} — ${student.program === 'mscse' ? 'M.S. in CSE (§3)' : 'Ph.D. (§4)'}, entered ${termLabel(student.entryTerm)} — not an official audit; the DGS decides eligibility, the Grad Admin processes it.`, // "decides", as everywhere else (trim review 2026-09-18, P-60); the real date even in simulation mode (D5)
+          // What the printout was checked with (item 8, 2026-10-11) — its own line.
+          el('span', { class: 'print-stamp' }, checkedWithLine(stamp)),
         ),
         // Simulation mode's banner (DGS 2026-10-09): first thing in <main>, so
         // that nothing on the page can be read as the student's record while
@@ -2223,7 +2230,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
               // Copy, then the check-before-you-send dialog (DGS request 2026-09-06 evening).
               void import('../transcript/external.ts').then(({ buildCombinedReviewRequest, reviewRequestCourses }) => {
                 const { nd: ndReq, external: extReq } = reviewRequestCourses(pending, slotOf);
-                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses), decider: deciderTitle(student.program), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
+                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses), decider: deciderTitle(student.program), stamp: checkedWithLine(stamp), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
                 return copyDialog({
                   what: 'Review request',
                   recipient: { role: decider.role, name: decider.name, email: decider.email },
@@ -3262,6 +3269,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             unofficialNote: unofficialTranscriptNote(student.courses),
             transfers: { courses: transfers, recorded: student.attestations.transferRecorded === true, firstSemesterDone: firstSemesterComplete(student, normalizeEntryTerm(student.entryTerm).term, todayIso()).done },
             qualifierFrom: qualifierTransferTerm(),
+            stamp: checkedWithLine(stamp),
           });
           void copyDialog({
             what: 'Summary for your advisor',
@@ -3399,8 +3407,12 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   /** "Save to a file" — the record's file outside the mode, the simulation's
    * (D3: the note first, the semester, then the planning copy) inside it. */
   function saveActiveToFile(): void {
-    if (simulation) downloadJson(simulationFileName(student.program, simulation.term), simulationFilePayload(student, simulation.term, new Date().toISOString()));
-    else exportFile(student);
+    // The stamp and every row's verdict as the page shows them now (item 8):
+    // `npm run reproduce` re-runs the file and compares.
+    const auditDate = todayIso();
+    const saved = savedStamp(stamp, auditDate, audit(student, rules, auditDate).requirements);
+    if (simulation) downloadJson(simulationFileName(student.program, simulation.term), simulationFilePayload(student, simulation.term, new Date().toISOString(), saved));
+    else exportFile(student, saved);
   }
 
   /** The way in. Inactive while a transcript preview is open: the preview's
@@ -3648,6 +3660,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         el('a', { href: REPO_URL, target: '_blank', rel: 'noopener noreferrer' }, 'GitHub'),
         '.',
       ),
+      // What this page's results were checked with (DGS 2026-10-11, item 8):
+      // the same line the print header, the emails and the saved file carry.
+      el('p', { class: 'legal-stamp' }, checkedWithLine(stamp)),
       // Embedded, the way out of the frame — and, with the contact card moved
       // off the top, the place the contacts now live (DGS 2026-09-16).
       isEmbedded() ? el('div', { class: 'embed-exit-line' }, openFullPageLink('Open the full self-check page'), ' — the same tool in its own window.') : null,

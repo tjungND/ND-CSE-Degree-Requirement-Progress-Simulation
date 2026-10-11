@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { STAMP_RE } from './session-common.mjs';
 
 /** The WordPress-side listener, read out of the file the DGS copies and pastes
  * (docs/wordpress-footer-snippet.html) so the tested text and the pasted text
@@ -590,6 +591,9 @@ export async function driveApp(s, baseUrl) {
   // and the near deadline highlighted.
   if (!/\nMY STANDING, REQUIREMENT BY REQUIREMENT\n- \d+ requirements met, \d+ in progress, \d+ not started\.\n- 1 deadline in this semester or the next — highlighted below\.\n/.test(gaDlg.full) || !/\n\[MET\] /.test(gaDlg.full) || !/\n\[IN PROGRESS\] Qualifying examination — all components \((?:CSE )?§4\.4\)\n    !! DEADLINE NEXT SEMESTER: Due by the end of Spring \d{4} \(approximate\)\n/.test(gaDlg.full) || !/\n\[NOT STARTED\] Dissertation defense passed/.test(gaDlg.full)) throw new Error('Grad Admin request must list the standing with tags and the highlighted deadline: ' + gaDlg.full.slice(gaDlg.full.indexOf('MY STANDING'), gaDlg.full.indexOf('MY STANDING') + 400));
   console.log('  Grad Admin dialog:', gaDlg.title, '|', JSON.stringify(gaDlg.to), '|', gaDlg.subject);
+  // What the request was checked with (DGS 2026-10-11, item 8): its last line.
+  if (!new RegExp(`\\nChecked with: ${STAMP_RE.source}\\.\\n?$`).test(gaDlg.full)) throw new Error('the processing request must end with its "Checked with" line: ' + JSON.stringify(gaDlg.full.slice(-260)));
+  console.log('  processing request ends with:', gaDlg.full.trimEnd().split('\n').pop());
   if (!gaDlg.title.startsWith('Processing request') || !gaDlg.to[0].startsWith('To: Graduate Program Administrator') || !(gaDlg.to[1] ?? '').startsWith('Cc: Director of Graduate Studies') || !/^Subject: Processing request \(degree self-check\) — Ph\.D\., entered Fall \d{4}$/.test(gaDlg.subject) || !gaDlg.text.includes('Dear Grad Admin,')) throw new Error('Grad Admin dialog: ' + JSON.stringify(gaDlg));
   // Two numbered steps for a student with no transfer credit (P-45, 2026-09-18;
   // the self-check-file step dropped 2026-09-15): open/paste, send. The Grad
@@ -775,6 +779,7 @@ export async function driveApp(s, baseUrl) {
   // handler listens for beforeprint / afterprint, so dispatching the events
   // stands in for the print dialog headless Chrome cannot show. One report
   // fold is left open beforehand, as a student would leave it.
+  await checkStamps(s);
   const printFold = JSON.parse(await s.evalJs(`JSON.stringify((() => {
     const all = () => [...document.querySelectorAll('footer.legal details, #report details')];
     const original = all().map((d) => d.open);
@@ -821,6 +826,44 @@ export async function driveApp(s, baseUrl) {
 
   await driveSimulation(s, baseUrl);
   await driveAppEmbed(s, baseUrl);
+}
+
+// Every result is stamped (DGS 2026-10-11, item 8): the footer and the print
+// header carry the same "Checked with" line, and "Save to a file" writes the
+// stamp — the same fingerprint, the date checked and every row's verdict as
+// the page shows it — between savedAt and the record. The download is caught
+// in the page, as the simulation save's is.
+async function checkStamps(s) {
+  const lines = JSON.parse(await s.evalJs(`JSON.stringify({
+    footer: document.querySelector('footer.legal .legal-stamp')?.textContent ?? '',
+    print: document.querySelector('.print-header .print-stamp')?.textContent ?? '',
+  })`));
+  console.log('  footer:', lines.footer);
+  const m = new RegExp(`^Checked with: ${STAMP_RE.source}\\.$`).exec(lines.footer);
+  if (!m) throw new Error('the footer must say what the results were checked with: ' + JSON.stringify(lines.footer));
+  if (lines.print !== lines.footer) throw new Error('the print header must carry the footer’s "Checked with" line: ' + JSON.stringify(lines));
+  await s.shotElement('footer-stamp', 'footer.legal');
+  const saved = JSON.parse(await s.evalJs(`(async () => {
+    let blob;
+    const click = HTMLAnchorElement.prototype.click;
+    const make = URL.createObjectURL;
+    const files = [];
+    HTMLAnchorElement.prototype.click = function () { if (this.download) { files.push(this.download); return; } return click.call(this); };
+    URL.createObjectURL = function (b) { blob = b; return make.call(URL, b); };
+    try {
+      document.querySelector('[data-key="save.file"]').click();
+      return JSON.stringify({ files, text: blob ? await blob.text() : null });
+    } finally {
+      HTMLAnchorElement.prototype.click = click;
+      URL.createObjectURL = make;
+    }
+  })()`));
+  const payload = saved.text ? JSON.parse(saved.text) : null;
+  const keys = payload ? Object.keys(payload) : [];
+  const st = payload?.stamp;
+  console.log('  saved file:', JSON.stringify({ files: saved.files, keys, fingerprint: st?.rules?.fingerprint, app: st?.app?.commit, auditDate: st?.auditDate, verdicts: st ? Object.keys(st.verdicts).length : 0 }));
+  if (keys.join() !== 'savedAt,stamp,student') throw new Error('the saved file must hold savedAt, the stamp and the record, in that order: ' + keys.join());
+  if (st.rules.fingerprint !== m[1] || !/^\d{4}-\d{2}-\d{2}$/.test(st.auditDate) || !/^[0-9a-f]{7}$/.test(st.app.commit) || st.handbook.edition === '' || Object.keys(st.verdicts).length < 10 || !Object.values(st.verdicts).every((v) => /^(met|unmet|in_progress|needs_dgs_review|cannot_evaluate|not_applicable)\b/.test(v))) throw new Error('the saved stamp must carry the footer’s fingerprint, the date, the build, the handbook and every row’s verdict: ' + JSON.stringify(st).slice(0, 400));
 }
 
 // E2E: simulation mode (DGS 2026-10-09; driven end to end since the review
@@ -1010,6 +1053,8 @@ async function driveSimulation(s, baseUrl) {
   console.log('  saved:', JSON.stringify({ files: saved.files, keys: payload ? Object.keys(payload) : null, note: payload?.note }));
   if (saved.files.length !== 1 || !saved.files[0].includes('-simulation-') || saved.files[0] !== `cse-degree-audit-phd-simulation-${saved.code}.json`) throw new Error('Save to a file in the mode must write the simulation file: ' + JSON.stringify(saved.files));
   if (!payload || Object.keys(payload)[0] !== 'note' || payload.note !== `SIMULATION of ${later} — a planning copy, not this student's record`) throw new Error('the simulation file must open with its note: ' + JSON.stringify(payload && Object.keys(payload)));
+  // The plan is stamped too (item 8): checked as of the simulated semester's date.
+  if (!payload.stamp?.verdicts || !/^\d{4}-\d{2}-\d{2}$/.test(payload.stamp.auditDate ?? '') || Number(payload.stamp.auditDate.slice(0, 4)) !== Number(laterYear)) throw new Error('the simulation file must carry its stamp, dated in the simulated semester: ' + JSON.stringify(payload.stamp && { auditDate: payload.stamp.auditDate, rows: Object.keys(payload.stamp.verdicts ?? {}).length }));
   if (payload.simulation?.term?.season !== laterSeason.toLowerCase() || payload.simulation?.term?.year !== Number(laterYear) || !payload.student?.courses?.some((c) => c.courseId === 'CSE 60772')) throw new Error('the simulation file must carry the semester and the plan: ' + JSON.stringify({ simulation: payload.simulation, courses: payload.student?.courses?.length }));
   const simFile = join(tmpdir(), 'cse-degree-audit-e2e-simulation.json');
   writeFileSync(simFile, saved.text);
@@ -1297,6 +1342,10 @@ export async function driveCourses(s, baseUrl) {
   await checkSheetLink(s, 'courses');
   const count = await s.evalJs(`document.querySelector('.count')?.textContent`);
   console.log('  course list:', count);
+  // Which rules, handbook and build the page shows (item 8, 2026-10-11).
+  const version = await s.evalJs(`document.querySelector('footer.legal .legal-stamp')?.textContent ?? ''`);
+  if (!new RegExp(`^Version: ${STAMP_RE.source}\\.$`).test(version)) throw new Error('the course-rules footer must carry the Version line: ' + JSON.stringify(version));
+  console.log('  footer:', version);
   if (!/\d+ of \d+ courses/.test(count ?? '')) throw new Error('course list did not render');
   await checkSectionChip(s, '[data-key="secref.core"]', 'Core Knowledge Requirement.*All PhD students are required to pass', 'course rules page, CSE §4.4.1');
   // (Note rows — the DGS's notes, opened per course since 2026-09-05 — are tbody rows too; count courses only.)

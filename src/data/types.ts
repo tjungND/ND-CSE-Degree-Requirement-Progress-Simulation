@@ -189,6 +189,10 @@ export interface Rules {
    * `src/data/rules-date.ts`. Undefined only for rules built without a snapshot
    * (tests); then the pages fall back to "are those in effect for <term>". */
   rulesDate?: RulesDate;
+  /** Eight hexadecimal characters naming the exact content the rules were
+   * built from (src/data/fingerprint.ts; DGS 2026-10-11, item 8): stamped on
+   * every result, and what `npm run reproduce` matches a snapshot commit by. */
+  fingerprint: string;
 }
 
 /** How the pages know when the rules last changed (`src/data/rules-date.ts`).

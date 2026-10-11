@@ -28,11 +28,14 @@ export function changedTabs(a: CsvTexts, b: CsvTexts): (keyof CsvTexts)[] {
     const av = a[tab];
     const bv = b[tab];
     if (av === undefined || bv === undefined) return av !== bv;
-    return normalize(av) !== normalize(bv);
+    return normalizeCsvText(av) !== normalizeCsvText(bv);
   });
 }
 
-function normalize(text: string): string {
+/** One tab's text with line endings and trailing whitespace evened out — the
+ * same normalization the rules fingerprint uses (src/data/fingerprint.ts), so
+ * "same content" and "same fingerprint" always agree. */
+export function normalizeCsvText(text: string): string {
   return text.replace(/\r\n?/g, '\n').trimEnd();
 }
 

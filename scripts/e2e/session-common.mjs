@@ -9,6 +9,12 @@
 /** Let the page paint: one animation frame, then `ms` more for whatever the
  * frame kicked off (a ResizeObserver, a scroll handler). Both backends build
  * their `settle` from this and expose it on the session as `s.settle(ms)`. */
+/** "Checked with: course rules 3f9a2c1b (read live, …) · CSE Graduate Studies
+ * Handbook (…) · app version fe64bda of …." — the stamp every result carries
+ * (DGS 2026-10-11, item 8; src/ui/stamp.ts). The e2e runs a fresh build, so
+ * the version is a real commit, possibly "with local changes". */
+export const STAMP_RE = /course rules ([0-9a-f]{8}) \((?:read live|the copy saved in the app)[^)]*\) · CSE Graduate Studies Handbook \([^)]+\) · app version [0-9a-f]{7}(?: of [A-Z][a-z]+ \d{1,2}, \d{4})?(?: with local changes)?/;
+
 export const settleIn = (evalJs) => (ms = 150) => evalJs(`new Promise(r => requestAnimationFrame(() => setTimeout(r, ${ms})))`);
 
 // Once per RUN, not per session: every driver opens its own session, and the

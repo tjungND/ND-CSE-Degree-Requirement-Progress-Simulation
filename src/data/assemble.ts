@@ -1,5 +1,6 @@
 // Pure assembly: three CSV texts → a validated Rules object. Used by the live
 // loader, the snapshot fallback, and the tests — one parse path for all three.
+import { rulesFingerprint } from './fingerprint.ts';
 import type { Term } from '../engine/types.ts';
 import { compareTerm, termIndex } from '../engine/term.ts';
 import { makeParameters } from './params.ts';
@@ -96,6 +97,7 @@ export function rulesFromCsvTexts(
     source: meta.source,
     syncedAt: meta.syncedAt,
     rulesDate: meta.rulesDate,
+    fingerprint: rulesFingerprint(texts),
   };
 }
 

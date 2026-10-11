@@ -450,6 +450,10 @@ export interface GradAdminRequestOptions {
   /** The Notre Dame programs (DGS 2026-09-28): `compact` for the subject,
    * `earlier` for the standing paragraph. Optional for older callers. */
   history?: ProgramHistory;
+  /** "Checked with: …" — what the request was checked with (src/ui/stamp.ts;
+   * DGS 2026-10-11, item 8), the request's last line, below the do-not-modify
+   * line. Optional for older callers. */
+  stamp?: string;
 }
 
 export function gradAdminRequest(
@@ -632,7 +636,7 @@ export function gradAdminRequest(
     `Subject: ${subject}\n\nDear Grad Admin,\n\n${STUDENT_LINE}\n\n${intro}\n${standing}\n${earlier ? `${earlier}\n` : ''}${attached ? `${attached}\n` : ''}${unofficial ? `${unofficial}\n` : ''}\n${actionsText}Thank you!\n\n` +
     `${EDITABLE_MARKER}\n${MARKER_DIVIDER}\n${DO_NOT_MODIFY_MARKER}\n\n` +
     (sections.length > 0 ? sections.map(textSection).join('') : 'Nothing to process yet.\n\n') +
-    `${closing}\n`;
+    `${closing}\n${opts.stamp ? `${opts.stamp}\n` : ''}`;
 
   // ---- HTML ----
   const htmlTable = (columns: string[], rows: string[][]): string =>
@@ -650,7 +654,7 @@ export function gradAdminRequest(
     `<p>Subject: ${esc(subject)}</p><p>Dear Grad Admin,</p>${studentLineHtml()}<p>${esc(intro)}<br>${esc(standing)}${earlier ? `<br>${esc(earlier)}` : ''}${attached ? `<br><strong>${esc(attached)}</strong>` : ''}${unofficial ? `<br><strong>${esc(unofficial)}</strong>` : ''}</p>${actionsHtml}<p>Thank you!</p>` +
     `<p><strong>${esc(EDITABLE_MARKER)}</strong></p><hr><p><strong>${esc(DO_NOT_MODIFY_MARKER)}</strong></p>` +
     (sections.length > 0 ? sections.map(htmlSection).join('') : '<p>Nothing to process yet.</p>') +
-    `<p>${esc(closing)}</p>`;
+    `<p>${esc(closing)}</p>${opts.stamp ? `<p>${esc(opts.stamp)}</p>` : ''}`;
 
   // "Oral Candidacy Exam (OCE)" once per flavour, then "OCE" (2026-09-06 evening).
   const p = student.program;

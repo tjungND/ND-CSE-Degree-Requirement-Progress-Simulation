@@ -264,6 +264,18 @@ last edit (see "Sync" below).
   words, credit count, deadline state): an engine change that moves any of them fails `npm test`
   with the list of changed rows. Show that list to the DGS; once approved, `npm run verdicts --
   --update` rewrites the file, and it is committed with the change (`tests/scenarios/README.md`).
+- **Stamps and `npm run reproduce`** (2026-10-11). Every result says what it was checked with:
+  the rules' fingerprint (`src/data/fingerprint.ts` — eight hex characters from the five tabs'
+  text, normalized as the rules' dating normalizes it), live or saved copy, the rules' date, the
+  handbook edition (`src/ui/handbook-text.ts`) and the build (`vite.config.ts` puts the git
+  commit and its date into `__APP_BUILD__`; tests and scripts read "dev"). One line,
+  `src/ui/stamp.ts`, on both footers, the print header, the three emails and the saved file —
+  which also records the date checked and every row's verdict. `npm run reproduce -- <saved
+  file>` walks `git log -- data/snapshot.json` for the matching fingerprint (also without an
+  optional tab, in case one failed to load for the student), re-runs `audit()` on the saved
+  date and exits 1 if any row reads differently. A snapshot's fingerprint changes whenever its
+  content does, so nothing has to be kept in step by hand; never rewrite or squash the
+  snapshot commits — they ARE the record of which rules a student saw.
 - **Browsers** (cross-browser review, 2026-10-10). The pages are built for Vite's default floor —
   no `build.target` in `vite.config.ts`, so Safari 14, Chrome 87, Firefox 78 — and verified in
   Chrome, Safari's engine (WebKit) and Firefox; Edge, Opera, Brave and Samsung Internet are

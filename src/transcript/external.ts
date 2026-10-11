@@ -3447,6 +3447,9 @@ function buildReviewRequest(opts: {
   detailHeaders: readonly string[];
   /** Detail rows grouped per transcript, each group a table under its heading. */
   detailGroups: readonly { heading: string; rows: readonly (readonly string[])[] }[];
+  /** "Checked with: …" (src/ui/stamp.ts; DGS 2026-10-11, item 8): the last
+   * line, below the course details. */
+  stamp?: string;
 }): { text: string; html: string; subject: string } {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const greeting = `Dear ${opts.decider},`;
@@ -3479,7 +3482,7 @@ function buildReviewRequest(opts: {
     sections.map((s) => `${s.rowsIntro}\n\n${s.rows.map((r) => r.join('\t')).join('\n')}\n\n`).join('') +
     `${opts.detailsTitle}\n\n` +
     groups.map((g) => `${g.heading}\n${pipeRow(opts.detailHeaders)}\n${g.rows.map(pipeRow).join('\n')}`).join('\n\n') +
-    `\n`;
+    `\n${opts.stamp ? `\n${opts.stamp}\n` : ''}`;
   const html =
     `<p>${esc(`Subject: ${opts.subject}`)}</p><p>${esc(greeting)}</p>${studentLineHtml()}<p>${esc(opts.intro)}` +
     (opts.context.length > 0 ? `<br>${opts.context.map((c) => esc(c)).join('<br>')}` : '') +
@@ -3500,7 +3503,8 @@ function buildReviewRequest(opts: {
           g.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join('')}</tr>`).join('') +
           `</table>`,
       )
-      .join('');
+      .join('') +
+    (opts.stamp ? `<p>${esc(opts.stamp)}</p>` : '');
   // The subject travels with the flavours (the copy dialog shows it, 2026-09-06 evening);
   // "Oral Candidacy Exam (OCE)" in full once per flavour, then "OCE".
   return { text: shortenAfterFirst(text), html: shortenAfterFirst(html), subject: opts.subject };
@@ -3639,6 +3643,9 @@ export function buildCombinedReviewRequest(opts: {
    * system is entered once, when the university first arrives. Omitted by
    * older callers: nothing is asked. */
   universityRow?: (university: string) => 'set' | 'blank' | 'absent';
+  /** "Checked with: …" (src/ui/stamp.ts; DGS 2026-10-11, item 8): the
+   * request's last line. Optional for older callers. */
+  stamp?: string;
 }): { text: string; html: string; subject: string } {
   // The student is writing to the DGS: "your advisor" is "my advisor".
   const voiced = (reason: string): string => reason.replace(/\byour advisor/g, 'my advisor').replace(/\bYour advisor/g, 'My advisor');
@@ -3729,6 +3736,7 @@ export function buildCombinedReviewRequest(opts: {
   const replyItems = distinct(all.filter((c) => rulingsOf(c).length > 0)).map((c) => `${name(c)} — ${rulingsOf(c).join('; ')}`);
   const history = opts.history;
   return buildReviewRequest({
+    stamp: opts.stamp,
     subject: `Course review request (degree self-check)${history ? ` — ${history.compact}` : ''}`,
     decider: opts.decider ?? 'DGS',
     intro:

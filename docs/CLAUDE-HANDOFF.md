@@ -2166,6 +2166,17 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   then `npm run verdicts -- --update` and commit the file with the change. The `life-*` scenarios
   are whole degrees with every row pinned; `tests/missing-parameter-never-passes.test.ts` (item 1)
   re-runs every scenario with each engine key removed.
+- **Stamps** (2026-10-11, item 8): `Rules.fingerprint` is set in `rulesFromCsvTexts` from the texts
+  it was given (`rulesFingerprint`, FNV-1a over `normalizeCsvText` of each tab, a fixed tab order,
+  a name separator; an absent optional tab is skipped). `src/ui/stamp.ts` `resultStamp(rules)` +
+  `stampLine` / `checkedWithLine` is the ONE wording — footers (`.legal-stamp`), print header
+  (`.print-stamp`), the three emails' `stamp` option, and `savedStamp(stamp, auditDate, rows)` in
+  the saved and simulation files (`stamp` between `savedAt` and `student`; `validateStudent` reads
+  only `student`). `src/ui/build-info.ts` reads Vite's `__APP_BUILD__` with a `typeof` guard so
+  node runs. `src/engine/verdict.ts` `verdictOf` is shared by the saved file and the approved
+  verdicts. `npm run reproduce` (`scripts/dev/reproduce.mts`) is tested end to end in
+  `tests/stamp.test.ts`; the e2e checks the footer, print header, saved file, simulation file,
+  processing request and review request.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

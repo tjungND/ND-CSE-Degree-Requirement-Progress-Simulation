@@ -22,6 +22,7 @@ import { isEmbedded, notifyEmbedHeight, openFullPageLink, postScrollTo, startAnc
 import { sectionRef } from './section-ref.ts';
 import { themeToggle } from './theme.ts';
 import { formatYmdLong, handbookLink, rulesDateLine } from './handbook.ts';
+import { resultStamp, stampLine } from './stamp.ts';
 import { ndDateOnly } from '../data/rules-date.ts';
 import { sheetSourceLine } from './sheet-source.ts'; // sheetSourceNote is the self-check page's now (trim review P-12)
 import { labelCitationsIn } from './citations.ts';
@@ -1611,6 +1612,10 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
         // card both carry it, in both modes. Trim review P-34, 2026-09-18.)
         '.',
       ),
+      // Which rules, handbook and build this page shows (DGS 2026-10-11, item
+      // 8) — the self-check page's "Checked with" line; embedded too, since a
+      // reader reporting a wrong row from the frame needs it most.
+      el('p', { class: 'legal-stamp' }, `Version: ${stampLine(resultStamp(rules))}.`),
     );
   }
 

@@ -264,6 +264,30 @@ cell, fill in the remaining columns, and the student's page updates within
 minutes. For `dgs_approval` courses your decision is by email; the student
 then ticks the matching box under "Approvals you already have".
 
+### A6d. A student says the page showed something wrong
+
+Every result names what it was checked with — the last line of both pages' footers, of a
+printout's header and of every email the page writes (since 2026-10-11):
+
+> Checked with: course rules 3f9a2c1b (read live, last updated on October 9, 2026) · CSE Graduate
+> Studies Handbook (Updated September 2026) · app version fe64bda of October 11, 2026.
+
+`3f9a2c1b` names the exact content of the rules sheet the student's page read; `fe64bda` names
+the code. Ask the student for their saved file ("Save to a file" — it holds the same line, the
+date it was checked and how every row read). With a working copy of the repository (Track B1),
+re-run it:
+
+```
+npm run reproduce -- ~/Downloads/cse-degree-audit-phd.json
+```
+
+It finds the saved copy of the sheet with that fingerprint, re-runs the check on the date the
+student saved, prints every row and lists any row that now reads differently. A row that differs
+was changed by an edit to the code since then (the output says how to re-run with the student's
+exact version); a row that reads the same but is wrong is a bug to fix — add the case as a
+scenario (Track B). The file is the student's record: keep it on your own Mac, never in the
+repository.
+
 ### A7. Verify in the app (five minutes later)
 
 1. Wait about five minutes for Google to republish, then open the live app and reload it.

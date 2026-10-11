@@ -20,6 +20,7 @@
     "diagnose": "node scripts/diagnose-transcript.mjs",
     "replay": "node --experimental-strip-types scripts/dev/replay.mts",
     "verdicts": "node --experimental-strip-types scripts/dev/verdicts.mts",
+    "reproduce": "node --experimental-strip-types scripts/dev/reproduce.mts",
     "sanitize": "node scripts/sanitize-transcript.mjs",
     "handbook-text": "node scripts/handbook-text.mjs",
     "ocr-bench": "node --experimental-strip-types scripts/dev/ocr-bench/bench.mjs"

@@ -8,6 +8,7 @@
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { STAMP_RE } from './session-common.mjs';
 
 export async function driveTranscript(s, baseUrl, pdfs) {
   const { nd: ndPdf, other: otherPdf, external: externalPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf } = pdfs;
@@ -210,9 +211,11 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     const d = document.querySelector('dialog.copy-check');
     const dgs = [...document.querySelectorAll('.contact-card li')].find(li => li.textContent.startsWith('Director of Graduate Studies'));
     const lead = d.querySelector('.copy-lead');
-    return { title: d.querySelector('h2').textContent, to: d.querySelector('.copy-to').textContent, subject: d.querySelector('.copy-subject').textContent, text: d.querySelector('textarea').value.slice(0, 60), dgsEmail: dgs?.querySelector('a')?.textContent ?? '', lead: lead?.querySelector('strong')?.textContent ?? '', leadBeforeMessage: !!lead && !!(lead.compareDocumentPosition(d.querySelector('textarea')) & Node.DOCUMENT_POSITION_FOLLOWING) };
+    return { title: d.querySelector('h2').textContent, to: d.querySelector('.copy-to').textContent, subject: d.querySelector('.copy-subject').textContent, text: d.querySelector('textarea').value.slice(0, 60), last: d.querySelector('textarea').value.trimEnd().split('\\n').pop(), dgsEmail: dgs?.querySelector('a')?.textContent ?? '', lead: lead?.querySelector('strong')?.textContent ?? '', leadBeforeMessage: !!lead && !!(lead.compareDocumentPosition(d.querySelector('textarea')) & Node.DOCUMENT_POSITION_FOLLOWING) };
   })())`));
   console.log('  copy dialog:', dlg.title, '|', dlg.to, '|', dlg.subject);
+  // What the request was checked with (DGS 2026-10-11, item 8): its last line.
+  if (!new RegExp(`^Checked with: ${STAMP_RE.source}\\.$`).test(dlg.last)) throw new Error('the review request must end with its "Checked with" line: ' + JSON.stringify(dlg.last));
   if (!/^Review request (copied — check it before you send|— copy it yourself \(the clipboard was blocked\))$/.test(dlg.title)) throw new Error('copy dialog title: ' + dlg.title);
   if (dlg.dgsEmail === '' || !dlg.to.startsWith('To: Director of Graduate Studies') || !dlg.to.includes(dlg.dgsEmail)) throw new Error('copy dialog recipient: ' + dlg.to);
   // The subject carries the Notre Dame programs since 2026-09-28.
