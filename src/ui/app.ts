@@ -3642,7 +3642,15 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // Shortened 2026-10-07 (DGS: "see any texts can be shortened without
         // losing its meaning"): the same four points — the sources, what is
         // sent to the DGS, approximate deadlines, confirm before relying.
-        ' and the Graduate School’s Academic Code, DGS Handbook and 4+1 guidance. What this page cannot see — sign-offs, recommendations, Graduate School approvals and extensions, and facts you state yourself — goes to the DGS rather than being decided here. Deadlines are by semester and approximate; the Graduate School calendar sets the exact dates. Confirm with the DGS before you rely on this self-check.',
+        ' and the Graduate School’s Academic Code, DGS Handbook and 4+1 guidance. What this page cannot see — sign-offs, recommendations, Graduate School approvals and extensions, and facts you state yourself — goes to the DGS rather than being decided here. Deadlines are by semester and approximate; the Graduate School calendar sets the exact dates. ',
+        // The one exception on the Ph.D. tab (policy review round 4, P4-text-4;
+        // DGS 2026-10-11: option (a), and no copy to the DGS on along-the-way
+        // awards): the self-check IS §3.1's review of the MSCSE along the way
+        // (DGS 2026-10-07, P3-cse-3-2), as the strip, the notice, the advisor
+        // email and the processing request already say.
+        student.program === 'phd'
+          ? 'Confirm with the DGS before you rely on this self-check — except the MSCSE along the way, for which this self-check is the DGS’s own review (§3.1).'
+          : 'Confirm with the DGS before you rely on this self-check.',
       ),
       // No alpha paragraph in the footer (DGS 2026-09-19, trim proposal P-3):
       // it was word for word the red strip's Details at the top of the page.
