@@ -38,8 +38,9 @@ import {
   simulationToday,
 } from './simulation.ts';
 import { siblingAnchorAttrs } from './sibling-links.ts';
-import { BETA_NOTICE, BETA_SCOPE_NOTICE, RULES_ACCURACY_NOTICE, handbookLink, rulesDateLine } from './handbook.ts';
+import { BETA_SCOPE_NOTICE, RULES_ACCURACY_NOTICE, betaNotice, handbookLink, rulesDateLine } from './handbook.ts';
 import { checkedWithLine, resultStamp, savedStamp } from './stamp.ts';
+import { sourcesLine } from './provenance.ts';
 import { DGS, GRAD_ADMIN, LICENSE_URL, REPO_URL, applyContactOverrides, contactCard, mailto, reportToDgs, deciderContact } from './contacts.ts';
 import { isEmbedded, openFullPageLink, placeInFrame } from './embed.ts';
 import { themeToggle } from './theme.ts';
@@ -896,7 +897,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         'p',
         { class: 'notice-full beta' },
         el('strong', {}, 'Alpha version under testing. '),
-        BETA_NOTICE,
+        betaNotice(student.program),
         ' ',
         // The link parenthetical folds into the bold sentence here (trim
         // review 2026-09-18, P-39); the constant keeps its period for the
@@ -934,7 +935,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       el(
         'div',
         { class: 'banner beta notice-strip', role: 'note' },
-        el('p', { class: 'notice-line' }, el('strong', {}, 'Alpha — under testing. '), 'Informational only; the DGS decides.'),
+        // On the Ph.D. tab the one exception is named (DGS 2026-10-11, item 6;
+        // P3-cse-3-2): for the MSCSE along the way the check is the DGS's review.
+        el('p', { class: 'notice-line' }, el('strong', {}, 'Alpha — under testing. '), student.program === 'phd' ? 'Informational only, except the MSCSE along the way (§3.1); the DGS decides.' : 'Informational only; the DGS decides.'),
         alphaDetails,
       ),
       el(
@@ -2102,7 +2105,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // In simulation mode every import is inactive with its reason (D6): a
     // transcript is real data; the mode holds a plan.
     const inSimulation = simulation !== undefined;
-    const ndArgs: NdUploadArgs = { student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, refusedValues };
+    const ndArgs: NdUploadArgs = { student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, refusedValues, todayIso: realTodayIso };
     // "Start here" made prominent (DGS 2026-09-15): a filled badge in the
     // heading and a bold callout line above the hint — until a transcript is
     // on the record (UI review item 4; DGS 2026-10-08: option (b)): a prompt
@@ -2138,7 +2141,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       inSimulation ? el('p', { class: 'hint simulation-hint' }, 'In simulation mode the imports are off — a transcript is real data; exit the simulation to import it into your record.') : null,
       ndTranscriptUpload(ndArgs),
       ndPreviewOpen() ? ndTranscriptPreviewBlock(ndArgs) : null,
-      ...priorTranscriptSection({ student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender }),
+      ...priorTranscriptSection({ student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, todayIso: realTodayIso }),
     );
   }
 
@@ -2389,6 +2392,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         term: { season: (seasonSel as HTMLSelectElement).value as Season, year: termYear },
         grade: (gradeSel as HTMLSelectElement).value as CourseEntry['grade'],
         origin: (originSel as HTMLSelectElement).value as CourseEntry['origin'],
+        typedByStudent: true, // where it came from (DGS 2026-10-11, item 6)
       };
       if (entry.origin === 'transfer') {
         const institution = canonicalUniversityName((institutionInput as HTMLInputElement).value);
@@ -3270,6 +3274,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             transfers: { courses: transfers, recorded: student.attestations.transferRecorded === true, firstSemesterDone: firstSemesterComplete(student, normalizeEntryTerm(student.entryTerm).term, todayIso()).done },
             qualifierFrom: qualifierTransferTerm(),
             stamp: checkedWithLine(stamp),
+            sources: sourcesLine(student),
           });
           void copyDialog({
             what: 'Summary for your advisor',

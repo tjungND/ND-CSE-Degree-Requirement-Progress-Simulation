@@ -23,7 +23,7 @@ import { shortenAfterFirst } from './first-mention.ts';
 import { decisionWording } from '../engine/decider.ts';
 import { DUAL_PLAN_REASON, gpaText } from '../engine/requirements/shared.ts';
 import { ACTION_HEADING, STUDENT_LINE, esc, htmlRequirementBlock, plural, programLabel, programShort, studentLineHtml, textRequirementBlock, type DeadlineAlert, type StandingColor, upperHeading } from './email-html.ts';
-import { BETA_NOTICE, HANDBOOK_URL, formatYmdLong } from './handbook.ts';
+import { HANDBOOK_URL, betaNotice, formatYmdLong } from './handbook.ts';
 import type { ProgramHistory } from './program-history.ts';
 import { deadlineAlert, isNotStarted, scoredRows, standingColor, statusWord } from './report.ts';
 
@@ -56,6 +56,10 @@ export interface AdvisorSummaryOptions {
   /** "Checked with: …" (src/ui/stamp.ts; DGS 2026-10-11, item 8): the
    * summary's last line. Optional for older callers. */
   stamp?: string;
+  /** Where the courses came from, and that milestone dates and approval
+   * ticks are the student's own (src/ui/provenance.ts sourcesLine; DGS
+   * 2026-10-11, item 6): a line under the standing. */
+  sources?: string;
 }
 
 /** P3-emails-1: what the processing request would carry for transfer credit. */
@@ -158,7 +162,7 @@ export function advisorSummary(report: AuditReport, opts: AdvisorSummaryOptions)
       // 2026-10-03).
       `Deadlines are counted from ${opts.entryTerm}${opts.qualifierFrom ? ` — the qualifying exam’s and the first-year seminars’ from ${opts.qualifierFrom}, when I transferred into the Ph.D. —` : ''} and given by semester; they are approximate — the Graduate School calendar sets the exact dates.`
     : '';
-  const statusNote = `Alpha version under testing. ${BETA_NOTICE} Checked against the CSE Graduate Studies Handbook (${HANDBOOK_URL}), together with the Graduate School’s Academic Code, DGS Handbook and 4+1 guidance.`;
+  const statusNote = `Alpha version under testing. ${betaNotice(report.program)} Checked against the CSE Graduate Studies Handbook (${HANDBOOK_URL}), together with the Graduate School’s Academic Code, DGS Handbook and 4+1 guidance.`;
 
   // The tag: the page's pill word (report.ts statusWord — the engine's
   // per-row label when it set one, W-CS2 "Eligibility at risk"; else Overdue,
@@ -229,7 +233,7 @@ export function advisorSummary(report: AuditReport, opts: AdvisorSummaryOptions)
   const actionsHeading = actionsTitle.toUpperCase();
   const actionsText = `${actionsHeading}\n${todo.advisor.length > 0 ? todo.advisor.map((i, k) => `${k + 1}. ${i}`).join('\n') : 'Nothing at the moment.'}\n\n`;
   const text =
-    `Subject: ${subject}\n\nDear ${salutation},\n\n${STUDENT_LINE}\n\n${intro}\n${standing}\n${earlier ? `${earlier}\n` : ''}${opts.unofficialNote ? `${opts.unofficialNote}\n` : ''}${counts}.\n${nextDeadline ? `${nextDeadline}\n` : ''}\n` +
+    `Subject: ${subject}\n\nDear ${salutation},\n\n${STUDENT_LINE}\n\n${intro}\n${standing}\n${opts.sources ? `${opts.sources}\n` : ''}${earlier ? `${earlier}\n` : ''}${opts.unofficialNote ? `${opts.unofficialNote}\n` : ''}${counts}.\n${nextDeadline ? `${nextDeadline}\n` : ''}\n` +
     actionsText +
     'MY STANDING, REQUIREMENT BY REQUIREMENT\n\n' +
     sections.map((s) => `${upperHeading(s.heading)}\n${s.rows.map(line).join('\n')}\n\n`).join('') +
@@ -259,7 +263,7 @@ export function advisorSummary(report: AuditReport, opts: AdvisorSummaryOptions)
     (todo.advisor.length > 0 ? `<ol>${todo.advisor.map((i) => `<li>${esc(i)}</li>`).join('')}</ol>` : '<p>Nothing at the moment.</p>');
   const html =
     `<p>Subject: ${esc(subject)}</p><p>Dear ${esc(salutation)},</p>${studentLineHtml()}` +
-    `<p>${esc(intro)}<br>${esc(standing)}${earlier ? `<br>${esc(earlier)}` : ''}${opts.unofficialNote ? `<br><strong>${esc(opts.unofficialNote)}</strong>` : ''}<br><strong>${esc(counts)}.</strong>${nextDeadline ? `<br>${esc(nextDeadline)}` : ''}</p>` +
+    `<p>${esc(intro)}<br>${esc(standing)}${opts.sources ? `<br>${esc(opts.sources)}` : ''}${earlier ? `<br>${esc(earlier)}` : ''}${opts.unofficialNote ? `<br><strong>${esc(opts.unofficialNote)}</strong>` : ''}<br><strong>${esc(counts)}.</strong>${nextDeadline ? `<br>${esc(nextDeadline)}` : ''}</p>` +
     actionsHtml +
     `<p><strong>My standing, requirement by requirement</strong></p>` +
     sections.map(htmlSection).join('') +

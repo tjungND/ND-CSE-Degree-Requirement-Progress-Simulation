@@ -9,6 +9,7 @@
 // rules say" block was removed as redundant, 2026-09-06); anything unruled is
 // picked up by app.ts's single "Ask the DGS to review" card (the page itself
 // transmits nothing — FERPA).
+import { APP_BUILD } from './build-info.ts';
 import { bachelorsPrefill, ocrReducedPagesNote, ocrTurnedNote, rowIsCompact, type OcrReducedPage } from '../transcript/preview-layout.ts';
 import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { creditSystemFactor, findExternalRule, isNotreDameInstitution } from '../data/external.ts';
@@ -22,7 +23,7 @@ import { GRADES } from '../engine/grades.ts';
 import { BACHELORS_YEAR_RANGE, COURSE_CREDITS_RANGE, TERM_YEAR_RANGE, inRange, inputRefusal } from '../engine/ranges.ts';
 import { termBefore, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
 import { SEASONS } from './state.ts';
-import type { CourseEntry, Grade, Program, Season, Student, Term } from '../engine/types.ts';
+import type { CourseEntry, Grade, ImportedField, Program, Season, Student, Term } from '../engine/types.ts';
 import type { ExternalCourseCandidate, ExternalParseResult } from '../transcript/external.ts';
 import { prefillLevelsByTerm } from '../transcript/level-prefill.ts';
 import { absorbBlockRow, blockRowBack, blockRowFor } from './nd-posted.ts';
@@ -101,6 +102,39 @@ interface PreviewRow {
    * canonicalCourseId, the duplicate checks, the review request or the saved
    * record. */
   codeMissing?: true;
+  /** What the reader read, as the preview first showed it (DGS 2026-10-11,
+   * item 6): the Add compares the row with it and records the fields the
+   * student changed (`CourseEntry.changedOnImport`). Absent on a typed row. */
+  read?: ImportReading;
+}
+
+/** One preview row's reading, for the comparison on Add. */
+interface ImportReading {
+  course: string;
+  title: string;
+  credits: number | undefined;
+  season: Season;
+  year: number | undefined;
+  grade: Grade | '';
+  level: 'undergraduate' | 'graduate';
+}
+
+function readingOf(r: PreviewRow): ImportReading {
+  return { course: r.courseId, title: r.title, credits: r.credits, season: r.season, year: r.year, grade: r.grade, level: r.level };
+}
+
+/** The fields of a row the student changed from the reader's reading. */
+export function changedFields(r: Pick<PreviewRow, 'courseId' | 'title' | 'credits' | 'season' | 'year' | 'grade' | 'level' | 'read'>): ImportedField[] {
+  const was = r.read;
+  if (was === undefined) return [];
+  const out: ImportedField[] = [];
+  if (canonicalCourseId(r.courseId) !== canonicalCourseId(was.course)) out.push('course');
+  if (r.title.trim() !== was.title.trim()) out.push('title');
+  if (r.credits !== was.credits) out.push('credits');
+  if (r.season !== was.season || r.year !== was.year) out.push('term');
+  if (r.grade !== was.grade) out.push('grade');
+  if (r.level !== was.level) out.push('level');
+  return out;
 }
 
 interface ExternalPreview {
@@ -290,6 +324,9 @@ export interface ExternalCardArgs {
   simulation?: boolean;
   /** Focus this data-key after the next render (app.ts's focus keeper). */
   setFocusAfterRender?: (key: string) => void;
+  /** Today at Notre Dame (YYYY-MM-DD): the date each imported row records
+   * (`CourseEntry.imported`; DGS 2026-10-11, item 6). */
+  todayIso?: string;
 }
 
 /** The student is answering the earlier-degrees questions on the page: they
@@ -730,8 +767,17 @@ export function creditSystemNote(read: 'quarter' | 'trimester' | undefined, sele
  * localStorage copy: not the scan's raw readings (`ocrRead`, Batch C answer
  * (4)), and not the scanned-line images, which are not on the row at all
  * (src/ui/scan-strips.ts, answer (5) — tests/scan-strip.test.ts asserts it). */
-export function courseEntryOf(r: PreviewRow, p: Pick<ExternalPreview, 'slot' | 'unofficial' | 'creditSystem' | 'creditSystemRead'>, university: string): CourseEntry {
+export function courseEntryOf(r: PreviewRow, p: Pick<ExternalPreview, 'slot' | 'unofficial' | 'creditSystem' | 'creditSystemRead'>, university: string, imported?: { on: string; app: string }): CourseEntry {
+  // Where the row came from (DGS 2026-10-11, item 6): typed in the preview,
+  // or read from this transcript — with the fields the student changed.
+  const changed = changedFields(r);
+  const source = r.manual
+    ? { typedByStudent: true as const }
+    : imported
+      ? { imported: { transcript: p.slot, on: imported.on, app: imported.app }, ...(changed.length > 0 ? { changedOnImport: changed } : {}) }
+      : {};
   return {
+    ...source,
     courseId: canonicalCourseId(r.courseId),
     title: r.title.trim() || undefined,
     credits: r.credits!,
@@ -792,6 +838,8 @@ function previewFromParsed(
   const termPrefill = prefillLevelsByTerm(mapped, slot, parsed.bachelorsNamed === true);
   const mixed = parsed.mixedLevels === true || new Set(mapped.map((r) => r.level)).size > 1;
   const kept = keepRelevantRows(parsed.university ?? '', args.rules, mapped, mixed, args.student.program);
+  // What the reader read, as the preview first shows it (item 6, 2026-10-11).
+  for (const r of [...mapped, ...kept.rows]) r.read ??= readingOf(r);
   const bachelors = bachelorsForPreview(slot, mixed, parsed.bachelorsConferredOn, termPrefill !== undefined, handSetBachelors(args.student));
   releaseScanStrips(); // an earlier preview's scanned lines go with it (Batch C answer (5))
   preview = {
@@ -1705,7 +1753,7 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
               const graduateCandidates = [...new Set(earlier.filter((c) => c.degreeLevel === 'masters' || c.degreeLevel === 'phd').map((c) => c.institution!))];
               const graduateAt = graduateCandidates.length === 1 ? graduateCandidates[0] : undefined;
               for (const r of ready) {
-                const row = courseEntryOf(r, p, university);
+                const row = courseEntryOf(r, p, university, args.todayIso ? { on: args.todayIso, app: APP_BUILD.commit } : undefined);
                 if (row.degreeLevel !== 'bachelors') graduateRows += 1;
                 s.courses.push(row);
                 // The same course already on the record as the Notre Dame

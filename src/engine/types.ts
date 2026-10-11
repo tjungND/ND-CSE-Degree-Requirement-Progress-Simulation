@@ -142,7 +142,25 @@ export interface CourseEntry {
    * the transcript reader had not read it there (DGS 2026-10-10, item 3). The
    * report then says "you chose quarter terms", not "your transcript says". */
   creditSystemChosen?: true;
+  /** Where the row came from (DGS 2026-10-11, item 6: the processing request
+   * and the advisor summary label each course): the transcript import that
+   * added it — `transcript` is 'nd' for the Notre Dame transcript, else the
+   * slot it was imported into — the date (Notre Dame's calendar) and the app
+   * build that read it (src/ui/build-info.ts — the transcript reader is part
+   * of the app, so the build names the reader). Absent on a typed row and on
+   * rows saved before 2026-10-11 (`fromNdTranscript` still marks an older
+   * Notre Dame import). The engine never reads it. */
+  imported?: { transcript: 'nd' | 'bachelors' | 'masters' | 'phd'; on: string; app: string };
+  /** What the student changed in the import preview before adding the row:
+   * the fields where the row added differs from what the reader read. */
+  changedOnImport?: ImportedField[];
+  /** Added by hand with "Add a course" (DGS 2026-10-11, item 6). */
+  typedByStudent?: true;
 }
+
+/** A field of an imported row the student can correct in the preview. */
+export type ImportedField = 'course' | 'title' | 'credits' | 'term' | 'grade' | 'level';
+export const IMPORTED_FIELDS: readonly ImportedField[] = ['course', 'title', 'credits', 'term', 'grade', 'level'];
 
 /** ISO dates (YYYY-MM-DD), all optional — milestones are dates, not checkboxes. */
 export interface Milestones {

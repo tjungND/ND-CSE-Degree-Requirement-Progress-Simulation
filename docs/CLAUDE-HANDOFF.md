@@ -2177,6 +2177,17 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   verdicts. `npm run reproduce` (`scripts/dev/reproduce.mts`) is tested end to end in
   `tests/stamp.test.ts`; the e2e checks the footer, print header, saved file, simulation file,
   processing request and review request.
+- **Course sources** (2026-10-11, item 6): `CourseEntry.imported` {transcript 'nd'|slot, on, app},
+  `changedOnImport` (ImportedField[]) and `typedByStudent` are set at Add — nd-upload.ts (Notre Dame
+  rows cannot be edited in its preview), external-upload.ts `courseEntryOf(r, p, university,
+  imported?)` (the preview row's `read` is snapshotted when the preview is built, after the
+  app's own level prefill; `changedFields` compares with canonical course ids), app.ts's
+  Add-a-course form. state.ts drops a malformed mark. `src/ui/provenance.ts` `sourceOf` /
+  `sourcesLine` word them; the engine never reads them. grad-admin-request.ts: `ProcessingTransfer.source`,
+  `CountedCourse.source`, a Source column in both tables, “as I entered it” / “as I ticked”; the
+  course table is one row per REGISTRATION (`StandingTable.courseEntries`, the k-th listing of an
+  id = the k-th definite, non-superseded classified entry). `betaNotice(program)` adds
+  `ALONG_THE_WAY_NOTICE` on the Ph.D. tab; BETA_NOTICE itself is the DGS's wording — never edit it.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

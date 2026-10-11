@@ -6,6 +6,7 @@
 // Everything else — the record, the rules, the toasts, the render — arrives in
 // `NdUploadArgs` on every call, so this module never captures the reassignable
 // `student`.
+import { APP_BUILD } from './build-info.ts';
 import { resolveRuleRow } from '../data/assemble.ts';
 import { findExternalRule } from '../data/external.ts';
 import type { Rules } from '../data/types.ts';
@@ -46,6 +47,9 @@ export interface NdUploadArgs {
   simulation?: boolean;
   setFocusAfterRender: (key: string) => void;
   refusedValues: RefusedValues;
+  /** Today at Notre Dame (YYYY-MM-DD): the date each imported row records
+   * (`CourseEntry.imported`; DGS 2026-10-11, item 6). */
+  todayIso?: string;
 }
 
 /** Parsed-transcript preview awaiting the student's confirmation. */
@@ -789,6 +793,9 @@ function applyNdPreview(tp: NdPreview, args: NdUploadArgs): void {
         // the undergraduate record it is bachelor's coursework (b).
         ...(c.origin === 'transfer' ? { ndPosted: postingOf(c), ...(c.level === 'undergraduate' ? { degreeLevel: 'bachelors' as const } : {}) } : {}),
         fromNdTranscript: true, // so "Remove" can take back exactly these rows
+        // Where it came from (DGS 2026-10-11, item 6). The preview's rows cannot
+        // be edited, so nothing here is ever "changed by the student".
+        ...(args.todayIso ? { imported: { transcript: 'nd' as const, on: args.todayIso, app: APP_BUILD.commit } } : {}),
       };
       s.courses.push(entryCourse);
     }

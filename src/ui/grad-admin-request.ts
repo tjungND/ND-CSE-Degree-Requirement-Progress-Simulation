@@ -37,6 +37,7 @@ import { allRequirementsMet } from './next-steps.ts';
 import { deadlineAlert, isNotStarted, standingColor, scoredRows, statusWord } from './report.ts';
 import { whyFor } from './advisor-summary.ts';
 import { compareTerm } from '../engine/term.ts';
+import { sourceOf, sourcesLine } from './provenance.ts';
 
 export { selfCheckFileName } from './state.ts';
 
@@ -98,6 +99,8 @@ export interface ProcessingTransfer {
   /** The part of the course the §5.2 cap admits, when it is less than the
    * whole (P3-prior-programs-5). */
   cappedCredits?: number;
+  /** Where the row came from (src/ui/provenance.ts; DGS 2026-10-11, item 6). */
+  source: string;
 }
 
 /** One met requirement as a table: what satisfies it. */
@@ -121,6 +124,10 @@ export interface StandingTable extends MetTable {
   /** The courses this row counts, for the one course table (DGS 2026-09-28:
    * the same courses used to print under three rows). */
   courseIds: string[];
+  /** The same courses as the record's rows — one per registration, so a
+   * course taken in two semesters (thesis direction, research) is two rows of
+   * the course table, each with its own term and source (2026-10-11). */
+  courseEntries: CourseEntry[];
 }
 
 /** One row of the course table: a course and every requirement it counts toward. */
@@ -132,6 +139,8 @@ export interface CountedCourse {
   term: string;
   where: string;
   countsToward: string[];
+  /** Where the row came from (src/ui/provenance.ts; DGS 2026-10-11, item 6). */
+  source: string;
 }
 
 export interface ProcessingItems {
@@ -181,27 +190,35 @@ const COURSE_COLUMNS = ['Course', 'Title', 'Credits', 'Grade', 'Term', 'Where'];
  * semesters for residency; the date for a milestone; the figure for the GPA;
  * otherwise the row's own detail (which, for an open row, says what is still
  * missing). */
-function metTable(r: RequirementResult, student: Student): MetTable {
+function metTable(r: RequirementResult, student: Student, countedEntries?: (courseId: string) => CourseEntry[]): MetTable & { entries?: CourseEntry[] } {
   const heading = `${r.title} (${r.citation.section})`;
   const evidence = r.status === 'met' ? 'Evidence' : 'Progress';
   const byId = new Map<string, CourseEntry>();
   for (const c of student.courses) byId.set(c.courseId, c);
   const ids = r.satisfiedBy ?? [];
   if (ids.length > 0 && ids.every((id) => byId.has(id))) {
+    // The k-th time an id is listed is the k-th counted registration of it
+    // (2026-10-11: CSE 68901 taken in two semesters printed one row twice).
+    const seen = new Map<string, number>();
+    const entries = ids.map((id) => {
+      const k = seen.get(id) ?? 0;
+      seen.set(id, k + 1);
+      const counted = countedEntries?.(id) ?? [];
+      return counted[k] ?? counted[counted.length - 1] ?? byId.get(id)!;
+    });
     return {
       heading,
       columns: COURSE_COLUMNS,
-      rows: ids.map((id) => {
-        const c = byId.get(id)!;
-        return [c.courseId, c.title ?? '', formatCredits(c.credits), c.grade, termLabel(c.term), c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university')];
-      }),
+      rows: entries.map((c) => [c.courseId, c.title ?? '', formatCredits(c.credits), c.grade, termLabel(c.term), c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university')]),
+      entries,
     };
   }
   if (ids.length > 0) return { heading, columns: ['Semester'], rows: ids.map((s) => [s]) };
   const milestoneKey = ROW_MILESTONE[r.id];
   if (milestoneKey) {
     const date = student.milestones[milestoneKey];
-    const rows: string[][] = [['Date', typeof date === 'string' && date !== '' ? date : 'not entered']];
+    // The student's own statement (DGS 2026-10-11, item 6): said beside the date.
+    const rows: string[][] = [['Date', typeof date === 'string' && date !== '' ? `${date}, as I entered it` : 'not entered']];
     if (r.id === 'shared.advisor') {
       const names = [student.milestones.advisorName, student.milestones.advisorName2].filter((n): n is string => !!n);
       rows.unshift([names.length > 1 ? 'Advisors' : 'Advisor', names.length > 0 ? names.join(' and ') : 'name not entered']);
@@ -216,11 +233,11 @@ function metTable(r: RequirementResult, student: Student): MetTable {
 const STANDING_ORDER: Record<StandingColor, number> = { red: 0, green: 1, blue: 2, amber: 3, grey: 4 };
 
 /** Every scored requirement as the request prints it (DGS 2026-09-28). */
-function standingTable(r: RequirementResult, student: Student): StandingTable {
+function standingTable(r: RequirementResult, student: Student, countedEntries?: (courseId: string) => CourseEntry[]): StandingTable {
   // A done deadline is the milestone's own date, already in the table.
   const alert = deadlineAlert(r);
   const deadline = alert === null ? undefined : { text: r.deadline!.label, ...(alert ? { alert } : {}) };
-  const table = metTable(r, student);
+  const { entries: tableEntries, ...table } = metTable(r, student, countedEntries);
   const met = r.status === 'met';
   const lead = met ? 'Evidence' : 'Progress';
   // The lines (DGS 2026-09-28: "drop the filler tables"): a course-based row
@@ -242,7 +259,7 @@ function standingTable(r: RequirementResult, student: Student): StandingTable {
     // kept as a table below
   } else if (why && why.toLowerCase() !== `${statusWord(r).toLowerCase()}.` && !/^Not started\b/.test(why)) lines.push(`${lead}: ${why}`);
   const rows = table.columns[0] === 'Semester' ? table.rows : [];
-  return { ...table, rows, word: statusWord(r), color: standingColor(r), ...(deadline ? { deadline } : {}), lines, courseIds };
+  return { ...table, rows, word: statusWord(r), color: standingColor(r), ...(deadline ? { deadline } : {}), lines, courseIds, courseEntries: courseIds.length > 0 ? (tableEntries ?? []) : [] };
 }
 
 /** The one course table: every course a standing row counts, with the rows
@@ -252,20 +269,22 @@ function countedCourses(standing: StandingTable[], report: AuditReport, student:
   const out = new Map<string, CountedCourse>();
   // In the report's order, so "Counts toward" reads the way the page does.
   const ordered = [...standing].sort((a, b) => report.requirements.findIndex((r) => `${r.title} (${r.citation.section})` === a.heading) - report.requirements.findIndex((r) => `${r.title} (${r.citation.section})` === b.heading));
+  // One row per registration (2026-10-11): a course taken in two semesters is two rows.
+  const termOf = new Map<string, CourseEntry['term']>();
   for (const t of ordered) {
     const r = byId.get(t.heading);
     const label = r ? `${r.shortTitle ?? r.title} (${r.citation.section})` : t.heading;
-    for (const id of t.courseIds) {
-      const c = student.courses.find((x) => x.courseId === id);
-      if (!c) continue;
-      const row = out.get(id) ?? { courseId: id, title: c.title ?? '', credits: formatCredits(c.credits), grade: c.grade, term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [] };
+    for (const c of t.courseEntries) {
+      const key = `${c.courseId}|${c.institution ?? ''}|${termLabel(c.term)}`;
+      const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: formatCredits(c.credits), grade: c.grade, term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
       if (!row.countsToward.includes(label)) row.countsToward.push(label);
-      out.set(id, row);
+      out.set(key, row);
+      termOf.set(key, c.term);
     }
   }
   // Term order, then id — a transcript's own order.
-  const termOf = (id: string) => student.courses.find((x) => x.courseId === id)!.term;
-  return [...out.values()].sort((a, b) => compareTerm(termOf(a.courseId), termOf(b.courseId)) || a.courseId.localeCompare(b.courseId));
+  const keyOf = (c: CountedCourse) => [...out].find(([, v]) => v === c)![0];
+  return [...out.values()].sort((a, b) => compareTerm(termOf.get(keyOf(a))!, termOf.get(keyOf(b))!) || a.courseId.localeCompare(b.courseId));
 }
 
 /** A decided transfer the §5.2 cap has no room for (P3-prior-programs-5). */
@@ -323,6 +342,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
       termText: termLabel(c.entry.term),
       state: approvedForMe(c) ? ('approved' as const) : ('pre-approved' as const),
       ...(counted !== undefined && counted > 0 && counted < whole ? { cappedCredits: counted } : {}),
+      source: sourceOf(c.entry).text,
       overCap: counted === 0,
       };
     });
@@ -353,13 +373,24 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   // The transfer row is left out too: the transfer sections above carry what
   // the Grad Admin may process, and a course still waiting for the DGS must
   // not reach them by another door (2026-09-08).
+  // The counted registrations of each course id, in the classifier's order —
+  // what `satisfiedBy` lists (countedCourseIds: definite, not superseded).
+  const countedById = new Map<string, CourseEntry[]>();
+  for (const c of classified) {
+    if (c.superseded || c.tier !== 'definite') continue;
+    countedById.set(c.entry.courseId, [...(countedById.get(c.entry.courseId) ?? []), c.entry]);
+  }
+  const countedEntries = (id: string): CourseEntry[] => countedById.get(id) ?? [];
   const standing = scoredRows(report)
     .filter((r) => r.group !== 'Approvals' && !r.id.endsWith('.transfer'))
-    .map((r) => standingTable(r, student))
+    .map((r) => standingTable(r, student, countedEntries))
     .sort((a, b) => STANDING_ORDER[a.color] - STANDING_ORDER[b.color] || (a.word === 'Not started' ? 0 : 1) - (b.word === 'Not started' ? 0 : 1));
   const met = report.requirements
     .filter((r) => r.status === 'met' && !r.informational && r.group !== 'Approvals')
-    .map((r) => metTable(r, student));
+    .map((r) => {
+      const { entries: _e, ...t } = metTable(r, student, countedEntries);
+      return t;
+    });
   const tally = {
     met: standing.filter((s) => s.color === 'green').length,
     conditional: standing.filter((s) => s.color === 'blue').length,
@@ -391,13 +422,14 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   // sent in time rather than asking for it now; the warning sends the student
   // to the DGS if it was not.
   const closedWindow = report.transferRequestWindowClosed;
-  const recommendedBy = (t: ProcessingTransfer): string => (t.state === 'approved' ? 'recommended by the DGS for my case' : 'recommended by the DGS in the course rules');
+  // The tick is the student's own statement (DGS 2026-10-11, item 6).
+  const recommendedBy = (t: ProcessingTransfer): string => (t.state === 'approved' ? 'recommended by the DGS for my case, as I ticked' : 'recommended by the DGS in the course rules');
   const actions = [
     ...transfers.map(
       (t) =>
         `${recorded ? 'Check that the transfer credit is on my record for' : closedWindow !== undefined ? 'Check whether the Transfer of Credits request was sent before ' + termLabel(closedWindow) + ', the semester I plan to graduate in, for' : 'Submit the Transfer of Credits request to the Graduate School for'} ${t.courseId}${t.title ? ` ${t.title}` : ''} (${t.institution ?? 'another university'}, ${t.termText}, ${formatCredits(t.credits)} credits${t.ndCredits !== undefined && t.ndCredits !== t.credits ? ` = ${formatCredits(t.ndCredits)} Notre Dame credits` : ''}${t.cappedCredits !== undefined ? ` — ${formatCredits(t.cappedCredits)} of them within the §5.2 cap` : ''}) — ${recorded ? 'approved by the Graduate School, as I ticked' : recommendedBy(t)} (§5.2).`,
     ),
-    ...milestones.map((m) => `Record the milestone: ${m.label}, ${m.date} (${m.section}).`),
+    ...milestones.map((m) => `Record the milestone: ${m.label}, ${m.date} — the date as I entered it (${m.section}).`),
     ...(qualifierFormDue ? ['Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet (§4.4).'] : []),
     ...(msAlongTheWay ? ['Process the MSCSE along the way — the self-check, which is the DGS’s review of the award (§3.1), shows its requirements met (§4.5).'] : []),
     ...(candidacyApplicationDue ? ['Initiate my Application for Admission to Doctoral Candidacy — the self-check shows every condition met (DGS Handbook §3.22.3).'] : []),
@@ -487,10 +519,15 @@ export function gradAdminRequest(
   // Which imported transcripts were unofficial copies (DGS 2026-10-03).
   const unofficial = unofficialTranscriptNote(student.courses);
   const earlier = opts.history?.earlier ?? '';
-  const closing =
-    'Generated by the CSE degree self-check tool (alpha version under testing; informational only — every decision rests with the DGS).';
+  // "Informational only" is not true of the MSCSE along the way (P3-cse-3-2):
+  // when the request carries that award, the closing says so (DGS 2026-10-11, item 6).
+  const closing = items.msAlongTheWay
+    ? 'Generated by the CSE degree self-check tool (alpha version under testing; informational only — every decision rests with the DGS — except the MSCSE along the way above, for which this self-check is the DGS’s own review, §3.1).'
+    : 'Generated by the CSE degree self-check tool (alpha version under testing; informational only — every decision rests with the DGS).';
+  // Where the courses came from; milestone dates and ticks are the student's own (item 6).
+  const sources = sourcesLine(student) ?? '';
 
-  const TRANSFER_COLUMNS = ['University', 'Course', 'Title', 'Credits', 'ND credits', 'Grade', 'Term'];
+  const TRANSFER_COLUMNS = ['University', 'Course', 'Title', 'Credits', 'ND credits', 'Grade', 'Term', 'Source'];
   const transferRow = (t: ProcessingTransfer): string[] => [
     t.institution ?? '',
     t.courseId,
@@ -499,6 +536,7 @@ export function gradAdminRequest(
     `${t.ndCredits !== undefined ? formatCredits(t.ndCredits) : ''}${t.cappedCredits !== undefined ? `${t.ndCredits !== undefined ? ' — ' : ''}${formatCredits(t.cappedCredits)} within the §5.2 cap` : ''}`,
     t.grade,
     t.termText,
+    t.source,
   ];
   type Section = { heading: string; badge?: { word: string; color: StandingColor }; deadline?: StandingTable['deadline']; columns?: string[]; table?: string[][]; lines?: string[]; plain?: string[] };
   const sections: Section[] = [];
@@ -525,7 +563,7 @@ export function gradAdminRequest(
       });
     }
     if (approved.length > 0) {
-      sections.push({ heading: 'Transfer credit to submit to the Graduate School (§5.2) — recommended by the DGS for my case', columns: TRANSFER_COLUMNS, table: approved.map(transferRow) });
+      sections.push({ heading: 'Transfer credit to submit to the Graduate School (§5.2) — recommended by the DGS for my case, as I ticked', columns: TRANSFER_COLUMNS, table: approved.map(transferRow) });
     }
   }
   // Over the cap: for the record, not to submit (P3-prior-programs-5).
@@ -540,8 +578,8 @@ export function gradAdminRequest(
   if (items.courses.length > 0) {
     sections.push({
       heading: 'Courses counted so far',
-      columns: ['Course', 'Title', 'Credits', 'Grade', 'Term', 'Where', 'Counts toward'],
-      table: items.courses.map((c) => [c.courseId, c.title, c.credits, c.grade, c.term, c.where, c.countsToward.join('; ')]),
+      columns: ['Course', 'Title', 'Credits', 'Grade', 'Term', 'Where', 'Counts toward', 'Source'],
+      table: items.courses.map((c) => [c.courseId, c.title, c.credits, c.grade, c.term, c.where, c.countsToward.join('; '), c.source]),
     });
   }
   if (items.qualifierFormDue) {
@@ -633,7 +671,7 @@ export function gradAdminRequest(
   // tables below the line.
   const actionsText = items.actions.length > 0 ? `${ACTION_HEADING.toUpperCase()}\n${items.actions.map((a, i) => `${i + 1}. ${a}`).join('\n')}\n\n` : '';
   const text =
-    `Subject: ${subject}\n\nDear Grad Admin,\n\n${STUDENT_LINE}\n\n${intro}\n${standing}\n${earlier ? `${earlier}\n` : ''}${attached ? `${attached}\n` : ''}${unofficial ? `${unofficial}\n` : ''}\n${actionsText}Thank you!\n\n` +
+    `Subject: ${subject}\n\nDear Grad Admin,\n\n${STUDENT_LINE}\n\n${intro}\n${standing}\n${sources ? `${sources}\n` : ''}${earlier ? `${earlier}\n` : ''}${attached ? `${attached}\n` : ''}${unofficial ? `${unofficial}\n` : ''}\n${actionsText}Thank you!\n\n` +
     `${EDITABLE_MARKER}\n${MARKER_DIVIDER}\n${DO_NOT_MODIFY_MARKER}\n\n` +
     (sections.length > 0 ? sections.map(textSection).join('') : 'Nothing to process yet.\n\n') +
     `${closing}\n${opts.stamp ? `${opts.stamp}\n` : ''}`;
@@ -651,7 +689,7 @@ export function gradAdminRequest(
     (s.lines ? `<ul>${s.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : '');
   const actionsHtml = items.actions.length > 0 ? `<p><strong>${esc(ACTION_HEADING)}</strong></p><ol>${items.actions.map((a) => `<li>${esc(a)}</li>`).join('')}</ol>` : '';
   const html =
-    `<p>Subject: ${esc(subject)}</p><p>Dear Grad Admin,</p>${studentLineHtml()}<p>${esc(intro)}<br>${esc(standing)}${earlier ? `<br>${esc(earlier)}` : ''}${attached ? `<br><strong>${esc(attached)}</strong>` : ''}${unofficial ? `<br><strong>${esc(unofficial)}</strong>` : ''}</p>${actionsHtml}<p>Thank you!</p>` +
+    `<p>Subject: ${esc(subject)}</p><p>Dear Grad Admin,</p>${studentLineHtml()}<p>${esc(intro)}<br>${esc(standing)}${sources ? `<br>${esc(sources)}` : ''}${earlier ? `<br>${esc(earlier)}` : ''}${attached ? `<br><strong>${esc(attached)}</strong>` : ''}${unofficial ? `<br><strong>${esc(unofficial)}</strong>` : ''}</p>${actionsHtml}<p>Thank you!</p>` +
     `<p><strong>${esc(EDITABLE_MARKER)}</strong></p><hr><p><strong>${esc(DO_NOT_MODIFY_MARKER)}</strong></p>` +
     (sections.length > 0 ? sections.map(htmlSection).join('') : '<p>Nothing to process yet.</p>') +
     `<p>${esc(closing)}</p>${opts.stamp ? `<p>${esc(opts.stamp)}</p>` : ''}`;

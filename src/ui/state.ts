@@ -3,7 +3,7 @@
 // Nothing ever leaves the browser (CLAUDE.md).
 import type { SavedStamp } from './stamp.ts';
 import { COURSE_CREDITS_RANGE, GPA_RANGE, inRange, rangeRefusal } from '../engine/ranges.ts';
-import type { Season, Student, Term } from '../engine/types.ts';
+import { IMPORTED_FIELDS, type Season, type Student, type Term } from '../engine/types.ts';
 import { asksAlsoElsewhere, refileEarlyStartCourses, settleAnsweredPriorMs } from './prior-nd.ts';
 
 const LS_KEY = 'cse-degree-audit/v1/student';
@@ -380,6 +380,17 @@ export function validateStudent(data: unknown, refusals: Refusal[] = []): Studen
     if (e['fromUnofficialTranscript'] !== undefined && e['fromUnofficialTranscript'] !== true) delete e['fromUnofficialTranscript']; // and which came from an unofficial transcript
     if (e['transcriptMark'] !== undefined && (typeof e['transcriptMark'] !== 'string' || e['transcriptMark'].trim() === '')) delete e['transcriptMark']; // the mark as the transcript printed it
     if (e['creditSystemChosen'] !== undefined && e['creditSystemChosen'] !== true) delete e['creditSystemChosen']; // who chose the credit system (2026-10-10)
+    // Where the row came from (2026-10-11, item 6) — labels only, so a malformed one is dropped.
+    if (e['imported'] !== undefined) {
+      const m = e['imported'] as Record<string, unknown> | null;
+      const ok = m !== null && typeof m === 'object' && ['nd', 'bachelors', 'masters', 'phd'].includes(m['transcript'] as string) && typeof m['on'] === 'string' && isIsoDate(m['on']) && typeof m['app'] === 'string';
+      if (!ok) delete e['imported'];
+    }
+    if (e['changedOnImport'] !== undefined) {
+      const f = e['changedOnImport'];
+      if (!Array.isArray(f) || !f.every((x) => (IMPORTED_FIELDS as readonly unknown[]).includes(x)) || f.length === 0) delete e['changedOnImport'];
+    }
+    if (e['typedByStudent'] !== undefined && e['typedByStudent'] !== true) delete e['typedByStudent'];
     if (e['countedToward'] !== undefined && !COUNTED_TOWARD.includes(e['countedToward'] as string)) delete e['countedToward'];
     if (e['dgsApproved'] !== undefined && e['dgsApproved'] !== true) delete e['dgsApproved']; // the DGS's approval of this course (2026-09-27)
     if (e['sharedWithOtherDegree'] !== undefined && e['sharedWithOtherDegree'] !== true) delete e['sharedWithOtherDegree']; // also counts toward a second program (2026-10-04)

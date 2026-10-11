@@ -113,7 +113,7 @@ describe('advisor summary: sections in handbook order, rows coloured by status',
   });
 
   it('closes with the alpha/no-warranty notice and the handbook edition; no deadline footnote without deadlines', () => {
-    assert.match(text, /\nThank you!\n\nAlpha version under testing\. Informational only, no warranty — not an official degree audit; every final decision rests with the DGS\. Checked against the CSE Graduate Studies Handbook \(https:\/\/[^)]+\), together with the Graduate School’s Academic Code, DGS Handbook and 4\+1 guidance\.\n$/);
+    assert.match(text, /\nThank you!\n\nAlpha version under testing\. Informational only, no warranty — not an official degree audit; every final decision rests with the DGS\. For the MSCSE along the way, this self-check is the DGS’s own review of the award \(§3\.1\)\. Checked against the CSE Graduate Studies Handbook \(https:\/\/[^)]+\), together with the Graduate School’s Academic Code, DGS Handbook and 4\+1 guidance\.\n$/);
     assert.doesNotMatch(text, /transcript-PDF|Not all cases are covered|Deadlines are counted from/);
   });
 });
