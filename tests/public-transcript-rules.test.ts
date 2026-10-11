@@ -935,3 +935,31 @@ describe('transcript accuracy program, Batch C — adjacent-line graduate confer
     assert.equal(conferred(degree, 'Date of Graduation: 30 June 2024'), true);
   });
 });
+
+describe('item 14 follow-up — one-digit course numbers on a scan (item 13’s full-ladder check, 2026-10-11)', () => {
+  const ucla = JSON.parse(readFileSync(new URL('./fixtures/public-transcripts/ucla-etranscript.json', import.meta.url), 'utf8')) as string[];
+  const sure = (lines: string[]) => lines.map(() => 95);
+
+  it('UCLA’s one-digit rows read on a text layer and on a scan alike — each has its credits and a grade', () => {
+    const text = parseExternalTranscript(ucla).courses.map((c) => c.courseId);
+    const scan = parseExternalTranscript(ucla, sure(ucla)).courses.map((c) => c.courseId);
+    for (const id of ['PHYSICS 1A', 'ENGCOMP 3']) {
+      assert.ok(text.includes(id), `text layer: ${id}`);
+      assert.ok(scan.includes(id), `scan: ${id}`);
+    }
+  });
+
+  it('on a scan, a one-digit code without its credits and a grade is no row (a grade key, a legend line)', () => {
+    const doc = [
+      'Example State University',
+      'Office of the Registrar',
+      'Official Transcript',
+      'Fall 2023',
+      'CS 50100   Advanced Algorithms   3.0   A',
+      'LP 2S   Low Pass   D',
+      'RE 1   Course Delivery Code Lecture Seminar Experiment   9',
+      'This document lists the courses taken by the student at the university and is issued by the registrar.',
+    ];
+    assert.deepEqual(parseExternalTranscript(doc, sure(doc)).courses.map((c) => c.courseId), ['CS 50100']);
+  });
+});

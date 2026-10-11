@@ -2216,7 +2216,8 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   the shown rows). Any new recorded shape needs the corpus guard to stay silent first.
 - **Reading fixes by impact** (2026-10-11, item 14): scripts/dev/audit-impact.mts (true vs read rows → two
   audits; unmapped marks left out alike, `rawMarksOf`). external.ts: LEAD_CODE_RE's first branches
-  (McMaster, SNU) and last (a one-digit number alone in its cell, `(?=$)`); DIGIT_LED_CODE_RE's SNU
+  (McMaster, SNU) and last (a one-digit number alone in its cell, `(?=$)` — on OCR lines only with the
+  row's credits and a grade or an in-progress block, item 13's full-ladder check); DIGIT_LED_CODE_RE's SNU
   shapes; `inProgressByTermLine`; the winter-range rule in readTermLine; TR rows → transferRowsSkipped;
   `numericFillsRest` with a term column; `fallWinterSession` + the [BGST] suffix; the semester-parity
   rule; the Ladok module filter after CC15; `issuedDegree`; tokensOf strips Oregon's `>N` and P/N `*`;

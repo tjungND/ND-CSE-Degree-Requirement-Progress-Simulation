@@ -583,4 +583,10 @@ and Firefox.
 **What the full-ladder check found besides.** Against yesterday's parser (`q4-after2-ladder/`), three regression
 lines that item 14 made and its L2 / L5 check could not see: one more false row each on Duke's grading key at
 L3 ("LP 2.5" read "LP 2S") and Tokyo's grading page at L3 and L4 ("RE 1", "HPAL 6"). Each was read by item 14's
-rule for UCLA's one-digit course numbers alone in their cell; the next commit reads that rule on text layers only.
+rule for UCLA's one-digit course numbers alone in their cell. Each junk row lacks its credits or a grade, while
+every real UCLA row ("PHYSICS 1A", "ENGCOMP 3") has both. So on a scan that rule now needs a row's credits AND a
+grade, or an in-progress term; a text layer reads as item 14 left it. On the same lines against item 13's parser
+(`item13-final-*` → `vb-ladder/`, `vb-l7/`, `vb-medium/`, `vb-pinned/`): the three improvements back, 0 regressions on
+the ladder, L7, the medium set and the pinned pages; the text-path replay unchanged (public 162 / 168, master's 48 /
+48, Notre Dame 7 / 7, PDFs 49 / 49). Reading the rule on text layers only would have removed the same three rows,
+but a scanned UCLA transcript would then lose its one-digit courses.

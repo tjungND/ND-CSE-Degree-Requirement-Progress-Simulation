@@ -3234,6 +3234,13 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // A candidate needs a code plus at least a credit value or a grade —
     // otherwise it is a header/footer line that happened to start with a code.
     if (into.credits === undefined && into.grade === undefined && into.rawGrade === undefined) return lineIndex;
+    // UCLA's one-digit course numbers alone in their cell ("PHYSICS 1A",
+    // "ENGCOMP 3"; item 14): on a scan a digit alone in its cell is as often a
+    // misread or a stray mark — Duke's grade key "LP 2.5" read "LP 2S", the
+    // legend lines "RE 1" and "HPAL 6" on Tokyo's grading page (item 13's
+    // full-ladder check, 2026-10-11) — so there such a row needs its credits
+    // AND a grade, or an in-progress term, as every real row of UCLA's has.
+    if (ocrLines && /^[A-Z]{2,10} \d[A-Z]{0,2}$/.test(lead.code) && (into.credits === undefined || (into.grade === undefined && !inProgressBlock))) return lineIndex;
     // A row graded TR is credit transferred in from another school (item 14,
     // 2026-10-11): Colleague prints such rows among the student's own, under
     // no transfer heading ("MATH-1200   Calculus I   TR   4.00   2021FA").
