@@ -1,0 +1,24 @@
+{
+  "name": "phd-after-admission-course-not-an-earlier-program",
+  "description": "Policy review round 4, P4-transfer-3 (DGS 2026-10-11: option (a)). A Fall 2026 Ph.D. entrant with a finished master's at Purdue (CS 50300, ruled yes) who took USC's CSCI 570 in Summer 2027, after admission. A course taken while enrolled at Notre Dame is no earlier program (Academic Code §4.6 criterion 3 names it separately): CSCI 570 keeps its own after-admission hold, and Purdue's course counts. It used to make the record read “Transfer credit from 2 earlier graduate programs”, holding CS 50300 too.",
+  "today": "2027-10-01",
+  "rules": { "base": "default" },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": { "season": "fall", "year": 2026 },
+    "priorMs": "completed",
+    "gpa": 3.6,
+    "bachelorsAwarded": { "season": "spring", "year": 2022 },
+    "courses": [
+      { "courseId": "CS 50300", "title": "Operating Systems", "credits": 3, "term": { "season": "fall", "year": 2024 }, "grade": "A", "origin": "transfer", "institution": "Purdue University", "degreeLevel": "masters" },
+      { "courseId": "CSCI 570", "title": "Analysis of Algorithms", "credits": 4, "term": { "season": "summer", "year": 2027 }, "grade": "A", "origin": "transfer", "institution": "University of Southern California", "degreeLevel": "masters" },
+      { "courseId": "CSE 60641", "credits": 3, "term": { "season": "fall", "year": 2026 }, "grade": "A", "origin": "nd" }
+    ],
+    "milestones": {},
+    "attestations": {}
+  },
+  "expect": {
+    "phd.transfer": { "status": "needs_dgs_review", "detailIncludes": ["Waiting for the DGS: CSCI 570", "CSCI 570: Taken after admission", "3 of the 24 credits you may transfer"], "detailExcludes": ["earlier graduate programs", "CS 50300: Taken"] }
+  }
+}

@@ -614,9 +614,14 @@ export function isOwnMscseCoursework(student: Student, c: CourseEntry): boolean 
 }
 
 /** A course that draws on §5.2's transfer allowance and is not refused,
- * superseded or already held as outside any program. */
+ * superseded or already held as outside any program — nor taken elsewhere
+ * after admission (policy review round 4, P4-transfer-3; DGS 2026-10-11:
+ * option (a)): a course taken while enrolled at Notre Dame is no earlier
+ * program (Academic Code §4.6 criterion 3 names it separately) and keeps its
+ * own hold, so one summer course elsewhere no longer turns a finished
+ * master's into "two earlier graduate programs". */
 function drawsOnTransferAllowance(cc: ClassifiedCourse): boolean {
-  return !cc.superseded && cc.ineligibleReason === undefined && cc.noPriorProgram !== true && cc.caps.includes('transfer') && cc.entry.degreeLevel !== 'bachelors';
+  return !cc.superseded && cc.ineligibleReason === undefined && cc.noPriorProgram !== true && cc.afterAdmission !== true && cc.caps.includes('transfer') && cc.entry.degreeLevel !== 'bachelors';
 }
 /** The earlier graduate programs those courses come from, by university as
  * the record names it (folded, so "Purdue University" and "PURDUE UNIV" are
@@ -1725,7 +1730,9 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // meter, instead of counting against a 6 no ruling gave it. A student who
   // studied in a program there says so (P3-prior-programs-1), and gets 24 or 6.
   const ndMscseOnly = student.ndMasters !== undefined;
-  const noPriorProgram = !fromNd && student.priorMs === 'none';
+  // A course taken after admission is not "outside any degree program": the
+  // student was in one, at Notre Dame (P4-transfer-3) — its own hold says so.
+  const noPriorProgram = !fromNd && student.priorMs === 'none' && !afterAdmission;
   // — an Incomplete from another university (policy review round 3,
   //   P3-ac-4-1; DGS 2026-10-05: "an outside I should be held for DGS
   //   review"): no final grade yet, so §5.2's B cannot be shown, and Notre
