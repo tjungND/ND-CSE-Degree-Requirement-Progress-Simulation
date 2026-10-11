@@ -364,15 +364,16 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
   // standing and the earlier credits; the credits are not decided here.
   const uncovered = uncoveredRegistrationGaps(student, today);
   if (uncovered !== undefined) {
-    const n = student.leaveSemesters ?? 0;
+    const n = (student.leaveSemesters ?? 0) + (student.otherLeaveSemesters ?? 0);
+    const leaveKind = (student.otherLeaveSemesters ?? 0) > 0 ? 'leave' : 'medical leave';
     const listed = uncovered.length <= 1 ? uncovered.map(termLabel).join('') : `${uncovered.slice(0, -1).map(termLabel).join(', ')} and ${termLabel(uncovered[uncovered.length - 1]!)}`;
     warnings.push(
-      `Your Notre Dame transcript shows no registration in ${listed} — ${uncovered.length} semesters, more than the ${n} ${n === 1 ? 'semester' : 'semesters'} of medical leave you entered. A leave of absence lasts at most two consecutive semesters (§5.7), and a student who does not return at its end must be readmitted; the program may then reject some or all earlier credits (DGS Handbook §3.3).${ctx.covidCohort ? ' For students enrolled in Spring 2020, the Graduate School allowed three consecutive semesters (Academic Code Appendix A.2).' : ''} Enter the semester you were readmitted under Your standing, or ask the DGS.`,
+      `Your Notre Dame transcript shows no registration in ${listed} — ${uncovered.length} semesters, more than the ${n} ${n === 1 ? 'semester' : 'semesters'} of ${leaveKind} you entered. A leave of absence lasts at most two consecutive semesters (§5.7), and a student who does not return at its end must be readmitted; the program may then reject some or all earlier credits (DGS Handbook §3.3).${ctx.covidCohort ? ' For students enrolled in Spring 2020, the Graduate School allowed three consecutive semesters (Academic Code Appendix A.2).' : ''} Enter the semester you were readmitted under Your standing, or ask the DGS.`,
     );
     reviewFlags.push(
       decisionWording(
         student.program,
-        `Semesters without registration: my Notre Dame transcript shows none in ${listed}, more than the ${n} ${n === 1 ? 'semester' : 'semesters'} of medical leave I entered, and no readmission is on file. Please confirm my standing and which of my earlier credits stand (DGS Handbook §3.1, §3.3).`,
+        `Semesters without registration: my Notre Dame transcript shows none in ${listed}, more than the ${n} ${n === 1 ? 'semester' : 'semesters'} of ${leaveKind} I entered, and no readmission is on file. Please confirm my standing and which of my earlier credits stand (DGS Handbook §3.1, §3.3).`,
       ),
     );
   }

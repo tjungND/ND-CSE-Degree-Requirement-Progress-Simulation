@@ -472,6 +472,13 @@ export interface Student {
    * crisis separations do NOT count (DGS Handbook §3.5/§3.6: they "will count
    * towards doctoral students' degree time limit"). */
   leaveSemesters?: number;
+  /** Fall or spring semesters on an approved leave of absence for another
+   * reason — study, athletic training, military, mission work or personal
+   * (Academic Code §5.1) — policy review round 4, P4-ac-3; DGS 2026-10-11:
+   * option (a). It explains a semester with no registration on the
+   * transcript (no readmission is asked for it) but moves NO clock: only
+   * medical leave and accommodations do (DGS 2026-10-06, P3-cross-doc-1). */
+  otherLeaveSemesters?: number;
   /** Childbirth/adoption accommodations taken (Academic Code §5.4; DGS
    * Handbook §3.7.2: "the accommodation extends it … by a semester"): each
    * adds a semester to the same two clocks (DGS 2026-10-03). */

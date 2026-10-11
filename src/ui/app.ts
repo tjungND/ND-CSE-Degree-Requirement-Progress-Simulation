@@ -1438,7 +1438,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
 
   function clockFields(): HTMLElement {
     const phd = student.program === 'phd';
-    const count = (key: 'leaveSemesters' | 'accommodationSemesters', label: string, hint: string): HTMLElement => {
+    const count = (key: 'leaveSemesters' | 'otherLeaveSemesters' | 'accommodationSemesters', label: string, hint: string): HTMLElement => {
       const input = el('input', {
         type: 'number',
         min: '0',
@@ -1453,6 +1453,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           update((s) => {
             s[key] = raw === '' || !Number.isInteger(n) || n < 0 ? undefined : Math.min(20, n);
             // Each leave's semester, each accommodation's birth or adoption semester — one slot per semester counted.
+            // (A leave for another reason moves no clock, so its semesters are not asked.)
+            if (key === 'otherLeaveSemesters') return;
             const slots = key === 'leaveSemesters' ? 'leaveTerms' : 'accommodationEventTerms';
             const kept = (s[slots] ?? []).slice(0, s[key] ?? 0);
             s[slots] = kept.some((t) => t !== null) ? kept : undefined;
@@ -1523,7 +1525,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // Without a transcript, or with an answer on file, everything is asked.
     const gaps = transcriptGaps();
     const withdrawals = withdrawalSemesters(student) ?? [];
-    const leaveAsked = gaps === undefined || gaps.length > 0 || withdrawals.length > 0 || (student.leaveSemesters ?? 0) > 0 || student.readmittedTerm !== undefined;
+    const leaveAsked = gaps === undefined || gaps.length > 0 || withdrawals.length > 0 || (student.leaveSemesters ?? 0) > 0 || (student.otherLeaveSemesters ?? 0) > 0 || student.readmittedTerm !== undefined;
     const summary =
       gaps !== undefined && gaps.length > 0
         ? `Your transcript shows no registration in ${gaps.map(termLabel).join(', ')} — a leave of absence, a withdrawal or a missed semester?${withdrawals.length > 0 ? ` ${withdrawalQuestion(withdrawals, termLabel)}` : ''}`
@@ -1540,6 +1542,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // found a gap semester)"). What is on file is said in the summary line.
     const onFile = [
       ...((student.leaveSemesters ?? 0) > 0 ? [`${student.leaveSemesters} medical leave ${student.leaveSemesters === 1 ? 'semester' : 'semesters'}`] : []),
+      ...((student.otherLeaveSemesters ?? 0) > 0 ? [`${student.otherLeaveSemesters} ${student.otherLeaveSemesters === 1 ? 'semester' : 'semesters'} of other approved leave`] : []),
       ...((student.accommodationSemesters ?? 0) > 0 ? [`${student.accommodationSemesters} accommodation ${student.accommodationSemesters === 1 ? 'semester' : 'semesters'}`] : []),
       ...(student.readmittedTerm ? [`readmitted ${termLabel(student.readmittedTerm)}`] : []),
     ];
@@ -1551,7 +1554,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // readmission term — the warning asks for the readmission semester, which
     // is entered here.
     const gapUnanswered =
-      (gaps !== undefined && gaps.length > 0 && (student.leaveSemesters ?? 0) === 0 && student.readmittedTerm === undefined) ||
+      (gaps !== undefined && gaps.length > 0 && (student.leaveSemesters ?? 0) + (student.otherLeaveSemesters ?? 0) === 0 && student.readmittedTerm === undefined) ||
       (withdrawals.length > 0 && student.readmittedTerm === undefined) ||
       uncoveredRegistrationGaps(student, todayIso()) !== undefined; // the SAME date the engine's warning reads (audit.ts) — in simulation mode the simulated one, so the fold the warning points at is open (review fix 2026-10-09; DECISIONS)
     return rareFold(
@@ -1576,10 +1579,18 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // is not entered, so it moves no clock.
         'Semesters on approved medical leave',
         phd
-          ? 'Fall or spring semesters the Graduate School approved as a medical leave of absence (at most two in a row, §5.7). An approved medical leave stops the clock (Academic Code §6.2.6: “unless interrupted by approved medical leave(s) and/or approved childbirth accommodation(s)”): each semester here moves the eight-year limit (§4.3) out by a semester, and one before the end of your eighth semester of enrollment also moves the eighth-semester deadlines for the Oral Candidacy Exam (OCE) (§4.5) and for admission to doctoral candidacy (DGS Handbook §3.22.3) — a later one cannot change which semester was the eighth (DGS 2026-10-05). A leave for another reason — study, athletic training, military, mission work or personal — is not entered here: it does not stop the clock (DGS 2026-10-06). A six-week medical or crisis separation is not a leave and does not count (DGS Handbook §3.5, §3.6).'
-          : 'Fall or spring semesters the Graduate School approved as a medical leave of absence (at most two in a row, §5.7). Each moves the five-year limit (§3.3) out by a semester: the Graduate School stops the doctoral clock only for approved medical leave and childbirth accommodation (Academic Code §6.2.6), and the five years follow it (DGS 2026-10-03, 2026-10-06). A leave for another reason — study, athletic training, military, mission work or personal — is not entered here: it does not stop the clock. A six-week medical or crisis separation is not a leave and does not count (DGS Handbook §3.5, §3.6).',
+          ? 'Fall or spring semesters the Graduate School approved as a medical leave of absence (at most two in a row, §5.7). An approved medical leave stops the clock (Academic Code §6.2.6: “unless interrupted by approved medical leave(s) and/or approved childbirth accommodation(s)”): each semester here moves the eight-year limit (§4.3) out by a semester, and one before the end of your eighth semester of enrollment also moves the eighth-semester deadlines for the Oral Candidacy Exam (OCE) (§4.5) and for admission to doctoral candidacy (DGS Handbook §3.22.3) — a later one cannot change which semester was the eighth (DGS 2026-10-05). A leave for another reason — study, athletic training, military, mission work or personal — goes in the next box: it does not stop the clock (DGS 2026-10-06). A six-week medical or crisis separation is not a leave and does not count (DGS Handbook §3.5, §3.6).'
+          : 'Fall or spring semesters the Graduate School approved as a medical leave of absence (at most two in a row, §5.7). Each moves the five-year limit (§3.3) out by a semester: the Graduate School stops the doctoral clock only for approved medical leave and childbirth accommodation (Academic Code §6.2.6), and the five years follow it (DGS 2026-10-03, 2026-10-06). A leave for another reason — study, athletic training, military, mission work or personal — goes in the next box: it does not stop the clock (DGS 2026-10-06). A six-week medical or crisis separation is not a leave and does not count (DGS Handbook §3.5, §3.6).',
       ),
       slotPickers('leaveTerms', leaveCount, (i) => `Medical leave semester${leaveCount > 1 ? ` ${i + 1}` : ''} — which semester`, ['fall', 'spring']),
+      // An approved leave that is not medical (policy review round 4, P4-ac-3;
+      // DGS 2026-10-11: option (a)): it answers the transcript-gap question,
+      // so no readmission is asked for it, and it moves no clock.
+      count(
+        'otherLeaveSemesters',
+        'Semesters on an approved leave for another reason',
+        `Fall or spring semesters the Graduate School approved as a leave of absence for study, athletic training, military, mission work or personal reasons (Academic Code §5.1; at most two in a row, §5.7). Such a leave explains a semester with no registration, so no readmission is asked for it, but it moves no deadline (${phd ? 'the eight-year limit and the eighth semester' : 'the five-year limit'} move only for medical leave and accommodations, DGS 2026-10-06).`,
+      ),
       count(
         'accommodationSemesters',
         'Childbirth or adoption accommodation semesters',

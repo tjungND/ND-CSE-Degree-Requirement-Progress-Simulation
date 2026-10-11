@@ -462,6 +462,7 @@ export function validateStudent(data: unknown, refusals: Refusal[] = []): Studen
     // accommodations (semester counts), a readmission term, the non-degree
     // answer — each kept only when well-formed.
     leaveSemesters: validSemesterCount(raw['leaveSemesters']),
+    otherLeaveSemesters: validSemesterCount(raw['otherLeaveSemesters']),
     accommodationSemesters: validSemesterCount(raw['accommodationSemesters']),
     leaveTerms: validTermSlots(raw['leaveTerms'], validSemesterCount(raw['leaveSemesters'])),
     accommodationEventTerms: validTermSlots(raw['accommodationEventTerms'], validSemesterCount(raw['accommodationSemesters'])),

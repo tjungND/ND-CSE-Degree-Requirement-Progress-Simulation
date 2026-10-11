@@ -45,7 +45,10 @@ export function transcriptGapSemesters(student: Student, todayIso: string): Term
  * nothing to say. */
 export function uncoveredRegistrationGaps(student: Student, todayIso: string): Term[] | undefined {
   if (student.readmittedTerm !== undefined) return undefined;
-  const leave = student.leaveSemesters ?? 0;
+  // Every approved leave covers a gap — medical or for another reason (policy
+  // review round 4, P4-ac-3; DGS 2026-10-11: option (a)); only medical leave
+  // moves a clock, which is not this question.
+  const leave = (student.leaveSemesters ?? 0) + (student.otherLeaveSemesters ?? 0);
   if (leave <= 0) return undefined;
   const now = termOfDate(todayIso);
   const gaps = (transcriptGapSemesters(student, todayIso) ?? []).filter((t) => compareTerm(t, now) < 0);

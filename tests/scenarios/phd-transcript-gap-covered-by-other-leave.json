@@ -1,0 +1,115 @@
+{
+  "name": "phd-transcript-gap-covered-by-other-leave",
+  "description": "Policy review round 4, P4-ac-3 (DGS 2026-10-11: option (a)). A Fall 2022 Ph.D. entrant with no registration in Fall 2024 and Spring 2025: one semester was an approved medical leave, the other an approved personal leave. The second count, “Semesters on an approved leave for another reason”, covers the gap, so no readmission is asked and the review request has no standing question; it moves no clock — the eight-year limit moves one semester, for the medical leave only. With the medical count alone the gap used to read as a missed semester needing readmission.",
+  "today": "2026-10-05",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2022
+    },
+    "priorMs": "none",
+    "gpa": 3.7,
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "leaveSemesters": 1,
+    "leaveTerms": [
+      {
+        "season": "fall",
+        "year": 2024
+      }
+    ],
+    "milestones": {
+      "advisorIdentified": "2022-10-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes"
+    },
+    "attestations": {},
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "nd",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "nd",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd",
+        "fromNdTranscript": true
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd",
+        "fromNdTranscript": true
+      }
+    ],
+    "otherLeaveSemesters": 1
+  },
+  "expect": {
+    "phd.timeLimit": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "extended by 1 semester on approved medical leave"
+      ]
+    }
+  },
+  "expectNoWarnings": [
+    "Your Notre Dame transcript shows no registration"
+  ]
+}
