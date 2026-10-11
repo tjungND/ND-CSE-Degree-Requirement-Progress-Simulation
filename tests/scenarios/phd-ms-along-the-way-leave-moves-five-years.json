@@ -32,7 +32,9 @@
       "researchQualifierPassed": "2022-01-15",
       "candidacyPassed": "2026-04-15"
     },
-    "attestations": {},
+    "attestations": {
+      "wantsMsAlongTheWay": true
+    },
     "courses": [
       {
         "courseId": "CSE 60641",

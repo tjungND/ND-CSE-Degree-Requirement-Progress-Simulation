@@ -150,12 +150,16 @@ describe('the one row that must not read "Conditionally met" (W-CS2)', () => {
     // once the DGS has decided and only §5.2's criterion 5 is left.
     // …and, since 2026-10-04: the MSCSE's final thesis submission (Academic
     // Code §6.1.8), the master's counterpart of the Ph.D.'s.
-    const allowed = ['Eligibility at risk', 'Not started', 'Not used yet', 'Waiting for the ADGS', 'Waiting for the DGS', 'Graduate School approval pending'];
+    // …and, since 2026-10-11 (DGS, question 3a: option (b)): the along-the-way
+    // MSCSE reads "Qualifies" while the record qualifies but the student has
+    // not asked for the master's.
+    const allowed = ['Eligibility at risk', 'Not started', 'Not used yet', 'Waiting for the ADGS', 'Waiting for the DGS', 'Graduate School approval pending', 'Qualifies'];
     for (const label of overridden.keys()) assert.ok(allowed.includes(label), label);
     for (const id of overridden.get('Eligibility at risk') ?? []) assert.ok(['phd.dissertation.defense', 'phd.dissertation.submitted', 'ms.thesis.defense', 'ms.thesis.submitted', 'ms.project.report', 'phd.timeLimit', 'ms.timeLimit'].includes(id), id);
     assert.ok((overridden.get('Eligibility at risk') ?? new Set()).has('phd.dissertation.defense'));
     for (const id of overridden.get('Not used yet') ?? []) assert.match(id, /\.cap\./, id);
     for (const id of overridden.get('Not started') ?? []) assert.equal(id, 'phd.msAlongTheWay');
+    for (const id of overridden.get('Qualifies') ?? []) assert.equal(id, 'phd.msAlongTheWay');
     for (const id of [...(overridden.get('Waiting for the DGS') ?? []), ...(overridden.get('Waiting for the ADGS') ?? []), ...(overridden.get('Graduate School approval pending') ?? [])]) assert.match(id, /\.transfer$/, id);
   });
 });

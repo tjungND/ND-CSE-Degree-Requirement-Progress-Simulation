@@ -1,6 +1,6 @@
 {
   "name": "life-phd-finished",
-  "description": "Whole degree (item 3, 2026-10-11): a Ph.D. from entry (Fall 2021) to the end (Spring 2026) — the year-one seminars, the qualifier’s three components on time, the OCE in the fifth semester, admission to candidacy, the defense and the submission inside eight years, 24 regular credits and 60 in all. The student did not take the MSCSE along the way. Every requirement met; the DGS confirms this end state.",
+  "description": "Whole degree (item 3, 2026-10-11): a Ph.D. from entry (Fall 2021) to the end (Spring 2026) — the year-one seminars, the qualifier’s three components on time, the OCE in the fifth semester, admission to candidacy, the defense and the submission inside eight years, 24 regular credits and 60 in all. The student did not ask for the MSCSE along the way: the record qualifies (“Qualifies”), and nothing goes to the Grad Admin (DGS 2026-10-11, question 3a: option (b)). Every requirement met; the DGS confirms this end state.",
   "today": "2026-06-01",
   "rules": {
     "base": "default"
@@ -321,10 +321,8 @@
       "status": "met",
       "detailIncludes": [
         "24 regular-course credits and 66 research credits"
-      ]
-    },
-    "shared.msCandidacy": {
-      "status": "unmet"
+      ],
+      "statusLabel": "Qualifies"
     },
     "phd.timeLimit": {
       "status": "met",
@@ -334,5 +332,8 @@
       "status": "not_applicable"
     }
   },
-  "expectReviewEmpty": true
+  "expectReviewEmpty": true,
+  "expectAbsent": [
+    "shared.msCandidacy"
+  ]
 }

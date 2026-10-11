@@ -522,7 +522,8 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
   // Processing — the Grad Admin's side (2026-09-06 evening): the MSCSE along
   // the way once its row is met, and the qualifier completion form once every
   // component is done but no form date is entered.
-  if (byId.get('phd.msAlongTheWay')?.status === 'met') {
+  // Only once the student asked for it (DGS 2026-10-11, question 3a: option (b)).
+  if (byId.get('phd.msAlongTheWay')?.status === 'met' && byId.get('phd.msAlongTheWay')?.statusLabel !== 'Qualifies') {
     out.gradAdmin.push('Process the MSCSE awarded along the way (§3.1, §4.5).');
     out.student.push('Send the Grad Admin the processing request for the MSCSE along the way (§3.1, §4.5).');
   }

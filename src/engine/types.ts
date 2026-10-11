@@ -330,6 +330,13 @@ export interface Attestations {
    * admission card and the MSCSE along the way stop waiting (policy review
    * round 4, P4-phd-5; DGS 2026-10-11: option (a)). */
   oceConfirmedByDgs?: boolean;
+  /** The Ph.D. student wants the MSCSE awarded along the way (DGS 2026-10-11,
+   * question 3a: option (b)). CSE §3.1: Ph.D. students "may also be awarded"
+   * an MSCSE; DGS Handbook §3.21.1: "A doctoral student who wishes to receive
+   * a master's degree must also apply for admission to master's degree
+   * candidacy". Without it (or a dated master's candidacy application) a
+   * qualifying record says so, and nothing goes to the Grad Admin. */
+  wantsMsAlongTheWay?: boolean;
 }
 
 export interface Student {

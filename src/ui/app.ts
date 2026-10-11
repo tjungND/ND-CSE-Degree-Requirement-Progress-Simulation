@@ -3095,9 +3095,15 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           ...(m.defensePassed || m.dissertationSubmitted ? [dateField('Final dissertation submitted to the Graduate School (Academic Code §6.2.12)', 'dissertationSubmitted')] : []),
         );
       }
-      // The MSCSE along the way's candidacy application (DGS Handbook §3.21.1;
-      // 2026-10-04): once the award's requirements are met, or once dated.
-      if (m.msCandidacyApplied || report.requirements.some((r) => r.id === 'phd.msAlongTheWay' && r.status === 'met')) {
+      // Whether the student wants the MSCSE along the way (DGS 2026-10-11,
+      // question 3a: option (b)) — asked once the record qualifies, or once
+      // ticked; then its candidacy application (DGS Handbook §3.21.1;
+      // 2026-10-04): once the award is met and wanted, or once dated.
+      const along = report.requirements.find((r) => r.id === 'phd.msAlongTheWay');
+      if (along?.status === 'met' || student.attestations.wantsMsAlongTheWay === true) {
+        card.append(attestation('I want the MSCSE awarded along the way (§3.1, §4.5)', student.attestations.wantsMsAlongTheWay, (v, s) => (s.attestations.wantsMsAlongTheWay = v)));
+      }
+      if (m.msCandidacyApplied || (along?.status === 'met' && along.statusLabel !== 'Qualifies')) {
         card.append(dateField('Application for Admission to Master’s Degree Candidacy submitted — the MSCSE along the way (DGS Handbook §3.21.1)', 'msCandidacyApplied'));
       }
     }

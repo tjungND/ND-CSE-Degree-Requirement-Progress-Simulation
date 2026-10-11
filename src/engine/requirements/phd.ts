@@ -321,7 +321,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
     // The MSCSE along the way needs the master's candidacy application too
     // (DGS Handbook §3.21.1; 2026-10-04): shown once the award's
     // requirements are met, or once dated.
-    const candidacy = msCandidacyApplicationRow(ctx, { group: CANDIDACY, ready: along.status === 'met', alongTheWay: true });
+    const candidacy = msCandidacyApplicationRow(ctx, { group: CANDIDACY, ready: along.status === 'met' && alongTheWayWanted(ctx.student), alongTheWay: true });
     if (candidacy) rows.push(candidacy);
   }
   return rows;
@@ -2424,6 +2424,15 @@ function dissertationRows(ctx: Ctx): RequirementResult[] {
  * MSCSE along the way." So the earlier master's decides nothing: the credits
  * earned here do, and transferred credits never count toward them. The card
  * shows those credits in every state; the rule sits in its Details. */
+/** Whether a Ph.D. student wants the MSCSE along the way (DGS 2026-10-11,
+ * question 3a: option (b)): the tick under Milestones, or a dated
+ * Application for Admission to Master's Degree Candidacy — "A doctoral
+ * student who wishes to receive a master's degree must also apply"
+ * (DGS Handbook §3.21.1). Read by the processing request and the emails. */
+export function alongTheWayWanted(student: Ctx['student']): boolean {
+  return student.attestations.wantsMsAlongTheWay === true || student.milestones.msCandidacyApplied !== undefined;
+}
+
 function msAlongTheWayRow(ctx: Ctx): RequirementResult {
   const quote =
     'The Ph.D. candidacy exam can be used by Ph.D. students to satisfy both the M.S. thesis requirement and the Ph.D. candidacy exam simultaneously, thus earning the MSCSE degree on successfully passing the candidacy exam, given that all the credits used to satisfy the requirements were earned at Notre Dame.';
@@ -2519,6 +2528,21 @@ function msAlongTheWayRow(ctx: Ctx): RequirementResult {
       `Oral Candidacy Exam (OCE) passed ${passed}`,
       earnedLine,
       { note: `${why.charAt(0).toUpperCase()}${why.slice(1)} — confirm with the DGS before the award is requested` },
+      whatCounts,
+      ...countNotes,
+      ...transferNotes,
+    ];
+  } else if (passed && doneReg >= reqReg && doneRes >= reqRes && !alongTheWayWanted(ctx.student)) {
+    // The record qualifies, but the student has not asked for the master's
+    // (DGS 2026-10-11, question 3a: option (b)): the row says so, and nothing
+    // goes to the Grad Admin until the tick under Milestones (or a dated
+    // master's candidacy application) says the student wants it.
+    status = 'met';
+    statusLabel = 'Qualifies';
+    parts = [
+      `Oral Candidacy Exam (OCE) passed ${passed}`,
+      earnedLine,
+      { note: 'You qualify for the MSCSE along the way, which is awarded only if you want it (§3.1: Ph.D. students “may also be awarded” an MSCSE; DGS Handbook §3.21.1). To receive it, tick “I want the MSCSE awarded along the way” under Milestones — it then goes to the Grad Admin with no further DGS step' },
       whatCounts,
       ...countNotes,
       ...transferNotes,

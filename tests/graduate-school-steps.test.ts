@@ -106,6 +106,8 @@ describe('the Application for Admission to Master’s Degree Candidacy (Academic
       gpa: 3.6,
       courses: [...REGULAR.map((id, i) => ndCourse(id, { term: i < 4 ? fall(2024) : spring(2025) })), ndCourse('CSE 98900', { term: fall(2025), credits: 6 })],
       milestones: { advisorName: 'Prof. Example', advisorTtt: 'yes', candidacyPassed: '2026-04-20' },
+      // The student asked for the master's (DGS 2026-10-11, question 3a: option (b)).
+      attestations: { wantsMsAlongTheWay: true },
     });
     assert.equal(row(s, 'phd.msAlongTheWay')!.status, 'met');
     // P3-cse-3-2 (DGS 2026-10-07): "This app's checking is equivalent to the
@@ -481,5 +483,23 @@ describe('a passed Ph.D. time limit names the right rule for completion status',
     const row = limitOf({ season: 'fall', year: 2021 }, '2030-09-01');
     assert.equal(row.status, 'unmet');
     assert.match(row.detail, /After the eighth year a student may apply to the Graduate School for dissertation completion status \(Academic Code §6\.2\.6\.1\) — talk to the DGS/);
+  });
+  it('a Ph.D. student who has not asked for the master’s: the record qualifies, nothing goes to the Grad Admin (DGS 2026-10-11, question 3a (b))', () => {
+    const s = phdStudent({
+      entryTerm: fall(2024),
+      gpa: 3.6,
+      courses: [...REGULAR.map((id, i) => ndCourse(id, { term: i < 4 ? fall(2024) : spring(2025) })), ndCourse('CSE 98900', { term: fall(2025), credits: 6 })],
+      milestones: { advisorName: 'Prof. Example', advisorTtt: 'yes', candidacyPassed: '2026-04-20' },
+    });
+    const along = row(s, 'phd.msAlongTheWay')!;
+    assert.equal(along.status, 'met');
+    assert.equal(along.statusLabel, 'Qualifies');
+    assert.match(along.detail, /You qualify for the MSCSE along the way, which is awarded only if you want it/);
+    assert.equal(row(s, 'shared.msCandidacy'), undefined);
+    const items = processingItems(audit(s, rules, '2026-10-04'), s, rules);
+    assert.equal(items.msAlongTheWay, false);
+    // A dated master's candidacy application says the student wants it.
+    const applied = { ...s, milestones: { ...s.milestones, msCandidacyApplied: '2026-09-01' } };
+    assert.notEqual(row(applied, 'phd.msAlongTheWay')!.statusLabel, 'Qualifies');
   });
 });

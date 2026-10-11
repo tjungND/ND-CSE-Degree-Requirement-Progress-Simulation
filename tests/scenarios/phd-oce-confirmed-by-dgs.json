@@ -134,7 +134,8 @@
       "candidacyPassed": "2025-12-10"
     },
     "attestations": {
-      "oceConfirmedByDgs": true
+      "oceConfirmedByDgs": true,
+      "wantsMsAlongTheWay": true
     }
   },
   "expect": {

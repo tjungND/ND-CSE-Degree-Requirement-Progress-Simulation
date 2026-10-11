@@ -353,7 +353,9 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
     return typeof date === 'string' && date !== '' ? [{ label: f.label, date, section: f.section }] : [];
   });
   const byId = new Map(report.requirements.map((r) => [r.id, r]));
-  const msAlongTheWay = byId.get('phd.msAlongTheWay')?.status === 'met';
+  // Met AND requested (DGS 2026-10-11, question 3a: option (b)) — a record
+  // that only qualifies ("Qualifies") sends nothing to the Grad Admin.
+  const msAlongTheWay = byId.get('phd.msAlongTheWay')?.status === 'met' && byId.get('phd.msAlongTheWay')?.statusLabel !== 'Qualifies';
   // A pass attested under the earlier rules (2026-09-21) was recorded back then; no form to chase.
   // Once the qualifier's course components are complete (P3-cse-4a-3; DGS
   // 2026-10-07: option (a)) — not the whole qualifier, whose research part
