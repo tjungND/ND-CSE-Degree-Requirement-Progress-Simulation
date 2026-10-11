@@ -9,6 +9,7 @@
 // rules say" block was removed as redundant, 2026-09-06); anything unruled is
 // picked up by app.ts's single "Ask the DGS to review" card (the page itself
 // transmits nothing — FERPA).
+import { checkTotals, doubtedTerms, type CheckedRow, type PrintedTotals, type TotalsMismatch } from '../transcript/totals-check.ts';
 import { deciderContact, type Contact } from './contacts.ts';
 import { transcriptProblemHref, type TranscriptProblem } from './report-problem.ts';
 import { APP_BUILD } from './build-info.ts';
@@ -143,6 +144,11 @@ interface ExternalPreview {
   slot: DegreeLevel;
   university: string;
   rows: PreviewRow[];
+  /** The transcript's own totals lines (item 11, 2026-10-11), and every row
+   * read — the shown ones are the same objects as in `rows`, so a correction
+   * reaches the check — index-aligned with the lines' `rows`. */
+  printedTotals?: PrintedTotals[];
+  allRows?: PreviewRow[];
   /** Rows came from OCR of a scan — approximate; the preview says so. */
   fromOcr?: boolean;
   /** …from the text a SCANNER embedded in the scan, read OCR-grade (Batch C
@@ -872,6 +878,7 @@ function previewFromParsed(
     transferSkipped: parsed.transferRowsSkipped,
     mixedLevels: mixed || undefined,
     termPrefill,
+    ...(parsed.printedTotals ? { printedTotals: parsed.printedTotals, allRows: mapped } : {}),
   };
   return { mapped, kept };
 }
@@ -1560,6 +1567,13 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
         ? [el('p', { class: 'hint on-record-note' }, `${onRecord.join(', ')} ${onRecord.length === 1 ? 'is' : 'are'} already on your Notre Dame transcript as accepted transfer credit — adding keeps each as one course, with that acceptance.`)]
         : [];
     })(),
+    // The rows checked against the transcript's own totals (item 11, 2026-10-11).
+    ...(() => {
+      const m = previewTotalsCheck(p);
+      return m.length > 0
+        ? [el('div', { class: 'import-warnings totals-check', role: 'note', 'data-key': 'ext.preview.totals' }, el('strong', {}, 'These do not add up — check the rows against your PDF: '), el('ul', {}, ...m.map((x) => el('li', {}, x.message))))]
+        : [];
+    })(),
     // Courses printed without a number (CC15, DGS 2026-10-09).
     ...(() => {
       const codeless = p.rows.filter((r) => r.codeMissing).length;
@@ -1649,7 +1663,16 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
     ),
   );
   const blockedNote = blockedRowNote(student.program);
-  const rowEls = p.rows.map((r, i) => previewRow(p, r, i, { rules, student, toast, render, blockedNote }));
+  // A row of a term that does not add up (item 11): marked, and said.
+  const doubted = new Set(doubtedTerms(previewTotalsCheck(p)).map((t) => termIndex(t)));
+  const rowEls = p.rows.map((r, i) => {
+    const row = previewRow(p, r, i, { rules, student, toast, render, blockedNote });
+    if (r.year !== undefined && doubted.has(termIndex({ season: r.season, year: r.year }))) {
+      row.classList.add('totals-doubt');
+      row.querySelector('td:nth-child(2)')?.append(el('span', { class: 'totals-doubt-note' }, `⚠ ${termLabel({ season: r.season, year: r.year })} does not add up: check this row`));
+    }
+    return row;
+  });
   table.append(...rowEls);
   const selectAll = (on: boolean) => {
     for (const r of p.rows) r.include = on && !isBlockedRow(p, rules, r, student.program) && !idStillMissing(r);
@@ -1902,6 +1925,19 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
     }), args.checkedWith, deciderContact(student.program)),
   );
   return box;
+}
+
+/** The preview checked against the transcript's own totals (DGS 2026-10-11,
+ * item 11): every row read, with the student's corrections, and the rows they
+ * typed for a term. */
+function previewTotalsCheck(p: ExternalPreview): TotalsMismatch[] {
+  if (!p.printedTotals) return [];
+  const toRow = (r: PreviewRow): CheckedRow | undefined => (r.year !== undefined && r.credits !== undefined ? { term: { season: r.season, year: r.year }, credits: r.credits, grade: r.grade, level: r.level } : undefined);
+  const typed = p.rows.filter((r) => r.manual).map((r) => {
+    const c = toRow(r);
+    return c ? { ...c, typed: true } : undefined;
+  });
+  return checkTotals([...(p.allRows ?? []).map(toRow), ...typed], p.printedTotals);
 }
 
 const FIELD_WORDS: Record<ImportedField, string> = { course: 'course number', title: 'title', credits: 'credits', term: 'term', grade: 'grade', level: 'level' };

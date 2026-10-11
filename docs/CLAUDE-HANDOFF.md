@@ -2207,6 +2207,13 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   scripts/dev/make-nd-corpus.mts. Sanitizer `finish()` (rules.mjs): called by pdf-io.mjs and the
   `--words` path; recomputes row points and totals, randomizes on any mismatch; tests/sanitize.test.ts
   checks the Notre Dame fixtures' GPA after sanitizing.
+- **Totals self-check** (2026-10-11, item 11): `src/transcript/totals-check.ts` `checkTotals(aligned rows,
+  PrintedTotals[])` — rows index-aligned with the reader's rows (a line's `rows` are indices; external.ts
+  keeps a parallel `rowBlocks` with `rowLevels`, spliced together). parse.ts records six-figure lines
+  (`recordTotals`) and exports `totalsMismatchesOf`; external.ts `readPrintedTotals` records Banner's
+  labelled term line and TOTAL INSTITUTION only. nd-upload.ts stores `totalsCheck` on the preview;
+  external-upload.ts computes `previewTotalsCheck(p)` at render from `allRows` (the same objects as
+  the shown rows). Any new recorded shape needs the corpus guard to stay silent first.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

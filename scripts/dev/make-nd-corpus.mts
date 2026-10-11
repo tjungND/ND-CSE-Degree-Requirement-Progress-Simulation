@@ -52,10 +52,12 @@ const INVENTED: Record<string, string[]> = {
     ...T('Spring Semester 2025', 'Graduate', 'College of Engineering', 'Computer Science & Engineering', ['CSE 60321   Main   GR   Architecture   A   3.000   12.000']),
     'TRANSCRIPT TOTALS',
     'Transcript Totals   Attempt Hours   Passed Hours   Earned Hours   GPA Hours   Quality Points   GPA',
+    // The terms above added up by each term's level (the test's copy prints a
+    // fragment, 130 undergraduate hours for 10 hours of rows).
     '( Graduate )',
     'Overall   6.000   6.000   6.000   6.000   24.000   4.00',
     '( Undergraduate )',
-    'Overall   130.000   130.000   130.000   120.000   456.000   3.80',
+    'Overall   10.000   10.000   10.000   10.000   40.000   4.00',
     'COURSE(S) IN PROGRESS',
     'Term: Fall Semester 2025',
     'College   Major',

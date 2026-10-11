@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { STAMP_RE } from './session-common.mjs';
 
 export async function driveTranscript(s, baseUrl, pdfs) {
-  const { nd: ndPdf, other: otherPdf, external: externalPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf } = pdfs;
+  const { nd: ndPdf, other: otherPdf, external: externalPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf, totalsMismatch: totalsMismatchPdf } = pdfs;
   await s.open(baseUrl, '.transcript-upload');
   await s.evalJs(`localStorage.clear()`);
   await s.open(baseUrl, '.transcript-upload');
@@ -597,6 +597,8 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   console.log('  Banner two-column transcript:', bannerUni, '|', bannerRows, 'rows |', JSON.stringify(bannerIds));
   if (bannerUni !== 'Example Institute of Technology') throw new Error('Banner institution not found on the legend page: ' + bannerUni);
   if (bannerRows !== 10) throw new Error(`expected 10 institution-credit rows from the Banner transcript, got ${bannerRows}`);
+  // Its terms and its total add up (item 11, 2026-10-11): the check says nothing.
+  if (await s.evalJs(`!!document.querySelector('[data-key="ext.preview.totals"]')`)) throw new Error('the Banner transcript adds up — no totals warning may show: ' + (await s.evalJs(`document.querySelector('[data-key="ext.preview.totals"]').textContent`)));
   // W-CL372 (F5, 2026-10-09): the heading is named generically since Minerva's "Credits/Exemptions" block is skipped like a transfer block.
   if (!/2 rows listed under a transfer-credit or credits\/exemptions heading were left out/.test(transferNote)) {
     throw new Error('transfer-credit block note missing: ' + transferNote);
@@ -777,6 +779,27 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     await s.waitFor(`[...document.querySelectorAll('h3.subhead')].some(h => h.textContent.includes('University of California, San Diego'))`);
     console.log('  campus chosen → courses filed under "University of California, San Diego"');
     await s.shot('uc-campus-picker');
+  }
+
+  // A transcript whose rows do not add up to its own totals (DGS 2026-10-11,
+  // item 11): the preview names the term and both figures, and marks that
+  // term's row; the whole record's line says so too.
+  {
+    await s.evalJs(`localStorage.clear()`);
+    await s.open(baseUrl, '.transcript-upload');
+    await s.setFileInput('.external-file-masters', totalsMismatchPdf);
+    await s.waitFor(`!!document.querySelector('[data-key="ext.preview.totals"]')`);
+    const check = JSON.parse(await s.evalJs(`JSON.stringify({
+      items: [...document.querySelectorAll('[data-key="ext.preview.totals"] li')].map((li) => li.textContent),
+      doubted: [...document.querySelectorAll('.external-card .transcript-preview tr.totals-doubt')].map((tr) => tr.querySelector('.cell-course .course-id, .cell-course input')?.textContent || tr.querySelector('.cell-course input')?.value),
+      note: document.querySelector('.external-card .transcript-preview tr.totals-doubt .totals-doubt-note')?.textContent ?? '',
+    })`));
+    console.log('  totals check:', JSON.stringify(check));
+    if (!check.items.includes('Fall 2023 prints 6.0 earned hours; the rows read add to 3.0 — a row may be missing or misread.') || !check.items.some((t) => /^The transcript's totals print 12\.0 earned hours; the rows read add to 9\.0/.test(t))) throw new Error('the preview must name the term and both figures: ' + JSON.stringify(check.items));
+    if (JSON.stringify(check.doubted) !== JSON.stringify(['CS 50100']) || check.note !== '⚠ Fall 2023 does not add up: check this row') throw new Error('only the Fall 2023 row is marked: ' + JSON.stringify(check));
+    await s.shotElement('totals-check-preview', '.external-card .transcript-preview');
+    await s.evalJs(`document.querySelector('[data-key="ext.preview.cancel"]').click()`);
+    await s.waitFor(`!document.querySelector('[data-key="ext.preview.totals"]')`);
   }
 
   // A transcript that prints no course numbers (CC15, DGS 2026-10-09; the e2e
@@ -1051,6 +1074,8 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     await s.setViewport({ width: 390, height: 844, settleMs: 200 });
     await s.setFileInput('.transcript-upload input[type=file]', ndInsideNdPdf);
     await s.waitFor(`document.querySelector('.transcript-preview')`);
+    // Every term and both levels' totals add up (item 11, 2026-10-11): no warning.
+    if (await s.evalJs(`!!document.querySelector('[data-key="preview.totals"]')`)) throw new Error('the insideND transcript adds up — no totals warning may show: ' + (await s.evalJs(`document.querySelector('[data-key="preview.totals"]').textContent`)));
     const tuck = async () => JSON.parse(await s.evalJs(`JSON.stringify((() => { const rows = [...document.querySelectorAll('.transcript-preview table tr')].slice(1); const t = document.querySelector('[data-key="preview.unticked.toggle"]'); return { rows: rows.length, shown: rows.filter((r) => getComputedStyle(r).display !== 'none').length, toggle: t?.textContent ?? '', expanded: t?.getAttribute('aria-expanded') ?? '', top: !!document.querySelector('[data-key="preview.add.top"]') }; })())`));
     const t0 = await tuck();
     if (!t0.top || t0.shown >= t0.rows || !/^Show the \d+ courses? that start unticked$/.test(t0.toggle) || t0.expanded !== 'false') throw new Error('phone preview: unticked rows must be tucked behind the toggle, Add at the top: ' + JSON.stringify(t0));

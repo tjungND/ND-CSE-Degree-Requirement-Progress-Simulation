@@ -11,7 +11,7 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { parseTranscript } from '../src/transcript/parse.ts';
+import { parseTranscript, totalsMismatchesOf } from '../src/transcript/parse.ts';
 import { scoreNdDocument, type ExpectedNdDocument } from '../scripts/dev/score-nd.mts';
 
 const dir = new URL('./fixtures/nd-transcripts/', import.meta.url);
@@ -25,8 +25,12 @@ describe('the Notre Dame corpus reads exactly', () => {
   for (const file of files) {
     const name = file.replace(/\.json$/, '');
     it(name, () => {
-      const score = scoreNdDocument(parseTranscript(JSON.parse(readFileSync(new URL(file, dir), 'utf8'))), expected[name]!);
+      const parsed = parseTranscript(JSON.parse(readFileSync(new URL(file, dir), 'utf8')));
+      const score = scoreNdDocument(parsed, expected[name]!);
       assert.ok(score.exact, `${name}:\n${score.diffs.join('\n')}`);
+      // Read exactly, so the import's own totals check must stay silent
+      // (item 11, 2026-10-11): an alarm here is a false alarm.
+      assert.deepEqual(totalsMismatchesOf(parsed).map((m) => m.message), [], `${name}: the totals check cried wolf`);
     });
   }
 });

@@ -252,6 +252,26 @@ const ND_UNDERGRAD_IN_PROGRESS = ND_UNDERGRAD.filter((l) => !/^(Degrees Awarded|
   'CSE 40113 UG Design/Analysis of Algorithms 3.000',
 ]);
 
+// A transcript whose rows do NOT add up to its own totals (2026-10-11, item
+// 11): Fall 2023 prints 6 earned hours over the one 3-credit row the reader
+// finds — a row went missing — so the preview names the term and both figures.
+const TOTALS_MISMATCH = [
+  'Example State University',
+  'Office of the Registrar',
+  'Official Transcript',
+  'Student: Jane Q. Example',
+  'Master of Science in Computer Science — Conferred: May 10, 2024',
+  '',
+  'Fall 2023',
+  'CS 50100   Advanced Algorithms   3.00 A 12.00',
+  'Ehrs:   6.00 GPA-Hrs: 6.00   QPts:   24.00 GPA:   4.00',
+  'Spring 2024',
+  'CS 50300   Operating Systems   3.00 A 12.00',
+  'CS 50400   Distributed Systems   3.00 B 9.00',
+  'Ehrs:   6.00 GPA-Hrs: 6.00   QPts:   21.00 GPA:   3.50',
+  'TOTAL INSTITUTION   12.00   12.00   45.00   3.75',
+];
+
 const OTHER = [
   'Purdue University',
   'Unofficial Academic Transcript',
@@ -439,6 +459,7 @@ writeFileSync(join(here, 'nd-insidend-transcript.pdf'), makePositionedPdf([
   }),
 ]));
 writeFileSync(join(here, 'other-transcript.pdf'), makePdf(OTHER));
+writeFileSync(join(here, 'totals-mismatch-transcript.pdf'), makePdf(TOTALS_MISMATCH));
 writeFileSync(join(here, 'external-transcript.pdf'), makePdf(EXTERNAL));
 writeFileSync(join(here, 'uc-system-transcript.pdf'), makePdf(UC_SYSTEM));
 writeFileSync(join(here, 'no-lines-transcript.pdf'), makePdf(NO_LINES));

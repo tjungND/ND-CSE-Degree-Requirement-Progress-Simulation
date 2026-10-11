@@ -634,6 +634,9 @@ details.policy-fold > .hint { margin-top: 2px; }
 .req .req-more .course-link { display: inline-block; margin: 4px 0 0; }
 /* "Does this look wrong? Tell the DGS" — last in the fold (DGS 2026-10-11, item 18). */
 .req .req-more .req-problem { margin: 6px 0 0; color: var(--muted); }
+/* The import's own totals check (DGS 2026-10-11, item 11): a term that does not add up. */
+tr.totals-doubt > td { background: var(--warn-tint); }
+.totals-doubt-note { display: block; color: var(--warn-ink); font-size: 12px; }
 .req .req-more .rule-quote { margin-top: 6px; }
 .rule-source { font-style: normal; font-weight: 600; }
 /* An uncommon case behind a selector (DGS 2026-10-03): one quiet line until opened. */

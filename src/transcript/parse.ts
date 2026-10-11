@@ -11,6 +11,7 @@
 //
 // Parsing a PDF's text is inherently best-effort: everything parsed here is
 // shown to the student for confirmation before anything is added (never guess).
+import { checkTotals, type PrintedTotals, type TotalsMismatch } from './totals-check.ts';
 import { isOtherDepartmentMajor } from './majors.ts';
 import { joinSpacedSubject } from '../data/assemble.ts';
 import { conferralTerm, termIndex, termLabel, termOfDate } from '../engine/term.ts';
@@ -92,6 +93,12 @@ export interface ParsedTranscript {
    * and its department, from the transcript — the unofficial transcript
    * prints no degrees awarded. */
   terms?: TranscriptTerm[];
+  /** The totals lines read in full — a term's "Current Term", "Cumulative"
+   * and the record's "Overall", each with its earned hours, GPA hours and GPA
+   * (DGS 2026-10-11, item 11): what the preview checks the rows against
+   * (src/transcript/totals-check.ts). A line printing fewer than Banner's six
+   * figures is not recorded — nothing is checked on a guess. */
+  printedTotals?: PrintedTotals[];
 }
 
 /** One term of a Notre Dame transcript: its level and its college and major. */
@@ -223,6 +230,24 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
   const notReported: string[] = [];
   /** Each graduate term's figures, by term index (2026-10-04). */
   const termGpaByIndex = new Map<number, TermGpa>();
+  /** Every totals line read in full (item 11, 2026-10-11). */
+  const printedTotals: PrintedTotals[] = [];
+  /** Banner's six figures — Attempt, Passed, Earned, GPA Hours, Quality
+   * Points, GPA — as a printed total of `scope`; a GPA cell left blank leaves
+   * five, and the line is then recorded without its GPA. */
+  const recordTotals = (scope: PrintedTotals['scope'], line: string): void => {
+    const nums = (line.match(/\d+\.\d{1,3}/g) ?? []).map(Number);
+    if (nums.length !== 6 && nums.length !== 5) return;
+    const [, , earned, gpaHours, , gpa] = nums;
+    printedTotals.push({
+      scope,
+      ...(term !== undefined && scope !== 'overall' ? { term } : {}),
+      ...(totalsLevel !== undefined ? { level: totalsLevel } : {}),
+      earned: earned!,
+      gpaHours: gpaHours!,
+      ...(nums.length === 6 ? { gpa: gpa! } : {}),
+    });
+  };
 
   // Signals for the entry-term reading and the per-course level (2026-09-05).
   const admitTerms: Term[] = [];
@@ -565,6 +590,7 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
     };
     if (/^CURRENT\s+TERM\b/.test(upper) && totalsLevel !== undefined) {
       termRow('termGpa', noGpaHours() ? undefined : lastGpaOn());
+      recordTotals('term', line);
       continue;
     }
     if (/^OVERALL\b/.test(upper) || /\bCUMULATIVE\b.*\bGPA\b/.test(upper) || (/^CUMULATIVE\b/.test(upper) && totalsLevel !== undefined)) {
@@ -577,6 +603,7 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
         noteGpa(last);
         if (/^CUMULATIVE\b/.test(upper)) termRow('cumulativeGpa', last);
       }
+      if (!/\bQPts\b|\bEhrs\b/i.test(line)) recordTotals(/^OVERALL\b/.test(upper) ? 'overall' : 'cumulative', line);
       continue;
     }
 
@@ -668,7 +695,20 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
     entryTerm: inferEntryTerm({ courses: unique, admitTerms, newStudentTerms, degreesAwarded, terms: termList }),
     ...(termGpaByIndex.size > 0 ? { termGpas: [...termGpaByIndex.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v) } : {}),
     ...(termList.length > 0 ? { terms: termList } : {}),
+    ...(printedTotals.length > 0 ? { printedTotals } : {}),
   };
+}
+
+/** The import's own check (DGS 2026-10-11, item 11): every printed total the
+ * rows read do not add up to — each row with its term's level, a transfer
+ * block row as earned credit. */
+export function totalsMismatchesOf(p: ParsedTranscript): TotalsMismatch[] {
+  if (!p.printedTotals || p.printedTotals.length === 0) return [];
+  const termLevel = new Map((p.terms ?? []).map((t) => [termIndex(t.term), t.level]));
+  return checkTotals(
+    p.courses.map((c) => ({ term: c.term, credits: c.credits, grade: c.grade, level: c.level, termLevel: termLevel.get(termIndex(c.term)), transferBlock: c.origin === 'transfer' })),
+    p.printedTotals,
+  );
 }
 
 /** Notre Dame numbering: 1xxxx–4xxxx undergraduate, 6xxxx and up graduate;

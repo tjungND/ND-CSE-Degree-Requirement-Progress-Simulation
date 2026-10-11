@@ -4,6 +4,7 @@
 // added without their review, and unmatched grades must be chosen by hand.
 // System-generated PDFs are read exactly; a PDF with no text layer is offered
 // the opt-in English-only OCR instead (decision 2026-09-02; src/transcript/ocr.ts).
+import type { PrintedTotals } from './totals-check.ts';
 import { joinSpacedSubject } from '../data/assemble.ts';
 import { NOTRE_DAME_ROW_UNIVERSITY, expandInstitutionAbbreviations, isNotreDameInstitution, normalizeCourseId, normalizeUniversity } from '../data/external.ts';
 import type { PendingDgsReview } from '../engine/review.ts';
@@ -63,6 +64,9 @@ export interface ExternalCourseCandidate {
 export interface ExternalParseResult {
   /** false → no text layer: scanned/photographed, or an image-only export. */
   hasTextLayer: boolean;
+  /** The totals lines read in full (DGS 2026-10-11, item 11): what the
+   * preview checks its rows against (src/transcript/totals-check.ts). */
+  printedTotals?: PrintedTotals[];
   /** Looks like an ND transcript → point the student at the ND upload instead. */
   looksLikeNotreDame: boolean;
   /** Best guess at the institution's name, from the header lines. */
@@ -2312,6 +2316,31 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     return true;
   };
   const OWN_CREDIT_HEADING_RE = /^\s*(?!TRANSFER\b)[A-Z][A-Z'&.-]+(?:\s+[A-Z][A-Z'&.-]+){0,3}\s+CREDIT\s*:\s*$/;
+  /** The totals lines read in full (DGS 2026-10-11, item 11) — the shapes
+   * whose figures are unambiguous: Banner's labelled term line, "Ehrs: 6.00
+   * GPA-Hrs: 6.00 QPts: 24.00 GPA: 4.00", under the term it closes, and its
+   * "TOTAL INSTITUTION 25.00 21.00 81.99 3.90" (earned, GPA hours, quality
+   * points, GPA) for the whole record. Nothing inside a transfer block (its
+   * rows are not read as courses), nothing else on a guess. */
+  const printedTotals: (PrintedTotals & { block?: number })[] = [];
+  /** Which term block each row was read in (its index in `courses`), and the
+   * current block — a new one at every term header — so a term's line names
+   * exactly the rows above it. */
+  const rowBlocks: number[] = [];
+  let termBlock = 0;
+  const readPrintedTotals = (flat: string): void => {
+    if (transferBlock !== undefined) return;
+    const n = (s: string): number => Number(s.replace(',', '.'));
+    const banner = /\bEhrs:?\s*(\d+[.,]\d+)\s+GPA-?Hrs:?\s*(\d+[.,]\d+)\s+QPts:?\s*(\d+[.,]\d+)\s+GPA:?\s*(\d+[.,]\d+)/i.exec(flat);
+    if (banner) {
+      if (!/\b(total|overall|cumulative)\b/i.test(flat) && currentSeason !== undefined && currentYear !== undefined) {
+        printedTotals.push({ scope: 'term', term: { season: currentSeason, year: currentYear }, earned: n(banner[1]!), gpaHours: n(banner[2]!), gpa: n(banner[4]!), block: termBlock });
+      }
+      return;
+    }
+    const institution = /^TOTAL\s+INSTITUTION\s+(\d+[.,]\d+)\s+(\d+[.,]\d+)\s+(\d+[.,]\d+)\s+(\d+[.,]\d+)\s*$/i.exec(flat);
+    if (institution) printedTotals.push({ scope: 'overall', earned: n(institution[1]!), gpaHours: n(institution[2]!), gpa: n(institution[4]!) });
+  };
   const trackTermAndTransfer = (line: string): void => {
     // Transfer blocks: Banner's "TRANSFER CREDIT ACCEPTED BY …" until
     // "INSTITUTION CREDIT"; PeopleSoft's "Term  Course  Transfer Course …"
@@ -2343,6 +2372,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     const lone = semesterLine && !twoColumns && academicYearAlone !== undefined ? semesterColumns![0] : null;
     const term: TermRead | undefined = lone ? { ...lone, explicit: true } : twoColumns || codelessRowShape(line) ? undefined : readTermLine(line);
     termLineHere = term !== undefined;
+    if (termLineHere) termBlock += 1;
     if (term) semesterColumns = undefined;
     if (term && !lone) {
       const alone = ACADEMIC_YEAR_ALONE_RE.exec(line.replace(/\s+/g, ' ').trim());
@@ -2752,6 +2782,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   const pushCodeless = (row: Omit<ExternalCourseCandidate, 'courseId' | 'codeMissing'>, level: Level | undefined): void => {
     courses.push({ courseId: '', codeMissing: true, ...row });
     rowLevels.push(level ?? blockLevel);
+    rowBlocks.push(termBlock);
   };
   /** Shape 1 — a table whose header names a title column and no code column
    * (Nankai's "COURSE NAME   CREDIT   RESULT   COURSE TYPE", the CHESICC
@@ -3188,6 +3219,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       ...(ocrLines ? { sourceLines: { from: rowLine - (titleAbove ? 1 : 0), to: rowLine + (usedContinuation ? 1 : 0) + (titleBelow ? 1 : 0) } } : {}),
     });
     rowLevels.push(rowLevel ?? blockLevel);
+    rowBlocks.push(termBlock);
     if (usedContinuation) lineIndex += 1; // the continuation line is consumed
     return lineIndex;
   };
@@ -3199,6 +3231,9 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     const line = lines[lineIndex]!;
     trackTermAndTransfer(line);
     const flat = line.replace(/\s{2,}/g, '  ').trim();
+    // The transcript's own totals (item 11, 2026-10-11): recorded for the
+    // preview's check, never a course row.
+    readPrintedTotals(flat);
     // The course code at the row's start, read once: the level and degree
     // tests below ask whether the line is a course row, and the row reader
     // needs the tokens.
@@ -3236,6 +3271,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       if (courses[i]!.codeMissing) {
         courses.splice(i, 1);
         rowLevels.splice(i, 1);
+        rowBlocks.splice(i, 1);
       }
     }
   } else transferRowsSkipped += codelessSkipped;
@@ -3367,6 +3403,8 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     named.university === undefined &&
     !lines.some((l) => l.replace(/\s{2,}/g, ' ').trim().length < 60 && INSTITUTION_OR_RECORD_RE.test(l)) &&
     !lines.some((l) => RECORD_FIGURES_RE.test(l));
+  // The totals lines with the rows each names (item 11).
+  const totalsRead: PrintedTotals[] = printedTotals.map(({ block, ...t }) => (block === undefined ? t : { ...t, rows: rowBlocks.flatMap((b, i) => (b === block ? [i] : [])) }));
   return {
     ...(quarterSystem ? { quarterSystem } : {}),
     ...(trimesterSystem ? { trimesterSystem } : {}),
@@ -3380,6 +3418,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     mixedLevels: levels.size > 1 ? true : undefined,
     transferRowsSkipped: transferRowsSkipped > 0 ? transferRowsSkipped : undefined,
     ...(notATranscript ? { notATranscript: true as const } : {}),
+    ...(totalsRead.length > 0 && !notATranscript ? { printedTotals: totalsRead } : {}),
     courses: notATranscript ? [] : courses,
   };
 }

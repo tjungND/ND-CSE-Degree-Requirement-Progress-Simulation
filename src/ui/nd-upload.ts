@@ -6,6 +6,7 @@
 // Everything else — the record, the rules, the toasts, the render — arrives in
 // `NdUploadArgs` on every call, so this module never captures the reassignable
 // `student`.
+import { doubtedTerms, type TotalsMismatch } from '../transcript/totals-check.ts';
 import { deciderContact } from './contacts.ts';
 import { readerProblemLink } from './external-upload.ts';
 import { APP_BUILD } from './build-info.ts';
@@ -20,7 +21,7 @@ import { gpaText } from '../engine/requirements/shared.ts';
 import { GPA_RANGE, formatValue, inRange, rangeSpan } from '../engine/ranges.ts';
 import { conferralTerm, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
 import type { CourseEntry, Student, Term, TermGpa } from '../engine/types.ts';
-import { parseTranscript, type DegreeAwarded, type EntryTermInference, type ParsedCourse, type TranscriptTerm } from '../transcript/parse.ts';
+import { parseTranscript, type DegreeAwarded, type EntryTermInference, type ParsedCourse, type TranscriptTerm, totalsMismatchesOf } from '../transcript/parse.ts';
 import { earlierDegreesState, forgetReadings, mergeReading, readBackgroundFromNdTerms, restoreEarlierDegrees, type ReadingResult } from './background-read.ts';
 import { el, inactiveButton, PREVIEW_OPEN_NOTE, SIMULATION_IMPORT_NOTE } from './dom.ts';
 import { plural } from './email-html.ts';
@@ -81,6 +82,10 @@ export interface NdPreview {
   termGpas?: TermGpa[];
   /** Parser warnings, shown inside the preview (not as vanishing toasts). */
   warnings: string[];
+  /** The import's own check (DGS 2026-10-11, item 11): every printed total
+   * the rows read do not add up to — shown above the rows, and each term it
+   * names marks its rows. */
+  totalsCheck?: TotalsMismatch[];
   /** Each term's level, college and major (2026-10-08): what the
    * earlier-degrees answer can be read from (background-read.ts). */
   terms?: TranscriptTerm[];
@@ -309,6 +314,7 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
           ?.map((t) => ({ term: t.term, ...(inRange(t.termGpa, GPA_RANGE) ? { termGpa: t.termGpa } : {}), ...(inRange(t.cumulativeGpa, GPA_RANGE) ? { cumulativeGpa: t.cumulativeGpa } : {}) }))
           .filter((t) => t.termGpa !== undefined || t.cumulativeGpa !== undefined),
         warnings: [...parsed.warnings, ...gpaWarning],
+        totalsCheck: totalsMismatchesOf(parsed),
       };
       args.render();
     } catch {
@@ -502,6 +508,19 @@ export function ndTranscriptPreviewBlock(args: NdUploadArgs): HTMLElement {
     // worked out after the add.
     el('h3', {}, `Found ${plural(tp.courses.length, 'course')} — check the rows, untick any that are wrong, then add`),
   );
+  // The import checked against the transcript's own totals (item 11,
+  // 2026-10-11): a term that does not add up is named with both figures, and
+  // its rows are marked below.
+  if ((tp.totalsCheck ?? []).length > 0) {
+    box.append(
+      el(
+        'div',
+        { class: 'import-warnings totals-check', role: 'note', 'data-key': 'preview.totals' },
+        el('strong', {}, 'These do not add up — check the rows against your PDF: '),
+        el('ul', {}, ...tp.totalsCheck!.map((m) => el('li', {}, m.message))),
+      ),
+    );
+  }
   if (tp.warnings.length > 0) {
     // What the parser skipped or could not place — persistent, inside the
     // preview (usability review 2026-09-05, item 6).
@@ -618,10 +637,12 @@ export function ndTranscriptPreviewBlock(args: NdUploadArgs): HTMLElement {
           : earlyStart
             ? `your early start, the summer before ${termLabel(entry)} — this program’s coursework`
             : '';
+    // A row of a term whose totals do not add up (item 11): marked, and said.
+    const doubted = doubtedTerms(tp.totalsCheck ?? []).some((t) => termIndex(t) === termIndex(c.term)) && c.origin === 'nd';
     table.append(
       el(
         'tr',
-        { class: prior ? 'prior-row' : '', ...(tucked[i] ? { hidden: '' } : {}) },
+        { class: `${prior ? 'prior-row' : ''}${doubted ? ' totals-doubt' : ''}`.trim(), ...(tucked[i] ? { hidden: '' } : {}) },
         el('td', { class: 'cell-check' }, cb),
         el('td', { class: 'cell-course' }, el('div', { class: 'cid' }, c.courseId), el('div', { class: 'ctitle' }, c.title ?? '')),
         el('td', { class: 'cell-meta', 'data-label': 'Term' }, el('abbr', { class: 'term', title: termLabel(c.term) }, termShort(c.term))),
@@ -629,7 +650,7 @@ export function ndTranscriptPreviewBlock(args: NdUploadArgs): HTMLElement {
         // A transfer-block row prints credit hours only (the grade is not in the
         // GPA): no grade, not "in progress" (P3-import-1, 2026-10-05).
         el('td', { class: 'cell-meta', 'data-label': 'Grade' }, c.grade === 'IP' ? (c.origin === 'transfer' ? '—' : 'In progress') : c.grade),
-        el('td', { class: 'ctitle cell-note' }, note),
+        el('td', { class: 'ctitle cell-note' }, note, doubted ? el('span', { class: 'totals-doubt-note' }, `${note ? ' — ' : ''}⚠ ${termLabel(c.term)} does not add up: check this row`) : null),
       ),
     );
   });
