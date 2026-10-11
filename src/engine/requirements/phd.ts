@@ -11,7 +11,7 @@ import { combineAll, deadlineStatus, openDeadline } from '../status.ts';
 import { addMonthsIso, deadlineTerm, deadlineTermLabel, endOfNextSemester, endOfTerm, maxConsecutiveFullTime, nthSemester, semesterNumber, startOfTerm, termIndex, termLabel, termOfDate, compareTerm } from '../term.ts';
 import type { ConditionMark, DetailPart, Grade, RequirementResult, Status, Term, DeadlineInfo } from '../types.ts';
 import type { Ctx } from './context.ts';
-import { noteOf, capRow, beforeForfeiture, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds } from './context.ts';
+import { noteOf, capRow, heldForMissingParams, beforeForfeiture, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds } from './context.ts';
 import { fullTimeTermRecords, graduateLevelParts, longestFullTimeRun, sameTermDuplicate } from './residency.ts';
 import { advisorTttState, defendedBelowGpaNote, gpaText, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { transferRow } from './transfer.ts';
@@ -275,17 +275,25 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
   // the OCE and admission read Not started (DGS 2026-10-04).
   const ready = oceReadiness(ctx, rows);
   const rcr = rcrRow(ctx);
-  const oce = candidacyRow(ctx, ready);
+  // A missing sheet number never lets a dated row read Met (item 1, review
+  // 2026-10-10): a dated OCE is read against the regular-course credits (§4.5),
+  // a dated admission against §2.2's GPA bar, the award along the way against
+  // both the GPA bar and the master's five years.
+  const m = ctx.student.milestones;
+  const oceRow = candidacyRow(ctx, ready);
+  const oce = m.candidacyPassed ? heldForMissingParams(oceRow, ctx, ['phd_regular_credits_min']) : oceRow;
   rows.push({ ...rcr, unscored: true, mergedInto: 'phd.candidacyAdmission' });
   rows.push({ ...oce, unscored: true, mergedInto: 'phd.candidacyAdmission' });
-  rows.push(candidacyAdmissionRow(ctx, { oce, rcr, coursework: ready }));
+  const admission = candidacyAdmissionRow(ctx, { oce, rcr, coursework: ready });
+  rows.push(m.candidacyAdmitted ? heldForMissingParams(admission, ctx, ['gpa_min']) : admission);
   rows.push(...dissertationRows(ctx));
   // §4.5's MSCSE cannot be earned twice. A Ph.D. student who already holds the
   // Notre Dame MSCSE (their master's before this program) has no along-the-way
   // row at all — showing it would offer them a degree they hold and count
   // their credits from zero toward it (DGS 2026-09-09).
   if (ctx.student.ndMasters === undefined) {
-    const along = msAlongTheWayRow(ctx);
+    const alongRow = msAlongTheWayRow(ctx);
+    const along = m.candidacyPassed ? heldForMissingParams(alongRow, ctx, ['gpa_min', 'ms_time_limit_years']) : alongRow;
     rows.push(along);
     // The MSCSE along the way needs the master's candidacy application too
     // (DGS Handbook §3.21.1; 2026-10-04): shown once the award's
@@ -640,7 +648,16 @@ export function qualifierDeadline(ctx: Ctx): QualifierDeadline | undefined {
  * Conditionally met until the DGS confirms an extension. This supersedes
  * DECISIONS 2026-09-29's "a met … component is left alone" for met rows. */
 function withQualifierDeadline(ctx: Ctx, c: RequirementResult, due: QualifierDeadline | undefined): RequirementResult {
-  if (due === undefined || c.id === 'phd.qualifier.research') return c;
+  if (c.id === 'phd.qualifier.research') return c;
+  // With qualifier_deadline_semesters missing from the sheet, a component first
+  // complete after the Ph.D. began cannot be shown to be on time, so it cannot
+  // read Met (item 1, review 2026-10-10: it did, the lateness check skipped).
+  // One complete before the start is on time whatever the number is.
+  if (due === undefined) {
+    return c.completedIn !== undefined && compareTerm(c.completedIn, ctx.qualifierEntry) > 0
+      ? heldForMissingParams(c, ctx, ['qualifier_deadline_semesters'])
+      : c;
+  }
   if (c.status === 'met' && c.completedIn !== undefined && c.forfeitReview !== true) {
     const t = c.completedIn;
     if (compareTerm(t, due.term) <= 0) return c;
@@ -652,7 +669,8 @@ function withQualifierDeadline(ctx: Ctx, c: RequirementResult, due: QualifierDea
         `Completed in ${termLabel(t)}, within the DGS’s ${extensionWord} extension (§4.4)`,
       );
     }
-    const semesters = ctx.params.number('qualifier_deadline_semesters') ?? 4;
+    // `due` exists only when the sheet gives the number (qualifierDeadline).
+    const semesters = ctx.params.number('qualifier_deadline_semesters')!;
     const n = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'][semesters] ?? String(semesters);
     return withNote(
       {
@@ -2266,7 +2284,7 @@ function dissertationRows(ctx: Ctx): RequirementResult[] {
       quote: 'To receive the degree at the next graduation, the doctoral candidate who has successfully defended his or her dissertation must submit it to the Graduate School on or before the deadline published in the Graduate School calendar.',
     },
   };
-  return [
+  const rows: RequirementResult[] = [
     // §4.6: "Only a dissertation, which has been unanimously approved for
     // defense by the readers, may be defended." Not a row of its own since
     // 2026-10-04 (DGS: "Practically, the committee approve the dissertation
@@ -2321,6 +2339,16 @@ function dissertationRows(ctx: Ctx): RequirementResult[] {
     },
     submittedRow,
   ];
+  // A dated defense is read against §2.2's GPA bar and the eight-year limit, a
+  // dated submission against the limit — with a number missing from the sheet
+  // neither can read Met (item 1).
+  return rows.map((r) =>
+    r.id === 'phd.dissertation.defense' && m.defensePassed
+      ? heldForMissingParams(r, ctx, ['gpa_min', 'phd_time_limit_years'])
+      : r.id === 'phd.dissertation.submitted' && m.dissertationSubmitted
+        ? heldForMissingParams(r, ctx, ['phd_time_limit_years'])
+        : r,
+  );
 }
 
 /** §4.5: "The Ph.D. candidacy exam can be used by Ph.D. students to satisfy

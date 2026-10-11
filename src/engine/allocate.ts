@@ -1619,6 +1619,18 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // §5.2: "grades of 'B' (3.0 on 4.0 scale) or better were achieved" and
   // "completed within a five-year period prior to admission … or while
   // enrolled". Every transfer needs DGS + Graduate School approval.
+  // Either number missing from the rules sheet: the check cannot be made, so
+  // the course is not counted, and its line and the transfer row say why
+  // (item 1, review 2026-10-10 — a missing window used to skip the check, so a
+  // decade-old course counted; CLAUDE.md: a missing parameter is never a
+  // default).
+  const unchecked = [transferFloor === undefined ? 'transfer_min_grade' : '', windowYears === undefined ? (program === 'mscse' ? 'ms_transfer_window_years' : 'phd_transfer_window_years') : ''].filter(Boolean);
+  if (unchecked.length > 0) {
+    return {
+      ...extBase,
+      ineligibleReason: `not counted — §5.2’s ${transferFloor === undefined ? 'grade' : 'five-year window'}${unchecked.length > 1 ? ' and window' : ''} cannot be checked: the rules sheet is missing ${unchecked.map((k) => `'${k}'`).join(' and ')}${coreNote}`,
+    };
+  }
   if (transferFloor !== undefined && !meetsGradeFloor(grade, transferFloor as Grade) && !isInProgress(grade)) {
     return { ...extBase, ineligibleReason: `not counted — grade below ${transferFloor} (§5.2)${coreNote}` };
   }

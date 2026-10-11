@@ -106,6 +106,32 @@ export function missingParamDetail(key: string): string {
   return `Cannot evaluate — the rules sheet is missing '${key}'. Ask the DGS to add it to the Parameters tab`;
 }
 
+/** A row whose verdict passed through a check that needs a sheet number the
+ * Parameters tab lacks: held at "cannot evaluate", with one sentence per
+ * missing key (CLAUDE.md: "A missing parameter renders 'cannot evaluate',
+ * never a default"). The 2026-10-10 review found eight keys whose absence
+ * skipped a check instead — with gpa_min gone, a student below the 3.0 floor
+ * read Met for admission to candidacy, the defense and the MSCSE along the
+ * way, which goes straight into the Grad Admin's processing request. Only a
+ * row that would claim something (Met, or Conditionally met) is held; one
+ * that is not done keeps its own status. The pill's own wording goes with the
+ * status it described. */
+export function heldForMissingParams(row: RequirementResult, ctx: Ctx, keys: readonly string[]): RequirementResult {
+  if (row.status !== 'met' && row.status !== 'needs_dgs_review') return row;
+  // A key is missing when none of the typed readers finds a value: the
+  // number keys here, a grade or a code list elsewhere.
+  const missing = keys.filter((k) => ctx.params.number(k) === undefined && ctx.params.gradeLetter(k) === undefined && ctx.params.codeList(k) === undefined);
+  if (missing.length === 0) return row;
+  const base: DetailPart[] = row.detailParts ?? (row.detail ? [row.detail.replace(/\.$/, '')] : []);
+  const { statusLabel: _label, completedLate: _late, ...rest } = row;
+  return {
+    ...rest,
+    status: 'cannot_evaluate',
+    ...joinedDetail([...base, ...missing.map(missingParamDetail)]),
+    ...(row.shortDetailParts ? { shortDetailParts: [...row.shortDetailParts, ...missing.map(missingParamDetail)] } : {}),
+  };
+}
+
 /** The regular-pool courses counted only provisionally — named on the credit
  * rows whenever the verdict leans on them. */
 export function provisionalRegularIds(ctx: Ctx): string[] {

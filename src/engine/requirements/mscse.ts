@@ -7,7 +7,7 @@ import type { DeadlineInfo, DetailPart, RequirementResult, Status } from '../typ
 import type { Ctx } from './context.ts';
 import { defendedBelowGpaNote, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { usableGpa } from '../ranges.ts';
-import { noteOf, joinedDetail, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, type Completion } from './context.ts';
+import { noteOf, joinedDetail, heldForMissingParams, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, type Completion } from './context.ts';
 import { candidacyFormSentence } from './phd.ts';
 import { fullTimeTermRecords, graduateLevelParts } from './residency.ts';
 import { transferRow } from './transfer.ts';
@@ -570,7 +570,7 @@ function optionRows(ctx: Ctx): RequirementResult[] {
     } else if (option === 'thesis' && m.thesisReadersTtt === undefined && !m.thesisDefensePassed) {
       parts.push({ note: 'Once your two readers are nominated, answer under Milestones whether both are tenured or tenure-track CSE faculty and neither is your advisor (§3.4)' });
     }
-    rows.push({
+    const defenseRow: RequirementResult = {
       id: 'ms.thesis.defense',
       group: PROJECT_THESIS,
       title: 'Thesis accepted and oral defense passed (thesis option)',
@@ -579,7 +579,10 @@ function optionRows(ctx: Ctx): RequirementResult[] {
       ...joinedDetail(parts),
       ...(deadline ? { deadline } : {}),
       citation: { section: '§3.4', quote },
-    });
+    };
+    // A dated defense is read against §2.2's GPA bar and §3.3's five years —
+    // with either number missing from the sheet it cannot read Met (item 1).
+    rows.push(m.thesisDefensePassed ? heldForMissingParams(defenseRow, ctx, ['gpa_min', 'ms_time_limit_years']) : defenseRow);
   }
 
   // The final thesis to the Graduate School (policy review 2026-10-04,
@@ -595,7 +598,7 @@ function optionRows(ctx: Ctx): RequirementResult[] {
   if (option === 'thesis') {
     const submitted = m.thesisSubmitted;
     const lateSubmission = late(submitted);
-    rows.push({
+    const submittedRow: RequirementResult = {
       id: 'ms.thesis.submitted',
       group: PROJECT_THESIS,
       title: 'Final thesis submitted to the Graduate School (thesis option)',
@@ -618,7 +621,9 @@ function optionRows(ctx: Ctx): RequirementResult[] {
         section: 'Academic Code §6.1.8',
         quote: 'The master’s candidate who is completing a thesis must submit it to the Graduate School on or before the deadline published in the Graduate School calendar.',
       },
-    });
+    };
+    // Read against §3.3's five years (item 1).
+    rows.push(submitted ? heldForMissingParams(submittedRow, ctx, ['ms_time_limit_years']) : submittedRow);
   }
 
   if (option === 'project' || option === 'undecided') {
@@ -627,7 +632,7 @@ function optionRows(ctx: Ctx): RequirementResult[] {
     const quote =
       'The project report and deliverables must be accepted and approved by the advisor to satisfy the project requirement.';
     const lateReport = late(m.projectReportAccepted);
-    rows.push({
+    const reportRow: RequirementResult = {
       id: 'ms.project.report',
       group: PROJECT_THESIS,
       title: 'Project report accepted by the advisor (project option)',
@@ -645,7 +650,9 @@ function optionRows(ctx: Ctx): RequirementResult[] {
             : ['Not yet accepted', { note: 'The written project report and deliverables must be accepted and approved by your advisor (§3.4)' }, ...alternative, ...examNote],
       ),
       citation: { section: '§3.4', quote },
-    });
+    };
+    // Read against §3.3's five years (item 1).
+    rows.push(m.projectReportAccepted ? heldForMissingParams(reportRow, ctx, ['ms_time_limit_years']) : reportRow);
   }
   return rows;
 }

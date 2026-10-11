@@ -55,6 +55,13 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
   } else if (cap === undefined) {
     status = 'cannot_evaluate';
     parts.push(missingParamDetail(capKey));
+  } else if (ctx.params.gradeLetter('transfer_min_grade') === undefined || ctx.params.number(ctx.student.program === 'mscse' ? 'ms_transfer_window_years' : 'phd_transfer_window_years') === undefined) {
+    // §5.2's grade and window cannot be checked (item 1): no course is counted
+    // (allocate.ts), and the row says which number is missing.
+    status = 'cannot_evaluate';
+    for (const key of ['transfer_min_grade', ctx.student.program === 'mscse' ? 'ms_transfer_window_years' : 'phd_transfer_window_years']) {
+      if ((key === 'transfer_min_grade' ? ctx.params.gradeLetter(key) : ctx.params.number(key)) === undefined) parts.push(missingParamDetail(key));
+    }
   } else {
     // "Counted" means counted: provisional credit is said separately, so a
     // row whose every course is still pending no longer reads "24 of 24
