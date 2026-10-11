@@ -1,0 +1,20 @@
+{
+  "name": "phd-accommodation-funding-notes-eighth-year",
+  "description": "Policy review round 4, P4-ac-7 (DGS 2026-10-11: option (a)). A Fall 2021 entrant with one childbirth accommodation semester: the eight-year limit moves six months, to Spring 2030, but DGS Handbook §3.7.3 says “the total number of years of funding will not be extended”. In February 2029, the eighth year, the time-limit card gives the tuition-scholarship note now; it used to wait for the moved limit and arrive in the ninth year.",
+  "today": "2029-02-01",
+  "rules": { "base": "default" },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": { "season": "fall", "year": 2021 },
+    "priorMs": "none",
+    "gpa": 3.6,
+    "accommodationSemesters": 1,
+    "courses": [],
+    "milestones": {},
+    "attestations": {}
+  },
+  "expect": {
+    "phd.timeLimit": { "status": "in_progress", "detailIncludes": ["tuition scholarships through the 8th year"] }
+  }
+}

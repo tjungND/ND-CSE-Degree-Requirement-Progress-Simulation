@@ -436,10 +436,17 @@ export function timeLimitRow(
       // only, so the Graduate School's eight-year tuition and funding cut-offs
       // (DGS Handbook §4.2.6, §4.1) did not move (policy review round 3,
       // P3-dh-4-5-1; DGS 2026-10-07: option A, "the literal text"). Their notes
-      // follow the eight years — leaves and accommodations still shift them —
-      // not the cohort's nine, which used to bring them a year late.
-      const fundingDate = ctx.covidCohort ? addMonthsIso(startOfTerm(ctx.entry).date, years * 12 + ctx.clockShift * 6) : date;
-      const fundingNews = ctx.covidCohort ? ctx.today > fundingDate || openDeadline(fundingDate, ctx.today, '').state === 'due_soon' : deadline.state === 'due_soon';
+      // follow the eight years, not the cohort's nine, which used to bring them
+      // a year late. And for every student (policy review round 4, P4-ac-7;
+      // DGS 2026-10-11: option (a)) only an approved medical leave moves them:
+      // a leave stops the funding clock (DGS Handbook §3.4), but “the total
+      // number of years of funding will not be extended” by a childbirth or
+      // adoption accommodation (§3.7.3), nor by a Graduate School extension of
+      // the time limit — so an accommodated student is no longer told in the
+      // ninth year about the eighth.
+      const medicalLeave = Math.max(0, Math.floor(ctx.student.leaveSemesters ?? 0));
+      const fundingDate = addMonthsIso(startOfTerm(ctx.entry).date, years * 12 + medicalLeave * 6);
+      const fundingNews = ctx.today > fundingDate || openDeadline(fundingDate, ctx.today, '').state === 'due_soon';
       parts = [...(shiftNote !== '' ? [{ note: `The limit counts ${years} years from ${termLabel(ctx.entry)}${shiftNote}` }] : []), ...longerNote(ctx.today), ...extNotes, ...(fundingNews ? [tuition, ...fundingDue] : fundingAlways)];
     }
   }
