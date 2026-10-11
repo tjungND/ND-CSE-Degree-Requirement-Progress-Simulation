@@ -841,9 +841,16 @@ export function classify(student: Student, rules: Rules, today?: string): {
       .sort((a, b) => points(b) - points(a) || compareTerm(a.term, b.term) || a.courseId.localeCompare(b.courseId));
     // §3.5 names "CSE regular courses at the 60000 level or higher": a MATH or
     // EE graduate course never fills the shared pair (policy review 2026-10-03).
+    // A course the transcript registers GR was moved off the bachelor's (the
+    // 4+1 guidance moves "graduate-level courses … over and above those being
+    // used to satisfy the undergraduate degree"), so the courses still on the
+    // bachelor's — registered UG, or with no level shown — are shared first,
+    // earliest first within each (policy review round 4, P4-mscse-4; DGS
+    // 2026-10-11: option (a)). The 40000-level-first order of 2026-09-11 stands.
+    const registeredGr = (c: CourseEntry) => (c.registeredLevel === 'graduate' ? 1 : 0);
     const sixk = student.courses
       .filter((c) => undergrad(c) && deptOf(c.courseId) === 'CSE' && lvl(c) >= 6 && (awarded === undefined || semesterNumber(awarded, c.term) >= -1))
-      .sort((a, b) => compareTerm(a.term, b.term) || a.courseId.localeCompare(b.courseId));
+      .sort((a, b) => registeredGr(a) - registeredGr(b) || compareTerm(a.term, b.term) || a.courseId.localeCompare(b.courseId));
     let used = 0;
     for (const c of [...fourk, ...sixk]) {
       if (used + c.credits > limit) continue;

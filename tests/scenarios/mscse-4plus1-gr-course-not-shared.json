@@ -1,0 +1,144 @@
+{
+  "name": "mscse-4plus1-gr-course-not-shared",
+  "description": "Policy review round 4, P4-mscse-4 (DGS 2026-10-11: option (a)). The 4+1 record of mscse-4plus1-app-chooses, but its earliest 60000-level course, CSE 60641 (Spring 2025), is registered GR on the transcript — Notre Dame already moved it off the bachelor's (the 4+1 guidance moves only courses “over and above those being used to satisfy the undergraduate degree”). The six shared credits now come from the courses still on the bachelor's — registered UG — earliest first (CSE 60111, CSE 60535), and CSE 60641 applies to the MSCSE alone with no UG-to-GR question. It used to be picked as shared while a UG course waited for a move that never happened.",
+  "today": "2027-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2026
+    },
+    "priorMs": "none",
+    "gpa": 3.7,
+    "milestones": {},
+    "attestations": {},
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "title": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "title": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate"
+      },
+      {
+        "courseId": "CSE 60321",
+        "title": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate"
+      },
+      {
+        "courseId": "CSE 60770",
+        "title": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate"
+      },
+      {
+        "courseId": "CSE 60535",
+        "title": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate"
+      },
+      {
+        "courseId": "CSE 60868",
+        "title": "CSE 60868",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate"
+      }
+    ],
+    "integratedBsMs": true,
+    "integratedAdmitted": {
+      "season": "spring",
+      "year": 2025
+    }
+  },
+  "expect": {
+    "ms.cap.sharedbs": {
+      "status": "met",
+      "detailIncludes": [
+        "6 of the 6 credits shared with your bachelor’s degree used"
+      ]
+    },
+    "ms.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "9 of 24",
+        "9 pending review/approval"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 60641": [
+      "will apply to your MSCSE only"
+    ],
+    "CSE 60111": [
+      "will apply to both your bachelor’s degree and your MSCSE"
+    ],
+    "CSE 60535": [
+      "will apply to both your bachelor’s degree and your MSCSE"
+    ],
+    "CSE 60321": [
+      "counts only if it was moved from undergraduate (UG) to graduate (GR) registration"
+    ]
+  }
+}

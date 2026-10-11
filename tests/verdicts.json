@@ -582,6 +582,22 @@
     "shared.approvals": "needs_dgs_review",
     "shared.gpa": "met"
   },
+  "mscse-4plus1-gr-course-not-shared": {
+    "ms.cap.fourk": "not_applicable “Not used yet” 0/6",
+    "ms.cap.noncse": "not_applicable “Not used yet” 0/9",
+    "ms.cap.sharedbs": "met 6/6",
+    "ms.credits.project": "unmet 0/6",
+    "ms.credits.regular": "unmet 9/24",
+    "ms.credits.total": "unmet 9/30",
+    "ms.project.report": "unmet",
+    "ms.residency": "in_progress",
+    "ms.thesis.defense": "unmet",
+    "ms.timeLimit": "in_progress [upcoming]",
+    "ms.transfer": "not_applicable",
+    "shared.advisor": "unmet [overdue]",
+    "shared.approvals": "needs_dgs_review",
+    "shared.gpa": "met"
+  },
   "mscse-4plus1-gr-row-admitted-after-bachelors": {
     "ms.cap.fourk": "met 6/6",
     "ms.cap.noncse": "not_applicable “Not used yet” 0/9",
