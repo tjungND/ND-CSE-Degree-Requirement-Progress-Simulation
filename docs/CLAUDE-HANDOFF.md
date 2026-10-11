@@ -1872,6 +1872,16 @@ changed, so nobody undoes it by accident:
   renders the artifact page from the result JSON; each finding carries `resolution`
   (`{status: fixed | ruled | updated | contradicts | open | out-of-scope, note}` — `updated` = a related change made the row's description stale, `contradicts` = for the DGS) and the page opens on the unaddressed view. The reconciliation inputs/outputs of 2026-10-03 are in the scratchpad's `reconcile/` folder (prompt, slices, outputs).
   Re-publish to the same artifact URL (STATE.md has it) rather than making a new one.
+- **Rounds 3 and 4.** The renderer draws each red-team / blue-team round with `round_html(rd, num,
+  table_id, …)` — round 4 (`round4`, table `t4`) above round 3 (`round3`, `t0`). A round's inputs and
+  outputs are archived beside the data, outside git: `policy-sources/.review/round3-2026-10-05/` and
+  `round4-2026-10-11/` (briefing, slices, the live sheet as loaded, `out/red-*.json`, `out/blue-*.json`,
+  `out/judge.json`, `merge_r4.py`). When the DGS acts on a P4 id, set that row's
+  `round4.confirmed[].resolution` (`fixed` / `ruled`, with a note), re-render and republish; an open row
+  that needs a ruling carries `decisions` (question, options, `recommended`, `why`), drawn as a box.
+- **The ADGS's MSCSE rule table** (`docs/adgs/`, 2026-10-11): one landscape page — requirement, handbook
+  sentence, the app's reading, the DECISIONS rows — from `mscse-rule-table.json` through `make_table.py`
+  (its docstring has the rebuild and the one-page check). Change a row there when an MSCSE rule changes.
 
 ## What the student sees first (DGS 2026-10-03 — a standing rule)
 

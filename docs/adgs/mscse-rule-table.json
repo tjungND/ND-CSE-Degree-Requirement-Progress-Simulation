@@ -1,0 +1,133 @@
+{
+ "prepared": "2026-10-11",
+ "stamp": "course rules 5cf04164 (read live on October 11, 2026) · CSE Graduate Studies Handbook (Updated September 2026) · app version fb7e22a of October 11, 2026",
+ "rows": [
+  {
+   "requirement": "Cumulative GPA of 3.0",
+   "cse": "CSE §2.2: “Continuation in a CSE graduate degree program, admission to degree candidacy, and graduation require maintenance of at least a 3.0 (B) cumulative GPA.”",
+   "reading": "Met at a cumulative GPA of 3.0 or more (the transcript's graduate figure; a looser sheet value reads 3.0). Blank or off-scale: cannot evaluate. Transcript and program-only GPAs on opposite sides of 3.0: Conditionally met.",
+   "decisions": "2026-08-31 the transcript is the truth · 2026-10-03 (P1-gpa-9) the graduate-level cumulative GPA · 2026-10-07 (P3-ac-5b-6.1-4) a looser row reads 3.0"
+  },
+  {
+   "requirement": "Advisor by the end of the first semester",
+   "cse": "CSE §2.3: “M.S. students, with assistance from the ADGS, are expected to identify a thesis or project advisor by the end of their first semester, unless an exception is granted by the ADGS.”",
+   "reading": "Met once an advisor is entered; Overdue after the entry term ends without one. Thesis option chosen: also asked whether the advisor is tenured or tenure-track CSE (No or Not sure: ADGS; unanswered: cannot evaluate).",
+   "decisions": "2026-10-02 deadline = end of the entry term · 2026-10-04 (P2-dh-10-5) asked on the thesis option only · 2026-10-07 (P3-cross-doc-2) a non-TTT advisor needs a TTT co-advisor"
+  },
+  {
+   "requirement": "Good standing (only on probation)",
+   "cse": "Academic Code §5.7.1: “Students must be in good standing to receive a graduate degree.”",
+   "reading": "Shown only while a probation letter's deadline is entered under Your standing; reads In progress with that deadline.",
+   "decisions": "2026-10-04 (P2-ac-5b-6.1-2, -3) a scored row with the letter's deadline, behind a selector"
+  },
+  {
+   "requirement": "30 total credits",
+   "cse": "CSE §3.2: “The graduate school requires a total of thirty (30) credits of courses and research for the M.S. degree.”",
+   "reading": "Met at 30 completed credits (C or better, or S) after the allowance caps; In progress if courses in progress would reach 30; Conditionally met if courses awaiting an approval would. Non-CSE credit beyond nine counts nowhere.",
+   "decisions": "2026-08-31 only passed courses count · 2026-09-12 no C- or D toward a credit requirement · 2026-10-03 non-CSE beyond nine counts toward nothing"
+  },
+  {
+   "requirement": "24 regular-course credits",
+   "cse": "CSE §3.2: “… twenty-four (24) credit hours of regular courses … Research seminar, research credits, independent study, and other similar courses do not count as regular courses.”",
+   "reading": "Courses the Courses tab types regular, at the 60000 level or higher, plus the CSE 40000-level (six) and non-CSE (nine) allowances. Seminars and research count toward the 30 only.",
+   "decisions": "2026-08-31 CSE 4xxxx inside the 24, up to six; 5xxxx count nothing · 2026-10-04 (P1-sheet-40) approved seminars toward the 30, not the 24"
+  },
+  {
+   "requirement": "6 project or thesis credits",
+   "cse": "CSE §3.2: “… and six (6) credits hours of Masters project (CSE 68902) or Masters thesis direction (CSE 68901) earned at Notre Dame.”",
+   "reading": "Six credits of CSE 68901 or 68902, in any mix, on either route, earned at Notre Dame (a 4+1's pre-bachelor's ones included); such credit from elsewhere never counts.",
+   "decisions": "2026-08-31 either course number · 2026-09-11 six of 68902 or six of 68901 · 2026-10-03 (P1-units-4plus1-17) pre-bachelor's 68901/68902 count"
+  },
+  {
+   "requirement": "Transfer credit",
+   "cse": "CSE §5.2: “… from an unfinished M.S. program may not transfer more than six (6) semester credit hours … If the student has completed a M.S. or Ph.D. program, they may transfer up to nine (9) …”",
+   "reading": "Graduate courses from elsewhere, B or better, within five years before admission, count once the course rules say yes or the ADGS approves: up to 9 credits after a finished degree, 6 otherwise. Met once the Graduate School approved and the Grad Admin recorded it.",
+   "decisions": "2026-09-11 the 9 / 6 caps and the five-year window · 2026-10-03 (P2-dh-3.14-3.20-5) met only once approved and recorded · 2026-10-06 (P3-cse-5-6-1) a page's working limit where no document states one"
+  },
+  {
+   "requirement": "At most 6 credits below 60000",
+   "cse": "CSE §3.2: “Up to six (6) credits at the 40000 level may count toward both the graduate school’s 30-credit requirement and the department’s 24-credit regular course requirement, subject to approval by the advisor and the ADGS.”",
+   "reading": "CSE 40000-level courses count inside the 24 and the 30, up to six credits: a Courses-tab yes counts outright, adgs_approval waits for the ADGS. Non-CSE 40000-level and CSE 50000-level courses count nothing.",
+   "decisions": "2026-08-31 non-CSE 40000-level never count · 2026-10-03 (P1-levels-grades-credits-8) yes is the pre-approval; (-4) 50000-level refused"
+  },
+  {
+   "requirement": "At most 6 credits shared with the bachelor's (4+1)",
+   "cse": "CSE §3.5: “With approval of the instructor and DGS, students in the integrated B.S. + M.S. program may … take one or two 3-credit CSE regular courses at the 60000 level or higher, and count these both …”",
+   "reading": "The page picks at most six credits to count toward both degrees: CSE 40000-level first (best grade), then 60000-level regular courses from the junior spring, earliest first. A 60000-level course the bachelor's did not use counts toward the MSCSE alone.",
+   "decisions": "2026-09-11 40000-level first; students do not choose · 2026-10-03 (P1-units-4plus1-12) the Graduate School's answer: 40000 or 60000 level · 2026-10-07 (P3-fourplusone-1, P3-sheet-5)"
+  },
+  {
+   "requirement": "At most 9 credits from outside CSE",
+   "cse": "CSE §3.2: “Up to nine (9) credits at the 60000 level or higher taken from a department other than CSE may count toward both … subject to approval by the advisor and the ADGS.”",
+   "reading": "Non-CSE courses at the 60000 level or higher count toward the 24 and the 30, up to nine credits, as the course rules decide; beyond nine they count nowhere. ECE counts as CSE.",
+   "decisions": "2026-10-03 beyond nine counts toward nothing · 2026-08-31 non-CSE 40000-level never count · 2026-10-04 (P1-sheet-c1) ECE inside CSE"
+  },
+  {
+   "requirement": "At most 9 credits shared with a second degree",
+   "cse": "Academic Code §2.2: “No more than nine credit hours of classes from any one master's degree may be counted toward any other graduate degree.”",
+   "reading": "Shown when the student ticks a course as also counting toward a concurrent Notre Dame degree: up to nine credits, Conditionally met until the Graduate School approves the dual-degree plan of study.",
+   "decisions": "2026-10-04 (P2-ac-1-3-2) a nine-credit allowance · 2026-10-06 (P3-dh-front-1-2-2) waits on the Graduate School, not the ADGS"
+  },
+  {
+   "requirement": "One full-time semester or summer",
+   "cse": "CSE §3.3: “The minimum residency requirement for the M.S. degree is registration in full-time status for one semester during the academic year or for one summer session.”",
+   "reading": "Met by a fall or spring with 9 or more registered credits (or ticked full-time), a summer with 6 or more, or summer registration beside a full-time spring or fall that year. Conditionally met if that semester had under 3 credits at the 60000 level.",
+   "decisions": "2026-08-31 nine entered credits, or the full-time tick · 2026-10-04 (P1-page-text-ui-9) a summer at six · 2026-10-03 (P1-residency-enrollment-c5) Academic Code §4.1"
+  },
+  {
+   "requirement": "All requirements within 5 years",
+   "cse": "CSE §3.3: “Failure to complete all requirements for the M.S. degree within 5 years results in forfeiture of degree eligibility.”",
+   "reading": "Five years from entry (+6 months per medical-leave or accommodation semester, or a Graduate School extension): Met if every requirement, coursework included, is complete by then; Eligibility at risk if later; Overdue if unfinished. Summer-only record: the ADGS confirms seven.",
+   "decisions": "2026-10-06 (P3-cse-3-1) coursework dated by the term it reached the minimum · (P3-cross-doc-1) medical leave moves it · 2026-10-04 (P2-dh-3.21-3.24-3) summer-only: seven"
+  },
+  {
+   "requirement": "Thesis topic approved (thesis, not counted)",
+   "cse": "CSE §3.4(ii): “A student may propose an M.S. thesis topic with the approval and supervision of their research advisor.” (Academic Code §6.1.7)",
+   "reading": "Thesis route only: done once a topic-approval date or a passed defense is entered; no deadline of its own.",
+   "decisions": "2026-10-04 (P2-ac-5b-6.1-14)"
+  },
+  {
+   "requirement": "Thesis defense passed (thesis)",
+   "cse": "CSE §3.4: “Upon acceptance of the thesis by the thesis defense examination committee (advisor and two readers), the student must successfully pass the oral thesis defense examination.”",
+   "reading": "Met on a dated passed defense; Eligibility at risk after the five years; Conditionally met if the GPA was below 3.0, the defense came before a 5+-year interruption, a retake was late, or the readers are not both TTT CSE. One retake after a fail.",
+   "decisions": "2026-10-03 (P1-gpa-10) below 3.0 · 2026-10-04 (P2-ac-5b-6.1-12) one retake; (P2-dh-10-19) readers · 2026-10-05 (P3-ac-5a-3) before a readmission"
+  },
+  {
+   "requirement": "Final thesis submitted (thesis)",
+   "cse": "Academic Code §6.1.8: “… the master's candidate who is completing a thesis must submit it to the Graduate School on or before the deadline published in the Graduate School calendar.”",
+   "reading": "Thesis route: In progress once the defense is dated; Met once a submission date is entered; after the five years, Eligibility at risk.",
+   "decisions": "2026-10-04 (P2-ac-5b-6.1-15, P2-dh-3.21-3.24-23)"
+  },
+  {
+   "requirement": "Project report accepted (project)",
+   "cse": "CSE §3.4(i): “The project report and deliverables must be accepted and approved by the advisor to satisfy the project requirement.”",
+   "reading": "Met once the advisor's acceptance is dated (no GPA gate); Eligibility at risk after the five years; Conditionally met if dated before a 5+-year interruption. With no route chosen, either completed route satisfies both §3.4 rows.",
+   "decisions": "2026-09-12 alternatives while undecided · 2026-10-03 (P1-gpa-10) not GPA-gated · 2026-10-05 (P3-ac-5a-3)"
+  },
+  {
+   "requirement": "Master's candidacy application (not counted)",
+   "cse": "Academic Code §6.1.6: “Admission to candidacy is a prerequisite to receiving any graduate degree. It is the student’s responsibility to apply …”",
+   "reading": "Shown once the GPA is 3.0 or more and 30 credits are in hand, counting those in progress (or once dated); while open it is in the processing request to the Grad Admin.",
+   "decisions": "2026-10-04 (P2-dh-3.21-3.24-2, -4)"
+  },
+  {
+   "requirement": "Approvals (informational)",
+   "cse": "CSE §3.2: “All courses taken by a student must have the approval of their advisor.”",
+   "reading": "Not scored: the courses waiting on the ADGS (Conditionally met), the advisor or the Graduate School's dual-degree approval (In progress), and the student's tick that the advisor approved the coursework.",
+   "decisions": "2026-08-31 the approval ticks · 2026-09-07 grouped by who must act · 2026-10-08 “approved my coursework”"
+  },
+  {
+   "requirement": "MSCSE along the way (Ph.D. students)",
+   "cse": "CSE §4.5: “… thus earning the MSCSE degree on successfully passing the candidacy exam, given that all the credits used to satisfy the requirements were earned at Notre Dame.” (§3.1: decided by the DGS)",
+   "reading": "Met when the OCE is passed and 24 regular + 6 research credits are earned at Notre Dame; waits for the DGS if the GPA is under 3.0 or blank, or the OCE came after the master’s five years. Met = §3.1’s DGS review; the Grad Admin processes it.",
+   "decisions": "2026-09-04 OCE + 24 + 6 at Notre Dame · 2026-10-03 (P1-deadlines-20) · 2026-10-07 (P3-dh-3.21-3.24-2) the five years; (P3-cse-3-2) this self-check is the DGS review"
+  },
+  {
+   "requirement": "Candidacy application for that award",
+   "cse": "DGS Handbook §3.21.1: “A doctoral student who wishes to receive a master's degree must also apply for admission to master's degree candidacy.”",
+   "reading": "Not counted: shown once the award along the way is met (or dated); while open it is in the processing request beside the award.",
+   "decisions": "2026-10-04 (P2-dh-3.21-3.24-4)"
+  }
+ ],
+ "footnote": "Conditionally met = waiting for the ADGS or DGS; Eligibility at risk = done after the time limit. Open in the 2026-10-11 review: P4-transfer-2, -3, -8 (rows 5, 7); P4-mscse-4, P4-transfer-7 (9); P4-mscse-2 (18); P4-mscse-3, P4-phd-5 (20); P4-text-5, -6 (wording)."
+}
