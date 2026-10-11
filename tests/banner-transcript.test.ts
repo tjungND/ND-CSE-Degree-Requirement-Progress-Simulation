@@ -69,7 +69,7 @@ export const BANNER_LINES = [
   'Ehrs: 0.00 GPA-Hrs: 0.00 QPts: 0.00 GPA: 0.00',
   'Good Standing',
   '********************** TRANSCRIPT TOTALS ***********************',
-  'TOTAL INSTITUTION 19.00 15.00 57.99 3.87',
+  'TOTAL INSTITUTION 25.00 21.00 81.99 3.90',
   '********************** END OF TRANSCRIPT ***********************',
   '',
   'Example Institute of Technology   This record is intended only for the specified',

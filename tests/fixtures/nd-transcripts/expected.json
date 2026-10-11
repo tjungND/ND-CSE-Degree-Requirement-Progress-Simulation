@@ -1,0 +1,123 @@
+{
+  "nd-transcript": {
+    "isNotreDame": true,
+    "courses": [
+      "EECS 58200 | Operating Systems [transfer: University of Michigan] | 3 | IP | spring 2027 | graduate",
+      "CSE 30321 | Computer Architecture | 3 | A | fall 2020 | undergraduate",
+      "MATH 10550 | Calculus I | 4 | A | fall 2020 | undergraduate",
+      "CSE 20110 | Discrete Mathematics | 3 | B+ | spring 2021 | undergraduate",
+      "CSE 60641 | Graduate Operating Systems | 3 | A | fall 2026 | graduate",
+      "CSE 63801 | Research Seminar I | 1 | S | fall 2026 | graduate",
+      "CSE 60111 | Complexity and Algorithms | 3 | A- | spring 2027 | graduate",
+      "CSE 60321 | Advanced Computer Architecture | 3 | B+ | spring 2027 | graduate",
+      "CSE 60876 | Research Methods | 3 | IP | fall 2027 | graduate"
+    ],
+    "cumulativeGpa": 3.667,
+    "gpaGraduate": 3.667,
+    "gpaUndergraduate": null,
+    "entryTerm": "fall 2026",
+    "degrees": [
+      "bachelors 2021-05-16 Bachelor of Science"
+    ]
+  },
+  "nd-official-transcript": {
+    "isNotreDame": true,
+    "courses": [
+      "EECS 58200 | Operating Systems [transfer: University of Michigan] | 3 | IP | spring 2027 | graduate",
+      "CSE 30321 | Computer Architecture | 3 | A | fall 2020 | undergraduate",
+      "MATH 10550 | Calculus I | 4 | A | fall 2020 | undergraduate",
+      "CSE 20110 | Discrete Mathematics | 3 | B+ | spring 2021 | undergraduate",
+      "CSE 60641 | Graduate Operating Systems | 3 | A | fall 2026 | graduate",
+      "CSE 63801 | Research Seminar I | 1 | S | fall 2026 | graduate",
+      "CSE 60111 | Complexity and Algorithms | 3 | A- | spring 2027 | graduate",
+      "CSE 60321 | Advanced Computer Architecture | 3 | B+ | spring 2027 | graduate",
+      "CSE 60876 | Research Methods | 3 | IP | fall 2027 | graduate"
+    ],
+    "cumulativeGpa": 3.667,
+    "gpaGraduate": 3.667,
+    "gpaUndergraduate": null,
+    "entryTerm": "fall 2026",
+    "degrees": [
+      "bachelors 2021-05-16 Bachelor of Science"
+    ]
+  },
+  "nd-undergrad-transcript": {
+    "isNotreDame": true,
+    "courses": [
+      "MATH 10550 | Calculus I | 4 | A | fall 2024 | undergraduate",
+      "CSE 20110 | Discrete Mathematics | 3 | A | fall 2024 | undergraduate",
+      "CSE 40113 | Design/Analysis of Algorithms | 3 | A | spring 2025 | undergraduate",
+      "CSE 40166 | Computer Graphics | 3 | A- | fall 2025 | undergraduate",
+      "CSE 60641 | Graduate Operating Systems | 3 | A | fall 2025 | undergraduate"
+    ],
+    "cumulativeGpa": null,
+    "gpaGraduate": null,
+    "gpaUndergraduate": 3.938,
+    "entryTerm": "fall 2024",
+    "degrees": [
+      "bachelors 2026-05-17 Bachelor of Science"
+    ]
+  },
+  "nd-undergrad-in-progress-transcript": {
+    "isNotreDame": true,
+    "courses": [
+      "MATH 10550 | Calculus I | 4 | A | fall 2024 | undergraduate",
+      "CSE 20110 | Discrete Mathematics | 3 | A | fall 2024 | undergraduate",
+      "CSE 40113 | Design/Analysis of Algorithms | 3 | A | spring 2025 | undergraduate",
+      "CSE 40166 | Computer Graphics | 3 | A- | fall 2025 | undergraduate",
+      "CSE 60641 | Graduate Operating Systems | 3 | A | fall 2025 | undergraduate",
+      "CSE 40113 | Design/Analysis of Algorithms | 3 | IP | spring 2026 | undergraduate"
+    ],
+    "cumulativeGpa": null,
+    "gpaGraduate": null,
+    "gpaUndergraduate": 3.938,
+    "entryTerm": "fall 2024",
+    "degrees": []
+  },
+  "nd-insidend-transcript": {
+    "isNotreDame": true,
+    "courses": [
+      "MATH 10550 | Calculus I | 4 | A | fall 2021 | undergraduate",
+      "CSE 40113 | Design/Analysis of Algorithms | 3 | A | spring 2025 | undergraduate",
+      "CSE 60111 | Complexity and Algorithms | 3 | A | fall 2025 | graduate",
+      "CSE 60641 | Graduate Operating Systems | 3 | A | spring 2026 | graduate",
+      "CSE 60876 | Research Methods | 3 | IP | fall 2026 | graduate"
+    ],
+    "cumulativeGpa": 4,
+    "gpaGraduate": 4,
+    "gpaUndergraduate": 4,
+    "entryTerm": "fall 2025",
+    "degrees": []
+  },
+  "invented-insidend-terms": {
+    "isNotreDame": true,
+    "courses": [
+      "MATH 10550 | Calculus I | 4 | A | fall 2020 | undergraduate",
+      "CSE 40113 | Algorithms | 3 | A | spring 2024 | undergraduate",
+      "CSE 60641 | Operating Systems | 3 | A | spring 2024 | graduate",
+      "CSE 60111 | Complexity | 3 | A | fall 2024 | graduate",
+      "CSE 60321 | Architecture | 3 | A | spring 2025 | graduate",
+      "CSE 60876 | Research Methods | 3 | IP | fall 2025 | graduate"
+    ],
+    "cumulativeGpa": 4,
+    "gpaGraduate": 4,
+    "gpaUndergraduate": 3.8,
+    "entryTerm": "fall 2024",
+    "degrees": []
+  },
+  "invented-banner-degree-between-terms": {
+    "isNotreDame": true,
+    "courses": [
+      "CSE 60641 | Graduate Operating Systems | 3 | A | fall 2024 | graduate",
+      "CSE 60111 | Complexity and Algorithms | 3 | A | spring 2025 | graduate",
+      "CSE 60321 | Advanced Computer Architecture | 3 | A | fall 2026 | graduate"
+    ],
+    "cumulativeGpa": null,
+    "gpaGraduate": null,
+    "gpaUndergraduate": null,
+    "entryTerm": "fall 2024",
+    "degrees": [
+      "masters 2026-05-15 Master of Science"
+    ]
+  }
+}

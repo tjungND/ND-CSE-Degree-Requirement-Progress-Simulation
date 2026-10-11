@@ -40,10 +40,13 @@ export async function sanitizePdf(bytes, options = {}) {
   // Locate the column gap the way the app does: watermark tiles dropped first.
   const columnGap = (runs, width) => findColumnGap(dropWatermarks(runs), width);
   const sanitizer = createSanitizer({ ...options, columnGap });
-  for (const page of pages) {
-    const sanitized = sanitizer.sanitizeRuns(page.runs, page.width);
-    page.runs = page.runs.map((r, i) => ({ ...r, text: sanitized[i].text }));
-  }
+  for (const page of pages) sanitizer.sanitizeRuns(page.runs, page.width);
+  // Totals that agree with the rows, and each row's points from its new grade
+  // (rules.mjs finish(); DGS 2026-10-11, item 12).
+  const final = sanitizer.finish();
+  pages.forEach((page, p) => {
+    page.runs = page.runs.map((r, i) => ({ ...r, text: final[p][i] }));
+  });
   return { pdf: buildPdf(pages), sanitizer, pages };
 }
 

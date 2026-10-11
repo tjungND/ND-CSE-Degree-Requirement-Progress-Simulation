@@ -2201,6 +2201,12 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   use external-upload.ts `readerProblemLink(key, problem, checkedWith, editable)`, whose href is
   rebuilt in the click handler (the rows change without a re-render). `maskShape` is
   diagnose-transcript.mjs's mask, Unicode-aware. Reports are logged in docs/ACCURACY-LOG.md.
+- **Notre Dame corpus** (2026-10-11, item 12): `tests/fixtures/nd-transcripts/` + `scripts/dev/score-nd.mts`
+  (`ndRowOf` — a transfer-block row's institution rides in the title cell; `scoreNdDocument`) +
+  replay's `nd` lane and its `isNotreDame` PDF expectations; rebuild with
+  scripts/dev/make-nd-corpus.mts. Sanitizer `finish()` (rules.mjs): called by pdf-io.mjs and the
+  `--words` path; recomputes row points and totals, randomizes on any mismatch; tests/sanitize.test.ts
+  checks the Notre Dame fixtures' GPA after sanitizing.
 - `npm run e2e` — real headless-Chrome pass (see `.claude/skills/run-app/SKILL.md`); since
   2026-09-05 it ends with the accessibility/phone driver (axe-core zero-violation gate, dialog and
   focus-preservation keyboard checks, 390 px no-sideways-scroll check on both pages). `E2E_ONLY=`

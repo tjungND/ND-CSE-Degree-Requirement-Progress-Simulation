@@ -61,12 +61,15 @@ if (args[0] === '--words') {
   // OCR words are one run each, so "is this an institution line?" is judged
   // on the whole OCR line (a scan has no separate watermark runs to shield a name).
   const sanitizer = createSanitizer({ seed, keepTitles, columnGap, institutionalByLine: true });
-  const pages = input.pages.map((page) => {
+  for (const page of input.pages) {
     // Group by the OCR line id: every word of a line gets the same y, and
     // lines sit 10 apart so the 2-unit line tolerance never merges them.
     const runs = page.words.map((w) => ({ x: w.x, y: -10 * (w.line ?? 0), text: w.text, width: w.width ?? 0 }));
-    return { words: sanitizer.sanitizeRuns(runs, page.width) };
-  });
+    sanitizer.sanitizeRuns(runs, page.width);
+  }
+  // Totals that agree with the rows (rules.mjs finish(); item 12, 2026-10-11).
+  const final = sanitizer.finish();
+  const pages = input.pages.map((page, p) => ({ words: page.words.map((w, i) => ({ text: final[p][i], changed: final[p][i] !== w.text })) }));
   writeFileSync(outPath, JSON.stringify({ seed: sanitizer.seed, yearOffset: sanitizer.yearOffset, pages }, null, 1));
   printReport(sanitizer);
   process.exit(0);
@@ -86,6 +89,7 @@ function printReport(sanitizer) {
   const r = sanitizer.report();
   console.log(`seed ${sanitizer.seed}, years shifted by ${sanitizer.yearOffset >= 0 ? '+' : ''}${sanitizer.yearOffset}`);
   console.log(`runs: ${r.runs} (changed ${r.changedRuns}, kept verbatim ${r.keptRuns}); words scrambled ${r.scrambledWords}, grades ${r.grades}, e-mails ${r.emails}`);
+  console.log(`totals: ${r.totalsRecomputed} line(s) recomputed from the new grades, ${r.totalsRandomized} left random (their rows did not add up to the printed GPA hours); ${r.rowPointsRecomputed} course row(s) given their new grade's points`);
   console.log('\nREVIEW — every run kept verbatim (must be structural or institutional text only):');
   for (const [text, n] of r.keptVerbatim) console.log(`  ${n > 1 ? `×${n} ` : ''}${JSON.stringify(text)}`);
   console.log('\nIf anything personal appears above, do NOT share the output; report the line shape instead.');

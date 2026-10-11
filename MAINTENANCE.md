@@ -364,8 +364,15 @@ outputs before sharing them). A whole folder:
 The text tool rebuilds the PDF with every text run at its original position, width and
 rotation, but names, addresses and titles become random letters (same length and case),
 student/ID numbers become random digits, every year shifts by one random offset, dates' days
-change, e-mail local parts change (domains stay), letter grades become other grades, GPA and
-totals are randomized, and course numbers keep only their first digit. Structural words
+change, e-mail local parts change (domains stay), letter grades become other grades (always on a
+common scale — never A+ or D±), and course numbers keep only their first digit. Since
+2026-10-11 the copy still ADDS UP: each course row's quality points are its new grade's
+(credits × points — the old figure gave the original grade away), and a totals line keeps its
+hours (sums of credits the copy keeps anyway) while its quality points and GPA are recomputed
+from the rows of its term, its level or the whole record — so the import's own check of credits
+and GPA against the printed totals can be tested on the copy. A totals line whose rows do not add
+up to its GPA hours (a layout the tool does not read) and any free-standing GPA stay random; the
+tool's report counts both. Structural words
 (term names, INSTITUTION CREDIT, Ehrs/GPA labels, column headers), subject codes (`CS`,
 `COMPSCI`), credit values and lines naming an institution (watermarks included) stay, so the
 app reads the copy the way it read the original. `--keep-titles` leaves course titles readable —
@@ -380,6 +387,25 @@ outputs are git-ignored (`sanitized-*.pdf`, `sanitized-scan-*.png`, and the olde
 `*.sanitized.pdf` / `*.sanitized-p*.png` names) so they are never committed by accident. You
 remain the judge of what leaves your computer. The tools preserve page rotation, so a landscape
 transcript sanitizes to a landscape copy the app reads the same way (2026-09-05).
+
+## Measuring the Notre Dame import
+
+Since 2026-10-11 (DGS item 12) the Notre Dame transcript reader (`src/transcript/parse.ts`) has a
+corpus of its own, `tests/fixtures/nd-transcripts/`: the generator's five Notre Dame PDFs read
+through the app's layout stage, plus the invented insideND and Banner line lists from the tests
+(rebuilt with `node --experimental-strip-types scripts/dev/make-nd-corpus.mts` after the fixture
+PDFs change; `expected.json` is the generator's own data, reviewed by hand). `npm test` pins it
+exactly (tests/nd-corpus.test.ts), and the replay scores it field by field — rows, title,
+credits, grade, term, UG/GR level, then isNotreDame, the cumulative GPA and each level's, the
+entry term and the degrees awarded:
+
+    npm run replay -- --corpus nd
+
+A sanitized REAL Notre Dame transcript can be measured the same way without entering the
+repository: put the sanitized PDF in the outside PDF folder (`~/degree-audit-samples/public-pdfs/`
+or `--pdfs <dir>`) with an `expected.json` entry carrying `"isNotreDame": true` and the fields
+above; the replay then reads it with the Notre Dame parser. The fixture PDFs' printed totals now
+add up to their rows (2026-10-11), as a real transcript's do.
 
 ## Measuring OCR
 

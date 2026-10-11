@@ -5,20 +5,28 @@
 // "exact" here is exactly the corpus tests' pass/fail, and the rest says how
 // far off each document is.
 //
-//   npm run replay                                   # both line-list corpora + the PDF folder
+//   npm run replay                                   # the three line-list corpora + the PDF folder
+//   npm run replay -- --corpus nd                    # the Notre Dame corpus alone (2026-10-11)
 //   npm run replay -- --corpus public --only cairo   # one corpus, names containing "cairo", full diffs
 //   npm run replay -- --out before.json              # save the numbers …
 //   npm run replay -- --baseline before.json         # … and show what changed (regressions first)
 //   npm run replay -- --pdfs ~/x/pdfs --verify       # score a folder of PDFs, checking their hashes
 //
 // Options
-//   --corpus public|ms|all   which line-list corpus (default all)
+//   --corpus public|ms|nd|all  which line-list corpus (default all). `nd` (DGS 2026-10-11, item 12)
+//                            is tests/fixtures/nd-transcripts/, read by the Notre Dame parser
+//                            (src/transcript/parse.ts) and scored by scripts/dev/score-nd.mts: rows,
+//                            title, credits, grade, term and UG/GR level as for the others, plus
+//                            isNotreDame, the cumulative GPA and each level's, the entry term and the
+//                            degrees awarded
 //   --pdfs <dir>             a folder of PDFs to read with the app's own layout stage
 //                            (default $TRANSCRIPT_SAMPLES/public-pdfs, else ~/degree-audit-samples/
 //                            public-pdfs; skipped with a note when absent). A PDF is scored against
 //                            <dir>/expected.json when pinned there, else against the public corpus's
 //                            expectation of the same name (a re-downloaded registrar PDF), else
-//                            printed as "unpinned (rows read: N)".
+//                            printed as "unpinned (rows read: N)". An expectation with
+//                            `isNotreDame: true` is read by the Notre Dame parser and scored like
+//                            the nd corpus — a sanitized Notre Dame transcript kept outside the repo.
 //   --verify                 check each PDF's SHA-256 and byte size against sources.json's pdf entry
 //                            of the fixture with the same name
 //   --only <substring>       only documents whose name contains it; prints their full diffs
@@ -44,18 +52,21 @@ import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseExternalTranscript } from '../../src/transcript/external.ts';
+import { parseTranscript } from '../../src/transcript/parse.ts';
+import { ND_FIELDS, scoreNdDocument, type ExpectedNdDocument, type NdField, type NdScore } from './score-nd.mts';
 import { pdfToLinesNode } from './pdf-lines-node.mts';
 import { CELL_FIELDS, scoreDocument, type CellField, type ExpectedDocument, type Score } from './score.mts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PUBLIC_DIR = join(root, 'tests', 'fixtures', 'public-transcripts');
 const MS_DIR = join(root, 'tests', 'fixtures', 'ms-transcripts');
+const ND_DIR = join(root, 'tests', 'fixtures', 'nd-transcripts');
 const KNOWN_FAILING_FILE = join(root, 'tests', 'fixtures', 'public-transcripts-known-failing.json');
 
-type Corpus = 'public' | 'ms' | 'pdfs';
+type Corpus = 'public' | 'ms' | 'nd' | 'pdfs';
 
 interface Options {
-  corpus: 'public' | 'ms' | 'all';
+  corpus: 'public' | 'ms' | 'nd' | 'all';
   pdfs: string | undefined;
   pdfsExplicit: boolean;
   verify: boolean;
@@ -77,6 +88,8 @@ interface Doc {
   /** PDF lane: where its expectation came from, and the hash check. */
   pinnedIn?: 'folder' | 'public corpus';
   verify?: string;
+  /** A Notre Dame document: its own fields, right or wrong (score-nd.mts). */
+  nd?: NdScore['nd'];
 }
 
 /** The numbers kept per document in --out (counts only). */
@@ -90,6 +103,8 @@ interface DocRecord {
   exact: boolean;
   rows: { expectedRows: number; parsedRows: number; matched: number; missing: number; extra: number };
   cells: Record<CellField, { right: number; total: number }>;
+  /** Notre Dame documents: each scored field, right or not. */
+  nd?: Partial<Record<NdField, boolean>>;
 }
 
 interface Board {
@@ -128,7 +143,7 @@ function parseArgs(argv: string[]): Options {
     };
     if (a === '--corpus') {
       const v = next();
-      if (v !== 'public' && v !== 'ms' && v !== 'all') throw new Error(`--corpus public|ms|all, not ${v}`);
+      if (v !== 'public' && v !== 'ms' && v !== 'nd' && v !== 'all') throw new Error(`--corpus public|ms|nd|all, not ${v}`);
       o.corpus = v;
     } else if (a === '--pdfs') {
       o.pdfs = resolve(next());
@@ -169,6 +184,32 @@ function scoreCorpus(corpus: 'public' | 'ms', only: string | undefined): Doc[] {
   return docs;
 }
 
+/** The Notre Dame corpus (DGS 2026-10-11, item 12), read by the Notre Dame parser. */
+function scoreNdCorpus(only: string | undefined): Doc[] {
+  const expected = readJson<Record<string, ExpectedNdDocument>>(join(ND_DIR, 'expected.json'));
+  const docs: Doc[] = [];
+  for (const file of readdirSync(ND_DIR).filter((n) => n.endsWith('.json') && n !== 'expected.json').sort()) {
+    const name = file.replace(/\.json$/, '');
+    if (only !== undefined && !name.includes(only)) continue;
+    const want = expected[name];
+    if (want === undefined) throw new Error(`nd/${name} has no expected.json entry`);
+    const score = scoreNdDocument(parseTranscript(readJson<string[]>(join(ND_DIR, file))), want);
+    docs.push({ corpus: 'nd', name, score, nd: score.nd });
+  }
+  return docs;
+}
+
+/** One line per Notre Dame field: right / scored, over the documents given. */
+function ndFieldLine(docs: Doc[]): string | undefined {
+  const withNd = docs.filter((d) => d.nd !== undefined);
+  if (withNd.length === 0) return undefined;
+  const parts = ND_FIELDS.map((f) => {
+    const scored = withNd.filter((d) => d.nd![f] !== undefined);
+    return scored.length === 0 ? undefined : `${f} ${scored.filter((d) => d.nd![f]!.ok).length}/${scored.length}`;
+  }).filter((x): x is string => x !== undefined);
+  return `  fields ${parts.join('   ')}`;
+}
+
 /** The PDFs of the outside folder, read with the app's layout stage; scored
  * where an expectation exists. Returns the scored ones and notes for the rest. */
 async function scorePdfs(dir: string, only: string | undefined, verify: boolean): Promise<{ docs: Doc[]; notes: string[] }> {
@@ -193,8 +234,17 @@ async function scorePdfs(dir: string, only: string | undefined, verify: boolean)
       }
     }
     const lines = await pdfToLinesNode(path);
-    const parsed = parseExternalTranscript(lines);
     const want = folderExpected[name] ?? publicExpected[name];
+    // A Notre Dame transcript (its expectation says so) goes through the Notre
+    // Dame parser, as the app's Notre Dame row would read it (item 12).
+    if ((want as ExpectedNdDocument & { isNotreDame?: boolean } | undefined)?.isNotreDame === true) {
+      const score = scoreNdDocument(parseTranscript(lines), want as unknown as ExpectedNdDocument);
+      const doc: Doc = { corpus: 'pdfs', name, score, nd: score.nd, pinnedIn: 'folder' };
+      if (verifyNote !== undefined) doc.verify = verifyNote;
+      docs.push(doc);
+      continue;
+    }
+    const parsed = parseExternalTranscript(lines);
     if (want === undefined) {
       notes.push(`  ${name}: unpinned (rows read: ${parsed.courses.length})${verifyNote ? ` — ${verifyNote}` : ''}`);
       continue;
@@ -288,6 +338,7 @@ function toRecord(d: Doc): DocRecord {
   if (d.lens !== undefined) r.lens = d.lens;
   if (d.country !== undefined) r.country = d.country;
   if (d.known !== undefined) r.known = d.known;
+  if (d.nd !== undefined) r.nd = Object.fromEntries(Object.entries(d.nd).map(([f, s]) => [f, s!.ok]));
   return r;
 }
 
@@ -340,8 +391,8 @@ export async function runReplay(argv: string[]): Promise<number> {
   const o = parseArgs(argv);
   const say = (s = '') => console.log(s);
   const docsByCorpus = new Map<string, Doc[]>();
-  const corpora: ('public' | 'ms')[] = o.corpus === 'all' ? ['public', 'ms'] : [o.corpus];
-  for (const c of corpora) docsByCorpus.set(c, scoreCorpus(c, o.only));
+  const corpora: ('public' | 'ms' | 'nd')[] = o.corpus === 'all' ? ['public', 'ms', 'nd'] : [o.corpus];
+  for (const c of corpora) docsByCorpus.set(c, c === 'nd' ? scoreNdCorpus(o.only) : scoreCorpus(c, o.only));
 
   const pdfNotes: string[] = [];
   if (o.corpus === 'all' || o.pdfsExplicit) {
@@ -385,6 +436,8 @@ export async function runReplay(argv: string[]): Promise<number> {
     const b = aggregate(docs);
     boards[corpus] = b;
     for (const line of boardLines(corpus, b, { known: corpus === 'public' })) say(line);
+    const nd = ndFieldLine(docs);
+    if (nd !== undefined) say(nd);
     if (corpus === 'public') {
       for (const line of facetLines(docs, 'lens')) say(line);
       for (const line of facetLines(docs, 'country')) say(line);

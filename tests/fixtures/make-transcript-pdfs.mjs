@@ -150,7 +150,9 @@ function bannerPages() {
   right('Ehrs:   0.00 GPA-Hrs: 0.00   QPts:   0.00 GPA:   0.00');
   right('Good Standing');
   right('********************** TRANSCRIPT TOTALS ***********************');
-  right('TOTAL INSTITUTION   19.00   15.00   57.99   3.87');
+  // The terms above added up (2026-10-11, item 11): 6 + 6 + 6 + 7 + 0 = 25
+  // earned hours, 21 GPA hours, 24 + 21.99 + 24 + 12 = 81.99 points, 3.90.
+  right('TOTAL INSTITUTION   25.00   21.00   81.99   3.90');
   right('********************** END OF TRANSCRIPT ***********************');
   const page2 = [
     { x: 33, y: 760, text: 'Example Institute of Technology' },
@@ -202,7 +204,10 @@ const ND = [
   'CSE 60321 GR Advanced Computer Architecture B+ 3.000 9.999',
   '',
   'TRANSCRIPT TOTALS (GRADUATE)',
-  'Overall: 13.000 13.000 13.000 10.000 33.000 3.300',
+  // Totals that agree with the rows (2026-10-11, item 11: the import checks
+  // them): 10 institution hours + the 3 transferred = 13 earned; GPA hours 9
+  // (the S row carries none), 12 + 11.001 + 9.999 = 33.000 points, 3.667.
+  'Overall: 13.000 13.000 13.000 9.000 33.000 3.667',
   '',
   'COURSES IN PROGRESS',
   'Fall Semester 2027',
@@ -234,7 +239,8 @@ const ND_UNDERGRAD = [
   'CSE 60641 UG Graduate Operating Systems A 3.000 12.000',
   '',
   'TRANSCRIPT TOTALS (UNDERGRADUATE)',
-  'Overall: 16.000 16.000 16.000 16.000 60.000 3.750',
+  // 16 hours, 16 + 12 + 12 + 11.001 + 12 = 63.001 points (item 11, 2026-10-11).
+  'Overall: 16.000 16.000 16.000 16.000 63.001 3.938',
 ];
 
 // The same undergraduate record STILL IN PROGRESS (DGS 2026-09-16): no degree
@@ -371,15 +377,24 @@ const COMBINED = [
 // Invented content in the shape of the DGS's redacted copies: a Notre Dame
 // bachelor's whose last undergraduate major is Computer Engineering, then CSE
 // graduate terms — the earlier-degrees question reads "Notre Dame — CSE".
-const insideNdTerm = (term, level, college, major, rows) => [
-  `Term: ${term}`,
-  'College   Major   Academic Standing',
-  `${college}   ${major}   Good Standing`,
-  'Subject   Course   Campus   Level   Title   Grade   Credit Hours   Quality Points   R',
-  ...rows,
-  `Term Totals (${level})   Attempt Hours   Passed Hours   Earned Hours   GPA Hours   Quality Points   GPA`,
-  'Current Term   3.000   3.000   3.000   3.000   12.000   4.00',
-];
+const insideNdTerm = (term, level, college, major, rows) => {
+  // The term's own totals, added up from its rows (2026-10-11, item 11: the
+  // import checks the hours it read against them; a constant line here made
+  // every term disagree).
+  const cells = rows.map((r) => r.split(/ {3,}/));
+  const hours = cells.reduce((n, c) => n + Number(c[c.length - 2]), 0);
+  const points = cells.reduce((n, c) => n + Number(c[c.length - 1]), 0);
+  const f = (n) => n.toFixed(3);
+  return [
+    `Term: ${term}`,
+    'College   Major   Academic Standing',
+    `${college}   ${major}   Good Standing`,
+    'Subject   Course   Campus   Level   Title   Grade   Credit Hours   Quality Points   R',
+    ...rows,
+    `Term Totals (${level})   Attempt Hours   Passed Hours   Earned Hours   GPA Hours   Quality Points   GPA`,
+    `Current Term   ${f(hours)}   ${f(hours)}   ${f(hours)}   ${f(hours)}   ${f(points)}   ${(points / hours).toFixed(2)}`,
+  ];
+};
 const ND_INSIDEND = [
   'University of Notre Dame',
   'Unofficial Academic Transcript',

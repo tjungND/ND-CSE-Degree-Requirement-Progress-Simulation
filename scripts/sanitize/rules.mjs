@@ -50,7 +50,6 @@ const INSTITUTION_RE = /universit|institute|college|school|polytechnic|academy|d
 const CODE_GRADES = new Set(['S', 'U', 'P', 'NP', 'CR', 'NC', 'W', 'WF', 'WP', 'I', 'IP', 'TR', 'NG', 'AU', 'X', 'E', 'R', 'PASS', 'FAIL', 'SAT', 'UNS']);
 const LETTER_GRADE_RE = /^[A-D][+-]?$|^F$/;
 const ONE_CHAR_GRADES = ['A', 'B', 'C', 'D'];
-const TWO_CHAR_GRADES = ['A-', 'B+', 'B-', 'C+', 'C-', 'D+'];
 
 const CREDIT_FRACTIONS = new Set(['0', '5', '00', '50', '000', '500', '25', '75', '250', '750', '33', '67', '330', '670']);
 
@@ -83,8 +82,13 @@ export function createSanitizer(options = {}) {
   // Every year moves by the same offset, never zero, so term order survives.
   const yearOffset = (Math.floor(rootRandom() * 8) + 1) * (rootRandom() < 0.5 ? -1 : 1);
   const wordCache = new Map();
-  const stats = { runs: 0, changedRuns: 0, keptRuns: 0, scrambledWords: 0, grades: 0, numbers: 0, years: 0, emails: 0 };
-  const keptVerbatim = new Map(); // text → count, for the DGS's review
+  const stats = { runs: 0, changedRuns: 0, keptRuns: 0, scrambledWords: 0, grades: 0, numbers: 0, years: 0, emails: 0, totalsRecomputed: 0, totalsRandomized: 0, rowPointsRecomputed: 0 };
+  let keptVerbatim = new Map(); // text → count, for the DGS's review
+  // For finish() (DGS 2026-10-11, item 12): every line of every page in
+  // reading order, its words as token objects (rebuilding a run's text joins
+  // them), and each page's original runs.
+  const lineLog = [];
+  const pageLog = [];
 
   /** Deterministic per document: the same word always scrambles the same way. */
   const scrambleWord = (word) => {
@@ -198,8 +202,13 @@ export function createSanitizer(options = {}) {
     if (LETTER_GRADE_RE.test(core.toUpperCase()) && ctx.numeric) {
       stats.grades++;
       const r = prng(seed ^ hashString('grade' + stats.grades));
-      // Always a DIFFERENT grade — an unchanged grade would be a leak.
-      const pool = (core.length === 1 ? ONE_CHAR_GRADES : TWO_CHAR_GRADES).filter((g) => g !== core.toUpperCase());
+      // Always a DIFFERENT grade — an unchanged grade would be a leak. The
+      // "+" / "-" stays in the token's tail, so the letter is chosen to make a
+      // grade every common scale has (2026-10-11): never A+, D+ or D-, which
+      // Notre Dame's scale lacks — its import read such a row as ungraded.
+      const sign = tail.startsWith('+') ? '+' : tail.startsWith('-') ? '-' : '';
+      const letters = sign === '+' ? ['B', 'C'] : sign === '-' ? ['A', 'B', 'C'] : ONE_CHAR_GRADES;
+      const pool = letters.filter((g) => g !== core.toUpperCase());
       return `${lead}${pool[Math.floor(r() * pool.length)]}${tail}`;
     }
     // Everything else — names, addresses, titles — is scrambled, unless titles are kept.
@@ -236,6 +245,9 @@ export function createSanitizer(options = {}) {
       if (current.length > 0) lines.push(current);
     }
     const out = runs.map((r) => ({ text: r.text, changed: false }));
+    const pageNo = pageLog.length;
+    const pageTokens = [];
+    pageLog.push({ runs: runs.map((r) => r.text), tokens: pageTokens });
     for (const lineIdx of lines) {
       lineIdx.sort((a, b) => runs[a].x - runs[b].x);
       // A run naming an institution is kept whole — decided PER RUN, because a
@@ -271,8 +283,18 @@ export function createSanitizer(options = {}) {
         const label = /^([A-Za-z][A-Za-z .'/&-]{0,24}):/.exec(runs[w.run].text)?.[1];
         const isLabelToken = label !== undefined && runs[w.run].text.indexOf(w.text) < label.length + 1;
         const replaced = isLabelToken ? w.text : sanitizeToken(w.text, prev, next, { institutional, numeric, totals, titleZone: titleZone && !/^\d/.test(core), label });
+        w.orig = w.text;
         w.text = replaced;
       }
+      // A course row's quality points give its original grade away (12.000
+      // on 3 credits is an A), so the first pass never keeps them: random
+      // here, the new grade's points once finish() runs (item 12, 2026-10-11).
+      const rowPoints = coursePointsOf(words);
+      if (rowPoints !== undefined && rowPoints.text === rowPoints.orig) rowPoints.text = rowPoints.text.replace(split(rowPoints.text).core, randomDigits(split(rowPoints.text).core));
+      // Remembered for finish(): the line's words (the same objects as the
+      // run's tokens, so a later rewrite reaches the run's text).
+      lineLog.push({ page: pageNo, words });
+      pageTokens.push(...tokens);
       for (const t of tokens) perRun.set(t.run, (perRun.get(t.run) ?? '') + t.text);
       for (const [i, text] of perRun) {
         out[i] = { text, changed: text !== runs[i].text };
@@ -290,10 +312,150 @@ export function createSanitizer(options = {}) {
     return out;
   };
 
+  /**
+   * Totals that agree with the rows (DGS 2026-10-11, item 12). The first pass
+   * replaces every letter grade and randomizes every GPA, quality-point and
+   * total figure — safe on its own, but a copy whose totals no longer match
+   * its rows cannot test the import's own check (credits read against the
+   * printed earned hours, the GPA recomputed against the printed one), and a
+   * course row's quality points were kept as printed, which gave its ORIGINAL
+   * grade away (12.000 points on 3 credits is an A, whatever the new grade).
+   * After every page is through the first pass, this pass:
+   *   - gives each course row with a letter grade the quality points of its
+   *     NEW grade (credits × points, the row's own decimals);
+   *   - on a totals line — labelled (`Ehrs: … GPA-Hrs: … QPts: … GPA: …`) or
+   *     in columns (`Overall: 13.000 13.000 13.000 9.000 33.000 3.667`, the
+   *     last three being GPA hours, quality points, GPA) — puts the hours back
+   *     as printed (they are sums of credits the copy keeps anyway) and the
+   *     quality points and GPA recomputed from the rows in its scope: the term
+   *     for a term's line ("Current Term", a Banner term's `Ehrs` line), every
+   *     row so far for "Cumulative", every row for "Overall" / "TOTAL
+   *     INSTITUTION" — of the level a "(Graduate)" / "(Undergraduate)" marker
+   *     names, when one does;
+   *   - leaves a line RANDOMIZED, as before, whenever the rows it found in that
+   *     scope do not add up to the printed GPA hours (a layout this pass does
+   *     not read): a wrong recomputation would be worse than none.
+   * Returns every page's run texts, final. Callers that skip it keep the
+   * first pass's (randomized) figures.
+   */
+  const POINTS = { 'A+': 4, A: 4, 'A-': 3.667, 'B+': 3.333, B: 3, 'B-': 2.667, 'C+': 2.333, C: 2, 'C-': 1.667, 'D+': 1.333, D: 1, 'D-': 0.667, F: 0 };
+  const DECIMAL_RE = /^\d+[.,]\d+$/;
+  const decimals = (s) => (/[.,](\d+)$/.exec(s)?.[1].length ?? 0);
+  const asNumber = (s) => Number(s.replace(',', '.'));
+  const format = (n, like) => n.toFixed(decimals(like)).replace('.', like.includes(',') ? ',' : '.');
+  const TERM_HEADER_RE = /\b(Fall|Spring|Summer|Winter)\s+(?:Semester\s+|Session\s+|Term\s+)?(\d{4})\b/i;
+  /** A course row's credits and quality-points words, beside its letter grade:
+   * Notre Dame's "A 3.000 12.000" or Banner's "3.00 A 12.00". */
+  function courseCells(w) {
+    const core = (x) => split(x.text).core;
+    if (w.length === 0 || !/^[A-Z]{2,7}$/.test(core(w[0]))) return undefined;
+    const dec = (k) => k >= 0 && k < w.length && DECIMAL_RE.test(core(w[k]));
+    // From the END of the row: a scrambled title word can look like a grade
+    // ("Calculus I" → "Calculus D"), the real grade sits beside the figures.
+    for (let g = w.length - 2; g > 0; g--) {
+      if (!LETTER_GRADE_RE.test(core(w[g]).toUpperCase())) continue;
+      if (dec(g + 1) && dec(g + 2)) return { grade: w[g], credits: w[g + 1], points: w[g + 2] };
+      if (dec(g - 1) && dec(g + 1)) return { grade: w[g], credits: w[g - 1], points: w[g + 1] };
+    }
+    return undefined;
+  }
+  function coursePointsOf(w) {
+    return courseCells(w)?.points;
+  }
+  const finish = () => {
+    let term = 'start';
+    let marker; // the level a "(Graduate)" marker names, for the totals after it
+    const rows = []; // { term, level, credits, points } of rows with a letter grade
+    for (const line of lineLog) {
+      const w = line.words;
+      const text = w.map((x) => x.text).join(' ');
+      const core = (x) => split(x.text).core;
+      // A course row: a letter grade with its credits and points beside it.
+      const cells = courseCells(w);
+      const isRow = cells !== undefined;
+      if (!isRow) {
+        const tm = TERM_HEADER_RE.exec(text);
+        if (tm && !w.some((x) => DECIMAL_RE.test(core(x)))) term = `${tm[1].toLowerCase()} ${tm[2]}`;
+        if (/transfer credit/i.test(text)) term = 'transfer block';
+        else if (/^institution credit/i.test(text.trim())) term = 'institution block';
+        if (/\(\s*graduate\s*\)/i.test(text)) marker = 'graduate';
+        else if (/\(\s*undergraduate\s*\)/i.test(text)) marker = 'undergraduate';
+      }
+      if (isRow) {
+        const { grade: gradeWord, credits, points: pts } = cells;
+        const level = w.some((x) => core(x) === 'GR') ? 'graduate' : w.some((x) => core(x) === 'UG') ? 'undergraduate' : undefined;
+        // The whole grade: split() leaves a "+" or "-" in the token's tail.
+        const grade = /^[A-F][+-]?/.exec(gradeWord.text.trim().toUpperCase())?.[0] ?? core(gradeWord).toUpperCase();
+        const c = asNumber(core(credits));
+        // The grade's points to the figure's own decimals — Banner prints B+
+        // as 3.33 (9.99 on 3 credits), Notre Dame as 3.333 (9.999).
+        const d = Math.max(2, decimals(core(pts)));
+        const p = Number(POINTS[grade].toFixed(d)) * c;
+        pts.text = pts.text.replace(core(pts), format(p, core(pts)));
+        stats.rowPointsRecomputed++;
+        rows.push({ term, level, credits: c, points: asNumber(format(p, core(pts))) });
+        continue;
+      }
+      // A totals line: its hours, GPA hours, quality points and GPA.
+      const nums = w.filter((x) => DECIMAL_RE.test(core(x)));
+      if (nums.length < 2) continue;
+      const labelled = /\bQPts\b|\bGPA\b/i.test(text) && /\bEhrs\b|\bGPA-Hrs\b|\bHrs\b/i.test(text);
+      const totalsWord = /\b(current term|cumulative|overall|total institution|transcript totals|term totals|total)\b/i.test(text);
+      if (!labelled && !totalsWord) continue;
+      const after = (re) => {
+        const k = w.findIndex((x) => re.test(x.text));
+        return k >= 0 ? w.slice(k + 1).find((x) => DECIMAL_RE.test(core(x))) : undefined;
+      };
+      let gpaHours;
+      let qpts;
+      let gpa;
+      if (labelled) [gpaHours, qpts, gpa] = [after(/^GPA-Hrs:?$/i), after(/^QPts:?$/i), after(/^GPA:?$/i)];
+      else if (nums.length >= 4) [gpaHours, qpts, gpa] = nums.slice(-3);
+      const scope = /cumulative/i.test(text)
+        ? rows.filter((r) => r.term !== 'transfer block')
+        : /overall|total institution|transcript totals|\btotal\b/i.test(text) && !/current term/i.test(text)
+          ? rows.filter((r) => r.term !== 'transfer block')
+          : rows.filter((r) => r.term === term);
+      const inLevel = marker !== undefined && !/current term/i.test(text) && !labelled ? scope.filter((r) => r.level === undefined || r.level === marker) : scope;
+      const hoursIn = inLevel.reduce((n, r) => n + r.credits, 0);
+      const pointsIn = inLevel.reduce((n, r) => n + r.points, 0);
+      const ok = gpaHours !== undefined && qpts !== undefined && gpa !== undefined && Math.abs(asNumber(split(gpaHours.orig ?? gpaHours.text).core) - hoursIn) < 0.001;
+      if (!ok) {
+        stats.totalsRandomized++;
+        continue; // the first pass's random figures stay
+      }
+      for (const x of nums) if (x !== qpts && x !== gpa && x.orig !== undefined) x.text = x.orig; // hours as printed
+      // Shaped like the figure printed there (its decimals, its separator).
+      qpts.text = qpts.text.replace(core(qpts), format(pointsIn, split(qpts.orig ?? qpts.text).core));
+      gpa.text = gpa.text.replace(core(gpa), format(hoursIn > 0 ? pointsIn / hoursIn : 0, split(gpa.orig ?? gpa.text).core));
+      stats.totalsRecomputed++;
+    }
+    // Every run's final text, and the review list counted again from it.
+    keptVerbatim = new Map();
+    stats.runs = stats.changedRuns = stats.keptRuns = 0;
+    return pageLog.map(({ runs, tokens }) => {
+      const texts = [...runs];
+      const byRun = new Map();
+      for (const t of tokens) byRun.set(t.run, (byRun.get(t.run) ?? '') + t.text);
+      for (const [i, text] of byRun) texts[i] = text;
+      texts.forEach((text, i) => {
+        stats.runs++;
+        if (text !== runs[i]) stats.changedRuns++;
+        else {
+          stats.keptRuns++;
+          const key = runs[i].trim();
+          if (key !== '') keptVerbatim.set(key, (keptVerbatim.get(key) ?? 0) + 1);
+        }
+      });
+      return texts;
+    });
+  };
+
   return {
     seed,
     yearOffset,
     sanitizeRuns,
+    finish,
     report: () => ({ ...stats, keptVerbatim: [...keptVerbatim.entries()].sort((a, b) => b[1] - a[1]) }),
   };
 }

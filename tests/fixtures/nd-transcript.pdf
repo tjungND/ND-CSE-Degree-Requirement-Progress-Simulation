@@ -12,7 +12,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 1177 >>
+<< /Length 1176 >>
 stream
 BT /F1 9 Tf 40 760 Td 12 TL
 (University of Notre Dame) Tj T*
@@ -41,7 +41,7 @@ BT /F1 9 Tf 40 760 Td 12 TL
 (CSE 60321 GR Advanced Computer Architecture B+ 3.000 9.999) Tj T*
 () Tj T*
 (TRANSCRIPT TOTALS \(GRADUATE\)) Tj T*
-(Overall: 13.000 13.000 13.000 10.000 33.000 3.300) Tj T*
+(Overall: 13.000 13.000 13.000 9.000 33.000 3.667) Tj T*
 () Tj T*
 (COURSES IN PROGRESS) Tj T*
 (Fall Semester 2027) Tj T*
@@ -60,5 +60,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-1540
+1539
 %%EOF

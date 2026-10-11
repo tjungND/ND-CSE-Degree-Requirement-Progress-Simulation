@@ -10,6 +10,7 @@ import { createSanitizer } from '../scripts/sanitize/rules.mjs';
 import { readRuns, sanitizePdf, type PdfPage, type PdfRun } from '../scripts/sanitize/pdf-io.mjs';
 import { runsToLines } from '../src/transcript/layout.ts';
 import { parseExternalTranscript } from '../src/transcript/external.ts';
+import { parseTranscript } from '../src/transcript/parse.ts';
 
 type Run = { x: number; y: number; text: string; width?: number };
 const run = (x: number, y: number, text: string): Run => ({ x, y, text, width: text.length * 4 });
@@ -47,7 +48,50 @@ describe('sanitizer rules', () => {
     assert.notEqual(title, 'Data Communication');
     assert.match(title!, /^[A-Z][a-z]{3} [A-Z][a-z]{12}$/);
     assert.match(cr!, /^3\.00 [BCD]$/); // grade changed, credits kept
-    assert.equal(pts, '12.00');
+    // The row's quality points gave the original grade away (12.00 on 3
+    // credits is an A): never kept (item 12, 2026-10-11) — random after the
+    // first pass, the NEW grade's points once finish() runs.
+    assert.notEqual(pts, '12.00');
+    assert.match(pts!, /^\d+\.\d\d$/);
+  });
+
+  it('finish(): a row’s points follow its new grade; totals keep their hours and recompute points and GPA from the rows', () => {
+    const s = createSanitizer({ seed: 11 });
+    const runs = [
+      run(33, 720, 'Fall 2019'),
+      run(33, 710, 'CS   430   Introduction Algorithms   3.00 A   12.00'),
+      run(33, 700, 'CS   536   Science of Programming   3.00 B+   9.99'),
+      run(33, 690, 'HUM   601   TA Seminar   0.00 S   0.00'),
+      run(33, 680, 'Ehrs:   6.00 GPA-Hrs: 6.00   QPts:   21.99 GPA:   3.67'),
+      run(33, 670, 'TOTAL INSTITUTION   6.00   6.00   21.99   3.67'),
+      run(33, 660, 'Cumulative GPA:   3.67'),
+    ];
+    const first = s.sanitizeRuns(runs).map((r) => r.text);
+    const final = s.finish()[0]!;
+    const points: Record<string, number> = { 'A+': 4, A: 4, 'A-': 3.67, 'B+': 3.33, B: 3, 'B-': 2.67, 'C+': 2.33, C: 2, 'C-': 1.67, 'D+': 1.33, D: 1, F: 0 };
+    let sum = 0;
+    for (const row of [final[1]!, final[2]!]) {
+      const m = /3\.00 ([A-F][+-]?)   (\d+\.\d\d)$/.exec(row)!;
+      assert.equal(m[2], (points[m[1]!]! * 3).toFixed(2), row);
+      sum += Number(m[2]);
+    }
+    assert.match(final[3]!, /0\.00 S   0\.00$/); // the S row is left alone
+    // The term's line: hours as printed, points and GPA from the rows.
+    assert.equal(final[4], `Ehrs:   6.00 GPA-Hrs: 6.00   QPts:   ${sum.toFixed(2)} GPA:   ${(sum / 6).toFixed(2)}`);
+    assert.equal(final[5], `TOTAL INSTITUTION   6.00   6.00   ${sum.toFixed(2)}   ${(sum / 6).toFixed(2)}`);
+    // A free-standing GPA is no total: still random, never the original.
+    assert.doesNotMatch(final[6]!, /3\.67/);
+    // The first pass alone never kept a grade-revealing figure either.
+    assert.doesNotMatch(first.join('\n'), /21\.99|3\.67|12\.00   |9\.99$/m);
+    assert.equal(s.report().totalsRecomputed, 2);
+  });
+
+  it('finish(): a totals line whose rows do not add up to its GPA hours stays random', () => {
+    const s = createSanitizer({ seed: 5 });
+    s.sanitizeRuns([run(33, 720, 'Fall 2019'), run(33, 710, 'CS   430   Algorithms   3.00 A   12.00'), run(33, 700, 'Ehrs:   6.00 GPA-Hrs: 6.00   QPts:   24.00 GPA:   4.00')]);
+    const final = s.finish()[0]!;
+    assert.doesNotMatch(final[2]!, /GPA-Hrs: 6\.00   QPts:   24\.00|GPA:   4\.00$/);
+    assert.equal(s.report().totalsRandomized, 1);
   });
 
   it('shifts every year by one offset, randomizes ids, dates’ days, GPA and totals', () => {
@@ -86,7 +130,7 @@ describe('sanitizer rules', () => {
   it('keeps titles only with keepTitles, and still scrambles names then', () => {
     const runs = [run(33, 700, 'CS   595   Econ & Priv Issues in Big Data   3.00 A-   12.00'), run(33, 690, 'Record of: Jane Q. Student')];
     const kept = sanitizeTexts(runs, { keepTitles: true });
-    assert.match(kept[0]!, /^CS   5\d\d   Econ & Priv Issues in Big Data   3\.00 [BCD][+-]   12\.00$/);
+    assert.match(kept[0]!, /^CS   5\d\d   Econ & Priv Issues in Big Data   3\.00 [BCD][+-]   \d+\.\d\d$/);
     assert.notEqual(kept[1], 'Record of: Jane Q. Student');
     const scrambled = sanitizeTexts(runs);
     assert.doesNotMatch(scrambled[0]!, /Econ|Priv|Issues/);
@@ -148,4 +192,30 @@ describe('sanitized PDF fidelity', () => {
     const kept = sanitizer.report().keptVerbatim.map(([t]) => t);
     assert.ok(!kept.some((t) => /Jane|Student:? Jane|STUDENT@/.test(t)), kept.join('\n'));
   });
+});
+
+describe('a sanitized Notre Dame transcript still adds up (item 12, 2026-10-11)', () => {
+  // The copy keeps every row and its credits; its grades change, so its GPA
+  // must be the new grades' GPA — what the import's own check compares.
+  const POINTS: Record<string, number> = { 'A+': 4, A: 4, 'A-': 3.667, 'B+': 3.333, B: 3, 'B-': 2.667, 'C+': 2.333, C: 2, 'C-': 1.667, 'D+': 1.333, D: 1, F: 0 };
+  for (const name of ['nd-transcript', 'nd-insidend-transcript', 'nd-undergrad-transcript']) {
+    it(name, async () => {
+      const original = readFileSync(new URL(`./fixtures/${name}.pdf`, import.meta.url));
+      const { pdf, sanitizer } = await sanitizePdf(original, { seed: 3 });
+      const lines = (pages: PdfPage[]) => pages.flatMap((page) => [...runsToLines(page.runs, page.width), '']);
+      const before = parseTranscript(lines(await readRuns(original)));
+      const after = parseTranscript(lines(await readRuns(pdf)));
+      assert.equal(after.courses.length, before.courses.length);
+      assert.deepEqual(after.courses.map((c) => c.credits), before.courses.map((c) => c.credits));
+      for (const level of ['graduate', 'undergraduate'] as const) {
+        const printed = after.cumulativeGpaByLevel?.[level];
+        if (printed === undefined) continue;
+        const rows = after.courses.filter((c) => c.origin === 'nd' && c.level === level && POINTS[c.grade] !== undefined);
+        const hours = rows.reduce((n, c) => n + c.credits, 0);
+        const gpa = rows.reduce((n, c) => n + c.credits * POINTS[c.grade]!, 0) / hours;
+        assert.ok(Math.abs(printed - gpa) < 0.01, `${name} ${level}: printed ${printed}, the new grades give ${gpa.toFixed(3)}`);
+      }
+      assert.equal(sanitizer.report().totalsRandomized, 0, 'every totals line was recomputed');
+    });
+  }
 });
