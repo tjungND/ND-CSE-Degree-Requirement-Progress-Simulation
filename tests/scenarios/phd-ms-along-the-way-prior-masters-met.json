@@ -128,7 +128,9 @@
       "advisorName": "Prof. Example",
       "candidacyPassed": "2029-04-15"
     },
-    "attestations": {}
+    "attestations": {
+      "wantsMsAlongTheWay": true
+    }
   },
   "expect": {
     "phd.msAlongTheWay": {

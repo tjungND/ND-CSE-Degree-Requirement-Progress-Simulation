@@ -310,10 +310,8 @@
       "status": "unmet"
     },
     "phd.msAlongTheWay": {
-      "status": "met"
-    },
-    "shared.msCandidacy": {
-      "status": "unmet"
+      "status": "met",
+      "statusLabel": "Qualifies"
     },
     "phd.timeLimit": {
       "status": "unmet",
@@ -324,5 +322,8 @@
       "status": "not_applicable"
     }
   },
-  "expectReviewEmpty": true
+  "expectReviewEmpty": true,
+  "expectAbsent": [
+    "shared.msCandidacy"
+  ]
 }

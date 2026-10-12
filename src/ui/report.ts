@@ -460,12 +460,16 @@ function problemLine(r: RequirementResult): HTMLElement | null {
  * here and DGS-waiting ones in the score head). */
 function contribSummary(contrib: readonly Contribution[]): string {
   const counted = contrib.filter((c) => !c.pending);
-  const inProgress = contrib.filter((c) => c.pending && c.kind !== 'waiting');
+  const inProgress = contrib.filter((c) => c.pending && c.kind !== 'waiting' && c.kind !== 'plan');
   const waiting = contrib.filter((c) => c.pending && c.kind === 'waiting');
+  // A dual-degree shared course waits for the Graduate School, not the DGS
+  // (policy review round 4, P4-ac-5; DGS 2026-10-11).
+  const plan = contrib.filter((c) => c.pending && c.kind === 'plan');
   const credits = (list: readonly Contribution[]) => formatCredits(list.reduce((n, c) => n + c.credits, 0));
   const parts = [counted.length > 0 ? `Courses counted (${counted.length} · ${credits(counted)} credits)` : 'Courses counted (none yet)'];
   if (inProgress.length > 0) parts.push(`${inProgress.length} in progress (${credits(inProgress)} credits)`);
   if (waiting.length > 0) parts.push(`${waiting.length} waiting for the DGS (${credits(waiting)} credits)`);
+  if (plan.length > 0) parts.push(`${plan.length} waiting for the Graduate School (${credits(plan)} credits)`);
   return parts.join(' · ');
 }
 

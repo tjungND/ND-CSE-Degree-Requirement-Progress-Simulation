@@ -211,7 +211,7 @@ function migrateExtensionBox(attestations: Record<string, unknown> | undefined):
   if (n !== undefined && !(typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 20)) delete attestations['qualifierExtensionSemesters'];
   if (attestations['transferRecorded'] !== undefined && typeof attestations['transferRecorded'] !== 'boolean') delete attestations['transferRecorded'];
   if (attestations['dualPlanApproved'] !== undefined && typeof attestations['dualPlanApproved'] !== 'boolean') delete attestations['dualPlanApproved'];
-  for (const k of ['examsBeforeInterruptionStand', 'oceConfirmedByDgs']) if (attestations[k] !== undefined && typeof attestations[k] !== 'boolean') delete attestations[k];
+  for (const k of ['examsBeforeInterruptionStand', 'oceConfirmedByDgs', 'wantsMsAlongTheWay']) if (attestations[k] !== undefined && typeof attestations[k] !== 'boolean') delete attestations[k];
 }
 
 /** One term per leave or accommodation, by position (P3-ac-5a-1, 2026-10-05):

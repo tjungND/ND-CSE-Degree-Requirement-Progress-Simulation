@@ -409,6 +409,19 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
           ? `Advise the student on applying to the Graduate School for dissertation completion status or an eligibility extension ${section(r)}.`
           : `Advise the student on applying to the Graduate School for an eligibility extension ${section(r)}.`,
       );
+    } else if (r.status === 'needs_dgs_review' && r.deadline?.state === 'done') {
+      // Every requirement complete, the last one after the limit — the card's
+      // "Eligibility at risk" (context.ts timeLimitRow). Nothing is left to
+      // complete; the open question is the Graduate School's extension, so the
+      // email names it and gives the DGS the item the card does (policy review
+      // round 4, P4-phd-1 and P4-mscse-1; DGS 2026-10-11: "apply the suggested
+      // handling").
+      out.student.push(`Confirm with the DGS whether the Graduate School extended my time limit — every requirement is complete, but the last one came after the limit ${section(r)}.`);
+      out.dgs.push(
+        id === 'phd.timeLimit'
+          ? `Confirm whether the Graduate School extended the student’s time limit, or advise the student on dissertation completion status or an eligibility extension ${section(r)}.`
+          : `Confirm whether the Graduate School extended the student’s time limit, or advise the student on an eligibility extension ${section(r)}.`,
+      );
     } else if (r.deadline) out.student.push(`Complete all requirements${due(r)} ${section(r)}.`);
   }
 
@@ -522,7 +535,8 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
   // Processing — the Grad Admin's side (2026-09-06 evening): the MSCSE along
   // the way once its row is met, and the qualifier completion form once every
   // component is done but no form date is entered.
-  if (byId.get('phd.msAlongTheWay')?.status === 'met') {
+  // Only once the student asked for it (DGS 2026-10-11, question 3a: option (b)).
+  if (byId.get('phd.msAlongTheWay')?.status === 'met' && byId.get('phd.msAlongTheWay')?.statusLabel !== 'Qualifies') {
     out.gradAdmin.push('Process the MSCSE awarded along the way (§3.1, §4.5).');
     out.student.push('Send the Grad Admin the processing request for the MSCSE along the way (§3.1, §4.5).');
   }

@@ -573,7 +573,7 @@ export function countedCourseIds(ctx: Ctx, pick: (p: CourseAllocation) => number
 export function courseContributions(ctx: Ctx, pick: (p: CourseAllocation) => number): Contribution[] {
   return ctx.alloc.perCourse
     .filter((p) => pick(p) > 0 && !p.course.superseded)
-    .map((p) => ({ courseId: p.course.entry.courseId, credits: pick(p), ...(p.course.tier === 'definite' ? {} : { pending: true as const, kind: p.course.tier === 'in_progress' ? ('in_progress' as const) : ('waiting' as const) }) }));
+    .map((p) => ({ courseId: p.course.entry.courseId, credits: pick(p), ...(p.course.tier === 'definite' ? {} : { pending: true as const, kind: p.course.tier === 'in_progress' ? ('in_progress' as const) : p.course.dualPlanOnly ? ('plan' as const) : ('waiting' as const) }) }));
 }
 
 /** The same courses, but the ones still to be passed or approved (2026-09-08):

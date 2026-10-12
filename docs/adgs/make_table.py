@@ -46,12 +46,12 @@ tr {{ page-break-inside: avoid; }}
 .sign div {{ border-top: .8px solid #111; padding-top: 2px; }}
 </style></head><body>
 <h1>MSCSE requirements as the degree self-check reads them</h1>
-<p class="sub">For the Associate DGS to review and sign: each MSCSE requirement, the handbook sentence it implements, how the app reads it (checked against the code by an independent reviewer) and the decision that interprets it (docs/DECISIONS.md). Prepared {e(t["prepared"])}. Checked with: {e(t["stamp"])}.</p>
+<p class="sub">For the Assistant DGS (ADGS) to review and sign: each MSCSE requirement, the handbook sentence it implements, how the app reads it (checked against the code by an independent reviewer) and the decision that interprets it (docs/DECISIONS.md). Prepared {e(t["prepared"])}. Checked with: {e(t["stamp"])}.</p>
 <table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup>
 <thead><tr><th>#</th><th>Requirement</th><th>Handbook sentence</th><th>How the app reads it</th><th>Decision record</th></tr></thead>
 <tbody>{rows}</tbody></table>
 <p class="foot">{e(t.get("footnote", ""))}</p>
-<div class="sign"><div>Reviewed: the readings above implement the handbook as the department applies it, except as noted beside a row.</div><div>Associate Director of Graduate Studies (signature)</div><div>Date</div></div>
+<div class="sign"><div>Reviewed: the readings above implement the handbook as the department applies it, except as noted beside a row.</div><div>Assistant Director of Graduate Studies (signature)</div><div>Date</div></div>
 </body></html>"""
 open(sys.argv[2], "w", encoding="utf-8").write(page)
 print("wrote", sys.argv[2], len(t["rows"]), "rows")

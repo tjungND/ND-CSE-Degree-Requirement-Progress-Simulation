@@ -39,7 +39,7 @@
     "phd.credits.total": "met 92/60",
     "phd.dissertation.defense": "unmet",
     "phd.dissertation.submitted": "unmet",
-    "phd.msAlongTheWay": "met",
+    "phd.msAlongTheWay": "met “Qualifies”",
     "phd.qualifier": "met [done]",
     "phd.qualifier.categories": "met",
     "phd.qualifier.core.algorithms": "met",
@@ -53,8 +53,7 @@
     "phd.transfer": "not_applicable",
     "shared.advisor": "met",
     "shared.approvals": "not_applicable",
-    "shared.gpa": "met",
-    "shared.msCandidacy": "unmet"
+    "shared.gpa": "met"
   },
   "clock-phd-8-year-limit-before": {
     "phd.candidacy": "met [done]",
@@ -66,7 +65,7 @@
     "phd.credits.total": "met 92/60",
     "phd.dissertation.defense": "unmet",
     "phd.dissertation.submitted": "unmet",
-    "phd.msAlongTheWay": "met",
+    "phd.msAlongTheWay": "met “Qualifies”",
     "phd.qualifier": "met [done]",
     "phd.qualifier.categories": "met",
     "phd.qualifier.core.algorithms": "met",
@@ -80,8 +79,7 @@
     "phd.transfer": "not_applicable",
     "shared.advisor": "met",
     "shared.approvals": "not_applicable",
-    "shared.gpa": "met",
-    "shared.msCandidacy": "unmet"
+    "shared.gpa": "met"
   },
   "clock-phd-candidacy-8th-semester-after": {
     "phd.candidacy": "unmet [overdue]",
@@ -454,7 +452,7 @@
     "phd.credits.total": "met 92/60",
     "phd.dissertation.defense": "met",
     "phd.dissertation.submitted": "met",
-    "phd.msAlongTheWay": "met",
+    "phd.msAlongTheWay": "met “Qualifies”",
     "phd.qualifier": "met [done]",
     "phd.qualifier.categories": "met",
     "phd.qualifier.core.algorithms": "met",
@@ -468,8 +466,7 @@
     "phd.transfer": "not_applicable",
     "shared.advisor": "met",
     "shared.approvals": "not_applicable",
-    "shared.gpa": "met",
-    "shared.msCandidacy": "unmet"
+    "shared.gpa": "met"
   },
   "life-phd-masters-elsewhere-finished": {
     "phd.candidacy": "met [done]",
@@ -507,7 +504,7 @@
     "phd.credits.total": "met 146/60",
     "phd.dissertation.defense": "met",
     "phd.dissertation.submitted": "met",
-    "phd.msAlongTheWay": "met",
+    "phd.msAlongTheWay": "met “Qualifies”",
     "phd.qualifier": "met [done]",
     "phd.qualifier.categories": "met",
     "phd.qualifier.core.algorithms": "met",
@@ -521,8 +518,7 @@
     "phd.transfer": "not_applicable",
     "shared.advisor": "met",
     "shared.approvals": "not_applicable",
-    "shared.gpa": "met",
-    "shared.msCandidacy": "unmet"
+    "shared.gpa": "met"
   },
   "life-phd-ms-along-the-way": {
     "phd.candidacy": "met [done]",
@@ -1828,7 +1824,7 @@
     "phd.credits.total": "met 92/60",
     "phd.dissertation.defense": "met",
     "phd.dissertation.submitted": "met",
-    "phd.msAlongTheWay": "met",
+    "phd.msAlongTheWay": "met “Qualifies”",
     "phd.qualifier": "cannot_evaluate",
     "phd.qualifier.categories": "met",
     "phd.qualifier.core.algorithms": "met",
@@ -1842,8 +1838,7 @@
     "phd.transfer": "not_applicable",
     "shared.advisor": "met",
     "shared.approvals": "not_applicable",
-    "shared.gpa": "met",
-    "shared.msCandidacy": "unmet"
+    "shared.gpa": "met"
   },
   "phd-defense-term-not-registered": {
     "phd.candidacy": "needs_dgs_review [done]",
@@ -1921,6 +1916,33 @@
     "phd.timeLimit": "in_progress [upcoming]",
     "phd.transfer": "not_applicable",
     "shared.advisor": "cannot_evaluate",
+    "shared.approvals": "in_progress",
+    "shared.gpa": "met"
+  },
+  "phd-dual-degree-plan-pending-candidacy": {
+    "phd.candidacy": "unmet [upcoming]",
+    "phd.candidacyAdmission": "unmet [upcoming]",
+    "phd.cap.fourk": "not_applicable “Not used yet” 0/6",
+    "phd.cap.noncse": "not_applicable “Not used yet” 0/9",
+    "phd.cap.otherdegree": "needs_dgs_review 3/9",
+    "phd.credits.nd": "met 21/9",
+    "phd.credits.regular": "needs_dgs_review 21/24",
+    "phd.credits.total": "unmet 21/60",
+    "phd.dissertation.defense": "unmet",
+    "phd.dissertation.submitted": "unmet",
+    "phd.msAlongTheWay": "not_applicable “Not started”",
+    "phd.qualifier": "met [done]",
+    "phd.qualifier.categories": "met",
+    "phd.qualifier.core.algorithms": "met",
+    "phd.qualifier.core.architecture": "met",
+    "phd.qualifier.core.os": "met",
+    "phd.qualifier.research": "met [done]",
+    "phd.rcr": "met",
+    "phd.residency": "in_progress",
+    "phd.seminar": "unmet [overdue]",
+    "phd.timeLimit": "in_progress [upcoming]",
+    "phd.transfer": "not_applicable",
+    "shared.advisor": "met",
     "shared.approvals": "in_progress",
     "shared.gpa": "met"
   },
@@ -2339,6 +2361,32 @@
     "shared.approvals": "in_progress",
     "shared.gpa": "met",
     "shared.msCandidacy": "unmet"
+  },
+  "phd-ms-along-the-way-credits-after-five-years": {
+    "phd.candidacy": "met [done]",
+    "phd.candidacyAdmission": "unmet [overdue]",
+    "phd.cap.fourk": "not_applicable “Not used yet” 0/6",
+    "phd.cap.noncse": "not_applicable “Not used yet” 0/9",
+    "phd.credits.nd": "met 24/9",
+    "phd.credits.regular": "met 24/24",
+    "phd.credits.total": "met 72/60",
+    "phd.dissertation.defense": "unmet",
+    "phd.dissertation.submitted": "unmet",
+    "phd.msAlongTheWay": "needs_dgs_review",
+    "phd.qualifier": "unmet [overdue]",
+    "phd.qualifier.categories": "met",
+    "phd.qualifier.core.algorithms": "met",
+    "phd.qualifier.core.architecture": "met",
+    "phd.qualifier.core.os": "met",
+    "phd.qualifier.research": "unmet [overdue]",
+    "phd.rcr": "in_progress",
+    "phd.residency": "in_progress",
+    "phd.seminar": "unmet [overdue]",
+    "phd.timeLimit": "in_progress [upcoming]",
+    "phd.transfer": "not_applicable",
+    "shared.advisor": "cannot_evaluate",
+    "shared.approvals": "in_progress",
+    "shared.gpa": "met"
   },
   "phd-ms-along-the-way-gpa-gate": {
     "phd.candidacy": "needs_dgs_review [done]",
@@ -3595,7 +3643,7 @@
     "phd.credits.total": "met 62/60",
     "phd.dissertation.defense": "met",
     "phd.dissertation.submitted": "met",
-    "phd.msAlongTheWay": "met",
+    "phd.msAlongTheWay": "met “Qualifies”",
     "phd.qualifier": "met [done]",
     "phd.qualifier.categories": "met",
     "phd.qualifier.core.algorithms": "met",
@@ -3609,8 +3657,7 @@
     "phd.transfer": "not_applicable",
     "shared.advisor": "met",
     "shared.approvals": "in_progress",
-    "shared.gpa": "met",
-    "shared.msCandidacy": "unmet"
+    "shared.gpa": "met"
   },
   "phd-rcr-pending-after-oce": {
     "phd.candidacy": "met [done]",

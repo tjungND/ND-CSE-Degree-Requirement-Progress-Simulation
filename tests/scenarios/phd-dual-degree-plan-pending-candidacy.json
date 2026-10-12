@@ -1,0 +1,142 @@
+{
+  "name": "phd-dual-degree-plan-pending-candidacy",
+  "description": "Policy review round 4, P4-ac-5 (DGS 2026-10-11: apply the suggested handling): a dual-degree shared course waits only for the Graduate School’s approval of the plan of study (DGS Handbook §2.9: “The plan must then be approved by the Graduate School”), so the Oral Candidacy Exam (OCE) and admission cards name the Graduate School, not the DGS, for its credits — and the credit cards’ fold titles say “waiting for the Graduate School”. 21 regular credits plus CSE 60641 ticked as also counting toward the other degree.",
+  "today": "2026-10-11",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "gpa": 3.7,
+    "concurrentDegree": true,
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd",
+        "sharedWithOtherDegree": true
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {
+      "advisorIdentified": "2024-09-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "researchQualifierPassed": "2025-12-01",
+      "rcrTrainingCompleted": "2024-10-01"
+    },
+    "attestations": {
+      "advisorApprovedPlan": true
+    }
+  },
+  "expect": {
+    "phd.candidacy": {
+      "status": "unmet",
+      "detailIncludes": [
+        "3 waiting for the Graduate School’s approval of your dual-degree plan of study (CSE 60641) — 3 more needed unless the Graduate School approves your dual-degree plan",
+        "still needed: the Graduate School’s approval of your dual-degree plan of study (CSE 60641), or 3 more regular-course credits",
+        "a course shared with your other degree counts once the Graduate School approves your dual-degree plan of study (DGS Handbook §2.9)"
+      ],
+      "detailExcludes": [
+        "waiting for a DGS decision",
+        "the DGS’s decision on",
+        "unless the DGS approves"
+      ]
+    },
+    "phd.candidacyAdmission": {
+      "status": "unmet",
+      "detailIncludes": [
+        "3 waiting for the Graduate School’s approval of your dual-degree plan of study (CSE 60641)"
+      ],
+      "detailExcludes": [
+        "waiting for a DGS decision",
+        "the DGS’s decision on",
+        "unless the DGS approves"
+      ]
+    }
+  }
+}
