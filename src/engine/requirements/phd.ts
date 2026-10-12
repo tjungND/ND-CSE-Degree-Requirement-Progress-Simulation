@@ -1685,10 +1685,10 @@ function oceReadiness(ctx: Ctx, rows: RequirementResult[]): OceReadiness {
       if (counted < need) {
         const more = need - counted;
         if (pending > 0 && pending >= more) {
-          missing.push(`${waitingRegular.decision}, or ${credits(more)}`);
+          missing.push(`${credits(more)} (${waitingRegular.satisfiable(more)})`);
           item('waiting', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${waitingRegular.waiting} — ${formatCredits(more)} more needed unless ${waitingRegular.unless} (transferred regular-course credits count)`);
         } else if (pending > 0) {
-          missing.push(`${credits(more - pending)}, and ${waitingRegular.decision} or ${formatCredits(pending)} more`);
+          missing.push(`${credits(more)} (${waitingRegular.satisfiable(more)})`);
           item('not_yet', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${waitingRegular.waiting} — ${formatCredits(more)} more needed, ${formatCredits(more - pending)} if ${waitingRegular.unless} (transferred regular-course credits count)`);
         } else {
           missing.push(credits(more));
@@ -1723,7 +1723,7 @@ function oceReadiness(ctx: Ctx, rows: RequirementResult[]): OceReadiness {
       if (waitingForDgs(r)) {
         const which = r.pendingBy && r.pendingBy.length > 0 ? r.pendingBy.join(', ') : undefined;
         // Said once when the regular-credit line already names the same decision.
-        const named = which !== undefined && missing.some((m) => m.includes('the DGS’s decision on') && which.split(', ').every((id) => m.includes(id)));
+        const named = which !== undefined && missing.some((m) => /the DGS’s decision on|if the DGS approves/.test(m) && which.split(', ').every((id) => m.includes(id)));
         if (!named) missing.push(`the DGS’s decision on ${which ?? (core ? coreCourseNoun(r).replace(/^an? /, 'the ') : 'the specialization courses')}`);
         item('waiting', `${name}: waiting for the DGS${which ? ` (${which})` : ''}`);
         continue;
@@ -1818,11 +1818,14 @@ function oceWhenSentence(r: OceReadiness): string {
  * a dual-degree shared course waits only for the Graduate School's approval
  * of the plan of study (`dualPlanOnly`; DGS Handbook §2.9: "The plan must
  * then be approved by the Graduate School"), every other one for the DGS.
- * `waiting` is the count phrase, `unless` who approves, `decision` the
+ * `waiting` is the count phrase, `unless` who approves, `satisfiable` the
  * missing-list phrase. `withIds` names the courses. */
-function pendingRegular(alloc: Ctx['alloc'], withIds = true): { credits: number; waiting: string; unless: string; decision: string } {
+function pendingRegular(alloc: Ctx['alloc'], withIds = true): { credits: number; waiting: string; unless: string; satisfiable: (more: number) => string } {
   const pend = alloc.perCourse.filter((p) => !p.course.superseded && p.course.tier === 'provisional' && p.countedRegular > 0);
-  const split = (list: typeof pend) => ({ credits: list.reduce((n, p) => n + p.countedRegular, 0), ids: [...new Set(list.map((p) => p.course.entry.courseId))].join(', ') });
+  const split = (list: typeof pend) => {
+    const idList = [...new Set(list.map((p) => p.course.entry.courseId))];
+    return { credits: list.reduce((n, p) => n + p.countedRegular, 0), ids: idList.join(', '), idList };
+  };
   const dgs = split(pend.filter((p) => p.course.dualPlanOnly !== true));
   const plan = split(pend.filter((p) => p.course.dualPlanOnly === true));
   const ids = (x: { ids: string }) => (withIds ? ` (${x.ids})` : '');
@@ -1831,11 +1834,24 @@ function pendingRegular(alloc: Ctx['alloc'], withIds = true): { credits: number;
     ...(plan.credits > 0 ? [`${formatCredits(plan.credits)} waiting for the Graduate School’s approval of your dual-degree plan of study${ids(plan)}`] : []),
   ].join(', ');
   const unless = dgs.credits > 0 && plan.credits > 0 ? 'the DGS and the Graduate School approve them' : plan.credits > 0 ? 'the Graduate School approves your dual-degree plan' : 'the DGS approves them';
-  const decision = [
-    ...(dgs.credits > 0 ? [`the DGS’s decision on ${dgs.ids}`] : []),
-    ...(plan.credits > 0 ? [`the Graduate School’s approval of your dual-degree plan of study (${plan.ids})`] : []),
-  ].join(' and ');
-  return { credits: dgs.credits + plan.credits, waiting, unless, decision };
+  // The total first, then what the waiting courses could cover of it (policy
+  // review round 4, P4-phd-10; DGS 2026-10-12: "make it clear how many total
+  // credits are needed … something like '21 more credits are needed; 6 of
+  // them can be satisfied by two courses XXX YYY if DGS approve'"). It used to
+  // read "15 more regular-course credits, and the DGS's decision on CSE 60641,
+  // CSE 60111 or 6 more", whose "or" ran into the next item of the list.
+  const by = (x: { idList: string[] }, approver: string) => `${listAnd(x.idList)} if ${approver}`;
+  const dgsBy = by(dgs, `the DGS approves ${dgs.idList.length === 1 ? 'it' : 'them'}`);
+  const planBy = by(plan, 'the Graduate School approves your dual-degree plan of study');
+  const satisfiable = (more: number): string => {
+    const both = dgs.credits > 0 && plan.credits > 0;
+    if (dgs.credits + plan.credits >= more)
+      return `all of them can be satisfied by ${both ? `${dgsBy}, and by ${planBy}` : dgs.credits > 0 ? dgsBy : planBy}`;
+    return both
+      ? `${formatCredits(dgs.credits)} of them can be satisfied by ${dgsBy}, and ${formatCredits(plan.credits)} by ${planBy}`
+      : `${formatCredits(dgs.credits + plan.credits)} of them can be satisfied by ${dgs.credits > 0 ? dgsBy : planBy}`;
+  };
+  return { credits: dgs.credits + plan.credits, waiting, unless, satisfiable };
 }
 
 /** "; a course shared with your other degree …" — the policy sentence's

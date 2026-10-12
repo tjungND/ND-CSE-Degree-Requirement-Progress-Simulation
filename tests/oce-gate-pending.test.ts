@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { audit } from '../src/engine/audit.ts';
 import type { Student } from '../src/engine/types.ts';
-import { buildRules } from './helpers.ts';
+import { buildRules, loadScenario } from './helpers.ts';
 import { ndCourse, phdStudent, transferCourse } from './helpers/student.ts';
 
 const fall = (year: number) => ({ season: 'fall' as const, year });
@@ -72,14 +72,15 @@ describe('regular credits waiting for the DGS are named, not asked for again (P3
     const c = card(recordB());
     assert.match(c.detail, /^Not started\./);
     assert.match(c.detail, /Regular-course credits: 21 of 24 complete, 3 waiting for a DGS decision \(CSE 40567\) — 3 more needed unless the DGS approves them \(transferred regular-course credits count\)/);
-    assert.match(c.detail, /still needed: the DGS’s decision on CSE 40567, or 3 more regular-course credits\./);
+    // The total first, then what the decision would cover (P4-phd-10, DGS 2026-10-12).
+    assert.match(c.detail, /still needed: 3 more regular-course credits \(all of them can be satisfied by CSE 40567 if the DGS approves it\)\./);
   });
   it('not enough pending: what is needed either way, and what the decision would spare', () => {
     const s = recordB();
     s.courses = s.courses.filter((c) => c.courseId !== 'CSE 60770');
     const c = card(s);
     assert.match(c.detail, /Regular-course credits: 18 of 24 complete, 3 waiting for a DGS decision \(CSE 40567\) — 6 more needed, 3 if the DGS approves them/);
-    assert.match(c.detail, /still needed: 3 more regular-course credits, and the DGS’s decision on CSE 40567 or 3 more\./);
+    assert.match(c.detail, /still needed: 6 more regular-course credits \(3 of them can be satisfied by CSE 40567 if the DGS approves it\)\./);
   });
   it('one course both pending as credit and for a core area: the decision is named once', () => {
     const s = recordA();
@@ -87,8 +88,8 @@ describe('regular credits waiting for the DGS are named, not asked for again (P3
     const c = card(s);
     assert.match(c.detail, /3 waiting for a DGS decision \(CS 58000\)/);
     assert.match(c.detail, /Core knowledge, Algorithms: waiting for the DGS \(CS 58000\)/);
-    assert.match(c.detail, /still needed: the DGS’s decision on CS 58000, or 3 more regular-course credits\./);
-    assert.equal(c.detail.split('the DGS’s decision on CS 58000').length, 2, 'once');
+    assert.match(c.detail, /still needed: 3 more regular-course credits \(all of them can be satisfied by CS 58000 if the DGS approves it\)\./);
+    assert.equal((/still needed: [^.]*\./.exec(c.detail)?.[0] ?? '').split('CS 58000').length, 2, 'named once in what is still needed');
   });
 });
 
@@ -122,12 +123,42 @@ describe('an OCE passed while credits wait for the DGS (P3-hidden-inputs-1, opti
     assert.equal(c.status, 'unmet');
     assert.match(c.detail, /^Not started\./);
     assert.match(c.detail, /Regular-course credits: 15 of 24 complete, 9 waiting for a DGS decision \(ECE 53800, ECE 62700, ECE 63700\) — 9 more needed unless the DGS approves them/);
-    assert.match(c.detail, /still needed: the DGS’s decision on ECE 53800, ECE 62700, ECE 63700, or 9 more regular-course credits\./);
+    assert.match(c.detail, /still needed: 9 more regular-course credits \(all of them can be satisfied by ECE 53800, ECE 62700 and ECE 63700 if the DGS approves them\)\./);
     assert.match(oce(recordC()).detail, /^Not started\./);
   });
   it('dated on a saved record: Needs DGS review, with the coursework at the exam', () => {
     const c = oce(recordC('2026-04-20'));
     assert.equal(c.status, 'needs_dgs_review');
     assert.match(c.detail, /At the exam \(Spring 2026\) you show 15 of 24 regular-course credits \(9 more waiting for a DGS decision\)/);
+  });
+});
+
+// "Still needed" names the total first, then what the waiting courses could
+// cover of it (policy review round 4, P4-phd-10; DGS 2026-10-12: "make it
+// clear how many total credits are needed … something like '21 more credits
+// are needed; 6 of them can be satisfied by two courses XXX YYY if DGS
+// approve'"). It read "15 more regular-course credits, and the DGS's decision
+// on CSE 60641, CSE 60111 or 6 more and an advisor who is …", whose "or" ran
+// into the advisor item.
+describe('the total first, then what a decision would cover (P4-phd-10)', () => {
+  it('the readmitted student of the finding: 21 needed, 6 of them by the two held courses', () => {
+    const sc = loadScenario('phd-readmitted-candidacy-calendar');
+    const c = audit(sc.student, buildRules(sc.rules.patch), '2025-10-05').requirements.find((r) => r.id === 'phd.candidacy')!;
+    assert.match(c.detail, /still needed: 21 more regular-course credits \(6 of them can be satisfied by CSE 60641 and CSE 60111 if the DGS approves them\) and an advisor who is tenured or tenure-track CSE faculty \(§4\.5\)\./);
+  });
+  it('a course waiting for the DGS and one waiting for the Graduate School’s plan approval: each named with its approver', () => {
+    const ids = ['CSE 60641', 'CSE 60321', 'CSE 60111', 'CSE 60427', 'CSE 60535'];
+    const terms = [fall(2024), fall(2024), spring(2025), spring(2025), fall(2025)];
+    const s = phdStudent({
+      entryTerm: fall(2024),
+      bachelorsAwarded: spring(2024),
+      gpa: 3.7,
+      concurrentDegree: true,
+      courses: [...ids.map((id, i) => ndCourse(id, { term: terms[i]! })), ndCourse('CSE 40567', { term: spring(2026) }), ndCourse('CSE 60876', { term: spring(2026), sharedWithOtherDegree: true })],
+      fullTimeTermOverrides: [fall(2024), spring(2025), fall(2025), spring(2026)],
+      milestones: { advisorIdentified: '2024-10-01', advisorName: 'Prof. Example', advisorTtt: 'yes', rcrTrainingCompleted: '2025-09-15' },
+    });
+    const c = card(s);
+    assert.match(c.detail, /still needed: 9 more regular-course credits \(3 of them can be satisfied by CSE 40567 if the DGS approves it, and 3 by CSE 60876 if the Graduate School approves your dual-degree plan of study\)\./);
   });
 });
