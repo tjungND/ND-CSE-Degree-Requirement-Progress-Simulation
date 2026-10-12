@@ -363,6 +363,15 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
         ? `Identify my faculty advisor — the Ph.D. requires continuous advisor supervision ${section(advisor)}.`
         : `Identify a thesis or project advisor ${section(advisor)}.`,
     );
+  else if (advisor?.status === 'needs_dgs_review') {
+    // Not tenured or tenure-track CSE faculty (or not sure): the card's two
+    // cases (shared.ts advisorCasesRule), so "Nothing is pending with the DGS"
+    // cannot print beside the advisor row's "ask the DGS" (policy review
+    // round 4, P4-phd-6; DGS 2026-10-12).
+    const thesis = report.program === 'mscse' ? 'thesis ' : '';
+    out.student.push(`If my ${thesis}advisor is tenured or tenure-track in another Notre Dame department, ask the DGS to approve them; if not, add a tenured or tenure-track co-advisor (${advisor.citation.section}; department policy).`);
+    out.dgs.push(`Approve my ${thesis}advisor if they are tenured or tenure-track in another Notre Dame department ${section(advisor)}.`);
+  }
 
   // Credits.
   for (const [id, what] of [
@@ -382,6 +391,9 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
   if (seminar && isOpen(seminar.status)) {
     const notYet = [...textOf(seminar).matchAll(/([A-Z]{2,5} \d{5}): not yet/g)].map((m) => m[1]);
     out.student.push(notYet.length > 0 ? `Take ${notYet.join(' and ')} — the research seminar ${section(seminar)}.` : `Complete the research seminar credits ${section(seminar)}.`);
+  } else if (seminar?.status === 'needs_dgs_review' && seminar.completedLate) {
+    // Passed after the first year: the DGS confirms it (P4-phd-2).
+    out.dgs.push(`Confirm my research seminar taken after the first year ${section(seminar)}.`);
   }
 
   // Residence and time.
@@ -445,11 +457,16 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
 
   // Ph.D. qualifier.
   const qualifier = byId.get('phd.qualifier');
+  // With the course components complete only the research component is
+  // left, and its own item follows (policy review round 4, P4-phd-7; DGS
+  // 2026-10-12): "Complete all three qualifier components" beside the form
+  // reminder told the student the courses were still to do.
+  const onlyResearch = qualifier?.qualifierCourseComponentsDone === true;
   if (qualifier && isOpen(qualifier.status)) {
     if (overdue(qualifier)) {
-      out.student.push(`Complete the remaining qualifier components${due(qualifier)}; ask the DGS about an extension ${section(qualifier)}.`);
+      out.student.push(`Complete the ${onlyResearch ? 'research component of the qualifier' : 'remaining qualifier components'}${due(qualifier)}; ask the DGS about an extension ${section(qualifier)}.`);
       out.dgs.push(`Decide whether to extend the qualifier deadline ${section(qualifier)}.`);
-    } else out.student.push(`Complete all three qualifier components${due(qualifier)} ${section(qualifier)}.`);
+    } else if (!onlyResearch) out.student.push(`Complete all three qualifier components${due(qualifier)} ${section(qualifier)}.`);
   } else if (qualifier?.status === 'needs_dgs_review' && qualifier.completedLate) {
     // Every part done, a course-based one after the four semesters (P3-cse-4a-2,
     // DGS 2026-10-06): the DGS confirms the extension. A late research pass
@@ -639,10 +656,13 @@ export function approvalItems(course: string, reason: string, program: 'mscse' |
   // review request asks (review.ts). Its own line, and a second question on
   // the same course keeps its line too, so the Incomplete no longer
   // disappears behind an "Approve …" (policy review round 3, P3-emails-7).
-  const lapsed = /^Incomplete \(I\) past its deadline\b.*?\(Academic Code §4\.4\); the A?DGS confirms(?:; (.+))?$/.exec(reason);
+  // A Spring 2020 student's reason carries Appendix A.1's clause between the
+  // two (policy review round 4, P4-ac-1; DGS 2026-10-12): the same
+  // confirmation, with the clause, never "Decide on".
+  const lapsed = /^Incomplete \(I\) past its deadline\b.*?\(Academic Code §4\.4\)(; for students enrolled in Spring 2020[^;]*)?; the A?DGS confirms(?:; (.+))?$/.exec(reason);
   if (lapsed) {
-    const incomplete = `Confirm whether the Graduate School extended my Incomplete in ${course}, or the grade was posted (Academic Code §4.4).`;
-    return { ...(lapsed[1] ? approvalItems(course, lapsed[1], program) : {}), incomplete };
+    const incomplete = `Confirm whether the Graduate School extended my Incomplete in ${course}, or the grade was posted (Academic Code §4.4${lapsed[1] ? '; for students enrolled in Spring 2020, Appendix A.1 may give 60 days' : ''}).`;
+    return { ...(lapsed[2] ? approvalItems(course, lapsed[2], program) : {}), incomplete };
   }
   const section = /\((§[^)]*)\)\s*$/.exec(reason)?.[1] ?? (program === 'mscse' ? '§3.2' : '§4.2');
   const unlisted = /not in the course rules/i.test(reason);

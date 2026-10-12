@@ -379,10 +379,15 @@ export async function loadLiveRules(nowIso: string, onProgress: (p: LoadProgress
     });
   }
   if (optionalIssues.universities !== undefined) {
+    // The old ExternalCourses credit_system column is still read when a sheet
+    // has it, but the live sheet's was deleted (2026-10-10), so the warning
+    // says what the page actually does without the tab (policy review round
+    // 4, P4-data-4; DGS 2026-10-12): credits count as printed, and each such
+    // line says the DGS converts them (allocate.ts creditsAsPrinted).
     rules.issues.push({
       severity: 'warning',
       tab: 'Universities',
-      message: `The Universities tab could not be loaded (${optionalIssues.universities}) — each university's credit system is read from the old ExternalCourses credit_system cells, if any, until it is reachable again.`,
+      message: `The Universities tab could not be loaded (${optionalIssues.universities}) — each university's credit system is unknown until it is reachable again, so courses from other universities count their credits as the transcript prints them, and each such line says the DGS converts quarter or trimester units (§5.2 pro-rata).`,
     });
   }
   return noteNewerSheet(rules);

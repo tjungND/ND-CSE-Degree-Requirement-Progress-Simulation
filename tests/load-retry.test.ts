@@ -5,7 +5,7 @@
 // honours the abort signal; waits are milliseconds so the tests run fast.
 import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
-import { fetchCsv, fetchCsvOnce, RulesLoadError, worthRetrying, type LoadProgress } from '../src/data/load.ts';
+import { fetchCsv, fetchCsvOnce, loadLiveRules, RulesLoadError, worthRetrying, type LoadProgress } from '../src/data/load.ts';
 
 const CSV = 'course_id,title\r\nCSE 60641,Graduate Operating Systems\r\n';
 const realFetch = globalThis.fetch;
@@ -107,5 +107,29 @@ describe('rules loader: hedged attempts and retries', () => {
     assert.equal(worthRetrying(new RulesLoadError('http', 'courses', 'x', true, 404)), false);
     assert.equal(worthRetrying(new RulesLoadError('unpublished', 'courses', 'x', false)), false);
     assert.equal(worthRetrying(new Error('x')), false);
+  });
+});
+
+// The Universities tab alone fails (a 404 ends its attempt at once): the page
+// loads, and the warning says what it does without the tab — credits count as
+// printed, each such line saying the DGS converts — not the deleted
+// ExternalCourses column (policy review round 4, P4-data-4; DGS 2026-10-12).
+describe('the Universities tab alone fails (P4-data-4)', () => {
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+  it('the warning says credits count as printed', async () => {
+    const urls = (await import('../data/sheet-urls.json', { with: { type: 'json' } })).default as Record<string, string>;
+    const snap = (await import('../data/snapshot.json', { with: { type: 'json' } })).default as { csv: Record<string, string> };
+    globalThis.fetch = ((url: string) => {
+      const tab = Object.keys(urls).find((k) => urls[k] === url);
+      if (tab === undefined || tab === 'universities' || snap.csv[tab] === undefined) return Promise.resolve(new Response('', { status: 404 }));
+      return Promise.resolve(new Response(snap.csv[tab], { status: 200 }));
+    }) as typeof fetch;
+    const rules = await loadLiveRules('2026-10-12T12:00:00Z');
+    const issue = rules.issues.find((i) => i.tab === 'Universities');
+    assert.ok(issue, JSON.stringify(rules.issues));
+    assert.match(issue.message, /credit system is unknown until it is reachable again, so courses from other universities count their credits as the transcript prints them/);
+    assert.doesNotMatch(issue.message, /credit_system/);
   });
 });

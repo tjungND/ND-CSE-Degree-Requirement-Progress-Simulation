@@ -7,7 +7,7 @@ import type { DeadlineInfo, DetailPart, RequirementResult, Status } from '../typ
 import type { Ctx } from './context.ts';
 import { defendedBelowGpaNote, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { usableGpa } from '../ranges.ts';
-import { noteOf, joinedDetail, heldForMissingParams, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, type Completion } from './context.ts';
+import { noteOf, joinedDetail, heldForMissingParams, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, titleCount, type Completion } from './context.ts';
 import { candidacyFormSentence } from './phd.ts';
 import { fullTimeTermRecords, graduateLevelParts } from './residency.ts';
 import { transferRow } from './transfer.ts';
@@ -34,8 +34,8 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
     thresholdRow({
       id: 'ms.credits.total',
       group: COURSEWORK,
-      title: '30 total credits of courses and research',
-      shortTitle: '30 total credits',
+      title: `${titleCount(ctx.params.number('ms_total_credits_min'), 30)} total credits of courses and research`,
+      shortTitle: `${titleCount(ctx.params.number('ms_total_credits_min'), 30)} total credits`,
       sums: ctx.alloc.total,
       satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
       pendingBy: pendingCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
@@ -57,8 +57,8 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
     thresholdRow({
       id: 'ms.credits.regular',
       group: COURSEWORK,
-      title: '24 credit hours of regular courses',
-      shortTitle: '24 regular-course credits',
+      title: `${titleCount(ctx.params.number('ms_regular_credits_min'), 24)} credit hours of regular courses`,
+      shortTitle: `${titleCount(ctx.params.number('ms_regular_credits_min'), 24)} regular-course credits`,
       sums: ctx.alloc.regular,
       satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular),
       pendingBy: pendingCourseIds(ctx, (p) => p.countedRegular),
@@ -78,8 +78,8 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
     thresholdRow({
       id: 'ms.credits.project',
       group: COURSEWORK,
-      title: '6 credit hours of M.S. project or thesis direction',
-      shortTitle: 'Project/thesis (6 cr)',
+      title: `${titleCount(ctx.params.number('ms_project_credits_min'), 6)} credit hours of M.S. project or thesis direction`,
+      shortTitle: `Project/thesis (${titleCount(ctx.params.number('ms_project_credits_min'), 6)} cr)`,
       sums: ctx.alloc.project,
       satisfiedBy: countedCourseIds(ctx, (p) => (p.course.pool === 'project' ? p.countedOther : 0)),
       pendingBy: pendingCourseIds(ctx, (p) => (p.course.pool === 'project' ? p.countedOther : 0)),
@@ -119,7 +119,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
     capRow({
       id: 'ms.cap.fourk',
       group: ALLOWANCES,
-      title: 'At most 6 credits from CSE courses below the 60000 level',
+      title: `At most ${titleCount(ctx.params.number('ms_4xxxx_credits_max'), 6)} credits from CSE courses below the 60000 level`,
       capId: 'fourk',
       capLabel: 'credits below the 60000 level',
       limitKey: 'ms_4xxxx_credits_max',
@@ -173,7 +173,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
     capRow({
       id: 'ms.cap.noncse',
       group: ALLOWANCES,
-      title: 'At most 9 credits from outside CSE (60000 level or higher)',
+      title: `At most ${titleCount(ctx.params.number('ms_noncse_credits_max'), 9)} credits from outside CSE (60000 level or higher)`,
       capId: 'noncse',
       capLabel: 'non-CSE allowance credits',
       limitKey: 'ms_noncse_credits_max',
@@ -339,7 +339,7 @@ export function msTimeLimitRow(ctx: Ctx, others: { allMet: boolean; anyCannotEva
   return timeLimitRow(ctx, others, {
     id: 'ms.timeLimit',
     group: TIME,
-    title: 'All requirements complete within 5 years',
+    title: `All requirements complete within ${titleCount(ctx.params.number('ms_time_limit_years'), 5)} years`,
     yearsKey: 'ms_time_limit_years',
     section: '§3.3',
     quote,

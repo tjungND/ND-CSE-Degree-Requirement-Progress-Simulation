@@ -682,7 +682,8 @@ export interface RequirementResult {
    * (P3-cse-4a-2, DGS 2026-10-06, option A) also a qualifier component
    * completed after §4.4's four semesters (and any DGS extension), and the
    * qualifier row that waits on it; the OCE gate counts such a component as
-   * done coursework. */
+   * done coursework. Since round 4 (P4-phd-2, DGS 2026-10-12) also the
+   * research seminar passed after the first year. */
   completedLate?: true;
   /** `phd.qualifier` only: the qualifier's COURSE components are complete —
    * core knowledge, specialization and §4.2's nine Notre Dame credits, each

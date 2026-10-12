@@ -620,6 +620,24 @@ export function creditsReachedAt(
   return undefined;
 }
 
+/** A card title's number (policy review round 4, P4-data-5; DGS 2026-10-12:
+ * "apply the suggested handling"): the value its row already reads — the
+ * Parameters value, held at the Graduate School's where the sheet would loosen
+ * it — so editing a number in the sheet changes the title with the count.
+ * With the key missing, the handbook's own number, as the title always read;
+ * the row itself then reads Cannot evaluate. */
+export function titleCount(n: number | undefined, handbook: number): string {
+  return formatCredits(n ?? handbook);
+}
+
+/** "Four" for 4 — a title that spells its number (§4.3's residency). Digits
+ * past ten. */
+export function titleCountWord(n: number | undefined, handbook: number): string {
+  const v = n ?? handbook;
+  const words = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+  return Number.isInteger(v) && v >= 0 && v <= 10 ? words[v]! : formatCredits(v);
+}
+
 /** The latest of several completions (milestone dates and credit requirements). */
 export function lastCompletion(list: readonly (Completion | undefined)[]): Completion | undefined {
   return list.filter((c): c is Completion => c !== undefined).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)).pop();

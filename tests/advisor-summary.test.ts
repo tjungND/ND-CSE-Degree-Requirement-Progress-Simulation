@@ -491,3 +491,80 @@ describe('a dual-degree shared course in the advisor email (P4-ac-5)', () => {
     assert.match(text, /waiting for the Graduate School’s approval of (?:your|my) dual-degree plan of study/);
   });
 });
+
+// A research seminar passed after the first year is done late: the DGS
+// confirms it, and the eight-year row is complete — before and after the
+// eight years (policy review round 4, P4-phd-2; DGS 2026-10-12).
+describe('a research seminar taken after the first year (P4-phd-2)', () => {
+  const sc = loadScenario('phd-seminar-late-everything-else-done');
+  for (const today of [sc.today, '2030-01-15']) {
+    it(`seen ${today}`, () => {
+      const report = audit(sc.student, buildRules(sc.rules.patch), today);
+      assert.equal(report.requirements.find((r) => r.id === 'phd.timeLimit')!.status, 'met');
+      const todo = actionItems(report);
+      assert.ok(todo.dgs.includes('Confirm my research seminar taken after the first year (§4.2).'), JSON.stringify(todo.dgs));
+      assert.ok(!todo.student.some((t) => /^Complete all requirements|^Ask the DGS about the time limit/.test(t)), JSON.stringify(todo.student));
+    });
+  }
+});
+
+// An advisor who is not tenured or tenure-track CSE faculty: the email gives
+// the card's two cases, and the DGS an item, so "Nothing is pending with the
+// DGS" cannot print beside the advisor row's "ask the DGS" (policy review
+// round 4, P4-phd-6; DGS 2026-10-12).
+describe('an advisor who is not tenured or tenure-track (P4-phd-6)', () => {
+  const s = phdStudent({ entryTerm: { season: 'fall', year: 2026 }, gpa: 3.5, courses: [ndCourse('CSE 60641', { term: { season: 'fall', year: 2026 } })] });
+  s.milestones = { advisorIdentified: '2026-09-15', advisorName: 'Prof. Example', advisorTtt: 'no' };
+  const report = audit(s, buildRules(), '2026-10-12');
+  it('the two cases for the student, the approval for the DGS', () => {
+    const todo = actionItems(report);
+    assert.ok(todo.student.includes('If my advisor is tenured or tenure-track in another Notre Dame department, ask the DGS to approve them; if not, add a tenured or tenure-track co-advisor (§2.3; department policy).'), JSON.stringify(todo.student));
+    assert.ok(todo.dgs.includes('Approve my advisor if they are tenured or tenure-track in another Notre Dame department (§2.3).'), JSON.stringify(todo.dgs));
+    const text = advisorSummary(report, { todayIso: '2026-10-12', entryTerm: 'Fall 2026', priorStudy: 'No earlier graduate program' }).text;
+    assert.doesNotMatch(text, /Nothing is pending with the DGS/);
+  });
+});
+
+// A Spring 2020 student's lapsed Incomplete carries Appendix A.1's clause in
+// its reason; the email still asks the DGS to confirm, never to decide
+// (policy review round 4, P4-ac-1; DGS 2026-10-12).
+describe('a lapsed Incomplete, Spring 2020 cohort (P4-ac-1)', () => {
+  it('confirm, with the cohort’s clause', () => {
+    const s = phdStudent({ entryTerm: { season: 'spring', year: 2020 }, gpa: 3.5, courses: [ndCourse('CSE 60641', { term: { season: 'spring', year: 2026 }, grade: 'I' })] });
+    const todo = actionItems(audit(s, buildRules(), '2026-10-11'));
+    assert.ok(todo.dgs.includes('Confirm whether the Graduate School extended my Incomplete in CSE 60641, or the grade was posted (Academic Code §4.4; for students enrolled in Spring 2020, Appendix A.1 may give 60 days).'), JSON.stringify(todo.dgs));
+    assert.ok(!todo.dgs.some((d) => /^Decide on CSE 60641/.test(d)), JSON.stringify(todo.dgs));
+  });
+  it('the reading itself, with a second question kept', () => {
+    assert.deepEqual(
+      approvalItems('CSE 40567', 'Incomplete (I) past its deadline (about 2026-07-01) — it became an F unless the Graduate School extended it (Academic Code §4.4); for students enrolled in Spring 2020, Academic Code Appendix A.1 may give 60 days instead of 30; the DGS confirms; below the 60000 level — advisor + DGS approval per the course rules (§4.2)', 'phd').incomplete,
+      'Confirm whether the Graduate School extended my Incomplete in CSE 40567, or the grade was posted (Academic Code §4.4; for students enrolled in Spring 2020, Appendix A.1 may give 60 days).',
+    );
+  });
+});
+
+// The qualifier completion form follows the course components (P3-cse-4a-3
+// (a)); with only the research component late or open, nothing ties the form
+// to it any more (policy review round 4, P4-phd-7; DGS 2026-10-12).
+describe('the qualifier form and the research component (P4-phd-7)', () => {
+  const T = (season: 'fall' | 'spring', year: number) => ({ season, year });
+  it('research passed late, the courses on time: the late note does not hold the form', () => {
+    const s = phdStudent({ entryTerm: T('fall', 2024), gpa: 3.8, courses: [ndCourse('CSE 60641', { term: T('fall', 2024) }), ndCourse('CSE 60111', { term: T('spring', 2025) }), ndCourse('CSE 60321', { term: T('spring', 2025) })] });
+    s.milestones = { advisorName: 'Prof. X', advisorTtt: 'yes', researchQualifierPassed: '2026-05-01' };
+    const q = audit(s, buildRules(), '2026-10-11').requirements.find((r) => r.id === 'phd.qualifier')!;
+    assert.equal(q.qualifierCourseComponentsDone, true, q.detail);
+    assert.equal(q.completedLate, true, q.detail);
+    assert.match(q.detail, /the DGS confirms the extension\./);
+    assert.doesNotMatch(q.detail, /then file the qualifier completion form/);
+    assert.match(q.detail, /file the qualifier completion form with the Grad Admin now/);
+  });
+  it('research still open in its 18 months: no “Complete all three qualifier components”', () => {
+    const s = phdStudent({ gpa: 3.8, courses: [ndCourse('CSE 60641', { term: T('fall', 2026) }), ndCourse('CSE 60111', { term: T('fall', 2026) }), ndCourse('CSE 60321', { term: T('spring', 2027) })] });
+    s.milestones = { advisorName: 'Prof. X', advisorTtt: 'yes' };
+    const report = audit(s, buildRules(), '2027-06-01');
+    assert.equal(report.requirements.find((r) => r.id === 'phd.qualifier')!.qualifierCourseComponentsDone, true);
+    const todo = actionItems(report);
+    assert.ok(!todo.student.some((t) => /^Complete all three qualifier components/.test(t)), JSON.stringify(todo.student));
+    assert.ok(todo.student.some((t) => /^Pass the research component of the qualifier/.test(t)), JSON.stringify(todo.student));
+  });
+});

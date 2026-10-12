@@ -525,10 +525,10 @@ export function parseExternalTab(
     // is_cse (DGS 2026-09-09): does this course belong to a CSE department,
     // for §4.2's nine-credit allowance for courses "taken from a department
     // other than CSE"? The Parameters key `cse_subject_codes` settles the
-    // unambiguous codes; this cell is the ruling for one course and wins over
-    // it — ECE means computing at one university and circuits at another.
-    // Blank = the sheet has not said, and the allowance is left off the
-    // course entirely.
+    // codes (ECE among them on purpose since 2026-10-04: "a department other
+    // than CSE" means outside computing); this cell is the ruling for one
+    // course and wins over it. Blank = the list decides (external.ts
+    // isCseCourse; P4-data-6).
     const cse = verdictWord(cells['is_cse']);
     if (cse === 'yes' || cse === 'no') rule.isCse = cse === 'yes';
     else if (cse !== '') {

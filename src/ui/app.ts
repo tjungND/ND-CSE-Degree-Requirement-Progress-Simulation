@@ -3115,6 +3115,10 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     if (report.graduationInSight || student.graduationTerm) {
       card.append(
         termPicker('milestone.graduationTerm', 'Semester you plan to graduate in (optional)', student.graduationTerm, ['fall', 'spring', 'summer'], (t) => update((s) => void (s.graduationTerm = t))),
+        // The conferral month is not the semester's name (policy review round
+        // 4, P4-ac-9; DGS 2026-10-12): a January graduate who picked Spring
+        // was told to register in the wrong semester.
+        el('p', { class: 'hint field-hint' }, 'A January graduation is the fall semester before it (the Graduate School calendar’s “Fall 2026 (January graduation)”); May is spring, and August is summer.'),
       );
     }
 

@@ -84,7 +84,11 @@ describe('next steps (DGS 2026-09-27)', () => {
     ]);
     const advisorToDgs = report([row('shared.advisor', 'needs_dgs_review'), row('shared.approvals', 'not_applicable')]);
     const st = nextSteps({ report: advisorToDgs, student: s, review: { unlisted: 1, caseByCase: 0 }, processingCount: 0, simulation: true });
-    assert.deepEqual(st, [{ text: 'In simulation mode nothing is sent: this plan would put 2 items before the DGS.', href: '#dgs-review', covers: ['phd.transfer', 'ms.transfer', 'shared.approvals', 'shared.advisor'] }]);
+    // The advisor's step is its own since P4-phd-6, and sends nothing in the mode.
+    assert.deepEqual(st, [
+      { text: 'In simulation mode nothing is sent: this plan would put 2 items before the DGS.', href: '#dgs-review', covers: ['phd.transfer', 'ms.transfer', 'shared.approvals'] },
+      { text: 'Your advisor is not tenured or tenure-track CSE faculty (or you are not sure): if they are tenured or tenure-track in another Notre Dame department, the DGS approves them; if not, add a tenured or tenure-track co-advisor under Milestones (§2.3; department policy).', href: '#milestones', covers: ['shared.advisor'] },
+    ]);
     assert.deepEqual(nextSteps({ report: settled, student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: 0, simulation: true }), [{ text: 'In simulation mode nothing is sent — no request or summary goes out from a plan.' }]);
     // Nothing to fold: the list as it is (an empty record has no steps).
     assert.deepEqual(nextSteps({ report: report([row('shared.advisor', 'met')]), student: { ...phdStudent(), background: ANSWERED }, review: { unlisted: 0, caseByCase: 0 }, processingCount: 0, simulation: true }), []);
@@ -127,17 +131,21 @@ describe('the advisor step and the review request’s other items (P3-cse-1-2-2)
     assert.deepEqual(st[0]?.covers, ['shared.advisor']);
     assert.equal(st[0]?.href, '#milestones');
   });
-  it('(c) No or Not sure: the review request, which carries it; no “tick the box next to each course”', () => {
+  // P4-phd-6 (DGS 2026-10-12): the card's two cases, each with its remedy —
+  // the DGS's approval for an advisor tenured or tenure-track in another
+  // department, a co-advisor for one who is not tenured or tenure-track.
+  it('(c) No or Not sure: the two cases, each with its remedy; no “tick the box next to each course”', () => {
     const st = steps(withFlags([row('shared.advisor', 'needs_dgs_review')], [FLAG]));
-    assert.deepEqual(st.map((x) => x.text), ['Send the review request — your advisor’s faculty status needs the DGS’s approval (§2.3).', 'Send the summary to your advisor whenever you like.']);
+    assert.deepEqual(st.map((x) => x.text), ['Your advisor is not tenured or tenure-track CSE faculty (or you are not sure): if they are tenured or tenure-track in another Notre Dame department, send the review request for the DGS’s approval; if not, add a tenured or tenure-track co-advisor under Milestones (§2.3; department policy).', 'Send the summary to your advisor whenever you like.']);
     assert.deepEqual(st[0]?.covers, ['shared.advisor']);
-    assert.equal(st[0]?.href, '#dgs-review');
+    assert.equal(st[0]?.href, '#milestones');
   });
-  it('one review-request step for courses, the advisor and other items, counted as items', () => {
+  it('one review-request step for courses and other items, counted as items; the advisor beside it', () => {
     const r = withFlags([row('shared.advisor', 'needs_dgs_review'), row('shared.approvals', 'needs_dgs_review')], [FLAG, 'Readmission: I was readmitted in Fall 2024 …']);
     const st = steps(r, { unlisted: 1, caseByCase: 0 });
-    assert.equal(st[0]?.text, 'Send the review request: 1 course is not in the course rules yet, your advisor’s faculty status needs the DGS’s approval (§2.3), and 1 other item needs the DGS’s decision.');
-    assert.deepEqual(st[0]?.covers, ['phd.transfer', 'ms.transfer', 'shared.approvals', 'shared.advisor']);
+    assert.equal(st[0]?.text, 'Send the review request: 1 course is not in the course rules yet, and 1 other item needs the DGS’s decision.');
+    assert.deepEqual(st[0]?.covers, ['phd.transfer', 'ms.transfer', 'shared.approvals']);
+    assert.equal(st[1]?.text, 'Your advisor is not tenured or tenure-track CSE faculty (or you are not sure): if they are tenured or tenure-track in another Notre Dame department, send the review request for the DGS’s approval; if not, add a tenured or tenure-track co-advisor under Milestones (§2.3; department policy).', 'the advisor has its own step (P4-phd-6)');
     assert.equal(st.filter((x) => x.text.startsWith('Send the review request')).length, 1, 'said once');
   });
   it('other items alone: counted, with no course step after them', () => {
@@ -169,7 +177,7 @@ describe('the advisor step and the review request’s other items (P3-cse-1-2-2)
     assert.ok(run(s()).includes('Answer under Milestones whether your advisor is tenured or tenure-track CSE faculty (§2.3).'));
     assert.ok(!run(s()).some((t) => t.startsWith('Enter your advisor’s name')));
     const unsure = run(s('unsure'));
-    assert.equal(unsure[0], 'Send the review request — your advisor’s faculty status needs the DGS’s approval (§2.3).', JSON.stringify(unsure));
+    assert.equal(unsure[0], 'Your advisor is not tenured or tenure-track CSE faculty (or you are not sure): if they are tenured or tenure-track in another Notre Dame department, send the review request for the DGS’s approval; if not, add a tenured or tenure-track co-advisor under Milestones (§2.3; department policy).', JSON.stringify(unsure));
     assert.ok(!unsure.some((t) => /tick the box next to each course/.test(t)));
     assert.ok(!run(s('yes')).some((t) => /advisor’s (name|faculty status)|tenured or tenure-track/.test(t)), 'a Yes leaves nothing to do');
   });

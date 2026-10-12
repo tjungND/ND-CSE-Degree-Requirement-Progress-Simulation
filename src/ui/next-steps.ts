@@ -179,31 +179,42 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // answer comes first and can change the list (UI review, 2026-10-08) — the
   // "Answer the questions" step is already above.
   const waitsForEarlierDegrees = student.background === undefined && review.earlierOnly === true && !advisorToDgs && otherItems === 0;
-  if ((reviewCount > 0 || advisorToDgs || otherItems > 0) && !waitsForEarlierDegrees) {
-    const advisorPart = `your ${thesis ? 'thesis ' : ''}advisor’s faculty status needs the DGS’s approval (§2.3)`;
+  if ((reviewCount > 0 || otherItems > 0) && !waitsForEarlierDegrees) {
     let text: string;
-    if (!advisorToDgs && otherItems === 0)
+    if (otherItems === 0)
       text =
         review.unlisted > 0 && review.caseByCase > 0
           ? `Send the review request: ${plural(review.unlisted, 'course')} ${review.unlisted === 1 ? 'is' : 'are'} not in the course rules yet, and ${review.caseByCase} need${review.caseByCase === 1 ? 's' : ''} the DGS’s approval for you.`
           : review.unlisted > 0
             ? `Send the review request for ${plural(review.unlisted, 'course')} not in the course rules yet — the DGS enters ${review.unlisted === 1 ? 'it' : 'them'}.`
             : `Send the review request for ${plural(review.caseByCase, 'course')} that need${review.caseByCase === 1 ? 's' : ''} the DGS’s approval for you.`;
-    else if (reviewCount === 0 && otherItems === 0) text = `Send the review request — ${advisorPart}.`;
     else {
       const parts = [
         ...(review.unlisted > 0 ? [`${plural(review.unlisted, 'course')} ${review.unlisted === 1 ? 'is' : 'are'} not in the course rules yet`] : []),
         ...(review.caseByCase > 0 ? [`${plural(review.caseByCase, 'course')} need${review.caseByCase === 1 ? 's' : ''} the DGS’s approval for you`] : []),
-        ...(advisorToDgs ? [advisorPart] : []),
       ];
-      if (otherItems > 0) parts.push(`${otherItems} ${parts.length > 0 ? 'other ' : ''}item${otherItems === 1 ? ' needs' : 's need'} the DGS’s decision`);
+      parts.push(`${otherItems} ${parts.length > 0 ? 'other ' : ''}item${otherItems === 1 ? ' needs' : 's need'} the DGS’s decision`);
       text = `Send the review request: ${parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`}.`;
     }
     // The transfer and approvals rows are this step's only while it carries
-    // courses; the advisor's card, while it carries the advisor.
-    const covers = [...(reviewCount > 0 ? ['phd.transfer', 'ms.transfer', 'shared.approvals'] : []), ...(advisorToDgs ? ['shared.advisor'] : [])];
+    // courses.
+    const covers = reviewCount > 0 ? ['phd.transfer', 'ms.transfer', 'shared.approvals'] : [];
     steps.push({ text, href: '#dgs-review', ...(covers.length > 0 ? { covers } : {}) });
   }
+  // An advisor who is not tenured or tenure-track CSE faculty: the card's two
+  // cases, each with its own remedy (policy review round 4, P4-phd-6; DGS
+  // 2026-10-12: "apply the suggested handling"). The answer "no" cannot tell
+  // them apart, so the step gives both: tenured or tenure-track in another
+  // Notre Dame department → the DGS's approval, through the review request
+  // (§2.3); not tenured or tenure-track → a tenured or tenure-track
+  // co-advisor, with no exception (department policy of 2026-10-07). It used
+  // to be one review-request step for both, the wrong remedy for the second.
+  if (advisorToDgs)
+    steps.push({
+      text: `Your ${thesis ? 'thesis ' : ''}advisor is not tenured or tenure-track CSE faculty (or you are not sure): if they are tenured or tenure-track in another Notre Dame department, ${input.simulation ? 'the DGS approves them' : 'send the review request for the DGS’s approval'}; if not, add a tenured or tenure-track co-advisor under Milestones (§2.3; department policy).`,
+      href: '#milestones',
+      covers: ['shared.advisor'],
+    });
   // The dual-degree plan of study (P3-dh-front-1-2-2; DGS Handbook §2.9): the
   // Graduate School approves it, and the tick under Approvals records it.
   const dualWaiting = report.requirements.some((r) => r.id === 'shared.approvals' && (r.detailParts ?? []).some((p) => typeof p === 'object' && 'lead' in p && /^Waiting for the Graduate School’s approval of your dual-degree plan of study/.test(p.lead)));
@@ -213,7 +224,7 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // file → enter the name; a name on file but the faculty-status question
   // unanswered → answer it (since 2026-10-04 the card is not met then either,
   // and "Enter your advisor’s name" told a student who had done so to do it
-  // again); a status the DGS must approve → step 2.
+  // again); a status the DGS must approve → its own step above (P4-phd-6).
   if (advisor?.status === 'unmet') steps.push({ text: 'Enter your advisor’s name under Milestones.', href: '#milestones', covers: ['shared.advisor'] });
   else if (advisor?.status === 'cannot_evaluate')
     steps.push({ text: `Answer under Milestones whether your ${thesis ? 'thesis ' : ''}advisor is tenured or tenure-track CSE faculty (§2.3).`, href: '#milestones', covers: ['shared.advisor'] });

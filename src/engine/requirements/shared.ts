@@ -90,7 +90,9 @@ export function gpaRow(ctx: Ctx): RequirementResult {
   return {
     id: 'shared.gpa',
     group: GROUP,
-    title: 'Cumulative GPA of at least 3.0',
+    // Read from the sheet, formatted as the row's own sentence formats it
+    // (P4-data-5).
+    title: `Cumulative GPA of at least ${(min ?? 3).toFixed(1)}`,
     status,
     ...joinedDetail(parts),
     citation: { section: '§2.2', quote },

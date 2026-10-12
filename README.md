@@ -147,6 +147,9 @@ recognized.
    change — Track B.
 5. The Parameters tab holds the **department's** numbers only. If the number you want to change
    is not there, it is probably the Graduate School's — see A5b.
+6. The result cards' titles follow the value ("At least 24 credits of regular courses …" becomes
+   "At least 27 …"), since 2026-10-12. The handbook sentence quoted under each card's Relevant
+   Policies does not: it is the handbook's own words, and changes when the handbook PDF does.
 
 ### A5b. Numbers the sheet does not hold
 

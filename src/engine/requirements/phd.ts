@@ -12,7 +12,7 @@ import { combineAll, deadlineStatus, openDeadline } from '../status.ts';
 import { addMonthsIso, deadlineTerm, deadlineTermLabel, endOfNextSemester, endOfTerm, maxConsecutiveFullTime, nthSemester, semesterNumber, startOfTerm, termIndex, termLabel, termOfDate, compareTerm } from '../term.ts';
 import type { ConditionMark, DetailPart, Grade, RequirementResult, Status, Term, DeadlineInfo } from '../types.ts';
 import type { Ctx } from './context.ts';
-import { noteOf, capRow, heldForMissingParams, beforeForfeiture, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds } from './context.ts';
+import { noteOf, capRow, heldForMissingParams, beforeForfeiture, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds, titleCount, titleCountWord } from './context.ts';
 import { fullTimeTermRecords, graduateLevelParts, longestFullTimeRun, sameTermDuplicate } from './residency.ts';
 import { advisorTttState, defendedBelowGpaNote, gpaText, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { transferRow } from './transfer.ts';
@@ -76,8 +76,8 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
     thresholdRow({
       id: 'phd.credits.total',
       group: COURSEWORK,
-      title: '60 total credits of courses and research',
-      shortTitle: '60 total credits',
+      title: `${titleCount(phdTotalRequired(ctx), 60)} total credits of courses and research`,
+      shortTitle: `${titleCount(phdTotalRequired(ctx), 60)} total credits`,
       sums: ctx.alloc.total,
       satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
       pendingBy: pendingCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
@@ -104,8 +104,8 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       // The allowance left the title on 2026-09-27 (DGS: it wrapped to three
       // lines everywhere) for a sentence on every unmet card; the cap card
       // states it permanently.
-      title: 'At least 24 credits of regular courses at the 60000 level or higher',
-      shortTitle: '24 regular-course credits',
+      title: `At least ${titleCount(ctx.params.number('phd_regular_credits_min'), 24)} credits of regular courses at the 60000 level or higher`,
+      shortTitle: `${titleCount(ctx.params.number('phd_regular_credits_min'), 24)} regular-course credits`,
       extraDetail: [`Up to ${ctx.params.number('phd_4xxxx_cse_credits_max') ?? 'a limited number of'} approved CSE 4xxxx credits may count inside these (§4.2)`],
       sums: ctx.alloc.regular,
       satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular),
@@ -134,7 +134,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
     capRow({
       id: 'phd.cap.fourk',
       group: ALLOWANCES,
-      title: 'At most 6 credits from CSE courses below the 60000 level',
+      title: `At most ${titleCount(ctx.params.number('phd_4xxxx_cse_credits_max'), 6)} credits from CSE courses below the 60000 level`,
       capId: 'fourk',
       capLabel: 'credits below the 60000 level',
       limitKey: 'phd_4xxxx_cse_credits_max',
@@ -159,7 +159,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
     capRow({
       id: 'phd.cap.noncse',
       group: ALLOWANCES,
-      title: 'At most 9 credits from outside CSE (60000 level or higher)',
+      title: `At most ${titleCount(ctx.params.number('phd_noncse_6xxxx_credits_max'), 9)} credits from outside CSE (60000 level or higher)`,
       capId: 'noncse',
       capLabel: 'non-CSE allowance credits',
       limitKey: 'phd_noncse_6xxxx_credits_max',
@@ -183,8 +183,8 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       // Regular-course credits only (DGS 2026-09-11: "the 9 credits at ND
       // should be regular classes") — research and seminar credits taken at
       // Notre Dame do not satisfy this, and the title says so.
-      title: 'At least 9 credits of regular courses taken at Notre Dame',
-      shortTitle: '9 regular credits at ND',
+      title: `At least ${titleCount(ctx.params.number('phd_nd_credits_min'), 9)} credits of regular courses taken at Notre Dame`,
+      shortTitle: `${titleCount(ctx.params.number('phd_nd_credits_min'), 9)} regular credits at ND`,
       sums: ctx.alloc.ndRegular,
       pendingBy: pendingCourseIds(ctx, (p) => (atNotreDame(p.course) && p.course.pool === 'regular' ? p.countedRegular : 0)),
       contributions: courseContributions(ctx, (p) => (atNotreDame(p.course) && p.course.pool === 'regular' ? p.countedRegular : 0)),
@@ -390,6 +390,11 @@ function seminarRow(ctx: Ctx): RequirementResult {
   const parts: DetailPart[] = [];
   const satisfied: string[] = [];
   let deadline: DeadlineInfo | undefined;
+  // Passed after the first year and nothing else in question: done late, as a
+  // late OCE or a late qualifier component is — the row keeps its question for
+  // the DGS, and the eight-year row counts it complete (policy review round 4,
+  // P4-phd-2; DGS 2026-10-12: "apply the suggested handling").
+  let completedLate = false;
   if (wanted === undefined) {
     status = 'cannot_evaluate';
     parts.push(missingParamDetail('phd_seminar_courses'));
@@ -437,6 +442,10 @@ function seminarRow(ctx: Ctx): RequirementResult {
         status = 'needs_dgs_review';
         deadline = { date: dueDate, approx: true, state: 'done', label: `Done ${termLabel(last)} — after ${dueLabel}` };
         parts.push({ note: `Taken after ${dueLabel} (approximate) — §4.2 requires both seminars in the first year of the program; confirm with the DGS` }, ...transferNote);
+        // Lateness is the only question unless a seminar also predates a
+        // readmission after five years or more, which the DGS rules on too.
+        if (fromBeforeGap.length > 0) parts.push(`${fromBeforeGap.join(', ')} taken ${FORFEIT_FACT}`, { note: FORFEIT_NOTE });
+        else completedLate = true;
       }
     } else if (ctx.today > dueDate) {
       status = 'unmet';
@@ -458,6 +467,7 @@ function seminarRow(ctx: Ctx): RequirementResult {
     title: '2 credits of Research Seminar in year one',
     shortTitle: 'Research seminar (2 cr)',
     status,
+    ...(completedLate ? { completedLate: true as const } : {}),
     ...joinedDetail(parts),
     ...(deadline ? { deadline } : {}),
     ...(satisfied.length > 0 ? { satisfiedBy: satisfied } : {}),
@@ -530,7 +540,7 @@ function residencyRow(ctx: Ctx): RequirementResult {
   return {
     id: 'phd.residency',
     group: TIME,
-    title: 'Four consecutive full-time semesters of residence',
+    title: `${titleCountWord(ctx.params.number('phd_residency_semesters'), 4)} consecutive full-time semesters of residence`,
     status,
     ...joinedDetail(parts),
     ...(satisfied.length > 0 ? { satisfiedBy: satisfied } : {}),
@@ -566,7 +576,7 @@ export function phdTimeLimitRow(ctx: Ctx, others: { allMet: boolean; anyCannotEv
   return timeLimitRow(ctx, others, {
     id: 'phd.timeLimit',
     group: TIME,
-    title: 'All requirements complete within 8 years',
+    title: `All requirements complete within ${titleCount(ctx.params.number('phd_time_limit_years'), 8)} years`,
     yearsKey: 'phd_time_limit_years',
     section: '§4.3',
     quote,
@@ -806,7 +816,12 @@ function qualifierUmbrellaRow(ctx: Ctx, children: RequirementResult[], ndCredits
       if (typeof p === 'object' && 'note' in p && /^Overdue — talk to the DGS$/.test(p.note)) parts.splice(i, 1);
     }
     const which = late.map((c) => `${partName(c)}${c.completedIn ? ` in ${termLabel(c.completedIn)}` : ''}`);
-    parts.push({ note: `Completed after the deadline: ${which.length <= 1 ? which.join('') : `${which.slice(0, -1).join(', ')} and ${which[which.length - 1]}`} — the DGS confirms the extension; then file the qualifier completion form with the Grad Admin (§4.4)` });
+    // The completion form follows the course components (P3-cse-4a-3 (a)): it
+    // waits for the extension only when a course component is among the late
+    // parts; with only the research late, the note below already says "file
+    // it now" (policy review round 4, P4-phd-7; DGS 2026-10-12).
+    const formWaits = !courseComponentsDone && !ctx.student.milestones.qualifierFormFiled;
+    parts.push({ note: `Completed after the deadline: ${which.length <= 1 ? which.join('') : `${which.slice(0, -1).join(', ')} and ${which[which.length - 1]}`} — the DGS confirms the extension${formWaits ? '; then file the qualifier completion form with the Grad Admin (§4.4)' : ''}` });
   }
   // Every part done, some before the gap: the DGS rules — never Overdue.
   if (open.length === 0 && forfeited.length > 0 && status !== 'cannot_evaluate') {

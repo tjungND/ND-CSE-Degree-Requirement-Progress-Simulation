@@ -33,7 +33,9 @@ Open the Google Sheet **CSE-Degree-Checking-Rules** (named CSE-Degree-Audit-Rule
 Students see edits on their next page load (~5 minutes for Google to republish).
 
 ### 2. A number in the handbook changes
-`Parameters` tab: edit the value, update `handbook_section`. That's it.
+`Parameters` tab: edit the value, update `handbook_section`. That's it — the cards' titles read
+the value too (since 2026-10-12, policy review round 4, P4-data-5); the quoted handbook sentence
+under Relevant Policies stays the handbook's words until the handbook PDF changes.
 **Caveat:** the app audits everyone with the current numbers — there is no per-cohort
 grandfathering of Parameters. If a change must only apply to new students, that needs a code
 change; ask for it.
@@ -137,9 +139,11 @@ the Graduate School's 6 credits (§3.5; Academic Code §4.6) — `BS_SHARED_CRED
 Since 2026-09-09 the app can tell a CSE course from a non-CSE one on ANOTHER university's
 transcript, which is what §4.2's nine-credit limit on courses "taken from a department other than
 CSE" needs. Two places say so, and both are yours: the Parameters key `cse_subject_codes` lists the
-subject codes that mean CSE (`CS; CSCI; COMPSCI; CSE; CMSC; EECS; CSYE`), and an ExternalCourses
-row's `is_cse` cell (`yes` / `no`) settles one course the code cannot — `ECE` is computing at one
-school and circuits at another. A code the list does not name counts against the nine credits. If
+subject codes that mean CSE (`CS; CSCI; COMPSCI; CSE; CMSC; EECS; CSYE; ECE`), and an
+ExternalCourses row's `is_cse` cell (`yes` / `no`) settles one course the list should not decide.
+`ECE` is listed on purpose: the department reads "a department other than CSE" as "outside
+computing", so an ECE course is inside CSE whatever its topic (DGS 2026-10-04) — give a single ECE
+course ruled otherwise `is_cse = no`. A code the list does not name counts against the nine credits. If
 you delete the parameter (or blank its cell), no transferred course can be placed by its code, so
 every transferred course whose ExternalCourses row has no `is_cse` cell is held for you to decide
 instead of counting (since 2026-10-03) — nearly all of them today; the diagnostics box says so.

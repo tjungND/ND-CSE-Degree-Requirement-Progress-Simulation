@@ -116,8 +116,9 @@ export function subjectCode(courseId: string): string {
  * 2026-09-09.)
  *
  *   1. the ExternalCourses row's `is_cse` cell, when the DGS has filled it —
- *      the only thing that can settle a code like ECE, which means computing
- *      at one university and circuits at another;
+ *      the ruling for one course the list should not decide (ECE is on the
+ *      list on purpose since 2026-10-04: the department reads "a department
+ *      other than CSE" as "outside computing"; P4-data-6);
  *   2. otherwise the Parameters tab's `cse_subject_codes` list;
  *   3. `undefined` when the sheet has no list at all (or a blank cell) — the
  *      course is then held for the DGS, who decides whether it is a CSE course
