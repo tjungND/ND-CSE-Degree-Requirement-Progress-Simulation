@@ -623,10 +623,23 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
   // student should send the credit transfer request to the Grad Admin and the
   // DGS will approve and make a recommendation to the Graduate School." Gone
   // once the student ticks that the Grad Admin recorded it.
+  // Once the semester of graduation has begun, §5.2's window has closed: the
+  // email says what the card and the processing request say — was it sent in
+  // time? — and before then it names that semester (policy review round 4,
+  // P4-transfer-1; DGS 2026-10-12: "apply the suggested handling").
   if (transfers !== undefined && transfers.courses.length > 0 && !transfers.recorded) {
     const courses = once(transfers.courses);
-    out.student.push(`Send the Grad Admin the processing request for ${courses} (§5.2)${transfers.firstSemesterDone ? '' : ' once my first semester is complete'} — before the semester my degree is conferred.`);
-    out.gradAdmin.push(`Submit the Transfer of Credits request to the Graduate School for ${courses} — recommended by the DGS (§5.2).`);
+    const closed = report.transferRequestWindowClosed;
+    const graduating = report.graduation?.term;
+    if (closed !== undefined) {
+      out.student.push(`§5.2 considered a transfer request for ${courses} only before ${termLabel(closed)}, the semester I plan to graduate in — if mine was not sent before then, I will ask the DGS.`);
+      out.gradAdmin.push(`Check whether the Transfer of Credits request for ${courses} was sent before ${termLabel(closed)}, the semester I plan to graduate in (§5.2).`);
+    } else {
+      out.student.push(
+        `Send the Grad Admin the processing request for ${courses} (§5.2)${transfers.firstSemesterDone ? '' : ' once my first semester is complete'} — before ${graduating !== undefined ? `${termLabel(graduating)}, the semester I plan to graduate in` : 'the semester my degree is conferred'}.`,
+      );
+      out.gradAdmin.push(`Submit the Transfer of Credits request to the Graduate School for ${courses} — recommended by the DGS (§5.2).`);
+    }
   }
   if (dualPlanCourses.length > 0) {
     out.student.push(`Get the Graduate School’s approval of my dual-degree plan of study, which counts ${once(dualPlanCourses)} toward both degrees (DGS Handbook §2.9).`);

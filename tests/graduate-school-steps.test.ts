@@ -85,6 +85,11 @@ describe('the Application for Admission to Master’s Degree Candidacy (Academic
     const items = processingItems(report, s, rules);
     assert.equal(items.msCandidacyDue, true);
     assert.ok(items.actions.some((a) => a.startsWith('Initiate my Application for Admission to Master’s Degree Candidacy')));
+    // The 30 credits are DGS Handbook §3.21.1's, the application Academic Code
+    // §6.1.6's — the code sets the GPA and the thesis, no credit count (policy
+    // review round 4, P4-text-2; DGS 2026-10-12).
+    const action = items.actions.find((a) => a.startsWith('Initiate my Application for Admission to Master’s Degree Candidacy'))!;
+    assert.match(action, /^Initiate my Application for Admission to Master’s Degree Candidacy \(Academic Code §6\.1\.6\) — the self-check shows a 3\.0 GPA and 30 credits, counting this semester’s \(DGS Handbook §3\.21\.1\)/);
     const steps = nextSteps({ report, student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: items.count });
     assert.ok(steps.some((st) => st.text.startsWith('Ask the Grad Admin to submit your Application for Admission to Master’s Degree Candidacy')));
   });

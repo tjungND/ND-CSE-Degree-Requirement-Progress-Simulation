@@ -826,7 +826,15 @@ function qualifierUmbrellaRow(ctx: Ctx, children: RequirementResult[], ndCredits
   // Every part done, some before the gap: the DGS rules — never Overdue.
   if (open.length === 0 && forfeited.length > 0 && status !== 'cannot_evaluate') {
     status = 'needs_dgs_review';
-    deadline = { date: due?.effectiveDate ?? ctx.today, approx: true, state: 'done', label: 'Done before your readmission — waiting for the DGS' };
+    // Labelled by its cause (policy review round 4, P4-phd-8; DGS 2026-10-12):
+    // a readmission after five years or more, or the student's own Notre Dame
+    // MSCSE ending five years or more before the Ph.D. — no readmission there.
+    deadline = {
+      date: due?.effectiveDate ?? ctx.today,
+      approx: true,
+      state: 'done',
+      label: ctx.forfeitBefore !== undefined ? 'Done before your readmission — waiting for the DGS' : 'Done in your Notre Dame MSCSE, five years or more before the Ph.D. — waiting for the DGS',
+    };
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
       if (typeof p === 'object' && 'note' in p && /^Overdue — talk to the DGS$/.test(p.note)) parts.splice(i, 1);

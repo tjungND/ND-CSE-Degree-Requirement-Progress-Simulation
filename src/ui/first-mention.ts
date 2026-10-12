@@ -38,7 +38,11 @@ export function shortenAfterFirst(text: string, re: RegExp = OCE_RE, short: stri
 /** The page's own strings were written for one decider; for an MSCSE student
  * every standalone "DGS" on the page is the ADGS (DGS 2026-09-11). Skips the
  * regions that name both people or quote the handbook: the contact card, the
- * notices, the glossary, the print header, the footer, and form values. */
+ * glossary, the print header, the handbook sentence each card quotes under
+ * Relevant Policies (`.rule-quote` — "Handbook quotes are never rewritten",
+ * DECISIONS 2026-09-12; policy review round 4, P4-text-6: the §5.2 quote read
+ * "recommended by the ADGS", words the handbook does not contain), and form
+ * values. */
 export function applyDeciderRule(root: ParentNode, program: 'mscse' | 'phd'): void {
   if (program !== 'mscse') return;
   const doc = (root as Node).ownerDocument ?? (root as Document);
@@ -50,7 +54,7 @@ export function applyDeciderRule(root: ParentNode, program: 'mscse' | 'phd'): vo
     // The notices and the footer are rewritten too since 2026-09-15 (DGS: the
     // alpha notice names the ADGS on the MSCSE tab); the feedback address and
     // the contact card keep "DGS" by `data-keep-dgs`.
-    if (node.parentElement?.closest('.contact-card, details.glossary, .print-header, [data-keep-dgs], select, textarea, script, style')) continue;
+    if (node.parentElement?.closest('.contact-card, details.glossary, .print-header, .rule-quote, [data-keep-dgs], select, textarea, script, style')) continue;
     nodes.push(node as Text);
   }
   // "DGS Handbook" names the Graduate School's document, not the decider (2026-10-03).

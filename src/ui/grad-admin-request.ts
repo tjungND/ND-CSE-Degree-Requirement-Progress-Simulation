@@ -444,7 +444,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   const lines = [
     ...transfers.map(
       (t) =>
-        `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — transfer credit ${recorded ? 'approved by the Graduate School, to be checked on my record (§5.2)' : `${recommendedBy(t)}, to be submitted to the Graduate School (§5.2)`}${t.cappedCredits !== undefined ? `, ${formatCredits(t.cappedCredits)} credits of it within the cap` : ''}`,
+        `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — transfer credit ${recorded ? 'approved by the Graduate School, to be checked on my record (§5.2)' : closedWindow !== undefined ? `${recommendedBy(t)} — was the request sent before ${termLabel(closedWindow)}, the semester I plan to graduate in? (§5.2)` : `${recommendedBy(t)}, to be submitted to the Graduate School (§5.2)`}${t.cappedCredits !== undefined ? `, ${formatCredits(t.cappedCredits)} credits of it within the cap` : ''}`,
     ),
     ...transfersOverCap.map((t) => `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — ${overCapText(report.transferCap)}`),
     ...milestones.map((m) => `${m.label} ${m.date} (${m.section})`),
@@ -558,17 +558,22 @@ export function gradAdminRequest(
   if (student.attestations.transferRecorded === true && items.transfers.length > 0) {
     sections.push({ heading: 'Transfer credit the Graduate School approved (§5.2) — please check it is on my record', columns: TRANSFER_COLUMNS, table: items.transfers.map(transferRow) });
   } else {
+    // Once the semester of graduation has begun the window has closed, and the
+    // action above asks whether the request was sent in time; the heading says
+    // the same (policy review round 4, P4-transfer-1; DGS 2026-10-12).
+    const closed = report.transferRequestWindowClosed;
+    const lead = closed !== undefined ? `Transfer credit — was the request sent to the Graduate School before ${termLabel(closed)}, the semester I plan to graduate in? (§5.2)` : 'Transfer credit to submit to the Graduate School (§5.2)';
     if (pre.length > 0) {
       sections.push({
         // The "Attached:" line above already says the transcripts are attached
         // (trim review 2026-09-18, P-43).
-        heading: 'Transfer credit to submit to the Graduate School (§5.2) — recommended by the DGS in the course rules',
+        heading: `${lead} — recommended by the DGS in the course rules`,
         columns: TRANSFER_COLUMNS,
         table: pre.map(transferRow),
       });
     }
     if (approved.length > 0) {
-      sections.push({ heading: 'Transfer credit to submit to the Graduate School (§5.2) — recommended by the DGS for my case, as I ticked', columns: TRANSFER_COLUMNS, table: approved.map(transferRow) });
+      sections.push({ heading: `${lead} — recommended by the DGS for my case, as I ticked`, columns: TRANSFER_COLUMNS, table: approved.map(transferRow) });
     }
   }
   // Over the cap: for the record, not to submit (P3-prior-programs-5).

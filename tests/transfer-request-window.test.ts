@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { audit } from '../src/engine/audit.ts';
 import type { Student } from '../src/engine/types.ts';
+import { actionItems, advisorSummary } from '../src/ui/advisor-summary.ts';
 import { gradAdminRequest } from '../src/ui/grad-admin-request.ts';
 import { buildRules } from './helpers.ts';
 import { ndCourse, phdStudent, transferCourse } from './helpers/student.ts';
@@ -48,5 +49,33 @@ describe('the §5.2 request window, by the semester you graduate in (P3-import-4
   });
   it('no graduation semester on file: the rule as before', () => {
     assert.match(lineOf(student({ graduationTerm: undefined }), '2026-10-05'), /— before the semester your degree is conferred \(§5\.2\)/);
+  });
+});
+
+// The advisor email and the processing request's heading and card line follow
+// the window too (policy review round 4, P4-transfer-1; DGS 2026-10-12): once
+// the semester has begun nothing asks to "submit" — they ask whether it was
+// sent in time — and before it the email names the semester.
+describe('the advisor email and the request heading, by the same window (P4-transfer-1)', () => {
+  const transfers = { courses: ['COMPSCI 589'], recorded: false, firstSemesterDone: true };
+  it('before that semester: the email names it', () => {
+    const todo = actionItems(audit(student(), rules, '2026-03-01'), transfers);
+    assert.ok(todo.student.includes('Send the Grad Admin the processing request for COMPSCI 589 (§5.2) — before Fall 2026, the semester I plan to graduate in.'), JSON.stringify(todo.student));
+    assert.ok(todo.gradAdmin.includes('Submit the Transfer of Credits request to the Graduate School for COMPSCI 589 — recommended by the DGS (§5.2).'), JSON.stringify(todo.gradAdmin));
+  });
+  it('once it has begun: the email asks whether it was sent in time, and nothing says “submit”', () => {
+    const r = audit(student(), rules, '2026-10-05');
+    const todo = actionItems(r, transfers);
+    assert.ok(todo.student.includes('§5.2 considered a transfer request for COMPSCI 589 only before Fall 2026, the semester I plan to graduate in — if mine was not sent before then, I will ask the DGS.'), JSON.stringify(todo.student));
+    assert.ok(todo.gradAdmin.includes('Check whether the Transfer of Credits request for COMPSCI 589 was sent before Fall 2026, the semester I plan to graduate in (§5.2).'), JSON.stringify(todo.gradAdmin));
+    assert.ok(!todo.gradAdmin.some((t) => /^Submit the Transfer of Credits request/.test(t)));
+    // The MSCSE's decider in the email itself (decisionWording).
+    const email = advisorSummary(r, { todayIso: '2026-10-05', entryTerm: 'Fall 2025', priorStudy: 'Completed prior M.S. or Ph.D.', transfers }).text;
+    assert.match(email, /if mine was not sent before then, I will ask the ADGS\./);
+    const { text, items } = gradAdminRequest(r, student(), rules, { todayIso: '2026-10-05', entryTerm: 'Fall 2025', priorStudy: 'Completed prior M.S. or Ph.D.', gpa: 3.6 });
+    // The text flavour upper-cases section headings.
+    assert.doesNotMatch(text, /Transfer credit to submit to the Graduate School/i);
+    assert.match(text, /Transfer credit — was the request sent to the Graduate School before Fall 2026, the semester I plan to graduate in\? \(§5\.2\) — recommended by the (A)?DGS in the course rules/i);
+    assert.ok(items.lines.some((l) => /^COMPSCI 589 \(University of Massachusetts Amherst\) — transfer credit recommended by the (A)?DGS in the course rules — was the request sent before Fall 2026, the semester I plan to graduate in\? \(§5\.2\)/.test(l)), JSON.stringify(items.lines));
   });
 });

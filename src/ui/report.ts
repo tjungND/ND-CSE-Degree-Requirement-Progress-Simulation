@@ -888,7 +888,14 @@ function glossary(program: 'mscse' | 'phd', summerFullTimeCredits?: number): HTM
     // it too, but the embedded page has no masthead.
     ['Section references (§)', 'CSE § is the CSE Graduate Handbook. Academic Code § is the Graduate School’s Academic Code, and DGS Handbook § is the Graduate School’s handbook for directors of graduate studies.', ''],
     ['Cumulative GPA', 'The grade-point average over all your graduate coursework at Notre Dame, as the registrar computes it; continuation, candidacy and graduation require at least 3.0.', '§2.2'],
-    ['Regular course', 'A lecture-style course. Only regular courses count toward the 24 regular-course credits; seminars, research, independent study and project credits count toward the total only.', program === 'mscse' ? '§3.2' : '§4.2'],
+    // As the course rules page words it (review B-24, 2026-09-18): the others
+    // count toward the total, and some are required in their own right
+    // (policy review round 4, P4-text-5; DGS 2026-10-12).
+    [
+      'Regular course',
+      `A lecture-style course. Only regular courses count toward the 24 regular-course credits; seminars, research, independent study and project credits count toward the degree total instead, and some are required in their own right: ${program === 'mscse' ? 'the M.S. project or thesis credits (§3.2)' : 'the first-year research seminars (§4.2)'}.`,
+      program === 'mscse' ? '§3.2' : '§4.2',
+    ],
     // The handbook's own nine (§2.1.2), and the rules the residency count
     // has applied since 2026-10-03 (second reconciliation pass).
     [
@@ -922,7 +929,10 @@ function glossary(program: 'mscse' | 'phd', summerFullTimeCredits?: number): HTM
         ] as [string, string, string][])
       : ([
           ['Project or thesis', 'Six credits of Master’s project (CSE 68902) or Master’s thesis direction (CSE 68901), in addition to the 24 regular-course credits.', '§3.2, §3.4'],
-          ['Transfer credit', 'Graduate courses from another program may count toward the course requirement within the handbook’s caps, with the DGS’s recommendation and the Graduate School’s approval.', '§5.2'],
+          // The MSCSE tab's decider (DGS 2026-09-11): the glossary is exempt
+          // from the page's DGS → ADGS rewrite, so it says ADGS itself, as the
+          // tab's requests do (policy review round 4, P4-text-6; DGS 2026-10-12).
+          ['Transfer credit', 'Graduate courses from another program may count toward the course requirement within the handbook’s caps, with the ADGS’s recommendation and the Graduate School’s approval.', '§5.2'],
         ] as [string, string, string][])),
     // One sentence each and a pointer at the next entry (trim review
     // 2026-09-18, P-17): the example list was the contact card's line again

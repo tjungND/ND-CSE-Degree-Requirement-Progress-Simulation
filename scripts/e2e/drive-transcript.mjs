@@ -977,6 +977,14 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   // MSCSE — the DGS changes such cells (2026-09-16: both became yes). The
   // step accepts either verdict and pins what does not depend on it.
   await s.waitFor(`/pending ADGS review|waiting for the ADGS|counts toward regular courses/.test(${lineOf('CSE 40113')})`);
+  // A handbook quote keeps the handbook's words on the MSCSE tab too: §3.5
+  // says "With approval of the instructor and DGS", and the page's DGS → ADGS
+  // rewrite skips `.rule-quote` (policy review round 4, P4-text-6; DGS
+  // 2026-10-12). This 4+1 student has the shared-credits card; the §5.2
+  // card ("recommended by the DGS") shows only with a transfer course.
+  const sharedQuote = await s.evalJs(`document.querySelector('#req-ms-cap-sharedbs .rule-quote')?.textContent ?? ''`);
+  console.log('  MSCSE §3.5 quote:', sharedQuote.slice(0, 110));
+  if (!/With approval of the instructor and DGS,/.test(sharedQuote)) throw new Error('the §3.5 quote on the MSCSE tab must be the handbook’s words: ' + sharedQuote.slice(0, 200));
   const after40113 = await s.evalJs(lineOf('CSE 40113'));
   const after40166 = await s.evalJs(lineOf('CSE 40166'));
   console.log('  CSE 40113:', after40113.replace(/\s+/g, ' ').slice(0, 190));
@@ -1061,8 +1069,10 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   if (offending.length > 0) throw new Error('the MSCSE tab must not mention the qualifying examination:\n  ' + offending.slice(0, 6).join('\n  '));
   console.log('  MSCSE tab: no §4.4.1 / §4.4.2 anywhere on the page (' + pageText.length + ' characters checked)');
   // …and the decider is the ADGS (DGS 2026-09-11): outside the contact card,
-  // the notices, the glossary and the footer, "DGS" alone must not appear.
-  const dgsLines = (await s.evalJs(`(() => { const c = document.querySelector('#app').cloneNode(true); c.querySelectorAll('.contact-card, .notice-line, .notice-details, details.glossary, .print-header, footer, .tabs').forEach(e => e.remove()); return c.textContent; })()`))
+  // the notices, the glossary, the footer and the quoted handbook sentences
+  // (`.rule-quote`, the handbook's own words — P4-text-6, DGS 2026-10-12),
+  // "DGS" alone must not appear.
+  const dgsLines = (await s.evalJs(`(() => { const c = document.querySelector('#app').cloneNode(true); c.querySelectorAll('.contact-card, .notice-line, .notice-details, details.glossary, .print-header, footer, .tabs, .rule-quote').forEach(e => e.remove()); return c.textContent; })()`))
     // "DGS Handbook" is the Graduate School's document, not the decider (2026-10-03),
     // and the DGS's own dated rulings keep the DGS's name — "DGS decision
     // 2026-08-31", "(DGS 2026-10-03)" (policy review round 3, P3-text-engine-4).

@@ -81,3 +81,35 @@ describe('the edges', () => {
     assert.match(line?.text ?? '', /five years or more before you entered the Ph\.D\./);
   });
 });
+
+// The same course filed at the bachelor's level — typed by hand, or registered
+// UG — is still the MSCSE's when the student says it counted toward it: the
+// answer is read before the level sets it aside (policy review round 4,
+// P4-phd-9; DGS 2026-10-12). It used to count in full with no §5.5 hold.
+describe('a separated 4+1 MSCSE: a senior-year course filed at the bachelor’s level (P4-phd-9)', () => {
+  it('counted toward the MSCSE: it waits, as the fifth-year courses do', () => {
+    const senior = { ...ndCourse('CSE 60770', { term: t('fall', 2016) }), origin: 'transfer' as const, institution: 'University of Notre Dame', degreeLevel: 'bachelors' as const, countedToward: 'mscse' as const };
+    const s = student(t('spring', 2019), [senior, ...MSCSE(2019)], { bachelorsAwarded: t('spring', 2017), integratedBsMs: true });
+    const line = run(s).report.courseLines?.find((l) => l.courseId === 'CSE 60770');
+    assert.match(line?.text ?? '', /five years or more before you entered the Ph\.D\./, line?.text ?? 'no line');
+    assert.notEqual(line?.mark, 'counts');
+  });
+  it('the §5.2 window still starts at the MSCSE’s own first course', async () => {
+    const { ownMscseStart } = await import('../src/engine/allocate.ts');
+    const senior = { ...ndCourse('CSE 60770', { term: t('fall', 2016) }), origin: 'transfer' as const, institution: 'University of Notre Dame', degreeLevel: 'bachelors' as const, countedToward: 'mscse' as const };
+    const s = student(t('spring', 2019), [senior, ...MSCSE(2019)], { bachelorsAwarded: t('spring', 2017), integratedBsMs: true });
+    assert.deepEqual(ownMscseStart(s), t('fall', 2017));
+  });
+});
+
+// The qualifier card's chip names the cause (policy review round 4, P4-phd-8;
+// DGS 2026-10-12): a student whose MSCSE ended five years before the Ph.D. was
+// never readmitted.
+describe('the qualifier chip after a separated MSCSE (P4-phd-8)', () => {
+  it('every part done, the course parts from the MSCSE: “Done in your Notre Dame MSCSE …”, not “before your readmission”', () => {
+    const s = student(t('spring', 2019), MSCSE(2019), { milestones: { researchQualifierPassed: '2027-03-01' } });
+    const q = audit(s, rules, '2027-06-01').requirements.find((r) => r.id === 'phd.qualifier')!;
+    assert.equal(q.status, 'needs_dgs_review');
+    assert.equal(q.deadline?.label, 'Done in your Notre Dame MSCSE, five years or more before the Ph.D. — waiting for the DGS');
+  });
+});

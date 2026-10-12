@@ -2037,7 +2037,10 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         { class: 'hint course-key' },
         'Key: ✓ counts · ◐ in progress · ● pending approval · ',
         el('span', { class: 'x-glyph' }, '✕'), // the table's own ✕ (style.css)
-        ` does not count. Regular courses are the lecture courses the course rules list as regular; seminar, research and project credits count toward the ${totalCreditsWord()} total only (${student.program === 'mscse' ? '§3.2' : '§4.2'}).`,
+        // "toward the total only" was untrue of the project credits and the
+        // first-year seminars, each required in its own right (policy review
+        // round 4, P4-text-5; DGS 2026-10-12) — the 2026-09-18 wording again.
+        ` does not count. Regular courses are the lecture courses the course rules list as regular; seminar, research and project credits count toward the ${totalCreditsWord()} total but not toward the regular-course credits (${student.program === 'mscse' ? '§3.2' : '§4.2'}).`,
       ),
       nd.length > 0
         ? courseTable(courseLines, nd)

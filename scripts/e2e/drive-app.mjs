@@ -172,6 +172,18 @@ export async function driveApp(s, baseUrl) {
   console.log('  OCE mentions — page (outside the glossary and headings):', oce.page, '| glossary:', oce.glossary, '| group heading:', oce.heading, '| short "OCE":', oce.short);
   if (oce.page !== 1 || oce.glossary !== 1 || oce.heading !== 1 || oce.short < 3) throw new Error('OCE first-mention rule: ' + JSON.stringify(oce));
 
+  // Seminar, research and project credits count toward the total "but not
+  // toward the regular-course credits" — never "toward the total only": the
+  // project credits and the first-year seminars are required in their own
+  // right (policy review round 4, P4-text-5; DGS 2026-10-12).
+  const regularWords = JSON.parse(await s.evalJs(`JSON.stringify({
+    key: document.querySelector('.course-key')?.textContent ?? '',
+    glossary: [...document.querySelectorAll('details.glossary dt, details.glossary dd, details.glossary li, details.glossary p')].map((e) => e.textContent).join(' '),
+  })`));
+  console.log('  coursework key:', regularWords.key.replace(/^.*?Regular courses/, 'Regular courses'));
+  if (/total only/.test(regularWords.key) || !/total but not toward the regular-course credits/.test(regularWords.key)) throw new Error('the coursework key must not say "total only": ' + regularWords.key);
+  if (/count toward the total only/.test(regularWords.glossary) || !/required in their own right: the first-year research seminars \((?:CSE )?§4\.2\)/.test(regularWords.glossary)) throw new Error('the glossary’s Regular course entry (Ph.D.): ' + (/Regular course.{0,300}/.exec(regularWords.glossary)?.[0] ?? regularWords.glossary.slice(0, 400)));
+
   // A Ph.D. student who already holds Notre Dame's own master's (DGS
   // 2026-09-09): §4.5 cannot award a degree twice. Since 2026-09-22 that fact
   // is an answer in the earlier-degrees questions (Change, on the standing

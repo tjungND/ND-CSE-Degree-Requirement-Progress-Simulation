@@ -634,6 +634,23 @@ export function isOwnMscseCoursework(student: Student, c: CourseEntry): boolean 
   return awarded === undefined || compareTerm(c.term, awarded) > 0 || c.countedToward === 'mscse' || c.countedToward === 'both';
 }
 
+/** What a five-year separation from the Notre Dame MSCSE holds for the DGS
+ * (Academic Code §5.5; P3-cse-5-6-3's recorded scope): the student's own MSCSE
+ * coursework, and also a 4+1's senior-year course the student says counted
+ * toward the MSCSE — its answer read before the bachelor's level sets it
+ * aside (policy review round 4, P4-phd-9; DGS 2026-10-12: "apply the
+ * suggested handling"). A course counted toward both degrees is already
+ * refused for the Ph.D., so in practice this reaches the "MSCSE only" ones.
+ * The §5.2 window's start (ownMscseStart) still reads isOwnMscseCoursework
+ * alone: a shared senior-year course is not the MSCSE admission. */
+export function heldWithSeparatedMscse(student: Student, c: CourseEntry): boolean {
+  if (isOwnMscseCoursework(student, c)) return true;
+  if (student.program !== 'phd' || student.ndMasters === undefined) return false;
+  if (!(c.origin === 'nd' || isNotreDameInstitution(c.institution))) return false;
+  if (compareTerm(c.term, normalizeEntryTerm(student.entryTerm).term) >= 0) return false;
+  return c.countedToward === 'mscse' || c.countedToward === 'both';
+}
+
 /** A course that draws on §5.2's transfer allowance and is not refused,
  * superseded or already held as outside any program — nor taken elsewhere
  * after admission (policy review round 4, P4-transfer-3; DGS 2026-10-11:
@@ -1029,7 +1046,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
     const withInterruption = (cc: ClassifiedCourse): ClassifiedCourse => {
       if (c.dgsApproved === true && cc.ineligibleReason === undefined) {
         if (beforeShortReadmission(c)) return ticked(cc, `taken before your readmission (${termLabel(readmitted!)}) — the DGS confirmed it still counts, as you ticked on the course (DGS Handbook §3.3)`);
-        if (separatedSince !== undefined && !interruptedCourse(c) && isOwnMscseCoursework(student, c))
+        if (separatedSince !== undefined && !interruptedCourse(c) && heldWithSeparatedMscse(student, c))
           return ticked(cc, `from your Notre Dame MSCSE, five years or more before the Ph.D. — the DGS and the Graduate School confirmed it counts, as you ticked on the course (Academic Code §5.5)`);
         if (interruptedCourse(c)) return ticked(cc, `taken before an interruption of five years or more — the DGS and the Graduate School confirmed it stands, as you ticked on the course (Academic Code §5.5)`);
       }
@@ -1041,7 +1058,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
           approvalPending: `taken before your readmission (${termLabel(readmitted!)}) — the program may reject some or all past credits (DGS Handbook §3.3); the DGS confirms${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
         };
       }
-      if (separatedSince !== undefined && !interruptedCourse(c) && isOwnMscseCoursework(student, c) && cc.ineligibleReason === undefined) {
+      if (separatedSince !== undefined && !interruptedCourse(c) && heldWithSeparatedMscse(student, c) && cc.ineligibleReason === undefined) {
         return {
           ...cc,
           interrupted: true,
