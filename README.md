@@ -755,7 +755,7 @@ the app's **Rules-sheet diagnostics** panel is the live truth.
 
 Copyright © 2026 University of Notre Dame du Lac.
 
-**ND CSE Degree Requirement Progress Checking** is freely available without a fee for
+**ND CSE Degree Requirement Progress Simulation** is freely available without a fee for
 non-commercial use (academic and research use), and may be redistributed under these conditions.
 For commercial use, a non-exclusive commercial license is required, which carries a
 non-refundable annual fee. For commercial use queries, please contact Notre Dame's IDEA Center at
