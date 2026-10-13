@@ -81,6 +81,10 @@ interface PreviewRow {
    * the value, never saved (the Add builds each course field by field,
    * `courseEntryOf`). */
   ocrRead?: { credits?: string; grade?: string };
+  /** A scan's course number with its digit look-alikes put back ("PHYS 1O1"
+   * → "PHYS 101"), offered beside the id box; used only when the student
+   * clicks it (DGS 2026-10-12). Never saved. */
+  codeSuggestion?: string;
   /** The level the student was registered at for this row (2026-09-05 —
    * combined B.S.+M.S. / 4+1 transcripts): from the transcript when it says,
    * else the slot's level. Undergraduate rows can only satisfy §4.4.1 core
@@ -176,6 +180,9 @@ interface ExternalPreview {
   /** Rows under Banner's "Transfer credit accepted by the institution" block —
    * courses from a THIRD school — left out by the parser (2026-09-05). */
   transferSkipped?: number;
+  /** The transcript has Cyrillic text, which the reader does not read (DGS
+   * 2026-10-12: out of scope): the preview asks for those courses by hand. */
+  nonLatinScript?: true;
   /** Rows of both levels were read (2026-09-05): the Taken-as column matters. */
   mixedLevels?: boolean;
   /** The two-year rule was applied (2026-09-06): rows in the last two years
@@ -829,6 +836,7 @@ export function previewRowOf(c: ExternalCourseCandidate, slot: DegreeLevel): Pre
     lowConfidence: c.lowConfidence,
     ...(c.evidence ? { evidence: c.evidence } : {}),
     ...(c.ocrRead ? { ocrRead: { ...c.ocrRead } } : {}),
+    ...(c.codeSuggestion ? { codeSuggestion: c.codeSuggestion } : {}),
     level: c.level ?? slotDefaultLevel(slot),
     levelSource: (c.level ? 'transcript' : 'slot') as PreviewRow['levelSource'],
     ...(c.codeMissing ? { codeMissing: true as const, include: false } : {}),
@@ -879,12 +887,17 @@ function previewFromParsed(
     rows: kept.rows,
     omitted: kept.omitted,
     transferSkipped: parsed.transferRowsSkipped,
+    ...(parsed.nonLatinScript ? { nonLatinScript: true as const } : {}),
     mixedLevels: mixed || undefined,
     termPrefill,
     ...(parsed.printedTotals ? { printedTotals: parsed.printedTotals, allRows: mapped } : {}),
   };
   return { mapped, kept };
 }
+
+/** The preview's note on a transcript with Cyrillic text (DGS 2026-10-12). */
+export const NON_LATIN_NOTE =
+  'This transcript has Cyrillic text. The reader reads Latin-letter course codes only, so courses with Cyrillic codes may be missing below — add each one with “+ Add a row by hand”: the code as printed (or in Latin letters) and the English title.';
 
 function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCardArgs): HTMLElement {
   const { student, update, toast, render } = args;
@@ -1279,6 +1292,28 @@ function previewRow(
       }
     });
   }
+  // The scan may have printed a letter for a digit in the course number
+  // (DGS 2026-10-12, the middle way): the corrected number is offered, not
+  // applied — one click puts it in the box; the row stays flagged.
+  const suggestion =
+    idOpen && r.codeSuggestion !== undefined && r.courseId.trim() !== r.codeSuggestion
+      ? el(
+          'button',
+          {
+            type: 'button',
+            class: 'btn tiny code-suggestion',
+            'data-key': `ext.row.${i}.id.suggestion`,
+            title: `The scan may have printed a letter for a digit in “${r.courseId}” — check it against the paper`,
+            onclick: () => {
+              r.courseId = r.codeSuggestion!;
+              render();
+              // The button is gone after the render: focus the box it filled.
+              document.querySelector<HTMLInputElement>(`[data-key="ext.row.${i}.id"]`)?.focus();
+            },
+          },
+          `Use ${r.codeSuggestion}?`,
+        )
+      : null;
   const titleIn = locked
     ? el('span', { class: 'course-title locked', 'data-key': `ext.row.${i}.title` }, r.title)
     : el('input', { value: r.title, class: 'course-title', 'aria-label': `Title for ${who()}`, 'data-key': `ext.row.${i}.title` });
@@ -1420,7 +1455,7 @@ function previewRow(
       blocked ? el('span', { id: noteId, class: 'visually-hidden' }, blockedNote) : null,
       r.codeMissing ? el('span', { id: idNoteId, class: 'visually-hidden' }, CODE_MISSING_NOTE) : null,
     ),
-    el('td', { class: 'cell-course', 'data-label': 'Course id' }, idIn),
+    el('td', { class: 'cell-course', 'data-label': 'Course id' }, idIn, suggestion),
     // (The greyed row + disabled box are the visible cue; the reason is the
     // hover text and the box's aria-describedby — DGS 2026-09-06: no tag.)
     el('td', { class: 'cell-title', 'data-label': 'Title' }, titleIn),
@@ -1549,6 +1584,9 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
           ]
         : // The preview's own heading already says "check every line" (trim review 2026-09-18, P-93).
           [el('p', { class: 'hint level-note' }, el('strong', {}, 'How “Taken as” was filled in: '), levelNote(p), ' “Taken as” is your status at the time, not the course’s level.')]),
+    // Cyrillic course codes are out of scope (DGS 2026-10-12): the reader may
+    // miss those rows, and the student adds them by hand.
+    ...(p.nonLatinScript ? [el('p', { class: 'hint warn', 'data-key': 'ext.nonlatin' }, NON_LATIN_NOTE)] : []),
     ...(p.transferSkipped
       ? [
           el(

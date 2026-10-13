@@ -139,3 +139,39 @@ it('the preview says whose reading it is (W-CL416–W-CL420)', () => {
   assert.equal(SCANNER_LAYER_ROW_FLAG, 'Read from the scanner’s embedded text — check it carefully');
   assert.equal(SCANNER_LAYER_ROW_FLAG_NAME, 'read from the scanner’s text');
 });
+
+// A course number a scan printed with a letter for a digit ("PHYS 1O1"): the
+// corrected number is offered, never applied (DGS 2026-10-12: the middle way).
+describe('a course number with a digit look-alike: suggested, not applied', () => {
+  it('the reading', async () => {
+    const { codeLookalikeSuggestion } = await import('../src/transcript/external.ts');
+    assert.equal(codeLookalikeSuggestion('PHYS 1O1'), 'PHYS 101');
+    assert.equal(codeLookalikeSuggestion('CS 5O00'), 'CS 5000');
+    assert.equal(codeLookalikeSuggestion('MATH 2l0'), 'MATH 210');
+    // Not a look-alike: other letters (McMaster's own codes), a letter first, no letter at all.
+    for (const id of ['COMPSCI 1MD3', 'ENGINEER 4G06', 'CS IO1', 'CS 101', 'MAT 2Z2']) assert.equal(codeLookalikeSuggestion(id), undefined, id);
+  });
+  it('on a scanner’s layer the row keeps the code as read, flagged, with the suggestion; the text path offers none', () => {
+    const table = ['Western State University', 'Office of the Registrar', 'Official Academic Transcript', 'Fall 2023', 'Course   Title   Credits   Grade', 'PHYS 1O1   Classical Mechanics   3   A', 'CS 504   Operating Systems   3   A', '', 'This document lists the courses taken by the student at the university and is issued by the registrar.'];
+    const row = asScannerTop(table).find((c) => c.courseId === 'PHYS 1O1');
+    assert.ok(row, JSON.stringify(asScannerTop(table).map((c) => c.courseId)));
+    assert.equal(row.codeSuggestion, 'PHYS 101');
+    assert.equal(row.lowConfidence, true);
+    assert.equal(asScannerTop(table).find((c) => c.courseId === 'CS 504')?.codeSuggestion, undefined);
+    assert.equal(parseExternalTranscript(table).courses.find((c) => c.courseId === 'PHYS 1O1')?.codeSuggestion, undefined);
+  });
+});
+const asScannerTop = (l: string[]) => parseExternalTranscript(l, l.map(() => SCANNER_LAYER_CONFIDENCE), { scannerLayer: true }).courses;
+
+// Cyrillic course codes are out of scope (DGS 2026-10-12): the parse says the
+// text has them, and the preview's note asks for those courses by hand.
+describe('a transcript with Cyrillic text', () => {
+  it('the Ukrainian supplement is marked; a Latin-only transcript is not', async () => {
+    const { NON_LATIN_NOTE } = await import('../src/ui/external-upload.ts');
+    const ua = JSON.parse(readFileSync(new URL('./fixtures/public-transcripts/ukraine-supplement.json', import.meta.url), 'utf8')) as string[];
+    assert.equal(parseExternalTranscript(ua).nonLatinScript, true);
+    const snu = JSON.parse(readFileSync(new URL('./fixtures/public-transcripts/snu-english-transcript.json', import.meta.url), 'utf8')) as string[];
+    assert.equal(parseExternalTranscript(snu).nonLatinScript, undefined);
+    assert.match(NON_LATIN_NOTE, /add each one with “\+ Add a row by hand”/);
+  });
+});

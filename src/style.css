@@ -1085,6 +1085,7 @@ abbr.term { text-decoration: underline dotted; text-decoration-color: var(--line
 tr.ocr-low td { background: var(--note-bg); }
 /* What the scan showed in a credits or grade cell the OCR numeric correction filled (Batch C answer (4),
    DGS 2026-10-09): under the value, small, in the scan's own characters. */
+.transcript-preview .code-suggestion { display: block; margin-top: 3px; } /* a scan's corrected course number, offered (DGS 2026-10-12) */
 .transcript-preview .ocr-raw { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); white-space: nowrap; cursor: help; }
 /* The scanned line beside an OCR preview row (Batch C answer (5), DGS 2026-10-09): the strip fills the
    row's width and shrinks to fit it, so the whole line — credits and grade included — is in view at

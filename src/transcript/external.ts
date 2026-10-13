@@ -55,6 +55,12 @@ export interface ExternalCourseCandidate {
    * The preview shows it beside the corrected value and the row stays
    * flagged; it is never saved with the course. */
   ocrRead?: { credits?: string; grade?: string };
+  /** OCR or a scanner's layer only (DGS 2026-10-12: "I'll follow your
+   * suggestions" — the middle way): the course number as it would read with
+   * its digit look-alikes put back ("PHYS 1O1" → "PHYS 101"). Never applied
+   * by the reader: the preview offers it beside the code as read, the student
+   * accepts it with a click, and the row stays flagged either way. */
+  codeSuggestion?: string;
   /** OCR only (Batch C answer (5), DGS 2026-10-09): the lines the row was
    * read from — indices into the lines the parser was given: its own line,
    * and a title or numbers line it took from just above or below — so the
@@ -131,6 +137,10 @@ export interface ExternalParseResult {
    * set on OCR or a scanner's layer (every row of a scan is kept, flagged —
    * DGS 2026-10-10, answer 2). */
   notATranscript?: true;
+  /** The text has Cyrillic letters (DGS 2026-10-12: reading non-Latin course
+   * codes is out of scope — the page reads English-language transcripts — and
+   * the preview says so, so the student adds such courses by hand). */
+  nonLatinScript?: true;
   courses: ExternalCourseCandidate[];
 }
 
@@ -747,6 +757,21 @@ export function ocrCellCorrection(token: string): string | undefined {
   }
   const plus = /^([A-D])t$/.exec(token);
   return plus ? `${plus[1]}+` : undefined;
+}
+
+/** The course number a scan may have misread with a letter shaped like a
+ * digit — the number token of "PHYS 1O1", "CS 5O00", "MATH 2l0" — corrected
+ * by OCR_DIGIT_LOOKALIKES (O and o for 0, l and I for 1), or undefined. Only
+ * a token of two to six characters made of digits and those letters, with at
+ * least one of each, and not led by a letter (a code like McMaster's "1MD3"
+ * or "4G06" has other letters and is left alone). A suggestion only, never
+ * applied by the reader (DGS 2026-10-12): the student accepts it. */
+export function codeLookalikeSuggestion(courseId: string): string | undefined {
+  const m = /^(.*\s)([\dOoIl]{2,6})$/.exec(courseId);
+  if (!m) return undefined;
+  const token = m[2]!;
+  if (!/^\d/.test(token) || !/[OoIl]/.test(token)) return undefined;
+  return `${m[1]}${token.replace(/[OoIl]/g, (ch) => OCR_DIGIT_LOOKALIKES[ch]!)}`;
 }
 
 /** The cells of a header line, and — on an OCR line — each cell with the
@@ -3319,6 +3344,16 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       ...(ocrRead !== undefined ? { ocrRead } : {}),
       ...(ocrLines ? { sourceLines: { from: rowLine - (titleAbove ? 1 : 0), to: rowLine + (usedContinuation ? 1 : 0) + (titleBelow ? 1 : 0) } } : {}),
     });
+    // A digit look-alike in the course number, on a scan or a scanner's layer
+    // only: offered to the student, never applied (DGS 2026-10-12).
+    if (ocrLines) {
+      const last = courses[courses.length - 1]!;
+      const suggestion = codeLookalikeSuggestion(last.courseId);
+      if (suggestion !== undefined) {
+        last.codeSuggestion = suggestion;
+        last.lowConfidence = true;
+      }
+    }
     rowLevels.push(rowLevel ?? blockLevel);
     rowBlocks.push(termBlock);
     if (usedContinuation) lineIndex += 1; // the continuation line is consumed
@@ -3577,6 +3612,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     mixedLevels: levels.size > 1 ? true : undefined,
     transferRowsSkipped: transferRowsSkipped > 0 ? transferRowsSkipped : undefined,
     ...(notATranscript ? { notATranscript: true as const } : {}),
+    ...(/\p{Script=Cyrillic}/u.test(allText) ? { nonLatinScript: true as const } : {}),
     ...(totalsRead.length > 0 && !notATranscript ? { printedTotals: totalsRead } : {}),
     courses: notATranscript ? [] : courses,
   };
