@@ -91,6 +91,15 @@ export function programHistory(student: Student): ProgramHistory {
   };
 }
 
+/** An unfinished earlier program that was a Ph.D. — a transfer course filed
+ * at the Ph.D. level — for which no document states a transfer limit
+ * (Academic Code §4.6 states six for an unfinished master's only; the same
+ * test as the transfer card's and app.ts transferLimitStated). Policy review
+ * round 4, P4-transfer-4; DGS 2026-10-12. */
+export function unfinishedPhdElsewhere(student: Student): boolean {
+  return student.priorMs === 'unfinished' && student.courses.some((c) => c.origin === 'transfer' && c.degreeLevel === 'phd');
+}
+
 /** The "Prior graduate study" values as the page labels them — the §5.2
  * transfer cap's three cases. */
 export const PRIOR_LABELS: Record<Student['priorMs'], string> = {
@@ -111,10 +120,12 @@ export function priorStudyLabel(student: Student): string {
   const g = b?.graduate;
   // A degree elsewhere beside it (P3-prior-programs-1; DGS 2026-10-07).
   if (student.program === 'phd' && (g === 'nd-mscse' || g === 'nd-4plus1'))
-    return `MSCSE at Notre Dame (one graduate program with the Ph.D.); ${b?.alsoElsewhere ? (b.finished ? 'a completed graduate degree elsewhere' : 'an unfinished graduate program elsewhere') : 'no graduate degree elsewhere'}`;
+    return `MSCSE at Notre Dame (one graduate program with the Ph.D.); ${b?.alsoElsewhere ? (b.finished ? 'a completed graduate degree elsewhere' : unfinishedPhdElsewhere(student) ? 'an unfinished Ph.D. elsewhere' : 'an unfinished graduate program elsewhere') : 'no graduate degree elsewhere'}`;
   // Unanswered, and nothing read from a transcript: the emails must not say
   // "no prior graduate degree" for a student nobody has asked yet (review of
   // Option 1, 2026-10-08 — the opening dialog no longer forces the answer).
   if (b === undefined && student.priorMs === 'none' && student.priorMsInferred !== true && student.backgroundDraft?.graduate !== 'none') return 'not answered yet';
+  // Not "Prior M.S." for an unfinished Ph.D. (P4-transfer-4).
+  if (unfinishedPhdElsewhere(student)) return 'Prior Ph.D., not completed';
   return PRIOR_LABELS[student.priorMs];
 }

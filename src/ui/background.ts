@@ -443,7 +443,8 @@ export function backgroundQuestions(
         // CSE from it is a program transfer (DGS Handbook §3.15), not §5.2's six.
         state.graduate === 'nd-other'
           ? `Did you finish that degree? (After a finished one, §5.2 allows ${program === 'mscse' ? '9' : '24'} transfer credits; moving into CSE from an unfinished one is a program transfer — its courses count as yours from your first admission, DGS Handbook §3.15)`
-          : `Did you finish that degree? (§5.2 allows ${program === 'mscse' ? '9' : '24'} transfer credits after a finished master’s or Ph.D., 6 otherwise)`,
+          : // No figure for an unfinished Ph.D. (P4-transfer-4; DGS 2026-10-12).
+            `Did you finish that degree? (§5.2 allows ${program === 'mscse' ? '9' : '24'} transfer credits after a finished master’s or Ph.D., 6 after an unfinished master’s; no figure is stated for an unfinished Ph.D.)`,
       ),
       ...readNote('finished'),
       describedByRead(

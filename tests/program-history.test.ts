@@ -99,3 +99,17 @@ describe('the emails’ prior graduate study (P3-prior-programs-6)', () => {
     assert.equal(priorStudyLabel({ ...student({}), priorMs: 'completed' }), 'Completed prior M.S. or Ph.D.');
   });
 });
+
+// An unfinished Ph.D. elsewhere is not a "Prior M.S." (policy review round 4,
+// P4-transfer-4; DGS 2026-10-12): the emails' label names it.
+describe('the prior-study label for an unfinished Ph.D. (P4-transfer-4)', () => {
+  it('names the Ph.D.; an unfinished master’s keeps its label', async () => {
+    const { priorStudyLabel, unfinishedPhdElsewhere } = await import('../src/ui/program-history.ts');
+    const { phdStudent, transferCourse } = await import('./helpers/student.ts');
+    const phd = phdStudent({ priorMs: 'unfinished', background: { bachelors: 'elsewhere', graduate: 'elsewhere', finished: false }, courses: [transferCourse('CS 50300', undefined, { degreeLevel: 'phd' })] });
+    assert.equal(unfinishedPhdElsewhere(phd), true);
+    assert.equal(priorStudyLabel(phd), 'Prior Ph.D., not completed');
+    const ms = phdStudent({ priorMs: 'unfinished', background: { bachelors: 'elsewhere', graduate: 'elsewhere', finished: false }, courses: [transferCourse('CS 50300', undefined, { degreeLevel: 'masters' })] });
+    assert.equal(priorStudyLabel(ms), 'Prior M.S., not completed');
+  });
+});

@@ -38,6 +38,7 @@ import { deadlineAlert, isNotStarted, standingColor, scoredRows, statusWord } fr
 import { msLimitPassedClause, whyFor } from './advisor-summary.ts';
 import { compareTerm } from '../engine/term.ts';
 import { sourceOf, sourcesLine } from './provenance.ts';
+import { ndPostingOf } from '../engine/nd-posting.ts';
 
 export { selfCheckFileName } from './state.ts';
 
@@ -264,7 +265,22 @@ function standingTable(r: RequirementResult, student: Student, countedEntries?: 
 
 /** The one course table: every course a standing row counts, with the rows
  * it feeds (their short titles and §). */
-function countedCourses(standing: StandingTable[], report: AuditReport, student: Student): CountedCourse[] {
+/** The credits a row prints: what the self-check counts — the hours on the
+ * Notre Dame record, or the §5.2 pro-rata conversion — with the transcript's
+ * own figure in brackets when they differ; and "—" for the grade of credit on
+ * the Notre Dame record, which is finished credit, not "in progress", as the
+ * coursework table prints it (policy review round 4, P4-transfer-6; DGS
+ * 2026-10-12; DGS Handbook §3.14: credits are reported in semester hours). */
+function creditsCell(c: CourseEntry, cc: ClassifiedCourse | undefined): string {
+  const counted = cc?.effectiveCredits;
+  if (counted === undefined || Math.abs(counted - c.credits) < 1e-9) return formatCredits(c.credits);
+  return `${formatCredits(counted)} (${formatCredits(c.credits)}${cc?.convertedFrom ? ` ${cc.convertedFrom}` : ''} credits on the transcript)`;
+}
+function gradeCell(c: CourseEntry): string {
+  return c.grade === 'IP' && ndPostingOf(c) !== undefined ? '—' : c.grade;
+}
+
+function countedCourses(standing: StandingTable[], report: AuditReport, student: Student, classifiedOf: (c: CourseEntry) => ClassifiedCourse | undefined = () => undefined): CountedCourse[] {
   const byId = new Map(report.requirements.map((r) => [`${r.title} (${r.citation.section})`, r]));
   const out = new Map<string, CountedCourse>();
   // In the report's order, so "Counts toward" reads the way the page does.
@@ -276,7 +292,7 @@ function countedCourses(standing: StandingTable[], report: AuditReport, student:
     const label = r ? `${r.shortTitle ?? r.title} (${r.citation.section})` : t.heading;
     for (const c of t.courseEntries) {
       const key = `${c.courseId}|${c.institution ?? ''}|${termLabel(c.term)}`;
-      const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: formatCredits(c.credits), grade: c.grade, term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
+      const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c)), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
       if (!row.countsToward.includes(label)) row.countsToward.push(label);
       out.set(key, row);
       termOf.set(key, c.term);
@@ -410,7 +426,8 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
     `${tally.notStarted} not started`,
     ...(tally.cannot > 0 ? [`${tally.cannot} cannot be evaluated`] : []),
   ].join(', ');
-  const courses = countedCourses(standing, report, student);
+  const classifiedByEntry = new Map(classified.map((c) => [c.entry, c]));
+  const courses = countedCourses(standing, report, student, (c) => classifiedByEntry.get(c));
   // The numbered actions (DGS 2026-09-28): one per processable thing, and
   // the standing on file last.
   // The DGS RECOMMENDS a transfer; the Graduate School approves it (Academic

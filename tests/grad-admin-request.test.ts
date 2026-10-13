@@ -223,3 +223,30 @@ describe('the master’s candidacy item past the MSCSE’s time limit (policy re
     assert.doesNotMatch(gradAdminRequest(report, sc.student, rules, opts).text, /time limit \(§3\.3\) passed/);
   });
 });
+
+// The request's "Courses counted so far" prints what is counted: credit on the
+// Notre Dame record has no grade ("—", not "IP"), and a quarter course its
+// semester-hour conversion with the transcript's figure in brackets (policy
+// review round 4, P4-transfer-6; DGS 2026-10-12).
+describe('the course table prints the credits counted (P4-transfer-6)', () => {
+  const sp25 = { season: 'spring' as const, year: 2025 };
+  const posted: CourseEntry = { courseId: 'CS 50100', title: 'Advanced Operating Systems', credits: 3, term: sp25, grade: 'IP', origin: 'transfer', institution: 'Purdue University', fromNdTranscript: true, registeredLevel: 'graduate', ndPosted: { term: sp25, credits: 3, level: 'graduate', institution: 'Purdue University' } };
+  const ucsd = transferCourse('CSE 250A', 'Probabilistic Reasoning', { institution: 'University of California, San Diego', credits: 4, term: { season: 'fall', year: 2022 }, degreeLevel: 'masters' });
+  const quarterRules = buildRules({ external: [{ university: 'UNIVERSITY OF CALIFORNIA, SAN DIEGO', course_id: 'CSE 250A', course_title: 'Probabilistic Reasoning', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes', credit_system: 'quarter' }] });
+  const row = (extra: CourseEntry[], r = buildRules(), id: string) => {
+    const s = phdStudent({ entryTerm: { season: 'fall', year: 2024 }, priorMs: 'completed', bachelorsAwarded: { season: 'spring', year: 2021 }, background: { bachelors: 'elsewhere', graduate: 'elsewhere', finished: true }, courses: [...extra, ndCourse('CSE 60641', { term: { season: 'fall', year: 2024 } })] });
+    const report = audit(s, r, '2026-10-11');
+    return gradAdminRequest(report, s, r, { todayIso: '2026-10-11', entryTerm: 'Fall 2024', priorStudy: 'x' }).items.courses.find((c) => c.courseId === id);
+  };
+  it('credit on the Notre Dame record: “—”, not “IP”', () => {
+    const c = row([posted], buildRules(), 'CS 50100');
+    assert.ok(c, 'listed');
+    assert.equal(c.grade, '—');
+    assert.equal(c.credits, '3');
+  });
+  it('a quarter course: the converted credits, the transcript’s figure in brackets', () => {
+    const c = row([ucsd], quarterRules, 'CSE 250A');
+    assert.ok(c, 'listed');
+    assert.equal(c.credits, '2.64 (4 quarter credits on the transcript)');
+  });
+});

@@ -5,7 +5,7 @@ import type { NotreDameNow } from '../data/clock.ts';
 import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { findExternalRule, isNotreDameInstitution, normalizeUniversity, universityCreditSystem } from '../data/external.ts';
 import { CORE_TITLE_RE } from '../engine/core-title.ts';
-import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, longInterruptionReadmission, mscseSeparation, ndUndergraduateCounting, overMaxTerms, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
+import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, longInterruptionReadmission, mscseSeparation, ndUndergraduateCounting, overMaxTerms, ownMscseStart, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
 import { ndPostingOf } from '../engine/nd-posting.ts';
 import { fullTimeRecordsFrom, summerFullTimeFloor } from '../engine/requirements/residency.ts';
 import { compareTerm, normalizeEntryTerm, semesterSeq, startOfTerm } from '../engine/term.ts';
@@ -76,7 +76,7 @@ import { createFocusKeeper } from './focus-keeper.ts';
 import { type RefusedValues, applyRefusals, rangedNumber } from './refusals.ts';
 import { createToasts } from './toasts.ts';
 import { gradAdminRequest, processingItems } from './grad-admin-request.ts';
-import { priorStudyLabel, programHistory } from './program-history.ts';
+import { priorStudyLabel, programHistory, unfinishedPhdElsewhere } from './program-history.ts';
 import { FILL_IN_STEP, unofficialTranscriptNote } from './email-html.ts';
 import { advisorSummary } from './advisor-summary.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
@@ -1014,10 +1014,18 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     };
     const finished = n(student.program === 'mscse' ? 'ms_transfer_completed_ms_credits_max' : 'phd_transfer_completed_ms_credits_max');
     const unfinished = n('transfer_unfinished_ms_credits_max');
+    // An unfinished Ph.D. has no stated limit (Academic Code §4.6 states six
+    // for an unfinished master's only): the six is this page's working limit,
+    // as the transfer card says (policy review round 4, P4-transfer-4; DGS
+    // 2026-10-12). `who` opens the sentence; `tail` follows the number.
+    const notFinished = (who: string, tail = ''): string =>
+      unfinishedPhdElsewhere(student)
+        ? `${who} — a Ph.D. — was not finished; no document states a transfer limit for an unfinished Ph.D., so the DGS decides how much transfers (§5.2), and this page holds it to ${unfinished} until then${tail}; it would be ${finished} after a finished degree`
+        : `${who} was not finished, so up to ${unfinished} credits from it may transfer (§5.2)${tail}; it would be ${finished} after a finished degree`;
     if (b.graduate === 'elsewhere') {
       return b.finished
         ? ` You finished a graduate degree elsewhere, so up to ${finished} credits from it may transfer (§5.2); it would be ${unfinished} if that program were unfinished.`
-        : ` Your earlier graduate program was not finished, so up to ${unfinished} credits from it may transfer (§5.2); it would be ${finished} after a finished degree.`;
+        : ` ${notFinished('Your earlier graduate program')}.`;
     }
     // A degree elsewhere beside the MSCSE held (P3-prior-programs-1; DGS
     // 2026-10-07: option (a)), with its own §5.2 allowance; the five years
@@ -1026,7 +1034,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       const outside = b.alsoElsewhere
         ? b.finished
           ? ` You also finished a graduate degree at another university, so up to ${finished} credits from it may transfer (§5.2), counted back five years from your admission to the MSCSE; it would be ${unfinished} if that program were unfinished.`
-          : ` Your graduate program at another university was not finished, so up to ${unfinished} credits from it may transfer (§5.2), counted back five years from your admission to the MSCSE; it would be ${finished} after a finished degree.`
+          : ` ${notFinished('Your graduate program at another university', ', counted back five years from your admission to the MSCSE')}.`
         : '';
       // One line here (UI review item 1; DGS 2026-10-08: option (c)) — the
       // reason sits once above the MSCSE's courses; unless five years or more
@@ -1045,7 +1053,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       const outside = b.alsoElsewhere
         ? b.finished
           ? `You finished a graduate degree at another university, so up to ${finished} credits from it may transfer (§5.2); it would be ${unfinished} if that program were unfinished`
-          : `Your graduate program at another university was not finished, so up to ${unfinished} credits from it may transfer (§5.2); it would be ${finished} after a finished degree`
+          : notFinished('Your graduate program at another university')
         : `No earlier degree: ${noStatedLimit}`;
       return ` ${outside}; your MSCSE coursework counts as Ph.D. coursework (one graduate program). The §4.3 eight years and the eighth semester for the OCE and for admission to candidacy count from the semester you started the MSCSE; the §4.4 qualifier clocks and the first-year seminars (§4.2) from your transfer.`;
     }
@@ -1990,15 +1998,30 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       // The same term the engine measures from (allocate.ts normalises the
       // entry term), so the two can never drift (policy review 2026-10-03).
       const entry = normalizeEntryTerm(student.entryTerm).term;
-      const cutoff = windowYears === undefined ? undefined : termLabel({ season: entry.season, year: entry.year - windowYears });
-      const window = windowYears === undefined ? 'within the years §5.2 allows (the number is missing from the rules sheet)' : `within ${windowYears} years before you entered (${cutoff} or later)`;
+      // …and from the same start: the Notre Dame MSCSE's admission for a
+      // Ph.D. student who holds it (P3-prior-programs-4 (b); allocate.ts
+      // windowFrom), not the Ph.D. entry — the paragraph read "Fall 2019 or
+      // later" above Fall 2018 courses their own lines counted (policy review
+      // round 4, P4-transfer-5; DGS 2026-10-12).
+      const mscseStart = student.program === 'phd' ? ownMscseStart(student) : undefined;
+      const fromMscse = mscseStart !== undefined && compareTerm(mscseStart, entry) < 0;
+      const from = fromMscse ? mscseStart! : entry;
+      const cutoff = windowYears === undefined ? undefined : termLabel({ season: from.season, year: from.year - windowYears });
+      const window =
+        windowYears === undefined
+          ? 'within the years §5.2 allows (the number is missing from the rules sheet)'
+          : `within ${windowYears} years before ${fromMscse ? 'your admission to the Notre Dame MSCSE' : 'you entered'} (${cutoff} or later)`;
+      // The first semester as the engine reads it (firstSemesterComplete): a
+      // finished earlier Notre Dame degree already meets it (P3-dh-3.14-3.20-4 (b)).
+      const firstSemester = firstSemesterComplete(student, entry, todayIso());
+      const when = firstSemester.done ? `now${firstSemester.byEarlierProgram ? ' (your finished earlier Notre Dame degree already meets §5.2’s first semester)' : ''}` : 'after your first semester';
       const grade = floor === undefined ? 'with the grade §5.2 requires (missing from the rules sheet)' : `with a grade of ${floor} or better (the DGS decides pass/fail grades)`;
       // Shortened in place (UI review item 3; DGS 2026-10-09: option (b)):
       // the three checks, every role, § and the timing kept.
       return (
         `Transfer credit (§5.2): a graduate course from ${fromNotreDame ? 'your earlier Notre Dame program' : 'another university'} can count if you took it after your bachelor’s degree, ${window}, and ${grade} — this page checks those three. ` +
         `Which courses transfer (normally CSE-related ones, ${transferLimitStated() ? `up to ${transferCapLimit()} credits` : `and how much — no document sets a limit for your case; this page holds it to ${transferCapLimit()} until the DGS decides`}) is the DGS’s recommendation, approved by the Graduate School and recorded by the Grad Admin once your official transcript reaches the Graduate School. ` +
-        `Until the DGS decides, every graduate course here is a candidate: send the review request (Transcripts card) at any time; the processing request (below the milestones) goes to the Grad Admin after your first semester, before the semester your degree is conferred.`
+        `Until the DGS decides, every graduate course here is a candidate: send the review request (Transcripts card) at any time; the processing request (below the milestones) goes to the Grad Admin ${when}, before the semester your degree is conferred.`
       );
     };
     const card = el(
