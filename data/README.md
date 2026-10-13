@@ -250,7 +250,10 @@ named — UC San Diego on quarters, the other ten on semesters.
 ## Validation the app must do on load
 - unknown value in an enumerated column → row is skipped and reported ("Courses row 14, column
   `course_type`: 'lecture' is not one of regular|seminar|research|independent|project")
-- duplicate `course_id` with the same `rules_effective_term` → reported
+- duplicate `course_id` with the same `rules_effective_term` → the **last** row wins, as in
+  ExternalCourses and Universities, with a warning both web pages show (the self-check's
+  diagnostics box, the course-rules page) until the older row is deleted (DGS 2026-10-13; it used
+  to keep the first, as an error)
 - missing required parameter key → reported, and the requirement that needs it is shown as
   "cannot evaluate — rules sheet is missing `<key>`" rather than silently passing
 - a `core_area` or `category_group` value not in the `Categories` tab → reported

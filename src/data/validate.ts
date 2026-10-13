@@ -14,20 +14,25 @@ export function validateCourses(
   const groupCodes = new Set([...categoryGroups.map((c) => c.code), ...RESERVED_GROUP_CODES]);
 
   const kept: RuleCourse[] = [];
-  const seen = new Set<string>();
+  // Two rows for one course and rules_effective_term: the LAST row wins, as
+  // in the ExternalCourses and Universities tabs, with a warning the web
+  // pages show until the older row is deleted (DGS 2026-10-13: "Yes. Follow
+  // with the same on-page warning." — it used to keep the first, as an error).
+  const dupKeyOf = (c: RuleCourse): string => `${c.courseId}|${c.effectiveTerm ? termIndex(c.effectiveTerm) : 'always'}`;
+  const lastOf = new Map<string, RuleCourse>();
+  for (const c of courses) lastOf.set(dupKeyOf(c), c);
   for (let c of courses) {
-    const termKey = c.effectiveTerm ? termIndex(c.effectiveTerm) : 'always';
-    const dupKey = `${c.courseId}|${termKey}`;
-    if (seen.has(dupKey)) {
+    const last = lastOf.get(dupKeyOf(c))!;
+    if (last !== c) {
       issues.push({
-        severity: 'error',
+        severity: 'warning',
         tab: 'Courses',
-        row: c.sheetRow,
-        message: `Courses row ${c.sheetRow}: ${c.courseId} already has a row with the same rules_effective_term — using the first one.`,
+        row: last.sheetRow,
+        message: `Courses row ${last.sheetRow} repeats ${c.courseId} with the same rules_effective_term (already in row ${c.sheetRow}) — the last row wins: row ${last.sheetRow} replaces row ${c.sheetRow}; delete the older one.`,
+        onPage: true,
       });
       continue;
     }
-    seen.add(dupKey);
 
     if (c.coreArea && !coreCodes.has(c.coreArea)) {
       issues.push({

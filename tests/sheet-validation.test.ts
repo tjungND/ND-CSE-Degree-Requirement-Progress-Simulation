@@ -166,14 +166,20 @@ describe('sheet validation', () => {
     assert.ok(report.warnings.some((w) => w.includes('credits')));
   });
 
-  it('duplicate course_id + rules_effective_term → reported, first row wins', () => {
+  // DGS 2026-10-13: the last row wins, as in ExternalCourses and Universities,
+  // and the warning shows on the web pages (it kept the first, as an error).
+  it('duplicate course_id + rules_effective_term → the last row wins, with a warning the pages show', () => {
     const texts = fixtureCsvTexts();
     const dup =
       'CSE 60641,Graduate Operating Systems DUPLICATE,6,3,3,3,regular,yes,yes,os,sys,fall,yes,Fall 2026,Fall 2026,yes,\n';
     const rules = rulesFromCsvTexts({ ...texts, courses: texts.courses + dup }, meta);
-    assert.ok(rules.issues.some((i) => i.message.includes('same rules_effective_term')));
+    const issue = rules.issues.find((i) => i.message.includes('same rules_effective_term'));
+    assert.ok(issue, JSON.stringify(rules.issues.map((i) => i.message)));
+    assert.equal(issue.severity, 'warning');
+    assert.equal(issue.onPage, true);
+    assert.match(issue.message, /^Courses row \d+ repeats CSE 60641 with the same rules_effective_term \(already in row \d+\) — the last row wins: row \d+ replaces row \d+; delete the older one\.$/);
     assert.equal(rules.courses.get('CSE 60641')?.length, 1);
-    assert.equal(rules.courses.get('CSE 60641')?.[0]?.title, 'Graduate Operating Systems');
+    assert.equal(rules.courses.get('CSE 60641')?.[0]?.title, 'Graduate Operating Systems DUPLICATE');
   });
 
   it('core_area / category_group not in the Categories tab → reported and ignored', () => {
