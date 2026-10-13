@@ -2082,7 +2082,12 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
                     // B.S. + M.S. student counts them — those the bachelor's did
                     // not use, from any undergraduate term (DGS 2026-10-07).
                     `Notre Dame courses you took as an undergraduate appear here when they can count toward the MSCSE: ${
-                      student.integratedBsMs === true
+                      // Admitted after the bachelor's: only the shared six
+                      // (4+1 guidance; policy review round 4, P4-transfer-7;
+                      // DGS 2026-10-12), as the course lines say.
+                      student.integratedBsMs === true && student.integratedAdmitted !== undefined && student.bachelorsAwarded !== undefined && compareTerm(student.integratedAdmitted, student.bachelorsAwarded) > 0
+                        ? `CSE courses below the 60000 level inside §3.2’s allowance — you were admitted to the Integrated program after your bachelor’s degree, so a 60000-level course counts only among the shared ${sharedCreditsWord()} (4+1 guidance)`
+                        : student.integratedBsMs === true
                         ? '60000-level courses your bachelor’s degree did not use, whenever you took them, and CSE courses below that inside §3.2’s allowance'
                         : student.integratedBsMs === false
                           ? 'CSE courses below the 60000 level inside §3.2’s allowance — 60000-level courses you took as an undergraduate do not count (§3.5); only students in the Integrated B.S. + M.S. program may count them'

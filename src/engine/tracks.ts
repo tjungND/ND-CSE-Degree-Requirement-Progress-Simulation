@@ -15,8 +15,8 @@
 // person who can.
 import { BS_SHARED_CREDITS_MAX, levelOf, type ClassifiedCourse } from './allocate.ts';
 import { isNotreDameInstitution } from '../data/external.ts';
-import { compareTerm } from './term.ts';
-import type { Student } from './types.ts';
+import { compareTerm, termLabel } from './term.ts';
+import type { Student, Term } from './types.ts';
 
 export interface SpecialTrack {
   /** §3.6 bridge courses, or §3.5's graduate courses taken as an undergraduate. */
@@ -96,9 +96,29 @@ export function specialTracks(student: Student, classified: ClassifiedCourse[]):
         // applies — the UG→GR move, or the DGS's confirmation (policy review
         // 2026-10-04, P1-page-text-engine-11; DGS: "Apply the suggested fix").
         ? 'One or more of your graduate courses was taken in or before the term your bachelor’s degree was awarded. Your 60000-level courses from before your bachelor’s degree count here in full if that degree did not use them (Graduate School) — on top of what §5.2 lets you transfer — once they were moved from undergraduate to graduate registration before the bachelor’s was awarded (Graduate School 4+1 guidance). A course your Notre Dame transcript does not show registered at the graduate level, or one taken outside the 4+1, counts only provisionally until the DGS confirms it. Up to 6 credits of courses below 60000 may count inside §4.2’s allowance. No course may count toward three degrees: if you also hold a Notre Dame master’s, say next to each course which degrees it has already counted toward. The DGS decides anything the course rules leave open.'
-        : `One or more of your graduate courses was taken in or before the term your bachelor’s degree was awarded. At most ${BS_SHARED_CREDITS_MAX} credits in all may apply to both your bachelor’s degree and the MSCSE, from the second semester of the junior year on, with the instructor’s and the DGS’s approval (§3.5). A 60000-level course your bachelor’s degree did not use counts toward the MSCSE alone, whenever you took it (the Graduate School, through the DGS); CSE courses below the 60000 level count inside §3.2’s allowance. ${sharedList(classified)}Anything that still needs an approval is counted only provisionally and listed in the review request below — ask the DGS to confirm it.`,
+        : `One or more of your graduate courses was taken in or before the term your bachelor’s degree was awarded. At most ${BS_SHARED_CREDITS_MAX} credits in all may apply to both your bachelor’s degree and the MSCSE, from the second semester of the junior year on, with the instructor’s and the DGS’s approval (§3.5). ${sixkSentence(student, awarded)} CSE courses below the 60000 level count inside §3.2’s allowance. ${sharedList(classified)}Anything that still needs an approval is counted only provisionally and listed in the review request below — ask the DGS to confirm it.`,
     });
   }
 
   return notes;
+}
+
+
+/** The note's 60000-level sentence, as the course lines decide it (policy
+ * review round 4, P4-transfer-7; DGS 2026-10-12: "apply the suggested
+ * handling"): the promise "counts toward the MSCSE alone, whenever you took
+ * it" only to an Integrated B.S. + M.S. student admitted before the bachelor's
+ * was awarded (DGS 2026-10-07, P3-fourplusone-1); a 4+1 admitted after it
+ * counts only the shared six (4+1 guidance: "Only six credits can be
+ * double-counted if a student starts the graduate program after the
+ * bachelor's degree has been awarded"); a student not in the 4+1 counts none
+ * (§3.5; allocate.ts plainBachelorsSixk). It promised the first to all three. */
+function sixkSentence(student: Student, awarded: Term): string {
+  if (student.integratedBsMs === true) {
+    const admitted = student.integratedAdmitted;
+    if (admitted !== undefined && compareTerm(admitted, awarded) > 0)
+      return `You were admitted to the Integrated program for ${termLabel(admitted)}, after your bachelor’s degree (${termLabel(awarded)}), so a 60000-level course you took as an undergraduate counts only among the shared ${BS_SHARED_CREDITS_MAX} (4+1 guidance).`;
+    return 'A 60000-level course your bachelor’s degree did not use counts toward the MSCSE alone, whenever you took it (the Graduate School, through the DGS).';
+  }
+  return `A 60000-level course you took as an undergraduate counts toward the MSCSE only if you were in the Integrated B.S. + M.S. (4+1) program and admitted before your bachelor’s degree was awarded (Graduate School; §3.5)${student.integratedBsMs === false ? '' : ' — the earlier-degrees questions in the Transcripts card ask whether you were'}.`;
 }
