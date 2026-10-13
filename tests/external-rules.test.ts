@@ -633,6 +633,10 @@ describe('credit_system: quarter hours become Notre Dame hours', () => {
     assert.equal(parsed.length, 1);
     assert.equal(parsed[0]?.creditSystem, 'quarter');
     assert.match(issues[0]?.message ?? '', /Universities row 3 repeats x university \(already in row 2\) — the last row wins/);
+    // …and the web pages show it (DGS 2026-10-12: "Let the last row win but
+    // show a warning on the web pages").
+    assert.equal(issues[0]?.severity, 'warning');
+    assert.equal(issues[0]?.onPage, true);
   });
 
   it('with the Universities tab, the old ExternalCourses credit_system column is not read — and the sheet check says so', () => {

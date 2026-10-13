@@ -3659,17 +3659,22 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   // ---------- diagnostics ----------
 
   function diagnosticsCard(): HTMLElement | null {
-    const issues = rules.issues;
     // Students see this only when the sheet has ERRORS (usability review
     // 2026-09-05, item 19); warnings alone are the DGS's business and are
-    // printed by `npm run sync-sheet`.
-    if (!issues.some((i) => i.severity === 'error')) return null;
+    // printed by `npm run sync-sheet` — except those marked `onPage` (DGS
+    // 2026-10-12: a university listed twice in the Universities tab), which
+    // the box shows on their own.
+    const hasErrors = rules.issues.some((i) => i.severity === 'error');
+    const issues = hasErrors ? rules.issues : rules.issues.filter((i) => i.onPage === true);
+    if (issues.length === 0) return null;
     const details = el('details', { class: 'card diagnostics', 'data-key': 'diagnostics' });
     details.append(
       el(
         'summary',
         {},
-        `Rules-sheet diagnostics (${issues.filter((i) => i.severity === 'error').length} errors, ${issues.filter((i) => i.severity === 'warning').length} warnings) — for the DGS`,
+        hasErrors
+          ? `Rules-sheet diagnostics (${issues.filter((i) => i.severity === 'error').length} errors, ${issues.filter((i) => i.severity === 'warning').length} warnings) — for the DGS`
+          : `Rules-sheet ${issues.length === 1 ? 'warning' : `warnings (${issues.length})`} — for the DGS`,
       ),
     );
     for (const i of issues) {

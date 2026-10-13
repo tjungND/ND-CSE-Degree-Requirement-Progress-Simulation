@@ -150,6 +150,11 @@ export interface SheetIssue {
   row?: number;
   column?: string;
   message: string; // plain English, written for a DGS editing a spreadsheet
+  /** A warning the web pages show too, not only the sync's printout — the
+   * self-check's diagnostics box and the course-rules page (DGS 2026-10-12:
+   * a university listed twice in the Universities tab, "Let the last row win
+   * but show a warning on the web pages"). Errors are always shown. */
+  onPage?: true;
 }
 
 /** Typed accessors over the Parameters tab. A missing/bad value returns

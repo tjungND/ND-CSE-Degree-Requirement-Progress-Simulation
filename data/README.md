@@ -234,7 +234,8 @@ does (case, punctuation, diacritics and spacing ignored).
 
 A university can be listed here before any of its courses is ruled on. Two rows
 for one university: the **last** wins, and the diagnostics warn (the ExternalCourses
-rule, 2026-09-06). A student's review request asks for this tab's row for each university
+rule, 2026-09-06) — on the web pages too, since 2026-10-12 (DGS: the self-check's
+diagnostics box and the course-rules page show it until the older row is deleted). A student's review request asks for this tab's row for each university
 in the request whose system the sheet does not give yet: a paste-ready new row
 (prefilled with `quarter` or `trimester` when their record carries one, and
 saying whether the transcript read it or the student chose it), or — for a

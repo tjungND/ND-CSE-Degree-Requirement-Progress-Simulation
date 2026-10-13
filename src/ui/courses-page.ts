@@ -533,6 +533,9 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
                 ' applies them to your coursework.',
               ),
               el('p', { class: 'effective' }, rulesDateLine(rules, termLabel(currentTerm), todayIso)),
+              // A sheet warning the DGS asked the pages to show (SheetIssue
+              // `onPage`; DGS 2026-10-12: a university listed twice).
+              ...rules.issues.filter((i) => i.onPage === true).map((i) => el('p', { class: 'issue warning sheet-warning', 'data-key': `sheet-warning.${i.tab}.${i.row ?? ''}` }, `Rules sheet — for the DGS: ${i.message}`)),
               // The rules spreadsheet, linked with its faculty-only note (DGS, 2026-09-04).
               sheetSourceLine(),
             ]),

@@ -677,6 +677,8 @@ export function parseUniversitiesTab(text: string, issues: SheetIssue[]): Univer
         tab: 'Universities',
         row: rowNum,
         message: `Universities row ${rowNum} repeats ${university} (already in row ${dup.sheetRow}) — the last row wins: row ${rowNum} replaces row ${dup.sheetRow}; delete the older one.`,
+        // The last row wins, and the pages say so (DGS 2026-10-12).
+        onPage: true,
       });
       out.splice(dupIndex, 1, row);
       continue;
