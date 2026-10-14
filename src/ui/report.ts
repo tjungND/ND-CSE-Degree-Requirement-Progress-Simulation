@@ -412,9 +412,10 @@ function requirementCard(r: RequirementResult): HTMLElement {
         )
       : null;
   // Everything else, one selector per card. The rule quote names its document
-  // in full (DGS 2026-10-03: CSE handbook, Academic Code or DGS Handbook); on
-  // the MSCSE tab its "DGS" reads "ADGS" like the rest of the page (2026-09-11),
-  // while "DGS Handbook" stays the document's name (first-mention.ts).
+  // in full (DGS 2026-10-03: CSE handbook, Academic Code or DGS Handbook) and
+  // keeps the handbook's own words: the MSCSE tab's DGS → ADGS rewrite skips
+  // `.rule-quote` (first-mention.ts applyDeciderRule; P4-text-6, DGS
+  // 2026-10-12), so keep the class on the quote.
   const courseLink = courseListLink(r);
   const more = el(
     'details',

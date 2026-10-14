@@ -4,6 +4,7 @@ import { formatCredits } from '../credits.ts';
 import { isNotreDameInstitution } from '../../data/external.ts';
 import type { Parameters, Rules } from '../../data/types.ts';
 import type { AllocationResult, CapId, ClassifiedCourse, CourseAllocation } from '../allocate.ts';
+import { holdAwaitsRuling } from '../allocate.ts';
 import { usableGpa } from '../ranges.ts';
 import { openDeadline } from '../status.ts';
 import type { TierSums } from '../status.ts';
@@ -88,7 +89,21 @@ export function beforeForfeiture(ctx: Ctx, date: string | undefined): boolean {
   // The DGS's ruling that the examinations stand, ticked under Approvals
   // (policy review round 4, P4-ac-2; DGS 2026-10-11: option (a)).
   if (ctx.student.attestations.examsBeforeInterruptionStand === true) return false;
+  return datedBeforeForfeiture(ctx, date);
+}
+/** Dated before the interruption, whatever the DGS ruled — what the
+ * examinations tick can release (the page offers it from these). */
+export function datedBeforeForfeiture(ctx: Ctx, date: string | undefined): boolean {
   return ctx.forfeitBefore !== undefined && date !== undefined && date < startOfTerm(ctx.forfeitBefore).date;
+}
+/** A qualifier passed under the earlier requirements, after a readmission
+ * following five years or more: its attestation has no date, so it waits for
+ * the DGS (P3-ac-5a-3) — until the examinations tick records the DGS's and the
+ * Graduate School's ruling that the examinations stand, which releases it like
+ * any dated examination (policy review round 5; DGS 2026-10-14: "Apply 1–28":
+ * the tick read only by `beforeForfeiture` left this one held for good). */
+export function priorRulesQualifierHeld(ctx: Ctx): boolean {
+  return ctx.forfeitBefore !== undefined && ctx.student.attestations.examsBeforeInterruptionStand !== true;
 }
 /** The fact such an examination or course carries on its card, and the rule. */
 export const FORFEIT_FACT = 'before an interruption of five years or more';
@@ -175,7 +190,7 @@ export function defendGpaNote(ctx: Ctx): string {
   const min = ctx.params.number('gpa_min');
   const defenseGpa = usableGpa(ctx.student.gpa); // R1: an off-scale figure gates nothing
   return min !== undefined && defenseGpa !== undefined && defenseGpa < min
-    ? ` Note §2.2: a student whose cumulative GPA is below ${min.toFixed(1)} may not defend.`
+    ? ` Note §2.2: a student whose cumulative GPA is below ${gpaMinText(min)} may not defend.`
     : '';
 }
 
@@ -353,6 +368,10 @@ export function timeLimitRow(
     const fundingDue: DetailPart[] = [...(args.funding ? [args.funding.whenDue] : []), ...(args.funding?.always ? [args.funding.always] : [])];
     const fundingAlways: DetailPart[] = args.funding?.always ? [args.funding.always] : [];
     const done = args.completed;
+    // "counted" while the uncounted master's candidacy application is still
+    // open, as the met branch says (P3-dh-3.21-3.24-1; round 5, item 32: DGS
+    // 2026-10-14, "32 yes").
+    const everyDone = others.mastersApplicationOpen ? 'Every counted requirement' : 'Every requirement';
     if (others.allMet && done !== undefined && done.date > date) {
       // Finished, but after the limit (Academic Code §6.2.6 / §6.1.4): the
       // Graduate School decides eligibility (dissertation completion status,
@@ -363,8 +382,8 @@ export function timeLimitRow(
       statusLabel = 'Eligibility at risk';
       parts = [
         done.course
-          ? `Every requirement is complete, but the last one was completed after the ${years}-year limit passed at ${deadlineTermLabel(date)} (approximate)${shiftNote}: ${done.course.courseId}, taken in ${termLabel(done.course.term)}, completed ${done.course.requirement}`
-          : `Every requirement is complete, but the last one was dated ${done.date}, after the ${years}-year limit passed at ${deadlineTermLabel(date)} (approximate)${shiftNote}`,
+          ? `${everyDone} is complete, but the last one was completed after the ${years}-year limit passed at ${deadlineTermLabel(date)} (approximate)${shiftNote}: ${done.course.courseId}, taken in ${termLabel(done.course.term)}, completed ${done.course.requirement}`
+          : `${everyDone} is complete, but the last one was dated ${done.date}, after the ${years}-year limit passed at ${deadlineTermLabel(date)} (approximate)${shiftNote}`,
         { note: `${args.section} makes that a forfeiture of degree eligibility unless the Graduate School granted an extension — confirm it with the DGS` },
         ...longerNote(done.date),
         ...extNotes,
@@ -620,6 +639,14 @@ export function creditsReachedAt(
   return undefined;
 }
 
+/** The sheet's GPA minimum as the page prints it: at least one decimal and
+ * never rounded — 3 → "3.0", 3.25 → "3.25" (round 5, item 14; DGS
+ * 2026-10-14): toFixed(1) showed 3.25 as "3.3" while the check used 3.25. */
+export function gpaMinText(n: number): string {
+  const s = String(+n.toFixed(3));
+  return s.includes('.') ? s : n.toFixed(1);
+}
+
 /** A card title's number (policy review round 4, P4-data-5; DGS 2026-10-12:
  * "apply the suggested handling"): the value its row already reads — the
  * Parameters value, held at the Graduate School's where the sheet would loosen
@@ -726,7 +753,7 @@ export function capRow(args: {
     }
     // A tick is what cleared these (P1-levels-grades-credits-30, 2026-10-03):
     // the row stays Met, and says the approval is the student's own word.
-    const ticked = relevant.filter((c) => c.tickApproved && admitted(c));
+    const ticked = relevant.filter((c) => c.tickApproved && admitted(c) && !holdAwaitsRuling(c));
     if (ticked.length > 0) {
       parts.push(`approved by the DGS, as you ticked: ${ticked.map((c) => c.entry.courseId).join(', ')} — the DGS office holds the record`);
     }

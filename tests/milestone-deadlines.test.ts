@@ -148,6 +148,7 @@ describe('where the record stands against it', () => {
     assert.equal(d.candidacyPassed!.state, undefined);
     assert.equal(d.candidacyAdmitted!.state, 'done');
     assert.equal(d.rcrTrainingCompleted!.state, undefined, 'admitted: the RCR is not late, only not entered');
+    assert.equal(d.researchQualifierPassed!.state, undefined, 'dissertation dated, research date blank: missing, not overdue (P4-phd-3)');
     const e = deadlines(phdStudent({ entryTerm: fall(2020), milestones: { candidacyPassed: '2023-04-01', defensePassed: '2026-04-01' } }), '2026-10-04');
     assert.equal(e.candidacyAdmitted!.state, undefined);
     assert.equal(e.rcrTrainingCompleted!.state, undefined, 'the RCR follows the admission’s missing-date rule');

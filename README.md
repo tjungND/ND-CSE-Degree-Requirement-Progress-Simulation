@@ -122,8 +122,11 @@ pre-fills; leave it blank for variable-credit courses. Full schema: `data/README
 Rules change from a term onward, and students who took the course earlier keep the old rule. So:
 
 1. **Do not edit the old row.** Copy it and paste the copy directly below.
-2. In the copy, change the policy columns and set `rules_effective_term` to the first term the new rule
-   applies.
+2. In the copy, **first** set `rules_effective_term` to the first term the new rule applies; only
+   then change the policy columns. Until the copy has its own term, the app sees two rows for the
+   same course and term, uses the copy (the last row wins) for every student, and both web pages
+   show a warning naming the two rows — so do not delete either row because of that warning while
+   you are still editing the copy.
 3. The app picks, for each course a student took, the newest row whose `rules_effective_term` is not
    after the term the student took it. If every row is later than the student's term, the oldest
    row applies.

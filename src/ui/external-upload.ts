@@ -32,6 +32,7 @@ import { prefillLevelsByTerm } from '../transcript/level-prefill.ts';
 import { absorbBlockRow, blockRowBack, blockRowFor } from './nd-posted.ts';
 import { BROWSER_TOO_OLD_FOR_PDFS, browserTooOldForPdfs } from './pdf-support.ts';
 import { reclassifyNotreDameCourses } from './prior-nd.ts';
+import { unfinishedPriorLabel } from './program-history.ts';
 import { canonicalUniversityName } from './university-name.ts';
 import { confirmDialog } from './copy-dialog.ts';
 import { parseTranscript } from '../transcript/parse.ts';
@@ -75,7 +76,7 @@ interface PreviewRow {
   /** OCR read this row's line poorly — the preview marks it for checking. */
   lowConfidence?: boolean;
   /** Why a confidently read row is flagged all the same (item 13, 2026-10-11). */
-  evidence?: 'credits' | 'mark' | 'totals';
+  evidence?: 'credits' | 'mark' | 'totals' | 'code';
   /** OCR only (Batch C answer (4), DGS 2026-10-09): what the scan showed in a
    * credits or grade cell the parser corrected ("3.O", "Bt") — shown beside
    * the value, never saved (the Add builds each course field by field,
@@ -895,6 +896,23 @@ function previewFromParsed(
   return { mapped, kept };
 }
 
+/** A transcript with Cyrillic text from which no course could be read
+ * (round 5, item 20; DGS 2026-10-14). */
+export function nonLatinNoRowsMessage(filename: string): string {
+  return `No course could be read from “${filename}”: it has Cyrillic text, and the reader reads Latin-letter course codes only. Add each course by hand in the Coursework card: the code as printed (or in Latin letters) and the English title.`;
+}
+
+/** What a text-layer import that read no course does (round 5, item 20;
+ * verification, reader-1 to reader-4, 2026-10-14): Cyrillic course codes get
+ * their own message — the English OCR would read them no better — and
+ * anything else is offered OCR, as before. A Cyrillic letterhead beside
+ * Latin codes is not Cyrillic codes. A scanner's own text layer keeps the
+ * OCR offer: that layer is another engine's reading, which may have read
+ * Latin letters as Cyrillic. */
+export function noRowsRoute(parsed: { cyrillicCodes?: true }, scannedTextLayer: boolean): 'cyrillic-codes' | 'offer-ocr' {
+  return parsed.cyrillicCodes && !scannedTextLayer ? 'cyrillic-codes' : 'offer-ocr';
+}
+
 /** The preview's note on a transcript with Cyrillic text (DGS 2026-10-12). */
 export const NON_LATIN_NOTE =
   'This transcript has Cyrillic text. The reader reads Latin-letter course codes only, so courses with Cyrillic codes may be missing below — add each one with “+ Add a row by hand”: the code as printed (or in Latin letters) and the English title.';
@@ -950,9 +968,12 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
         // text layer may be an image's stray caption, or a layout the parser
         // cannot read that the OCR path can. Same opt-in as a scan — and a
         // scanned PDF whose embedded text gave no course is offered it as the
-        // scan it is.
+        // scan it is. Cyrillic course codes are out of scope (DGS 2026-10-12):
+        // said so, with where to add the courses (round 5, item 20) — after
+        // the empty preview is closed (verification, reader-1).
         preview = undefined;
         releaseScanStrips();
+        if (noRowsRoute(parsed, scannedTextLayer) === 'cyrillic-codes') return fail(nonLatinNoRowsMessage(file.name));
         pendingScan = { slot: slot.level, buffer, filename: file.name, reason: scannedTextLayer ? 'scan' : 'no-lines' };
         render();
         return;
@@ -1799,6 +1820,7 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
             // (initializer cast: the assignment happens inside the update()
             // closure, which TS's flow analysis can't see from the use below)
             let priorAutoSet = false as 'completed' | 'unfinished' | false;
+            let unfinishedLabel = '';
             let merged = 0;
             let refiledToProgram = 0;
             let graduateRows = 0;
@@ -1913,6 +1935,9 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
               if (isNotreDameInstitution(university)) {
                 refiledToProgram = reclassifyNotreDameCourses(s).toProgram;
               }
+              // Read from the record once every row is filed, as the emails
+              // read it (verification, transfer-3).
+              unfinishedLabel = unfinishedPriorLabel(s);
             });
             const matched = ready.filter((r) => findExternalRule(rules.external, university, r.courseId)).length;
             const undergraduateRows = ready.length - graduateRows;
@@ -1934,7 +1959,9 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
                 (priorAutoSet === 'completed'
                   ? ' Prior graduate study was set to “Completed prior M.S. or Ph.D.” from the conferral line on your transcript — if that’s wrong, change it in the earlier-degrees questions in the Transcripts card.'
                   : priorAutoSet === 'unfinished'
-                    ? ' Prior graduate study was set to “Prior M.S., not completed” — no degree-conferral line was found on your transcript; if you did earn the degree, say so in the earlier-degrees questions in the Transcripts card.'
+                    ? // The label the emails print (program-history.ts): a Ph.D. transcript
+                      // is an unfinished Ph.D., not "Prior M.S." (round 5, item 13).
+                      ` Prior graduate study was set to “${unfinishedLabel}” — no degree-conferral line was found on your transcript; if you did earn the degree, say so in the earlier-degrees questions in the Transcripts card.`
                     : '') +
                 (bachelorsSet
                   ? ` “Bachelor’s degree awarded” was set to ${termLabel(bachelorsSet)}${bachelorsFromTranscript ? ' from the conferral date on your transcript' : ''} — check it under Your standing.`
@@ -1982,11 +2009,12 @@ function previewTotalsCheck(p: ExternalPreview): TotalsMismatch[] {
 }
 
 /** The ⚠'s words on a scanned row, by why it is flagged (item 13, 2026-10-11). */
-const OCR_FLAG_TITLE: Record<'confidence' | 'credits' | 'mark' | 'totals', string> = {
+const OCR_FLAG_TITLE: Record<'confidence' | 'credits' | 'mark' | 'totals' | 'code', string> = {
   confidence: 'OCR read this line poorly — check it carefully',
   credits: 'No other row of this transcript has this credit value — check it against the scan',
   mark: 'The grade cell holds a number or a stray sign, not a grade — check it against the scan',
   totals: 'This term’s rows do not add up to the transcript’s own totals — check it against the scan',
+  code: 'The course number may have a letter where the scan meant a digit — check it against the scan',
 };
 
 const FIELD_WORDS: Record<ImportedField, string> = { course: 'course number', title: 'title', credits: 'credits', term: 'term', grade: 'grade', level: 'level' };

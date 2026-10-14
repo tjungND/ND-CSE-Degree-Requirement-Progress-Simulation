@@ -48,7 +48,7 @@ export interface ExternalCourseCandidate {
    * reads and has a digit or a stray sign in it; `totals`, a term whose rows
    * do not add up to the transcript's own totals. The engine's confidence misses a confident
    * misread; these facts of the document do not. */
-  evidence?: 'credits' | 'mark' | 'totals';
+  evidence?: 'credits' | 'mark' | 'totals' | 'code';
   /** OCR only (Batch C answer (4), DGS 2026-10-09): the scan's OWN reading of
    * a cell the parser corrected from an unambiguous letter-for-digit shape —
    * credits "3.O" read as 3.0, a grade "Bt" read as B+ (`ocrCellCorrection`).
@@ -141,6 +141,11 @@ export interface ExternalParseResult {
    * codes is out of scope — the page reads English-language transcripts — and
    * the preview says so, so the student adds such courses by hand). */
   nonLatinScript?: true;
+  /** A line is led by a Cyrillic course code — "ОК 10   Науково-дослідна
+   * практика …" — not just a Cyrillic letterhead or address beside Latin
+   * codes (round 5 verification, reader-2, 2026-10-14): the no-rows message
+   * blames the codes only when they are Cyrillic. */
+  cyrillicCodes?: true;
   courses: ExternalCourseCandidate[];
 }
 
@@ -764,8 +769,11 @@ export function ocrCellCorrection(token: string): string | undefined {
  * by OCR_DIGIT_LOOKALIKES (O and o for 0, l and I for 1), or undefined. Only
  * a token of two to six characters made of digits and those letters, with at
  * least one of each, and not led by a letter (a code like McMaster's "1MD3"
- * or "4G06" has other letters and is left alone). A suggestion only, never
- * applied by the reader (DGS 2026-10-12): the student accepts it. */
+ * or "4G06" has other letters and is left alone). McMaster also prints real
+ * numbers whose only letter is an O or an I ("SFWRENG 3O03", "ENGPHYS 4I03"):
+ * those DO get a suggestion, which the student declines — it is a suggestion
+ * only, never applied by the reader, and the row is checked against the paper
+ * either way (DGS 2026-10-12; round 5, item 31: option (a), keep the rule). */
 export function codeLookalikeSuggestion(courseId: string): string | undefined {
   const m = /^(.*\s)([\dOoIl]{2,6})$/.exec(courseId);
   if (!m) return undefined;
@@ -1347,6 +1355,10 @@ function institutionHeading(lines: readonly string[]): string[] {
  * same floor. The engine is confidently wrong on digits ("3.0" read as "30"
  * at 93): a cell-level check, not a floor, is the route to those (plan 2.5). */
 const OCR_CONFIDENCE_FLOOR = 80;
+
+/** A line led by a Cyrillic course code: two to six Cyrillic letters, a
+ * number, then a space — "ОК 10   …" on the Ukrainian supplement (reader-2). */
+const CYRILLIC_CODE_LINE = /^\s*\p{Script=Cyrillic}{2,6}[\s.\-]?\d{1,4}\p{L}?\s/mu;
 
 /** How the lines were made, beyond their confidences. */
 export interface ExternalParseOptions {
@@ -3348,9 +3360,21 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // only: offered to the student, never applied (DGS 2026-10-12).
     if (ocrLines) {
       const last = courses[courses.length - 1]!;
-      const suggestion = codeLookalikeSuggestion(last.courseId);
+      // Read from the number as printed: the course id is upper-cased, so a
+      // small "l" for 1 ("MATH 2l0") had become "2L0" and was never offered
+      // (round 5, item 19; DGS 2026-10-14).
+      const idTail = /(\S+)$/.exec(last.courseId)?.[1] ?? '';
+      const printedTail = (/(\S+)\s*$/.exec(lead.printed)?.[1] ?? '').slice(-idTail.length);
+      const asPrinted = idTail !== '' && printedTail.toUpperCase() === idTail ? `${last.courseId.slice(0, -idTail.length)}${printedTail}` : last.courseId;
+      // …and from the upper-cased id when the printed case offers none: a
+      // small "i" printed for 1 reads "1I1" in the id box, and an I is one of
+      // the ruled look-alikes (verification, reader-5, 2026-10-14).
+      const suggestion = codeLookalikeSuggestion(asPrinted) ?? codeLookalikeSuggestion(last.courseId);
       if (suggestion !== undefined) {
         last.codeSuggestion = suggestion;
+        // A confidently read line is flagged for its code, and says so — not
+        // "OCR read this line poorly" (round 5, item 21; DGS 2026-10-14).
+        if (!last.lowConfidence) last.evidence ??= 'code';
         last.lowConfidence = true;
       }
     }
@@ -3613,6 +3637,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     transferRowsSkipped: transferRowsSkipped > 0 ? transferRowsSkipped : undefined,
     ...(notATranscript ? { notATranscript: true as const } : {}),
     ...(/\p{Script=Cyrillic}/u.test(allText) ? { nonLatinScript: true as const } : {}),
+    ...(CYRILLIC_CODE_LINE.test(allText) ? { cyrillicCodes: true as const } : {}),
     ...(totalsRead.length > 0 && !notATranscript ? { printedTotals: totalsRead } : {}),
     courses: notATranscript ? [] : courses,
   };

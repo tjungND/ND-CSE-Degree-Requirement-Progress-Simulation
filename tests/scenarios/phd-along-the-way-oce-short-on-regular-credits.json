@@ -1,0 +1,134 @@
+{
+  "name": "phd-along-the-way-oce-short-on-regular-credits",
+  "description": "Policy review round 5, item 2 (DGS 2026-10-14: “Apply 1–28”): the OCE (December 2025) came with 21 of the 24 regular-course credits — the 24th in Spring 2026 — and everything else in hand; the student wants the MSCSE along the way. The exam waits for the DGS (P3-cse-4b-1) and the award waits with it (P4-phd-5). The missing-parameter matrix (tests/missing-parameter-never-passes.test.ts) removes phd_regular_credits_min here: the award must not read Met then — its hold used to leave that key out.",
+  "today": "2026-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "gpa": 3.8,
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {
+      "advisorIdentified": "2024-10-01",
+      "advisorName": "Prof. Example",
+      "advisorTtt": "yes",
+      "rcrTrainingCompleted": "2025-09-01",
+      "candidacyPassed": "2025-12-10"
+    },
+    "attestations": {
+      "wantsMsAlongTheWay": true
+    }
+  },
+  "expect": {
+    "phd.candidacy": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "21 of 24 regular-course credits"
+      ]
+    },
+    "phd.msAlongTheWay": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "The award rests on your Oral Candidacy Exam (OCE), which waits for the DGS"
+      ]
+    }
+  }
+}

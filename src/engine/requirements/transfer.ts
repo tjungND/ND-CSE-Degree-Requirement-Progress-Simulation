@@ -70,9 +70,13 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     const provisional = ctx.alloc.transfer.provisional;
     // Posted credit outside the working limit (P4-transfer-2 (a)) counts, but
     // not against the limit: the meter below says what the limit admitted.
+    // Measured as `counted` is (allocate.ts sums.transfer): without the
+    // non-CSE allowance's spill into the total (`overCapToTotal`), which
+    // sums.transfer leaves out — the meter read "-3 of the 6" for a posted
+    // non-CSE course past the nine (policy review round 5; DGS 2026-10-14).
     const outsideCap = ctx.alloc.perCourse
       .filter((p) => p.course.transferOutsideCap === true && !p.course.superseded && p.course.tier !== 'provisional')
-      .reduce((sum, p) => sum + p.countedRegular + p.countedOther, 0);
+      .reduce((sum, p) => sum + p.countedRegular + p.countedOther - (p.overCapToTotal ?? 0), 0);
     // Split the pending courses by what the DGS's ExternalCourses tab says,
     // so the student knows exactly what to do next (2026-09-01). Ruled
     // transferable already → nothing is left for the DGS to decide: the
@@ -197,7 +201,7 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       const credits = unreviewed.reduce((sum, c) => sum + (c.entry.credits ?? 0), 0);
       parts.push(`Waiting for the DGS: ${unreviewed.map((c) => c.entry.courseId).join(', ')} (${formatCredits(credits)} credits)`, { note: 'Send the review request from the Transcripts card' });
     }
-    parts.push(`${formatCredits(counted - outsideCap)} of the ${cap} credits you may transfer are counted${provisional > 0 ? `; ${formatCredits(provisional)} more pending review` : ''}${outsideCap > 0 ? `, besides ${formatCredits(outsideCap)} on your Notre Dame record, counted in full` : ''}`, { note: capNote });
+    parts.push(`${formatCredits(Math.max(0, counted - outsideCap))} of the ${cap} credits you may transfer are counted${provisional > 0 ? `; ${formatCredits(provisional)} more pending review` : ''}${outsideCap > 0 ? `, besides ${formatCredits(outsideCap)} on your Notre Dame record, counted in full` : ''}`, { note: capNote });
     // Only courses under §5.2's own cap belong on this row: Notre Dame
     // coursework taken as an undergraduate is filed as 'transfer' but is not
     // transfer credit (2026-09-10), and its lines used to be repeated here.
@@ -265,7 +269,9 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
   // processing request reads the report's `transferCredits` and submits only
   // the decided courses the cap admits (policy review round 3,
   // P3-prior-programs-5); held ones go through the DGS's own recommendation.
-  const transferSatisfied = countedCourseIds(ctx, (p) => (p.course.caps.includes('transfer') ? p.countedRegular : 0));
+  // …and the posted credit outside the working limit (P4-transfer-2), which
+  // left this list when it left the cap (round 5, item 8; DGS 2026-10-14).
+  const transferSatisfied = countedCourseIds(ctx, (p) => (p.course.caps.includes('transfer') || p.course.transferOutsideCap === true ? p.countedRegular : 0));
   return {
     id: opts.id,
     ...(transferSatisfied.length > 0 ? { satisfiedBy: transferSatisfied } : {}),

@@ -8,7 +8,7 @@ import { audit } from '../src/engine/audit.ts';
 import type { CourseEntry, Grade, Student } from '../src/engine/types.ts';
 import { OCE_FULL } from '../src/ui/first-mention.ts';
 import { gradAdminRequest, processingItems, selfCheckFileName } from '../src/ui/grad-admin-request.ts';
-import { buildRules } from './helpers.ts';
+import { buildRules, loadScenario } from './helpers.ts';
 import { ndCourse, phdStudent, transferCourse } from './helpers/student.ts';
 
 const rules = buildRules(); // fixture ExternalCourses tab: CS 50300 transferable=yes (core os), CS 59000 no
@@ -217,10 +217,16 @@ describe('the master’s candidacy item past the MSCSE’s time limit (policy re
     assert.match(req.text, /Initiate my Application for Admission to Master’s Degree Candidacy \(Academic Code §6\.1\.6\) — the self-check shows a 3\.0 GPA and 30 credits, counting this semester’s \(DGS Handbook §3\.21\.1\) — the MSCSE’s time limit \(§3\.3\) passed at the start of Fall 2026 \(approximate\); an extension is the Graduate School’s to grant\./);
     assert.ok(actionItems(report).gradAdmin.some((x) => /Master’s Degree Candidacy .*time limit \(§3\.3\) passed at the start of Fall 2026/.test(x)));
   });
+  // A record whose candidacy item IS printed (round 5, item 36: the old record
+  // had no such item, so the test could not fail).
   it('a record inside its time limit has no such clause', () => {
-    const sc = { student: { schemaVersion: 1, program: 'mscse', entryTerm: { season: 'fall', year: 2025 }, priorMs: 'none', gpa: 3.5, courses: [], milestones: {}, attestations: {} } as unknown as Student };
-    const report = audit(sc.student, rules, '2026-10-11');
-    assert.doesNotMatch(gradAdminRequest(report, sc.student, rules, opts).text, /time limit \(§3\.3\) passed/);
+    const sc = loadScenario('mscse-candidacy-application-due');
+    const r = buildRules(sc.rules.patch);
+    const report = audit(sc.student, r, sc.today);
+    const { text, items } = gradAdminRequest(report, sc.student, r, opts);
+    assert.equal(items.msCandidacyDue, true);
+    assert.match(text, /Initiate my Application for Admission to Master’s Degree Candidacy/);
+    assert.doesNotMatch(text, /time limit \(§3\.3\) passed/);
   });
 });
 

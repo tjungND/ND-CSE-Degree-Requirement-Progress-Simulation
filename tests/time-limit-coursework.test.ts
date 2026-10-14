@@ -44,7 +44,7 @@ describe('the MSCSE five years (CSE §3.3; Academic Code §6.1.4)', () => {
     const r = row(mscse([ndCourse('CSE 60427', { term: fall(2026) })]), '2027-01-20', 'ms.timeLimit');
     assert.equal(r.status, 'needs_dgs_review');
     assert.equal(r.statusLabel, 'Eligibility at risk');
-    assert.match(r.detail, /^Every requirement is complete, but the last one was completed after the 5-year limit passed at the start of Fall 2026 \(approximate\): CSE 60427, taken in Fall 2026, completed the 24 regular-course credits\./);
+    assert.match(r.detail, /^Every counted requirement is complete, but the last one was completed after the 5-year limit passed at the start of Fall 2026 \(approximate\): CSE 60427, taken in Fall 2026, completed the 24 regular-course credits\./);
     assert.equal(r.deadline?.label, 'Done Fall 2026 — after the limit');
   });
   it('while that course is in progress the row still reads Overdue', () => {

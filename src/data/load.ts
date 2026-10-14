@@ -387,7 +387,10 @@ export async function loadLiveRules(nowIso: string, onProgress: (p: LoadProgress
     rules.issues.push({
       severity: 'warning',
       tab: 'Universities',
-      message: `The Universities tab could not be loaded (${optionalIssues.universities}) — each university's credit system is unknown until it is reachable again, so courses from other universities count their credits as the transcript prints them, and each such line says the DGS converts quarter or trimester units (§5.2 pro-rata).`,
+      // A course whose own record carries a quarter or trimester reading (the
+      // transcript's, or the student's choice at import) is still converted
+      // (round 5, item 16; DGS 2026-10-14).
+      message: `The Universities tab could not be loaded (${optionalIssues.universities}) — each university's credit system is unknown until it is reachable again: a course whose transcript reading (or the student's choice at import) says quarter or trimester units is still converted; the others count their credits as the transcript prints them, and each such line says the DGS converts quarter or trimester units (§5.2 pro-rata).`,
     });
   }
   return noteNewerSheet(rules);

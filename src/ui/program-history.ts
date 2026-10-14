@@ -100,6 +100,14 @@ export function unfinishedPhdElsewhere(student: Student): boolean {
   return student.priorMs === 'unfinished' && student.courses.some((c) => c.origin === 'transfer' && c.degreeLevel === 'phd');
 }
 
+/** The unfinished case's label as the record reads it — what the import's
+ * toast says it set (round 5, item 13), read AFTER the import has re-filed
+ * any Notre Dame rows, so the toast and the emails agree (verification,
+ * transfer-3, 2026-10-14). */
+export function unfinishedPriorLabel(student: Student): string {
+  return unfinishedPhdElsewhere(student) ? 'Prior Ph.D., not completed' : PRIOR_LABELS.unfinished;
+}
+
 /** The "Prior graduate study" values as the page labels them — the §5.2
  * transfer cap's three cases. */
 export const PRIOR_LABELS: Record<Student['priorMs'], string> = {
@@ -126,6 +134,6 @@ export function priorStudyLabel(student: Student): string {
   // Option 1, 2026-10-08 — the opening dialog no longer forces the answer).
   if (b === undefined && student.priorMs === 'none' && student.priorMsInferred !== true && student.backgroundDraft?.graduate !== 'none') return 'not answered yet';
   // Not "Prior M.S." for an unfinished Ph.D. (P4-transfer-4).
-  if (unfinishedPhdElsewhere(student)) return 'Prior Ph.D., not completed';
+  if (student.priorMs === 'unfinished') return unfinishedPriorLabel(student);
   return PRIOR_LABELS[student.priorMs];
 }

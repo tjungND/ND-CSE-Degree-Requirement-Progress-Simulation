@@ -129,7 +129,7 @@ describe('the Universities tab alone fails (P4-data-4)', () => {
     const rules = await loadLiveRules('2026-10-12T12:00:00Z');
     const issue = rules.issues.find((i) => i.tab === 'Universities');
     assert.ok(issue, JSON.stringify(rules.issues));
-    assert.match(issue.message, /credit system is unknown until it is reachable again, so courses from other universities count their credits as the transcript prints them/);
+    assert.match(issue.message, /credit system is unknown until it is reachable again: a course whose transcript reading \(or the student's choice at import\) says quarter or trimester units is still converted; the others count their credits as the transcript prints them/);
     assert.doesNotMatch(issue.message, /credit_system/);
   });
 });

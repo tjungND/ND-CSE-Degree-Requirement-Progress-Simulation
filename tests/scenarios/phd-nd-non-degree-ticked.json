@@ -29,7 +29,8 @@
         "institution": "University of Notre Dame",
         "degreeLevel": "masters",
         "registeredLevel": "graduate",
-        "dgsApproved": true
+        "dgsApproved": true,
+        "dgsHoldApproved": true
       },
       {
         "courseId": "CSE 60111",

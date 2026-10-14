@@ -6,7 +6,7 @@ import { endOfTerm, termLabel } from '../term.ts';
 import type { DetailPart, RequirementResult } from '../types.ts';
 import type { Ctx } from './context.ts';
 import { DUAL_DEGREE_SHARED_CREDITS_MAX } from '../allocate.ts';
-import { capRow, joinedDetail, missingParamDetail } from './context.ts';
+import { capRow, gpaMinText, joinedDetail, missingParamDetail } from './context.ts';
 
 const GROUP = 'Basic requirements — §2.2–2.3';
 
@@ -33,7 +33,7 @@ export function defendedBelowGpaNote(ctx: Ctx): string {
   const min = ctx.params.number('gpa_min');
   const gpa = usableGpa(ctx.student.gpa);
   return min !== undefined && gpa !== undefined && gpa < min
-    ? ` You show a ${gpaText(gpa)} GPA — §2.2 requires a cumulative GPA of ${min.toFixed(1)} or higher to defend; confirm with the DGS that the defense could be held.`
+    ? ` You show a ${gpaText(gpa)} GPA — §2.2 requires a cumulative GPA of ${gpaMinText(min)} or higher to defend; confirm with the DGS that the defense could be held.`
     : '';
 }
 
@@ -62,10 +62,10 @@ export function gpaRow(ctx: Ctx): RequirementResult {
     parts.push(`Cumulative GPA ${formatValue(gpa, GPA_RANGE)} is outside the ${rangeSpan(GPA_RANGE)} range, so it cannot be checked — correct it under Coursework`);
   } else if (gpa >= min) {
     status = 'met';
-    parts.push(`Cumulative GPA ${gpaText(gpa)} meets the ${min.toFixed(1)} minimum`);
+    parts.push(`Cumulative GPA ${gpaText(gpa)} meets the ${gpaMinText(min)} minimum`);
   } else {
     status = 'unmet';
-    parts.push(`Cumulative GPA ${gpaText(gpa)} is below the ${min.toFixed(1)} minimum`, { note: 'You cannot receive a degree or defend until it recovers (§2.2)' });
+    parts.push(`Cumulative GPA ${gpaText(gpa)} is below the ${gpaMinText(min)} minimum`, { note: 'You cannot receive a degree or defend until it recovers (§2.2)' });
   }
   // One cumulative GPA (Academic Code §4.5: "the ratio of accumulated earned
   // quality points to the accumulated graded semester credit hours", over
@@ -92,7 +92,7 @@ export function gpaRow(ctx: Ctx): RequirementResult {
     group: GROUP,
     // Read from the sheet, formatted as the row's own sentence formats it
     // (P4-data-5).
-    title: `Cumulative GPA of at least ${(min ?? 3).toFixed(1)}`,
+    title: `Cumulative GPA of at least ${gpaMinText(min ?? 3)}`,
     status,
     ...joinedDetail(parts),
     citation: { section: '§2.2', quote },

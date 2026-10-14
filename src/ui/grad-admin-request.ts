@@ -271,10 +271,15 @@ function standingTable(r: RequirementResult, student: Student, countedEntries?: 
  * the Notre Dame record, which is finished credit, not "in progress", as the
  * coursework table prints it (policy review round 4, P4-transfer-6; DGS
  * 2026-10-12; DGS Handbook §3.14: credits are reported in semester hours). */
-function creditsCell(c: CourseEntry, cc: ClassifiedCourse | undefined): string {
-  const counted = cc?.effectiveCredits;
-  if (counted === undefined || Math.abs(counted - c.credits) < 1e-9) return formatCredits(c.credits);
-  return `${formatCredits(counted)} (${formatCredits(c.credits)}${cc?.convertedFrom ? ` ${cc.convertedFrom}` : ''} credits on the transcript)`;
+function creditsCell(c: CourseEntry, cc: ClassifiedCourse | undefined, capCounted?: { counted: number; restOver?: string }): string {
+  const whole = cc?.effectiveCredits ?? c.credits;
+  const converted = Math.abs(whole - c.credits) >= 1e-9 ? `${formatCredits(c.credits)}${cc?.convertedFrom ? ` ${cc.convertedFrom}` : ''} credits on the transcript` : '';
+  // A course the §5.2 cap admits only in part prints the part it counts, as
+  // the request's own totals do (round 5, item 11; DGS 2026-10-14) — naming
+  // the cap that cut it, which is not always §5.2's (verification, transfer-1).
+  if (capCounted !== undefined && capCounted.counted < whole - 1e-9)
+    return `${formatCredits(capCounted.counted)} of ${formatCredits(whole)} (${converted ? `${converted}; ` : ''}the rest ${capCounted.restOver ?? 'over the §5.2 transfer cap'})`;
+  return converted ? `${formatCredits(whole)} (${converted})` : formatCredits(c.credits);
 }
 function gradeCell(c: CourseEntry): string {
   return c.grade === 'IP' && ndPostingOf(c) !== undefined ? '—' : c.grade;
@@ -292,7 +297,8 @@ function countedCourses(standing: StandingTable[], report: AuditReport, student:
     const label = r ? `${r.shortTitle ?? r.title} (${r.citation.section})` : t.heading;
     for (const c of t.courseEntries) {
       const key = `${c.courseId}|${c.institution ?? ''}|${termLabel(c.term)}`;
-      const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c)), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
+      const capCounted = report.transferCredits?.find((x) => x.courseId === c.courseId && x.institution === c.institution && compareTerm(x.term, c.term) === 0);
+      const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c), capCounted), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
       if (!row.countsToward.includes(label)) row.countsToward.push(label);
       out.set(key, row);
       termOf.set(key, c.term);
@@ -316,8 +322,12 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   // The DGS's approval for this student is on the course (2026-09-27).
   const approvedForMe = (c: ClassifiedCourse): boolean => c.entry.dgsApproved === true && decidedCaseByCase(c, student.program);
   // What the §5.2 cap admitted for each course (audit.ts), when the report says.
-  const countedOf = (c: ClassifiedCourse): number | undefined =>
-    report.transferCredits?.find((x) => x.courseId === c.entry.courseId && x.institution === c.entry.institution && compareTerm(x.term, c.entry.term) === 0)?.counted;
+  // A course another cap cut (the non-CSE allowance, say) is not "over the
+  // §5.2 cap": §5.2 had room for it (round 5 verification, transfer-1).
+  const countedOf = (c: ClassifiedCourse): number | undefined => {
+    const x = report.transferCredits?.find((x) => x.courseId === c.entry.courseId && x.institution === c.entry.institution && compareTerm(x.term, c.entry.term) === 0);
+    return x === undefined || x.restOver !== undefined ? undefined : x.counted;
+  };
   const decided: (ProcessingTransfer & { overCap: boolean })[] = classified
     .filter(
       (c) =>

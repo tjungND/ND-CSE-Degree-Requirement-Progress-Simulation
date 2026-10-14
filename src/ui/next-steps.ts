@@ -70,7 +70,7 @@ function foldSentSteps(steps: NextStep[], dgs: { count: number; allCourses: bool
 
 /** The review request's advisor item (shared.ts advisorReviewFlag): the
  * advisor step names it, so the count of other items leaves it out. */
-const ADVISOR_FLAG = /^(?:Thesis advisor|Advisor)’s faculty status:/;
+export const ADVISOR_FLAG = /^(?:Thesis advisor|Advisor)’s faculty status:/;
 
 /** Every scored requirement met outright — the moment the semester of
  * graduation is the next thing (the headline's own count). */
@@ -178,7 +178,9 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // Only earlier coursework, before the earlier degrees are answered: the
   // answer comes first and can change the list (UI review, 2026-10-08) — the
   // "Answer the questions" step is already above.
-  const waitsForEarlierDegrees = student.background === undefined && review.earlierOnly === true && !advisorToDgs && otherItems === 0;
+  // The advisor has its own step since P4-phd-6, so a "no" there no longer
+  // skips the wait (round 5, item 26; DGS 2026-10-14).
+  const waitsForEarlierDegrees = student.background === undefined && review.earlierOnly === true && otherItems === 0;
   if ((reviewCount > 0 || otherItems > 0) && !waitsForEarlierDegrees) {
     let text: string;
     if (otherItems === 0)

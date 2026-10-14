@@ -1678,14 +1678,18 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   nine wherever they were taken, and the app had no way to tell the department on a transcript it
   did not write, so transfers escaped the cap entirely. Now the SHEET says, in two places:
   `cse_subject_codes` (Parameters) lists the codes that mean CSE, and `is_cse` (ExternalCourses,
-  yes/no/blank) settles one course the code cannot — it WINS over the list. `isCseCourse()` in
+  yes/no/blank) settles one course the list should not decide — it WINS over the list. `ECE` is ON
+  the list on purpose since 2026-10-04: the department reads "a department other than CSE" as
+  "outside computing", so an ECE course is inside CSE whatever its topic; `is_cse = no` is for a
+  single course ruled otherwise (P4-data-6, 2026-10-12). `isCseCourse()` in
   src/data/external.ts is the only place that decides; `subjectCode()` normalises "CompSci 537" →
   "COMPSCI". A code the list does not name is OUTSIDE CSE (its silence is an answer), but a MISSING
   or BLANK parameter is no answer at all — `codeList` returns undefined for both, and classify()
   then holds every transferred course without an `is_cse` cell for the DGS (`cseUnknown`, since
   2026-10-03; before that it left the allowance off — corrected here 2026-10-07, P3-sheet-6). Notre
-  Dame's own earlier courses keep being decided by `deptOf === 'CSE'`. On the live sheet today: 55
-  of 88 rows are CSE by code, 18 are ECE (the DGS's call, row by row), 15 others fall outside.
+  Dame's own earlier courses keep being decided by `deptOf === 'CSE'`. (On 2026-09-09 the live
+  sheet had 88 rows, 18 of them ECE then decided row by row; by 2026-10-14 it has 104, and ECE is
+  CSE by code.)
 
 - **§3.5 / §3.6 track notes** (2026-09-10; promised 2026-08-31 and never built). `src/engine/tracks.ts`
   (pure) recognises the two tracks this audit does not model from the coursework itself — §3.6 from a

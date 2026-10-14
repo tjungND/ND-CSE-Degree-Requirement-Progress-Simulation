@@ -26,7 +26,8 @@
         },
         "grade": "A",
         "origin": "nd",
-        "dgsApproved": true
+        "dgsApproved": true,
+        "dgsHoldApproved": true
       },
       {
         "courseId": "CSE 60111",
@@ -37,7 +38,8 @@
         },
         "grade": "A",
         "origin": "nd",
-        "dgsApproved": true
+        "dgsApproved": true,
+        "dgsHoldApproved": true
       },
       {
         "courseId": "CSE 60321",

@@ -35,7 +35,7 @@
       "statusLabel": "Eligibility at risk",
       "deadlineState": "done",
       "detailIncludes": [
-        "Every requirement is complete, but the last one was completed after the 5-year limit passed at the start of Fall 2026 (approximate): CSE 60427, taken in Fall 2026, completed the 24 regular-course credits"
+        "Every counted requirement is complete, but the last one was completed after the 5-year limit passed at the start of Fall 2026 (approximate): CSE 60427, taken in Fall 2026, completed the 24 regular-course credits"
       ],
       "detailExcludes": ["All requirements are complete within the 5-year limit"]
     }

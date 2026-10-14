@@ -1070,9 +1070,11 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   console.log('  MSCSE tab: no §4.4.1 / §4.4.2 anywhere on the page (' + pageText.length + ' characters checked)');
   // …and the decider is the ADGS (DGS 2026-09-11): outside the contact card,
   // the notices, the glossary, the footer and the quoted handbook sentences
-  // (`.rule-quote`, the handbook's own words — P4-text-6, DGS 2026-10-12),
+  // (`.rule-quote`, the handbook's own words — P4-text-6, DGS 2026-10-12)
+  // and the rules-sheet box's heading, which is for the DGS who keeps the
+  // sheet (round 5, item 18; verification, sheet-pages-7),
   // "DGS" alone must not appear.
-  const dgsLines = (await s.evalJs(`(() => { const c = document.querySelector('#app').cloneNode(true); c.querySelectorAll('.contact-card, .notice-line, .notice-details, details.glossary, .print-header, footer, .tabs, .rule-quote').forEach(e => e.remove()); return c.textContent; })()`))
+  const dgsLines = (await s.evalJs(`(() => { const c = document.querySelector('#app').cloneNode(true); c.querySelectorAll('.contact-card, .notice-line, .notice-details, details.glossary, .print-header, footer, .tabs, .rule-quote, details.diagnostics > summary').forEach(e => e.remove()); return c.textContent; })()`))
     // "DGS Handbook" is the Graduate School's document, not the decider (2026-10-03),
     // and the DGS's own dated rulings keep the DGS's name — "DGS decision
     // 2026-08-31", "(DGS 2026-10-03)" (policy review round 3, P3-text-engine-4).

@@ -30,6 +30,8 @@ Open the Google Sheet **CSE-Degree-Checking-Rules** (named CSE-Degree-Audit-Rule
 - A rule *changes* from some term: **add a new row** with the later `rules_effective_term` instead of
   editing the old one. The app applies, per course a student took, the newest row whose
   `rules_effective_term` is not after that course's term (the oldest row applies retroactively).
+  Set the new row's term **before** editing its policy columns: two rows with the same course and
+  term are a duplicate, the last one wins for every student, and both pages warn (README § A3).
 Students see edits on their next page load (~5 minutes for Google to republish).
 
 ### 2. A number in the handbook changes

@@ -378,6 +378,10 @@ export interface CourseAllocation {
   /** Credits the non-CSE allowance refused that still count toward the
    * total-credit requirement (F1, 2026-09-12) — part of `countedOther`. */
   overCapToTotal?: number;
+  /** The caps that ran out on this course, when any credit was refused —
+   * so a course table can name the cap that cut it, not the §5.2 cap by
+   * default (round 5 verification, transfer-1, 2026-10-14). */
+  boundCaps?: CapId[];
   explanation: string; // the per-course line shown to the student
   mark: CourseMark;
   /** What the course does for the Ph.D. qualifier (§4.4.1), when that is a
@@ -752,6 +756,18 @@ export function decidedCaseByCase(c: ClassifiedCourse, program: Program): boolea
   return needsCourseApproval(program === 'mscse' ? c.rule.countsTowardMscse : c.rule.countsTowardPhd);
 }
 
+/** A course held for the DGS by a record-level fact (or released by its
+ * ruling): its box records `dgsHoldApproved` (round 5, item 29 (b)). */
+/** Held by a record-level fact whose ruling is not ticked yet: a case-by-case
+ * tick given before the hold is not "as you ticked" for it (29 (b)). */
+export function holdAwaitsRuling(c: ClassifiedCourse): boolean {
+  return heldByRecord(c) && c.entry.dgsHoldApproved !== true;
+}
+
+export function heldByRecord(c: ClassifiedCourse): boolean {
+  return c.dgsHoldTicked === true || c.beforeReadmission === true || c.interrupted === true || ((c.nonDegree === true || c.ndBeforeAdmission === true) && c.rule !== undefined);
+}
+
 /** Classify every course. Returns classified courses in a stable order
  * (term, then course id, then input order) — the allocator's fill order. */
 export function classify(student: Student, rules: Rules, today?: string): {
@@ -1044,7 +1060,8 @@ export function classify(student: Student, rules: Rules, today?: string): {
     // The DGS's ruling on a held course, recorded with its tick (P4-ac-2 (a)).
     const ticked = (cc: ClassifiedCourse, note: string): ClassifiedCourse => ({ ...cc, dgsHoldTicked: true, approvedNote: cc.approvedNote ? `${cc.approvedNote}; ${note}` : note });
     const withInterruption = (cc: ClassifiedCourse): ClassifiedCourse => {
-      if (c.dgsApproved === true && cc.ineligibleReason === undefined) {
+      // The hold's own ruling, not a case-by-case approval (round 5, item 29 (b)).
+      if (c.dgsHoldApproved === true && cc.ineligibleReason === undefined) {
         if (beforeShortReadmission(c)) return ticked(cc, `taken before your readmission (${termLabel(readmitted!)}) — the DGS confirmed it still counts, as you ticked on the course (DGS Handbook §3.3)`);
         if (separatedSince !== undefined && !interruptedCourse(c) && heldWithSeparatedMscse(student, c))
           return ticked(cc, `from your Notre Dame MSCSE, five years or more before the Ph.D. — the DGS and the Graduate School confirmed it counts, as you ticked on the course (Academic Code §5.5)`);
@@ -1490,7 +1507,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
       if (shape && 'ineligibleReason' in shape) return { ...extBase, notTransferCredit: true, nonDegree: true, ineligibleReason: `${shape.ineligibleReason}${coreNote}` };
       // The DGS's ruling, recorded with the course's tick (P4-ac-2 (a)); a
       // course not in the course rules has no tick — the DGS enters its row first.
-      if (c.dgsApproved === true && rule !== undefined) {
+      if (c.dgsHoldApproved === true && rule !== undefined) {
         return {
           ...extBase,
           notTransferCredit: true,
@@ -1499,7 +1516,8 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
           reviewed: true,
           pool: shape?.pool ?? 'regular',
           caps: ['nondegree', ...(shape?.caps ?? [])],
-          tier: 'definite',
+          // A course still in progress stays in progress once ruled on (round 5, item 6).
+          tier: tierFor(c.grade, false),
           approvedNote: `taken at Notre Dame as a non-degree student before you were admitted — the DGS ruled it counts, as you ticked on the course; at most ${NON_DEGREE_CREDITS_MAX} such credits count (Academic Code §2.3)${coreNote}`,
         };
       }
@@ -1554,7 +1572,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     if (shape && 'ineligibleReason' in shape) return { ...extBase, notTransferCredit: true, ndBeforeAdmission: true, ineligibleReason: `${shape.ineligibleReason}${coreNote}` };
     // The DGS's ruling — after asking the Graduate School, as he said he would
     // (2026-10-06) — recorded with the course's tick (P4-ac-2 (a)).
-    if (c.dgsApproved === true && rule !== undefined) {
+    if (c.dgsHoldApproved === true && rule !== undefined) {
       return {
         ...extBase,
         notTransferCredit: true,
@@ -1563,7 +1581,8 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
         reviewed: true,
         pool: shape?.pool ?? 'regular',
         caps: [...(shape?.caps ?? [])],
-        tier: 'definite',
+        // A course still in progress stays in progress once ruled on (round 5, item 6).
+        tier: tierFor(c.grade, false),
         approvedNote: `taken at Notre Dame before you were admitted — the DGS ruled it counts, as you ticked on the course (Academic Code §2.3)${coreNote}`,
       };
     }
@@ -1991,6 +2010,9 @@ function classifyPosted(env: ClassifyEnv, c: CourseEntry, extBase: ClassifiedCou
   ];
   const isCse = isCseCourse(c.courseId, extBase.external, cseSubjectCodes);
   const cseUnknown = isCse === undefined;
+  // Credit on the Notre Dame record: its box has only ever answered this hold,
+  // so it stays `dgsApproved` (round 5, item 29 (b) is for the holds a case-by-
+  // case tick given earlier could be mistaken for).
   const ticked = held.length > 0 && c.dgsApproved === true;
   const settled = (held.length === 0 || ticked) && !cseUnknown;
   const where = `transfer credit on your Notre Dame record (posted ${termLabel(posting.term)})`;
@@ -2010,6 +2032,8 @@ function classifyPosted(env: ClassifyEnv, c: CourseEntry, extBase: ClassifiedCou
     ...(settled
       ? { approvedNote: `${where} — accepted by the Graduate School${ticked ? ', and the DGS confirmed it counts toward this degree, as you ticked on the course' : ''}; nothing to send (Academic Code §4.6)${limitNote}${poolNote}${coreNote}` }
       : {
+          // A held thesis or independent study says why it counts toward the
+          // total only, as the settled one does (round 5, item 10).
           approvalPending: `${where}${held.length > 0 ? `, but ${held.join(', and ')} — the DGS confirms it counts toward this degree` : ''}${cseUnknown ? `${held.length > 0 ? '; ' : ' — '}the course rules do not say whether this is a CSE course (no is_cse cell on its row, and no cse_subject_codes list) — §4.2’s nine-credit non-CSE allowance depends on it; the DGS decides` : ''}${coreNote}`,
         }),
   };
@@ -2471,6 +2495,7 @@ export function allocate(
       countedOther: (isRegular ? 0 : counted) + (spillsToTotal ? excluded : 0),
       excluded: spillsToTotal ? 0 : excluded,
       ...(spillsToTotal ? { overCapToTotal: excluded } : {}),
+      ...(boundCaps.length > 0 ? { boundCaps } : {}),
       excludedReason,
       ...buildExplanation(
         cc,
@@ -2788,7 +2813,11 @@ function buildExplanationText(
     if (cc.caps.includes('noncse')) parts.push('uses the non-CSE allowance');
     if (cc.approvedNote) parts.push(cc.approvedNote);
     if (cc.dgsTicked) parts.push('approved by the DGS for you, as you ticked on the course (the DGS office holds the record)');
-    if (cc.tickApproved && !cc.caps.includes('transfer')) parts.push('approved by the DGS for you, as you ticked on the course (the course rules say case by case; the DGS office holds the record)');
+    // Not on credit from the Notre Dame record: its own note already says the
+    // DGS confirmed it, as ticked (round 5, item 9; DGS 2026-10-14).
+    // …and not while a record-level hold waits for its own ruling: the box then
+    // reads unticked (round 5 verification; 29 (b)).
+    if (cc.tickApproved && !cc.caps.includes('transfer') && cc.ndPosting === undefined && !holdAwaitsRuling(cc)) parts.push('approved by the DGS for you, as you ticked on the course (the course rules say case by case; the DGS office holds the record)');
     // The credit system is unknown (no row, a blank or rejected credit_system) and
     // nd_credits does not fix the number (DGS 2026-10-03, P1-units-4plus1-c7).
     if (cc.creditsAsPrinted) parts.push('credits as your transcript prints them — the DGS converts quarter, trimester or other units (§5.2 pro-rata)');
@@ -2878,5 +2907,10 @@ function buildExplanationText(
           ? cc.approvalPending.replace(/^waiting for the DGS — /, '')
           : cc.approvalPending,
     );
+  // A held posted course whose title reads as research, independent study or
+  // a seminar says why it counts toward the total only (round 5, item 10) —
+  // on its line, not in the hold's reason: the review request already carries
+  // that reason once, as a staff check (audit.ts; verification, transfer-2).
+  if (cc.approvalPending && cc.postedNonRegular) parts.push(`not a regular course — its title reads as research, independent study or a seminar (${fourkCap?.section ?? '§4.2'})`);
   return { explanation: parts.join('; '), mark };
 }

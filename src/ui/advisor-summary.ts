@@ -21,6 +21,7 @@ import type { AuditReport, DetailPart, RequirementResult, Status } from '../engi
 import { deadlineTermLabel, dueTermPhrase, termLabel } from '../engine/term.ts';
 import { shortenAfterFirst } from './first-mention.ts';
 import { decisionWording } from '../engine/decider.ts';
+import { ADVISOR_FLAG } from './next-steps.ts';
 import { DUAL_PLAN_REASON, gpaText } from '../engine/requirements/shared.ts';
 import { ACTION_HEADING, STUDENT_LINE, esc, htmlRequirementBlock, plural, programLabel, programShort, studentLineHtml, textRequirementBlock, type DeadlineAlert, type StandingColor, upperHeading } from './email-html.ts';
 import { HANDBOOK_URL, betaNotice, formatYmdLong } from './handbook.ts';
@@ -316,7 +317,9 @@ export interface ActionItems {
 export function msLimitPassedClause(report: AuditReport): string {
   if (report.program !== 'mscse') return '';
   const r = report.requirements.find((x) => x.id === 'ms.timeLimit');
-  if (!r?.deadline || !(r.deadline.state === 'overdue' || r.statusLabel === 'Eligibility at risk')) return '';
+  // Overdue means the card reads Overdue — not Cannot evaluate, whose chip
+  // is overdue too (round 5, item 25; DGS 2026-10-14).
+  if (!r?.deadline || !((r.status === 'unmet' && r.deadline.state === 'overdue') || r.statusLabel === 'Eligibility at risk')) return '';
   return ` — the MSCSE’s time limit (§3.3) passed at ${deadlineTermLabel(r.deadline.date)} (approximate); an extension is the Graduate School’s to grant`;
 }
 
@@ -410,6 +413,19 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
   for (const id of ['ms.timeLimit', 'phd.timeLimit'] as const) {
     const r = byId.get(id);
     if (!r || r.status === 'met' || r.status === 'not_applicable') continue;
+    // Cannot be judged — a date or a sheet number is missing: the student
+    // enters it; nothing is asked of the DGS (round 5, item 23; DGS
+    // 2026-10-14: a finished student with only the research date blank was
+    // sent to the DGS about an extension).
+    // (A missing sheet number is the DGS's to add — its own item, below.)
+    // The student's item only when a row is held for an entry of theirs: a
+    // limit held only by another row's missing sheet number asks nothing of
+    // the student (verification, emails-1, 2026-10-14).
+    if (r.status === 'cannot_evaluate') {
+      const entryMissing = report.requirements.some((x) => x !== r && x.status === 'cannot_evaluate' && !/the rules sheet is missing|until the rules sheet is complete/.test(textOf(x)));
+      if (entryMissing && !/the rules sheet is missing/.test(textOf(r))) out.student.push(`Enter the missing date or value the cards name, so the time limit can be checked ${section(r)}.`);
+      continue;
+    }
     if (overdue(r)) {
       out.student.push(`Ask the DGS about the time limit${due(r)} ${section(r)}.`);
       // The Graduate School decides a passed limit — dissertation completion
@@ -428,7 +444,10 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
       // email names it and gives the DGS the item the card does (policy review
       // round 4, P4-phd-1 and P4-mscse-1; DGS 2026-10-11: "apply the suggested
       // handling").
-      out.student.push(`Confirm with the DGS whether the Graduate School extended my time limit — every requirement is complete, but the last one came after the limit ${section(r)}.`);
+      // "every counted requirement" while the master's candidacy application
+      // is open (round 5, item 32; DGS 2026-10-14).
+      const every = report.program === 'mscse' && byId.get('shared.msCandidacy')?.status === 'unmet' ? 'every counted requirement' : 'every requirement';
+      out.student.push(`Confirm with the DGS whether the Graduate School extended my time limit — ${every} is complete, but the last one came after the limit ${section(r)}.`);
       out.dgs.push(
         id === 'phd.timeLimit'
           ? `Confirm whether the Graduate School extended the student’s time limit, or advise the student on dissertation completion status or an eligibility extension ${section(r)}.`
@@ -497,15 +516,26 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
     out.student.push(
       below
         ? `Retake or replace ${below[1]!.trim()} — a specialization course below the grade floor ${section(categories)}.`
-        : `Complete three specialization courses from three distinct groups, each B or higher ${section(categories)}.`,
+        : // The card's own title, which reads the sheet's numbers (item 30 (b)).
+          `Complete ${categories.title.charAt(0).toLowerCase()}${categories.title.slice(1)} ${section(categories)}.`,
     );
   }
+  // The review request's item on examinations passed before a readmission
+  // after five years or more (round 5, item 1).
+  const examsFlagged = (report.reviewFlags ?? []).some((f) => /^My examinations from before my readmission/.test(f));
   const research = byId.get('phd.qualifier.research');
   if (research && isOpen(research.status)) {
     out.student.push(`Pass the research component of the qualifier${due(research)} ${section(research)}.`);
     out.advisor.push(`Determine whether I have passed the research component and file the Research-Qualifier form ${section(research)}.`);
     if (overdue(research)) out.dgs.push(`Decide whether to extend the research-component deadline ${section(research)}.`);
-  } else if (research?.status === 'needs_dgs_review') out.dgs.push(`Confirm the late research-component result ${section(research)}.`);
+  } else if (research?.status === 'needs_dgs_review') {
+    // A pass before a readmission after five years or more is a §5.5 ruling,
+    // not a late result — and once the review request's examinations item
+    // names it, that item is the one question (verification, emails-5,
+    // 2026-10-14).
+    if (!research.forfeitReview) out.dgs.push(`Confirm the late research-component result ${section(research)}.`);
+    else if (!examsFlagged) out.dgs.push('Rule on my research qualifier, passed before my readmission after an interruption of five years or more (Academic Code §5.5).');
+  }
 
   // The Oral Candidacy Exam (OCE) and the dissertation.
   const candidacy = byId.get('phd.candidacy');
@@ -520,7 +550,7 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
     // (Academic Code §5.5), the coursework at the exam (P3-cse-4b-1, DGS
     // 2026-10-06) and a late pass are three questions — an on-time exam with
     // short coursework is never "late", and late plus short names both.
-    if (candidacy.forfeitReview)
+    if (candidacy.forfeitReview && !examsFlagged)
       out.dgs.push('Rule on my Oral Candidacy Exam (OCE), passed before my readmission after an interruption of five years or more (Academic Code §5.5).');
     if (candidacy.courseworkReview)
       out.dgs.push(`Confirm that my Oral Candidacy Exam (OCE) could be taken — at the exam I showed ${candidacy.courseworkReview} ${section(candidacy)}.`);
@@ -613,9 +643,19 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
   // one the student emails (2026-09-07). The attach-transcripts reminder is
   // the student's own dialog's, not the advisor's (trim review 2026-09-18, P-37).
   const once = (list: string[]) => [...new Set(list)].join(', ');
+  // The review request's items that are not a course or the advisor (a
+  // readmission, thesis readers, a short summer, a leave …): the DGS answers
+  // them, and the student sends the request — the email said "Nothing is
+  // pending with the DGS" beside rows saying "ask the DGS" (round 5, item 24;
+  // DGS 2026-10-14). Each is named by its heading — cut at its first
+  // statement, sparing "Ph.D." (verification, emails-4).
+  const otherFlags = (report.reviewFlags ?? []).filter((f) => !ADVISOR_FLAG.test(f)).map((f) => splitStatements(f.split(':')[0]!.split(' (')[0]!.trim())[0]!);
   if (pendingCourses.length > 0) {
-    out.student.push(`Send the DGS the review request for ${once(pendingCourses)}.`);
+    out.student.push(`Send the DGS the review request for ${once(pendingCourses)}${otherFlags.length > 0 ? `, with its ${otherFlags.length === 1 ? 'other item' : `${otherFlags.length} other items`}` : ''}.`);
+  } else if (otherFlags.length > 0) {
+    out.student.push('Send the DGS the review request.');
   }
+  if (otherFlags.length > 0) out.dgs.push(`Answer my review request’s ${otherFlags.length === 1 ? 'item' : `${otherFlags.length} items`} besides the courses: ${otherFlags.join('; ')}.`);
   // Transfer credit the DGS has decided (a `yes` in the course rules, or the
   // tick on a case-by-case course) and the Grad Admin has still to submit
   // (policy review round 3, P3-emails-1; DGS 2026-10-06: "apply the suggested
@@ -837,7 +877,14 @@ function rewrite(statement: string): string {
 /** The student is writing: "you are registered" → "I am registered"; "by your
  * first semester" → "by my first semester". */
 function firstPerson(statement: string): string {
+  // "you were" is "I was", and "you and your advisor" is "my advisor and I"
+  // (round 5, item 27; DGS 2026-10-14: "I were" in 16 scenarios' emails).
   return statement
+    .replace(/\b[Yy]ou and your advisor\b/g, 'my advisor and I')
+    .replace(/\b[Yy]ou were\b/g, 'I was')
+    // "you" after a preposition is the object: "approved by the DGS for you",
+    // "applies to you", "set it for you" → "me".
+    .replace(/\b(for|to|with|by|of|from|on|about) you\b/g, '$1 me')
     .replace(/\b[Yy]ou are\b/g, 'I am')
     .replace(/\b[Yy]ou\b/g, 'I')
     .replace(/\bYour\b/g, 'My')

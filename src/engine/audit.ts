@@ -3,13 +3,13 @@
 // argument so tests are deterministic.
 import { undergraduateGraduateCourseworkFlagFor } from './review.ts';
 import type { Rules } from '../data/types.ts';
-import { BS_SHARED_CREDITS_MAX, DUAL_DEGREE_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, allocate, classify, conferralWindow, levelOf, decidedCaseByCase, longInterruptionReadmission, mscseSeparation, overMaxTerms, registrationCaps, spentOnBachelorsAndMasters, type CapSpec, type CourseMark } from './allocate.ts';
+import { BS_SHARED_CREDITS_MAX, DUAL_DEGREE_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, allocate, classify, conferralWindow, levelOf, decidedCaseByCase, heldByRecord, longInterruptionReadmission, mscseSeparation, overMaxTerms, registrationCaps, spentOnBachelorsAndMasters, type CapSpec, type CourseMark } from './allocate.ts';
 import { specialTracks } from './tracks.ts';
 import { decisionWording, decisionWordingDeep } from './decider.ts';
 import { beforeProgramStart } from './early-start.ts';
 import { normalizeEntryTerm, termLabel, compareTerm, termOfDate, semesterSeq, startOfTerm } from './term.ts';
 import type { AuditReport, Grade, RequirementResult, Student, TermGpa } from './types.ts';
-import { beforeForfeiture, isCovidCohort, type Ctx } from './requirements/context.ts';
+import { beforeForfeiture, datedBeforeForfeiture, isCovidCohort, priorRulesQualifierHeld, type Ctx } from './requirements/context.ts';
 import { uncoveredRegistrationGaps } from './registration-gaps.ts';
 import { fullTimeTermRecords, graduateLevelFlag, sameTermDuplicate } from './requirements/residency.ts';
 import { transferCourseChecks } from '../data/course-checks.ts';
@@ -272,6 +272,8 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
     ctx.atOce = { ...ctx, student: asOfExam, today: oceDate, alloc: atExamAlloc, classified: atExam };
   }
   const reviewFlags: string[] = [];
+  // The examinations from before an interruption of five years or more, for the page's Approvals tick (below).
+  let examsBeforeInterruption: string[] = [];
   const ugFlag = undergraduateGraduateCourseworkFlagFor(classified, student);
   if (ugFlag) {
     reviewFlags.push(ugFlag);
@@ -352,9 +354,13 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
   // (P3-ac-5a-4; DGS 2026-10-07: option (a), "Keep two for everyone, and add
   // a note for the cohort") — CSE §5.7 may be stricter than the Code, and a
   // cohort student whose third semester was allowed is not alarmed.
-  if ((student.leaveSemesters ?? 0) > 2) {
+  // Both counts (round 5, item 7; DGS 2026-10-14): the approved leave for
+  // another reason (P4-ac-3) covers a transcript gap too, so three semesters of
+  // it were silently accepted where three of medical leave warn.
+  const leaveTotal = (student.leaveSemesters ?? 0) + (student.otherLeaveSemesters ?? 0);
+  if (leaveTotal > 2) {
     warnings.push(
-      `${student.leaveSemesters} semesters on medical leave: a leave of absence lasts at most two consecutive semesters (§5.7) — a student who did not return at its end needed readmission, and the program may reject some or all earlier credits (DGS Handbook §3.3).${ctx.covidCohort ? ' For students enrolled in Spring 2020, the Graduate School allowed three consecutive semesters (Academic Code Appendix A.2).' : ''} Confirm your standing with the DGS.`,
+      `${leaveTotal} semesters ${(student.otherLeaveSemesters ?? 0) > 0 ? 'of leave' : 'on medical leave'}: a leave of absence lasts at most two consecutive semesters (§5.7) — a student who did not return at its end needed readmission, and the program may reject some or all earlier credits (DGS Handbook §3.3).${ctx.covidCohort ? ' For students enrolled in Spring 2020, the Graduate School allowed three consecutive semesters (Academic Code Appendix A.2).' : ''} Confirm your standing with the DGS.`,
     );
   }
   // The transcript's unregistered semesters against the leave count (policy
@@ -383,7 +389,9 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
   const separatedSince = mscseSeparation(student);
   if (separatedSince !== undefined) {
     warnings.push(
-      `Your Notre Dame MSCSE ended in ${termLabel(separatedSince)}, five years or more before you entered the Ph.D. in ${termLabel(entry)}: a separation that long from the graduate program may forfeit its credit and coursework (Academic Code §5.5), so every MSCSE course counts only once the DGS reviews it and the Graduate School approves — they are in the review request.`,
+      // "they are in the review request" only while a course still waits;
+      // once every one is ruled on, it says so (round 5 verification, as item 5).
+      `Your Notre Dame MSCSE ended in ${termLabel(separatedSince)}, five years or more before you entered the Ph.D. in ${termLabel(entry)}: a separation that long from the graduate program may forfeit its credit and coursework (Academic Code §5.5), so every MSCSE course counts only once the DGS reviews it and the Graduate School approves${classified.some((c) => !c.superseded && c.mscseSeparated === true && c.dgsHoldTicked !== true) ? ' — they are in the review request' : classified.some((c) => c.dgsHoldTicked === true) ? ' — they ruled on its courses, as you ticked on each' : ''}.`,
     );
     reviewFlags.push(
       decisionWording(
@@ -393,16 +401,44 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
     );
   }
   if (student.readmittedTerm !== undefined) {
-    const interrupted = classified.some((c) => c.interrupted);
+    // Which text: the interruption's own length (five years or more, ctx.
+    // forfeitBefore), not whether a course is still held — once the DGS's
+    // ticks released every course, the five-year case fell into the short
+    // text (policy review round 5; DGS 2026-10-14). And the closing clause
+    // says only what still waits: the courses, the examinations, or that the
+    // DGS has ruled, as ticked.
+    const long = ctx.forfeitBefore !== undefined;
+    const m = student.milestones;
+    const coursesHeld = classified.some((c) => !c.superseded && (long ? c.interrupted === true : c.beforeReadmission === true));
+    const examsHeld =
+      long &&
+      ((student.program === 'phd' && student.attestations.qualifierPassedUnderPriorRules === true && priorRulesQualifierHeld(ctx)) ||
+        [m.researchQualifierPassed, m.candidacyPassed, m.thesisDefensePassed, m.projectReportAccepted].some((d) => beforeForfeiture(ctx, d)));
+    const ruled = classified.some((c) => !c.superseded && c.dgsHoldTicked === true) || (long && student.attestations.examsBeforeInterruptionStand === true);
+    const longClause =
+      coursesHeld && examsHeld
+        ? ', so those courses and examinations wait for the DGS and are in the review request'
+        : coursesHeld
+          ? ', so those courses wait for the DGS and are in the review request'
+          : examsHeld
+            ? ', so those examinations wait for the DGS and are in the review request'
+            : ruled
+              ? ' unless the DGS and the Graduate School rule otherwise — they ruled on what you entered from before it, as you ticked'
+              : '';
+    const shortClause = coursesHeld
+      ? ', so the courses from before your readmission wait for the DGS and are in the review request'
+      : ruled
+        ? '; the DGS ruled on the courses from before your readmission, as you ticked on each'
+        : '';
     warnings.push(
-      interrupted
-        ? `Readmitted ${termLabel(student.readmittedTerm)} after an interruption of five years or more: the Academic Code forfeits credit for every course and examination from before it (Academic Code §5.5), so those courses and examinations wait for the DGS and are in the review request; the clocks still count from ${termLabel(entry)}, your original matriculation, in calendar semesters with the time away included.`
+      long
+        ? `Readmitted ${termLabel(student.readmittedTerm)} after an interruption of five years or more: the Academic Code forfeits credit for every course and examination from before it (Academic Code §5.5)${longClause}; the clocks still count from ${termLabel(entry)}, your original matriculation, in calendar semesters with the time away included.`
         : // The MSCSE's own limit and section (policy review round 3,
           // P3-dh-3.1-3.13-4): §6.2.6 is the Ph.D.'s; no master's section says
           // when the five years start, so the app's reading is said plainly.
           student.program === 'mscse'
-          ? `Readmitted ${termLabel(student.readmittedTerm)}: the five-year limit still counts from ${termLabel(entry)}, your original entry term, in calendar semesters with the time away included (§3.3; Academic Code §6.1.4); the program may reject some or all of your earlier credits (DGS Handbook §3.3), so the courses from before your readmission wait for the DGS and are in the review request.`
-          : `Readmitted ${termLabel(student.readmittedTerm)}: the clocks still count from ${termLabel(entry)}, your original matriculation, in calendar semesters with the time away included (Academic Code §6.2.6; DGS 2026-10-06); the program may reject some or all of your earlier credits (DGS Handbook §3.3), so the courses from before your readmission wait for the DGS and are in the review request.`,
+          ? `Readmitted ${termLabel(student.readmittedTerm)}: the five-year limit still counts from ${termLabel(entry)}, your original entry term, in calendar semesters with the time away included (§3.3; Academic Code §6.1.4); the program may reject some or all of your earlier credits (DGS Handbook §3.3)${shortClause}.`
+          : `Readmitted ${termLabel(student.readmittedTerm)}: the clocks still count from ${termLabel(entry)}, your original matriculation, in calendar semesters with the time away included (Academic Code §6.2.6; DGS 2026-10-06); the program may reject some or all of your earlier credits (DGS Handbook §3.3)${shortClause}.`,
     );
     // The readmission itself goes to the DGS (policy review 2026-10-04,
     // P2-dh-3.1-3.13-3/-9): DGS Handbook §3.1 — "A student who fails to
@@ -448,13 +484,18 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
     // and the request names them.
     if (ctx.forfeitBefore !== undefined) {
       const m = student.milestones;
-      const exams = [
+      // Every examination from before the interruption, whatever the DGS
+      // ruled — the page offers the Approvals tick from this list (policy
+      // review round 5; DGS 2026-10-14: it was offered for any date, the
+      // advisor's included) — and those still held: none once the tick is on.
+      examsBeforeInterruption = [
         ...(student.program === 'phd' && student.attestations.qualifierPassedUnderPriorRules === true ? ['the qualifying examination I passed under the earlier requirements'] : []),
-        ...(beforeForfeiture(ctx, m.researchQualifierPassed) ? [`the research qualifier (passed ${m.researchQualifierPassed})`] : []),
-        ...(beforeForfeiture(ctx, m.candidacyPassed) ? [`the Oral Candidacy Exam (passed ${m.candidacyPassed})`] : []),
-        ...(beforeForfeiture(ctx, m.thesisDefensePassed) ? [`the thesis defense (passed ${m.thesisDefensePassed})`] : []),
-        ...(beforeForfeiture(ctx, m.projectReportAccepted) ? [`the project report (accepted ${m.projectReportAccepted})`] : []),
+        ...(datedBeforeForfeiture(ctx, m.researchQualifierPassed) ? [`the research qualifier (passed ${m.researchQualifierPassed})`] : []),
+        ...(datedBeforeForfeiture(ctx, m.candidacyPassed) ? [`the Oral Candidacy Exam (passed ${m.candidacyPassed})`] : []),
+        ...(datedBeforeForfeiture(ctx, m.thesisDefensePassed) ? [`the thesis defense (passed ${m.thesisDefensePassed})`] : []),
+        ...(datedBeforeForfeiture(ctx, m.projectReportAccepted) ? [`the project report (accepted ${m.projectReportAccepted})`] : []),
       ];
+      const exams = student.attestations.examsBeforeInterruptionStand === true ? [] : examsBeforeInterruption;
       if (exams.length > 0) {
         const list = exams.length === 1 ? exams[0]! : `${exams.slice(0, -1).join(', ')} and ${exams[exams.length - 1]!}`;
         reviewFlags.push(decisionWording(student.program, `My examinations from before my readmission after an interruption of five years or more: please rule on ${list} (Academic Code §5.5).`));
@@ -785,8 +826,11 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
       ...(qualifier ? { qualifier } : {}),
       // The tick box belongs on a course the sheet decides case by case
       // (DGS 2026-09-27), and only while the course can still count.
+      // A held course's box reads the hold's own ruling (round 5, item 29 (b)).
       ...(decidedCaseByCase(p.course, student.program) && p.course.ineligibleReason === undefined
-        ? { approvable: true as const, ...(p.course.entry.dgsApproved ? { approved: true as const } : {}) }
+        ? heldByRecord(p.course)
+          ? { approvable: true as const, holdRuling: true as const, ...(p.course.entry.dgsHoldApproved ? { approved: true as const } : {}) }
+          : { approvable: true as const, ...(p.course.entry.dgsApproved ? { approved: true as const } : {}) }
         : {}),
       counts,
     };
@@ -865,7 +909,15 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
   // What the §5.2 cap admitted, course by course (P3-prior-programs-5).
   const transferCredits = alloc.perCourse
     .filter((a) => a.course.caps.includes('transfer') && !a.course.superseded)
-    .map((a) => ({ courseId: a.course.entry.courseId, ...(a.course.entry.institution !== undefined ? { institution: a.course.entry.institution } : {}), term: a.course.entry.term, counted: a.countedRegular + a.countedOther }));
+    .map((a) => ({
+      courseId: a.course.entry.courseId,
+      ...(a.course.entry.institution !== undefined ? { institution: a.course.entry.institution } : {}),
+      term: a.course.entry.term,
+      counted: a.countedRegular + a.countedOther,
+      // Another cap, not §5.2's, cut the course (round 5 verification,
+      // transfer-1): its own reason, as the course's line gives it.
+      ...(a.boundCaps !== undefined && !a.boundCaps.includes('transfer') && a.excludedReason !== undefined ? { restOver: a.excludedReason } : {}),
+    }));
   const transferCap = alloc.capUsage.get('transfer')?.limit;
   return {
     reviewFlags,
@@ -884,5 +936,6 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
     ...(graduation !== undefined ? { graduation } : {}),
     ...(transferRequestWindowClosed !== undefined ? { transferRequestWindowClosed } : {}),
     ...(graduationInSight ? { graduationInSight: true as const } : {}),
+    ...(examsBeforeInterruption.length > 0 ? { examsBeforeInterruption: examsBeforeInterruption.map((e) => decisionWording(p, e)) } : {}),
   };
 }

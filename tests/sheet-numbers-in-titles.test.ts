@@ -66,6 +66,15 @@ describe('card titles follow the Parameters tab (P4-data-5)', () => {
     assert.equal(mt.get('ms.timeLimit'), 'All requirements complete within 4 years');
   });
 
+  // Round 5, item 30 (DGS 2026-10-14: option (b)): the specialization card too.
+  it('the specialization card follows its three numbers', () => {
+    const t = titles(audit(phd, buildRules(), '2026-10-12'));
+    assert.equal(t.get('phd.qualifier.categories'), 'Three specialization courses from three distinct groups, each B or higher');
+    const r = audit(phd, buildRules({ parameters: { category_courses_required: '4', category_distinct_groups_required: '2', category_min_grade: 'B+' } }), '2026-10-12');
+    assert.equal(titles(r).get('phd.qualifier.categories'), 'Four specialization courses from two distinct groups, each B+ or higher');
+    assert.equal(shortTitles(r).get('phd.qualifier.categories'), 'Specialization (2 groups)');
+  });
+
   it('a loosened Graduate School limit is held, and so is its title', () => {
     const r = audit(phd, buildRules({ parameters: { gpa_min: '2.5', phd_time_limit_years: '10' } }), '2026-10-12');
     const t = titles(r);

@@ -5,10 +5,10 @@ import type { NotreDameNow } from '../data/clock.ts';
 import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { findExternalRule, isNotreDameInstitution, normalizeUniversity, universityCreditSystem } from '../data/external.ts';
 import { CORE_TITLE_RE } from '../engine/core-title.ts';
-import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, longInterruptionReadmission, mscseSeparation, ndUndergraduateCounting, overMaxTerms, ownMscseStart, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
+import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, mscseSeparation, ndUndergraduateCounting, overMaxTerms, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
 import { ndPostingOf } from '../engine/nd-posting.ts';
 import { fullTimeRecordsFrom, summerFullTimeFloor } from '../engine/requirements/residency.ts';
-import { compareTerm, normalizeEntryTerm, semesterSeq, startOfTerm } from '../engine/term.ts';
+import { compareTerm, normalizeEntryTerm, semesterSeq } from '../engine/term.ts';
 import type { Rules } from '../data/types.ts';
 import { coursesNeedingDgsReviewFor, reviewRequestSummary, type PendingDgsReview } from '../engine/review.ts';
 import { shortName } from '../engine/short-names.ts';
@@ -76,7 +76,10 @@ import { createFocusKeeper } from './focus-keeper.ts';
 import { type RefusedValues, applyRefusals, rangedNumber } from './refusals.ts';
 import { createToasts } from './toasts.ts';
 import { gradAdminRequest, processingItems } from './grad-admin-request.ts';
-import { priorStudyLabel, programHistory, unfinishedPhdElsewhere } from './program-history.ts';
+import { priorStudyLabel, programHistory } from './program-history.ts';
+import { ndUndergraduateClause, notFinishedSentence, totalCreditsWord, transferRuleText } from './coursework-text.ts';
+import { alongTheWayBox, applyCourseTick, examsTickOffered } from './page-decisions.ts';
+import { diagnosticsContent } from './sheet-warnings.ts';
 import { FILL_IN_STEP, unofficialTranscriptNote } from './email-html.ts';
 import { advisorSummary } from './advisor-summary.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
@@ -1018,10 +1021,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // for an unfinished master's only): the six is this page's working limit,
     // as the transfer card says (policy review round 4, P4-transfer-4; DGS
     // 2026-10-12). `who` opens the sentence; `tail` follows the number.
-    const notFinished = (who: string, tail = ''): string =>
-      unfinishedPhdElsewhere(student)
-        ? `${who} — a Ph.D. — was not finished; no document states a transfer limit for an unfinished Ph.D., so the DGS decides how much transfers (§5.2), and this page holds it to ${unfinished} until then${tail}; it would be ${finished} after a finished degree`
-        : `${who} was not finished, so up to ${unfinished} credits from it may transfer (§5.2)${tail}; it would be ${finished} after a finished degree`;
+    const notFinished = (who: string, tail = ''): string => notFinishedSentence(student, who, unfinished, finished, tail);
     if (b.graduate === 'elsewhere') {
       return b.finished
         ? ` You finished a graduate degree elsewhere, so up to ${finished} credits from it may transfer (§5.2); it would be ${unfinished} if that program were unfinished.`
@@ -1842,12 +1842,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
 
   // ---------- coursework ----------
 
-  /** The §5.2 transfer cap that applies to this student, as the engine reads
-   * it (audit.ts capSpecs) — for the coursework card's explanation. */
-  function totalCreditsWord(): string {
-    const v = rules.parameters.number(student.program === 'mscse' ? 'ms_total_credits_min' : 'phd_total_credits_min');
-    return v === undefined ? 'required' : String(v);
-  }
+  /** The regular-course credits the coursework card's key states. */
   function regularCreditsWord(): string {
     const v = rules.parameters.number(student.program === 'mscse' ? 'ms_regular_credits_min' : 'phd_regular_credits_min');
     return v === undefined ? 'required' : String(v);
@@ -1860,23 +1855,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   function sharedCreditsWord(): string {
     return String(BS_SHARED_CREDITS_MAX);
   }
-  /** Whether a document states this student's transfer limit (P3-cse-5-6-1):
-   * after a completed degree, or an unfinished master's — not with no earlier
-   * graduate program, nor after an unfinished Ph.D. (Academic Code §4.6 states
-   * no figure for either). */
-  function transferLimitStated(): boolean {
-    if (student.priorMs === 'completed') return true;
-    if (student.priorMs === 'unfinished') return !student.courses.some((c) => c.origin === 'transfer' && c.degreeLevel === 'phd');
-    return false;
-  }
-  function transferCapLimit(): string {
-    const key =
-      student.program === 'mscse'
-        ? student.priorMs === 'completed' ? 'ms_transfer_completed_ms_credits_max' : 'transfer_unfinished_ms_credits_max'
-        : student.priorMs === 'completed' ? 'phd_transfer_completed_ms_credits_max' : 'transfer_unfinished_ms_credits_max';
-    const n = rules.parameters.number(key);
-    return n === undefined ? 'a capped number of' : String(n);
-  }
+  // transferLimitStated / transferCapLimit / the §5.2 paragraph: src/ui/coursework-text.ts
+  // (round 5, item 36 — DOM-free, so tests read them).
 
   function coursesCard(courseLines: CourseLine[]): HTMLElement {
     // The GPA lives here, next to the transcript import that prefills it
@@ -1985,45 +1965,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       }
       g.entries.push(e);
     }
-    /** §5.2 said once, above every prior-graduate group (clarity review
-     * 2026-09-26; until then it appeared only while a group still held a
-     * candidate, so a student whose every course was refused saw three
-     * struck-through rows and no rule). The three conditions the page checks
-     * are named with their numbers from the Parameters tab; the cap, the CSE
-     * norm and the two approvals stay as the DGS worded them (2026-09-06,
-     * trimmed 2026-09-18). "Candidate" is the DGS's word. */
-    const transferRule = (fromNotreDame: boolean): string => {
-      const windowYears = rules.parameters.number(student.program === 'mscse' ? 'ms_transfer_window_years' : 'phd_transfer_window_years');
-      const floor = rules.parameters.gradeLetter('transfer_min_grade');
-      // The same term the engine measures from (allocate.ts normalises the
-      // entry term), so the two can never drift (policy review 2026-10-03).
-      const entry = normalizeEntryTerm(student.entryTerm).term;
-      // …and from the same start: the Notre Dame MSCSE's admission for a
-      // Ph.D. student who holds it (P3-prior-programs-4 (b); allocate.ts
-      // windowFrom), not the Ph.D. entry — the paragraph read "Fall 2019 or
-      // later" above Fall 2018 courses their own lines counted (policy review
-      // round 4, P4-transfer-5; DGS 2026-10-12).
-      const mscseStart = student.program === 'phd' ? ownMscseStart(student) : undefined;
-      const fromMscse = mscseStart !== undefined && compareTerm(mscseStart, entry) < 0;
-      const from = fromMscse ? mscseStart! : entry;
-      const cutoff = windowYears === undefined ? undefined : termLabel({ season: from.season, year: from.year - windowYears });
-      const window =
-        windowYears === undefined
-          ? 'within the years §5.2 allows (the number is missing from the rules sheet)'
-          : `within ${windowYears} years before ${fromMscse ? 'your admission to the Notre Dame MSCSE' : 'you entered'} (${cutoff} or later)`;
-      // The first semester as the engine reads it (firstSemesterComplete): a
-      // finished earlier Notre Dame degree already meets it (P3-dh-3.14-3.20-4 (b)).
-      const firstSemester = firstSemesterComplete(student, entry, todayIso());
-      const when = firstSemester.done ? `now${firstSemester.byEarlierProgram ? ' (your finished earlier Notre Dame degree already meets §5.2’s first semester)' : ''}` : 'after your first semester';
-      const grade = floor === undefined ? 'with the grade §5.2 requires (missing from the rules sheet)' : `with a grade of ${floor} or better (the DGS decides pass/fail grades)`;
-      // Shortened in place (UI review item 3; DGS 2026-10-09: option (b)):
-      // the three checks, every role, § and the timing kept.
-      return (
-        `Transfer credit (§5.2): a graduate course from ${fromNotreDame ? 'your earlier Notre Dame program' : 'another university'} can count if you took it after your bachelor’s degree, ${window}, and ${grade} — this page checks those three. ` +
-        `Which courses transfer (normally CSE-related ones, ${transferLimitStated() ? `up to ${transferCapLimit()} credits` : `and how much — no document sets a limit for your case; this page holds it to ${transferCapLimit()} until the DGS decides`}) is the DGS’s recommendation, approved by the Graduate School and recorded by the Grad Admin once your official transcript reaches the Graduate School. ` +
-        `Until the DGS decides, every graduate course here is a candidate: send the review request (Transcripts card) at any time; the processing request (below the milestones) goes to the Grad Admin ${when}, before the semester your degree is conferred.`
-      );
-    };
+    const transferRule = (fromNotreDame: boolean): string => transferRuleText(student, rules, todayIso(), fromNotreDame);
     const card = el(
       'section',
       { class: 'card', id: 'coursework' },
@@ -2063,7 +2005,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // "toward the total only" was untrue of the project credits and the
         // first-year seminars, each required in its own right (policy review
         // round 4, P4-text-5; DGS 2026-10-12) — the 2026-09-18 wording again.
-        ` does not count. Regular courses are the lecture courses the course rules list as regular; seminar, research and project credits count toward the ${totalCreditsWord()} total but not toward the regular-course credits (${student.program === 'mscse' ? '§3.2' : '§4.2'}).`,
+        ` does not count. Regular courses are the lecture courses the course rules list as regular; seminar, research and project credits count toward the ${totalCreditsWord(student, rules)} total but not toward the regular-course credits (${student.program === 'mscse' ? '§3.2' : '§4.2'}).`,
       ),
       nd.length > 0
         ? courseTable(courseLines, nd)
@@ -2082,16 +2024,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
                     // B.S. + M.S. student counts them — those the bachelor's did
                     // not use, from any undergraduate term (DGS 2026-10-07).
                     `Notre Dame courses you took as an undergraduate appear here when they can count toward the MSCSE: ${
-                      // Admitted after the bachelor's: only the shared six
-                      // (4+1 guidance; policy review round 4, P4-transfer-7;
-                      // DGS 2026-10-12), as the course lines say.
-                      student.integratedBsMs === true && student.integratedAdmitted !== undefined && student.bachelorsAwarded !== undefined && compareTerm(student.integratedAdmitted, student.bachelorsAwarded) > 0
-                        ? `CSE courses below the 60000 level inside §3.2’s allowance — you were admitted to the Integrated program after your bachelor’s degree, so a 60000-level course counts only among the shared ${sharedCreditsWord()} (4+1 guidance)`
-                        : student.integratedBsMs === true
-                        ? '60000-level courses your bachelor’s degree did not use, whenever you took them, and CSE courses below that inside §3.2’s allowance'
-                        : student.integratedBsMs === false
-                          ? 'CSE courses below the 60000 level inside §3.2’s allowance — 60000-level courses you took as an undergraduate do not count (§3.5); only students in the Integrated B.S. + M.S. program may count them'
-                          : 'CSE courses below the 60000 level inside §3.2’s allowance, and 60000-level courses only if you were in the Integrated B.S. + M.S. (4+1) program (§3.5) — the earlier-degrees questions in the Transcripts card ask whether you were'
+                      // By the 4+1 answer and admission term (coursework-text.ts; P4-transfer-7).
+                      ndUndergraduateClause(student)
                     }. Up to ${sharedCreditsWord()} credits may apply to both your bachelor’s degree and your MSCSE (§3.5). This page chose them for you — your 40000-level CSE courses first, best grade first — and each course’s line says whether it will apply to both degrees, to your MSCSE only, or why it does not count.`
                 : student.program === 'phd'
                   ? `Courses taken as an undergraduate student do not transfer, whether or not the course itself is a graduate course (§5.2). Only courses relevant to the Algorithms, Operating Systems, and Computer Architecture core-knowledge areas (§4.4.1) are listed here`
@@ -2612,9 +2546,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           onchange: (e) =>
             update((s) => {
               const entry = s.courses[index];
-              if (!entry) return;
-              if ((e.target as HTMLInputElement).checked) entry.dgsApproved = true;
-              else delete entry.dgsApproved;
+              // The hold's ruling or the case-by-case approval (page-decisions.ts).
+              if (entry) applyCourseTick(entry, line, (e.target as HTMLInputElement).checked);
             }),
         }) as HTMLInputElement;
         cb.checked = line.approved === true;
@@ -3131,11 +3064,18 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       // ticked; then its candidacy application (DGS Handbook §3.21.1;
       // 2026-10-04): once the award is met and wanted, or once dated.
       const along = report.requirements.find((r) => r.id === 'phd.msAlongTheWay');
-      if (along?.status === 'met' || student.attestations.wantsMsAlongTheWay === true) {
-        card.append(attestation('I want the MSCSE awarded along the way (§3.1, §4.5)', student.attestations.wantsMsAlongTheWay, (v, s) => (s.attestations.wantsMsAlongTheWay = v)));
+      // The box shows what the engine reads (round 5, item 28; DGS
+      // 2026-10-14) — page-decisions.ts.
+      const box = alongTheWayBox(report, student);
+      if (box) {
+        card.append(attestation('I want the MSCSE awarded along the way (§3.1, §4.5)', box.checked, (v, s) => (s.attestations.wantsMsAlongTheWay = v)));
+        if (box.hint) card.append(el('p', { class: 'hint field-hint' }, box.hint));
       }
+      // A date kept from an earlier MSCSE record of a student who holds the
+      // Notre Dame MSCSE is not the award along the way (verification,
+      // sheet-pages-2): it shows under the plain label, so it can be cleared.
       if (m.msCandidacyApplied || (along?.status === 'met' && along.statusLabel !== 'Qualifies')) {
-        card.append(dateField('Application for Admission to Master’s Degree Candidacy submitted — the MSCSE along the way (DGS Handbook §3.21.1)', 'msCandidacyApplied'));
+        card.append(dateField(`Application for Admission to Master’s Degree Candidacy submitted${along ? ' — the MSCSE along the way' : ''} (DGS Handbook §3.21.1)`, 'msCandidacyApplied'));
       }
     }
     // The semester of graduation (DGS Handbook §3.23.1; Academic Code §3.7 —
@@ -3191,9 +3131,11 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // while it is the question, or once ticked: the examinations held before
     // an interruption of five years or more (Academic Code §5.5), and an
     // Oral Candidacy Exam whose coursework was short at the exam (§4.5).
-    const forfeitTerm = longInterruptionReadmission(student);
-    const examsHeld = forfeitTerm !== undefined && Object.values(student.milestones).some((d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && d < startOfTerm(forfeitTerm).date);
-    if (examsHeld || a.examsBeforeInterruptionStand === true) {
+    // Offered while the engine has an examination from before the interruption
+    // to release — a dated exam or a qualifier passed under the earlier rules —
+    // not for any date, the advisor's included (policy review round 5; DGS
+    // 2026-10-14).
+    if (examsTickOffered(report, student)) {
       card.append(attestation('The DGS and the Graduate School ruled that my examinations from before the interruption stand (Academic Code §5.5)', a.examsBeforeInterruptionStand, (v, s) => (s.attestations.examsBeforeInterruptionStand = v)));
     }
     const oce = report.requirements.find((r) => r.id === 'phd.candidacy');
@@ -3662,22 +3604,16 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // Students see this only when the sheet has ERRORS (usability review
     // 2026-09-05, item 19); warnings alone are the DGS's business and are
     // printed by `npm run sync-sheet` — except those marked `onPage` (DGS
-    // 2026-10-12: a university listed twice in the Universities tab), which
-    // the box shows on their own.
-    const hasErrors = rules.issues.some((i) => i.severity === 'error');
-    const issues = hasErrors ? rules.issues : rules.issues.filter((i) => i.onPage === true);
-    if (issues.length === 0) return null;
+    // 2026-10-12: a row listed twice), which the box shows on their own
+    // (src/ui/sheet-warnings.ts).
+    const content = diagnosticsContent(rules.issues);
+    if (!content) return null;
     const details = el('details', { class: 'card diagnostics', 'data-key': 'diagnostics' });
-    details.append(
-      el(
-        'summary',
-        {},
-        hasErrors
-          ? `Rules-sheet diagnostics (${issues.filter((i) => i.severity === 'error').length} errors, ${issues.filter((i) => i.severity === 'warning').length} warnings) — for the DGS`
-          : `Rules-sheet ${issues.length === 1 ? 'warning' : `warnings (${issues.length})`} — for the DGS`,
-      ),
-    );
-    for (const i of issues) {
+    // The sheet is the DGS's to fix on either tab: the heading keeps "DGS"
+    // through the MSCSE tab's rewrite; the messages below, some of which name
+    // the decider, do not (round 5, item 18; DGS 2026-10-14).
+    details.append(el('summary', { 'data-keep-dgs': '' }, content.summary));
+    for (const i of content.issues) {
       details.append(el('div', { class: `issue ${i.severity}` }, `[${i.severity}] ${i.message}`));
     }
     return details;

@@ -12,7 +12,7 @@ import { combineAll, deadlineStatus, openDeadline } from '../status.ts';
 import { addMonthsIso, deadlineTerm, deadlineTermLabel, endOfNextSemester, endOfTerm, maxConsecutiveFullTime, nthSemester, semesterNumber, startOfTerm, termIndex, termLabel, termOfDate, compareTerm } from '../term.ts';
 import type { ConditionMark, DetailPart, Grade, RequirementResult, Status, Term, DeadlineInfo } from '../types.ts';
 import type { Ctx } from './context.ts';
-import { noteOf, capRow, heldForMissingParams, beforeForfeiture, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds, titleCount, titleCountWord } from './context.ts';
+import { noteOf, capRow, heldForMissingParams, beforeForfeiture, priorRulesQualifierHeld, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds, titleCount, titleCountWord, gpaMinText } from './context.ts';
 import { fullTimeTermRecords, graduateLevelParts, longestFullTimeRun, sameTermDuplicate } from './residency.ts';
 import { advisorTttState, defendedBelowGpaNote, gpaText, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { transferRow } from './transfer.ts';
@@ -55,9 +55,14 @@ const DISSERTATION = 'Dissertation and defense — §4.7';
  * so a lower row stands for a student who holds a master's, and the sheet check
  * warns about it either way. */
 export function phdTotalRequired(ctx: Ctx): number | undefined {
-  const n = ctx.params.number('phd_total_credits_min');
+  return phdTotalFor(ctx.params, ctx.student);
+}
+/** The same, from the sheet and the record alone — the page's coursework key
+ * reads it too, so it states the total the card holds (round 5, item 15). */
+export function phdTotalFor(params: Ctx['params'], student: Ctx['student']): number | undefined {
+  const n = params.number('phd_total_credits_min');
   if (n === undefined) return undefined;
-  const heldMasters = ctx.student.priorMs === 'completed' || ctx.student.ndMasters !== undefined;
+  const heldMasters = student.priorMs === 'completed' || student.ndMasters !== undefined;
   return heldMasters ? n : Math.max(n, PHD_TOTAL_CREDITS_FLOOR);
 }
 
@@ -315,8 +320,24 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
   if (ctx.student.ndMasters === undefined) {
     const alongRow = msAlongTheWayRow(ctx);
     // …and, since the award waits with its exam (P4-phd-5), on the numbers the
-    // exam's coursework check reads at the exam (oceKeys).
-    const along = m.candidacyPassed ? heldForMissingParams(alongRow, ctx, ['gpa_min', 'ms_time_limit_years', ...oceKeys.slice(1)]) : alongRow;
+    // exam's coursework check reads at the exam (oceKeys) — all of them: the
+    // regular-credit number was left out, so with it missing the award read
+    // Met beside an OCE that could not be evaluated (policy review round 5;
+    // DGS 2026-10-14).
+    const heldAlong = m.candidacyPassed ? heldForMissingParams(alongRow, ctx, ['gpa_min', 'ms_time_limit_years', ...oceKeys]) : alongRow;
+    // Held for a missing number, the met branch's notes no longer hold: it is
+    // not in the processing request, the candidacy form is not due, and the
+    // tick box is not on the page (round 5 verification; DGS 2026-10-14).
+    const along =
+      heldAlong.status === 'cannot_evaluate' && alongRow.status === 'met' && heldAlong.detailParts
+        ? {
+            ...heldAlong,
+            ...joinedDetail([
+              ...heldAlong.detailParts.filter((p) => !(typeof p === 'object' && 'note' in p && /processing request|To receive it, tick|candidacy also needs the Graduate School’s application form/.test(p.note))),
+              ...(alongRow.statusLabel === 'Qualifies' ? [{ note: 'You may qualify for the MSCSE along the way; once the rules sheet is complete, the page asks whether you want it (§3.1, §4.5)' }] : []),
+            ]),
+          }
+        : heldAlong;
     rows.push(along);
     // The MSCSE along the way needs the master's candidacy application too
     // (DGS Handbook §3.21.1; 2026-10-04): shown once the award's
@@ -346,7 +367,10 @@ function qualifierRowsPassedUnderPriorRules(ctx: Ctx, children: RequirementResul
   // After a readmission following five years or more away, an examination
   // from before it waits for the DGS (Academic Code §5.5; P3-ac-5a-3, DGS
   // 2026-10-05) — the attestation carries no date, so the DGS is asked.
-  const forfeit = ctx.forfeitBefore !== undefined;
+  const forfeit = priorRulesQualifierHeld(ctx);
+  // The DGS ruled that the examinations stand (the Approvals tick): said on
+  // the card, as a released dated examination says it.
+  const ruledToStand = ctx.forfeitBefore !== undefined && !forfeit;
   const umbrella: RequirementResult = {
     id: 'phd.qualifier',
     group: QUALIFIER,
@@ -356,6 +380,7 @@ function qualifierRowsPassedUnderPriorRules(ctx: Ctx, children: RequirementResul
     ...joinedDetail([
       'Passed under the earlier qualifier requirements, as you attested under “Approvals you already have”',
       ...(forfeit ? [{ note: `If you passed it before your readmission in ${termLabel(ctx.forfeitBefore!)}, after an interruption of five years or more: ${FORFEIT_NOTE}` }] : []),
+      ...(ruledToStand ? [{ note: `The DGS and the Graduate School ruled that your examinations from before your readmission in ${termLabel(ctx.forfeitBefore!)} stand, as you ticked under Approvals (Academic Code §5.5)` }] : []),
       { note: 'Students who passed the qualifying examination under the earlier rules are not subject to the current requirements of §4.4 (DGS 2026-09-21)' },
       { note: 'The Grad Admin’s record of the examination is what counts' },
       ...(ctx.student.milestones.qualifierFormFiled ? [] : [{ note: 'If the completion form is not on file, file it with the Grad Admin (§4.4)' }]),
@@ -966,6 +991,19 @@ function coreRows(ctx: Ctx): RequirementResult[] {
   });
 }
 
+/** The specialization card's title and short title from its three numbers
+ * (round 5, item 30 (b)): "Three specialization courses from three distinct
+ * groups, each B or higher" with today's sheet. */
+export function categoriesTitle(coursesReq: number | undefined, groupsReq: number | undefined, floor: string | undefined): { title: string; shortTitle: string } {
+  const courses = coursesReq ?? 3;
+  const groups = groupsReq ?? 3;
+  return {
+    // One course or one group reads as such (round 5 verification).
+    title: `${titleCountWord(courses, 3)} specialization ${courses === 1 ? 'course' : 'courses'} from ${titleCountWord(groups, 3).toLowerCase()} ${groups === 1 ? 'group' : 'distinct groups'}, ${courses === 1 ? 'with' : 'each'} ${floor ?? 'B'} or higher`,
+    shortTitle: `Specialization (${titleCount(groups, 3)} ${groups === 1 ? 'group' : 'groups'})`,
+  };
+}
+
 /** §4.4.2: "Students are required to take three category specialization courses
  * from three distinct groups and pass them with a grade of B or higher."
  * ("Core Knowledge courses and Category Specialization courses may overlap.") */
@@ -975,6 +1013,10 @@ function categoriesRow(ctx: Ctx): RequirementResult {
   const coursesReq = ctx.params.number('category_courses_required');
   const groupsReq = ctx.params.number('category_distinct_groups_required');
   const floor = ctx.params.gradeLetter('category_min_grade');
+  // The title reads the three numbers the row checks (round 5, item 30; DGS
+  // 2026-10-14: option (b) — "Three … three … B" stayed when the sheet's
+  // numbers changed), keeping the handbook's where a key is missing.
+  const { title, shortTitle } = categoriesTitle(coursesReq, groupsReq, floor);
   if (coursesReq === undefined || groupsReq === undefined || floor === undefined) {
     const missing =
       coursesReq === undefined
@@ -985,7 +1027,8 @@ function categoriesRow(ctx: Ctx): RequirementResult {
     return {
       id: 'phd.qualifier.categories',
       group: QUALIFIER,
-      title: 'Three specialization courses from three distinct groups, each B or higher',
+      title,
+      shortTitle,
       status: 'cannot_evaluate',
       detail: missingParamDetail(missing),
       citation: { section: '§4.4.2', quote },
@@ -1221,8 +1264,8 @@ function categoriesRow(ctx: Ctx): RequirementResult {
   return {
     id: 'phd.qualifier.categories',
     group: QUALIFIER,
-    title: 'Three specialization courses from three distinct groups, each B or higher',
-    shortTitle: 'Specialization (3 groups)',
+    title,
+    shortTitle,
     status,
     ...(forfeitReview ? { forfeitReview: true as const } : {}),
     ...joinedDetail(parts),
@@ -1854,7 +1897,8 @@ function pendingRegular(alloc: Ctx['alloc'], withIds = true): { credits: number;
   const satisfiable = (more: number): string => {
     const both = dgs.credits > 0 && plan.credits > 0;
     if (dgs.credits + plan.credits >= more)
-      return `all of them can be satisfied by ${both ? `${dgsBy}, and by ${planBy}` : dgs.credits > 0 ? dgsBy : planBy}`;
+      // One credit is "it" (round 5, item 22; DGS 2026-10-14).
+      return `${Math.abs(more - 1) < 1e-9 ? 'it' : 'all of them'} can be satisfied by ${both ? `${dgsBy}, and by ${planBy}` : dgs.credits > 0 ? dgsBy : planBy}`;
     return both
       ? `${formatCredits(dgs.credits)} of them can be satisfied by ${dgsBy}, and ${formatCredits(plan.credits)} by ${planBy}`
       : `${formatCredits(dgs.credits + plan.credits)} of them can be satisfied by ${dgs.credits > 0 ? dgsBy : planBy}`;
@@ -2092,7 +2136,7 @@ function admissionPolicyNotes(ctx: Ctx, args: { semesterWord: string; probationC
     policy('Enrolled in the Ph.D. program and registered — the application records “Enrolled and registered” (Academic Code §3.1, §6.2.9; DGS Handbook §3.22.3, §10.3.1)'),
     policy(`Four consecutive semesters at full-time status in the program — at least ${floor ?? 9} credit hours each fall and spring, counted from your entry term; summers do not count (§2.1.2, §4.3; Academic Code §3.3, §6.2.2; DGS Handbook §3.22.3)`),
     policy(`The department’s coursework: the ${regularMin ?? 24} regular-course credits (§4.2) — transferred regular-course credits count, and approved CSE 4xxxx credits count within §4.2’s allowance (Academic Code §6.2.9; DGS Handbook §3.22.3)`),
-    policy(`A cumulative GPA of ${(gpaMin ?? 3).toFixed(1)} or better (§2.2; Academic Code §6.2.9; DGS Handbook §3.22.3)`),
+    policy(`A cumulative GPA of ${gpaMinText(gpaMin ?? 3)} or better (§2.2; Academic Code §6.2.9; DGS Handbook §3.22.3)`),
     policy('All training modules for the Responsible Conduct of Research and ethics: the Graduate School’s 3-hour ethics workshop for every Ph.D. student, and any training your role or your research funding requires (Academic Code §6.2.4; DGS Handbook §3.22.3, §6.3.1)'),
     policy(`The doctoral candidacy examination passed, its written and oral parts: in CSE the written part is the dissertation proposal, so passing the Oral Candidacy Exam (OCE) normally also approves the proposal. The OCE can be taken once your coursework is complete or in progress the same semester — the regular-course credits and the qualifying examination’s core-knowledge and specialization courses — and you have a tenured or tenure-track advisor (§2.3, §4.5; Academic Code §6.2.8, §6.2.9). A course waiting for the DGS’s decision counts once the DGS approves it${dualPlanClause(ctx)}`),
     policy('Before the OCE: send the DGS a written request naming your committee — your advisor and at least three voting members, with CVs for members from outside Notre Dame — and give the committee your written proposal at least two weeks before the exam, which is held on campus (§4.5)'),
@@ -2217,7 +2261,7 @@ function candidacyAdmissionRow(ctx: Ctx, merged: { oce: RequirementResult; rcr: 
     if (gpaMin !== undefined && gpa !== undefined && gpa < gpaMin) {
       status = 'needs_dgs_review';
       completedLate = false;
-      parts.push({ note: `You show a ${gpaText(gpa)} GPA — §2.2 requires a ${gpaMin.toFixed(1)} for admission to candidacy; confirm your admission with the DGS` });
+      parts.push({ note: `You show a ${gpaText(gpa)} GPA — §2.2 requires a ${gpaMinText(gpaMin)} for admission to candidacy; confirm your admission with the DGS` });
     }
   } else {
     // The conditions, each with where the record stands (the facts), in the
@@ -2266,7 +2310,7 @@ function candidacyAdmissionRow(ctx: Ctx, merged: { oce: RequirementResult; rcr: 
     if (gpaMin === undefined) conditions.push({ text: `Cumulative GPA: cannot be checked — the rules sheet is missing 'gpa_min'`, mark: 'not_yet' });
     else
       conditions.push({
-        text: `Cumulative GPA of ${gpaMin.toFixed(1)} or better: ${gpa === undefined ? (ctx.student.gpa === undefined ? 'not entered' : 'cannot be checked — see the GPA row') : gpa >= gpaMin ? gpaText(gpa) : `${gpaText(gpa)} — below it`}`,
+        text: `Cumulative GPA of ${gpaMinText(gpaMin)} or better: ${gpa === undefined ? (ctx.student.gpa === undefined ? 'not entered' : 'cannot be checked — see the GPA row') : gpa >= gpaMin ? gpaText(gpa) : `${gpaText(gpa)} — below it`}`,
         mark: gpa !== undefined && gpa >= gpaMin ? 'met' : 'not_yet',
       });
     conditions.push({ text: `Responsible Conduct of Research and ethics training: ${m.rcrTrainingCompleted ? `done ${m.rcrTrainingCompleted}` : 'not yet'}`, mark: m.rcrTrainingCompleted ? 'met' : 'not_yet' });
@@ -2612,7 +2656,8 @@ function msAlongTheWayRow(ctx: Ctx): RequirementResult {
   } else if (passed && doneReg >= reqReg && doneRes >= reqRes && (gpaShort || afterMsLimit || creditsAfterMsLimit !== undefined || oceWaiting)) {
     status = 'needs_dgs_review';
     const why = [
-        ...(gpaShort ? [gpa === undefined ? 'no cumulative GPA is entered, and the award needs at least the 3.0 minimum (§2.2)' : `your cumulative GPA is ${gpaText(gpa)}, below the 3.0 the award needs (§2.2)`] : []),
+        // The sheet's minimum, as the GPA card prints it (round 5 verification, item 14).
+        ...(gpaShort ? [gpa === undefined ? `no cumulative GPA is entered, and the award needs at least the ${gpaMinText(gpaMin!)} minimum (§2.2)` : `your cumulative GPA is ${gpaText(gpa)}, below the ${gpaMinText(gpaMin!)} the award needs (§2.2)`] : []),
         ...(afterMsLimit ? [`the exam came more than ${msYears} years after you entered${msShift}, and the master’s five-year limit may apply to the award (Academic Code §6.1.4; DGS Handbook §3.21.1)`] : []),
         ...(creditsAfterMsLimit?.course
           ? [`${creditsAfterMsLimit.course.requirement} were completed in ${termLabel(creditsAfterMsLimit.course.term)} (${creditsAfterMsLimit.course.courseId}), more than ${msYears} years after you entered${msShift}, and the master’s five-year limit may apply to the award (Academic Code §6.1.4; DGS Handbook §3.21.1)`]

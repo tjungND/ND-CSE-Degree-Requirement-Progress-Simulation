@@ -62,6 +62,15 @@ export interface CourseEntry {
    * sheet says `yes` to needs no tick, and a course not in the sheet cannot
    * be settled by one (it goes to the DGS through the review request first). */
   dgsApproved?: true;
+  /** The DGS's ruling on a course HELD by a record-level fact — a readmission,
+   * an interruption of five years or more, a separated Notre Dame MSCSE,
+   * non-degree status or Notre Dame coursework before admission — recorded by the course's
+   * box while the course is held (policy review round 5, item 29; DGS
+   * 2026-10-14: option (b)). Only this releases the hold: a `dgsApproved`
+   * tick given earlier for the case-by-case question did, with a note saying
+   * the DGS had confirmed the hold. The box sets both (the DGS's answer to the
+   * review request covers every reason it lists). */
+  dgsHoldApproved?: true;
   /** A Notre Dame course that ALSO counts toward the student's other degree
    * program, for a student enrolled in two at once (Academic Code §2.2: "No
    * more than nine credit hours of classes from any one master's degree may be
@@ -801,6 +810,10 @@ export interface CourseLine {
    * the tick box, `approved` says whether it is ticked. */
   approvable?: true;
   approved?: true;
+  /** The course is held by a record-level fact (CourseEntry.dgsHoldApproved):
+   * the box records the DGS's ruling on the hold, and `approved` reads it
+   * (round 5, item 29 (b)). */
+  holdRuling?: true;
 }
 
 export interface AuditReport {
@@ -843,6 +856,11 @@ export interface AuditReport {
    * conferred" (policy review round 3, P3-import-4; DGS 2026-10-07: option
    * (b)). The processing request asks whether it was sent in time. */
   transferRequestWindowClosed?: Term;
+  /** The examinations from before a readmission after five years or more
+   * (Academic Code §5.5), whatever the DGS ruled: the page offers the Approvals
+   * tick "my examinations from before the interruption stand" while this
+   * lists any (policy review round 5; DGS 2026-10-14). */
+  examsBeforeInterruption?: string[];
   /** The MSCSE's summer floor from the Parameters tab (summer_fulltime_credits_min),
    * for the glossary's "Full-time" (policy review round 3, P3-text-ui-5): read
    * from the sheet, never typed, so the two cannot drift. */
@@ -850,8 +868,10 @@ export interface AuditReport {
   /** Each course drawing on the §5.2 transfer cap, with the credits the
    * allocator counted for it (regular plus total-only), and the cap itself:
    * the processing request submits only what the cap admits (policy review
-   * round 3, P3-prior-programs-5). */
-  transferCredits?: { courseId: string; institution?: string; term: Term; counted: number }[];
+   * round 3, P3-prior-programs-5). `restOver` is set when a cap other than
+   * §5.2's refused part of the course — the engine's own reason, e.g. "over
+   * the 9-credit non-CSE cap (§3.2)" (round 5 verification, transfer-1). */
+  transferCredits?: { courseId: string; institution?: string; term: Term; counted: number; restOver?: string }[];
   transferCap?: number;
   /** Graduation is in sight, so the page asks the semester (DGS 2026-10-05:
    * "Let's show it only when it matters"): a Ph.D. student once the OCE is

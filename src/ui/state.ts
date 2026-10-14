@@ -394,6 +394,7 @@ export function validateStudent(data: unknown, refusals: Refusal[] = []): Studen
     if (e['typedByStudent'] !== undefined && e['typedByStudent'] !== true) delete e['typedByStudent'];
     if (e['countedToward'] !== undefined && !COUNTED_TOWARD.includes(e['countedToward'] as string)) delete e['countedToward'];
     if (e['dgsApproved'] !== undefined && e['dgsApproved'] !== true) delete e['dgsApproved']; // the DGS's approval of this course (2026-09-27)
+    if (e['dgsHoldApproved'] !== undefined && e['dgsHoldApproved'] !== true) delete e['dgsHoldApproved']; // the DGS's ruling on a held course (round 5, item 29 (b))
     if (e['sharedWithOtherDegree'] !== undefined && e['sharedWithOtherDegree'] !== true) delete e['sharedWithOtherDegree']; // also counts toward a second program (2026-10-04)
     // Transfer credit the Notre Dame record shows as accepted (P3-import-1,
     // 2026-10-05). The engine counts it, so a malformed mark is dropped — the

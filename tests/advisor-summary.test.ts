@@ -468,7 +468,10 @@ describe('a time limit completed late in the advisor email (P4-phd-1)', () => {
     const todo = actionItems(report);
     assert.ok(!todo.student.some((t) => /^Complete all requirements/.test(t)), JSON.stringify(todo.student));
     assert.ok(todo.dgs.some((t) => /^Confirm whether the Graduate School extended the student’s time limit, or advise the student on an eligibility extension/.test(t)), JSON.stringify(todo.dgs));
-    assert.doesNotMatch(emailOf(report), /Nothing is pending with the DGS\b/);
+    // The MSCSE email names the ADGS (decisionWording): match either, and
+    // check the ADGS's list is there (round 5, item 36).
+    assert.doesNotMatch(emailOf(report), /Nothing is pending with the A?DGS\b/);
+    assert.match(emailOf(report), /\nWHAT THE ADGS NEEDS TO DO\n/);
   });
 });
 

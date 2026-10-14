@@ -22,6 +22,7 @@ import { isEmbedded, notifyEmbedHeight, openFullPageLink, postScrollTo, startAnc
 import { sectionRef } from './section-ref.ts';
 import { themeToggle } from './theme.ts';
 import { formatYmdLong, handbookLink, rulesDateLine } from './handbook.ts';
+import { coursesPageWarnings, sheetWarningText } from './sheet-warnings.ts';
 import { resultStamp, stampLine } from './stamp.ts';
 import { ndDateOnly } from '../data/rules-date.ts';
 import { sheetSourceLine } from './sheet-source.ts'; // sheetSourceNote is the self-check page's now (trim review P-12)
@@ -535,7 +536,7 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
               el('p', { class: 'effective' }, rulesDateLine(rules, termLabel(currentTerm), todayIso)),
               // A sheet warning the DGS asked the pages to show (SheetIssue
               // `onPage`; DGS 2026-10-12: a university listed twice).
-              ...rules.issues.filter((i) => i.onPage === true).map((i) => el('p', { class: 'issue warning sheet-warning', 'data-key': `sheet-warning.${i.tab}.${i.row ?? ''}` }, `Rules sheet — for the DGS: ${i.message}`)),
+              ...sheetWarnings('masthead'),
               // The rules spreadsheet, linked with its faculty-only note (DGS, 2026-09-04).
               sheetSourceLine(),
             ]),
@@ -551,8 +552,17 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
     );
   }
 
+  /** A sheet warning the DGS asked the pages to show (SheetIssue `onPage`;
+   * DGS 2026-10-12: a university listed twice; 2026-10-13: a Courses row):
+   * under the rules-date line, and — the embedded page has no masthead — at
+   * the head of the notices (round 5, item 17; DGS 2026-10-14). */
+  function sheetWarnings(place: 'masthead' | 'notices'): HTMLElement[] {
+    return coursesPageWarnings(rules.issues, isEmbedded())[place].map((i) => el('p', { class: 'issue warning sheet-warning', 'data-key': `sheet-warning.${i.tab}.${i.row ?? ''}` }, sheetWarningText(i)));
+  }
+
   function notices(): HTMLElement[] {
     const out: HTMLElement[] = [
+      ...sheetWarnings('notices'),
       // Two sentences, at the DGS's request (2026-09-18): the caveats about
       // Pending rows, "typically offered" and the retired switch were cut —
       // each of those is explained where it appears (the legend's own entries,
