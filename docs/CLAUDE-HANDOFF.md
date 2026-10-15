@@ -2220,7 +2220,12 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   problemHref })` sets the card line (`.req-problem`); app.ts passes none in simulation mode. The previews
   use external-upload.ts `readerProblemLink(key, problem, checkedWith, editable)`, whose href is
   rebuilt in the click handler (the rows change without a re-render). `maskShape` is
-  diagnose-transcript.mjs's mask, Unicode-aware. Reports are logged in docs/ACCURACY-LOG.md.
+  diagnose-transcript.mjs's mask, character for character (2026-10-15 — keep the two identical): every
+  letter of every script to A/a by case in ONE callback pass (`\p{Lu}` then `\p{L}` would turn every A
+  into a), `\p{N}` to 9, control/format characters to ¤, anything else outside printable ASCII to ?;
+  printable ASCII is kept, so a plain-ASCII email is pinned word for word in tests/report-problem.test.ts,
+  and `shapeLegend` names ? and ¤ only when a row shown has one (W-CL506). Reports are logged in
+  docs/ACCURACY-LOG.md.
 - **Notre Dame corpus** (2026-10-11, item 12): `tests/fixtures/nd-transcripts/` + `scripts/dev/score-nd.mts`
   (`ndRowOf` — a transfer-block row's institution rides in the title cell; `scoreNdDocument`) +
   replay's `nd` lane and its `isNotreDame` PDF expectations; rebuild with
