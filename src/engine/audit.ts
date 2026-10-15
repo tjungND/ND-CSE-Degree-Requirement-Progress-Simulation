@@ -14,7 +14,7 @@ import { uncoveredRegistrationGaps } from './registration-gaps.ts';
 import { fullTimeTermRecords, graduateLevelFlag, sameTermDuplicate } from './requirements/residency.ts';
 import { transferCourseChecks } from '../data/course-checks.ts';
 import { isNotreDameInstitution } from '../data/external.ts';
-import { advisorReviewFlag, advisorRow, approvalsRow, goodStandingRow, gpaRow, gpaText } from './requirements/shared.ts';
+import { advisorReviewFlag, advisorRow, approvalsRow, goodStandingRow, gpaRow, gpaText, noGpaYet } from './requirements/shared.ts';
 import { mscseRows, msTimeLimitRow, summerOnlyReviewFlag, thesisReadersReviewFlag } from './requirements/mscse.ts';
 import { extensionReviewFlag } from './requirements/context.ts';
 import { ADMISSION_DEADLINE_SEMESTER, eighthSemester, phdRows, phdTimeLimitRow, qualifierPriorRulesEligible, readmissionGapCounted } from './requirements/phd.ts';
@@ -126,7 +126,12 @@ function longestRun(seqs: number[]): number[] {
   return best;
 }
 
-export function audit(student: Student, rules: Rules, today: string): AuditReport {
+export function audit(asEntered: Student, rules: Rules, today: string): AuditReport {
+  // A 0.00 typed in the first semester, before any grade, is the
+  // transcript's "0.000 over 0 GPA hours" — no GPA at all, on every row and in
+  // every email, not a GPA below the minimum (DGS 2026-10-14; review of the
+  // change: the defense and candidacy checks still read it as 0.00).
+  const student: Student = asEntered.gpa === 0 && noGpaYet(asEntered, today) ? { ...asEntered, gpa: undefined } : asEntered;
   const params = rules.parameters;
   const { term: entry, normalized } = normalizeEntryTerm(student.entryTerm);
 
@@ -923,6 +928,10 @@ export function audit(student: Student, rules: Rules, today: string): AuditRepor
     reviewFlags,
     ...(transferCredits.length > 0 ? { transferCredits } : {}),
     ...(transferCap !== undefined ? { transferCap } : {}),
+    // The first semester, no grade yet: the emails say what the GPA card says
+    // (DGS 2026-10-14) — the card's own state, so a missing gpa_min (the card
+    // cannot evaluate) never reads "no GPA yet" in an email.
+    ...(rows.find((r) => r.id === 'shared.gpa')?.status === 'in_progress' ? { noGpaYet: true as const } : {}),
     ...(staffChecks.length > 0 ? { staffChecks } : {}),
     ...(summerFloor !== undefined ? { summerFullTimeCredits: summerFloor } : {}),
     program: p,

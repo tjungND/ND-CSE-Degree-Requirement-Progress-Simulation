@@ -1222,7 +1222,15 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     await s.waitFor(`!document.querySelector('.transcript-preview')`);
     const saved = JSON.parse(await s.evalJs(`JSON.stringify(JSON.parse(localStorage.getItem('cse-degree-audit/v1/student')).courses.map((c) => [c.courseId, c.grade, c.credits, c.term.season + ' ' + c.term.year]))`));
     if (JSON.stringify(saved) !== JSON.stringify(expected.map(([id, , cr]) => [id, 'IP', Number(cr), 'fall 2026']))) throw new Error('Add must put the four courses on the record, in progress: ' + JSON.stringify(saved));
-    console.log('  Parchment-delivered official transcript of a new student: 4 courses in progress read past the delivery cover, entry term Fall 2026, added');
+    // The GPA card (DGS 2026-10-14): in the first semester, before any grade,
+    // "No GPA yet"; once Fall 2026 has ended (this fixture is dated), the GPA
+    // is asked for again — the page runs on the real date.
+    const gpaCard = await s.evalJs(`(() => { const c = [...document.querySelectorAll('.req')].find((e) => /^Cumulative GPA of at least/.test(e.querySelector('.req-title')?.textContent ?? '')); return c ? c.querySelector('.pill').textContent + ' | ' + c.textContent : ''; })()`);
+    const firstSemester = new Date().toISOString().slice(0, 10) <= '2026-12-31';
+    if (firstSemester ? !/^In progress \| .*No GPA yet\./.test(gpaCard) : !/Enter your graduate-level cumulative GPA/.test(gpaCard)) throw new Error(`the GPA card ${firstSemester ? 'must say “No GPA yet” in the first semester' : 'must ask for the GPA once the first semester has ended'}: ` + gpaCard.slice(0, 200));
+    await s.evalJs(`document.getElementById('req-shared-gpa')?.scrollIntoView({ block: 'center' })`);
+    await s.shot('nd-new-student-gpa-card');
+    console.log('  Parchment-delivered official transcript of a new student: 4 courses in progress read past the delivery cover, entry term Fall 2026, added; GPA card: ' + (firstSemester ? '“No GPA yet”' : 'asks for the GPA (Fall 2026 has ended)'));
   }
 }
 

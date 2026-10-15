@@ -872,6 +872,10 @@ export interface AuditReport {
    * §5.2's refused part of the course — the engine's own reason, e.g. "over
    * the 9-credit non-CSE cap (§3.2)" (round 5 verification, transfer-1). */
   transferCredits?: { courseId: string; institution?: string; term: Term; counted: number; restOver?: string }[];
+  /** A first-semester student who has not finished a semester yet: no
+   * cumulative GPA exists, and the GPA card and the emails say "no GPA yet"
+   * (DGS 2026-10-14; requirements/shared.ts `noGpaYet`). */
+  noGpaYet?: true;
   transferCap?: number;
   /** Graduation is in sight, so the page asks the semester (DGS 2026-10-05:
    * "Let's show it only when it matters"): a Ph.D. student once the OCE is

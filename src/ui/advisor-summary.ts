@@ -107,7 +107,8 @@ export function advisorSummary(report: AuditReport, opts: AdvisorSummaryOptions)
     `${programLabel(report.program)}; entered ${opts.entryTerm}; ${prior}; ` +
     // As the §2.2 card prints it — never rounded up past the minimum (2.996
     // stays 2.996; policy review round 3, P3-cse-1-2-1, DGS 2026-10-06).
-    `cumulative GPA ${opts.gpa !== undefined ? gpaText(opts.gpa) : 'not entered yet'}.`;
+    // The first semester, no grade yet: no GPA exists (DGS 2026-10-14).
+    `${report.noGpaYet ? 'no GPA yet' : `cumulative GPA ${opts.gpa !== undefined ? gpaText(opts.gpa) : 'not entered yet'}`}.`;
   // A deadline in this semester or the next is counted in the headline too
   // (DGS 2026-09-28), as the Grad Admin request counts it.
   const dueSoon = scored.filter((r) => ['this', 'next'].includes(deadlineAlert(r) ?? '')).length;

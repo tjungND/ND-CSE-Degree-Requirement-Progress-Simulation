@@ -2,8 +2,10 @@
 import { GPA_RANGE, formatValue, inRange, rangeSpan, usableGpa } from '../ranges.ts';
 import { coursesNeedingDgsReviewFor } from '../review.ts';
 import { openDeadline } from '../status.ts';
-import { endOfTerm, termLabel } from '../term.ts';
-import type { DetailPart, RequirementResult } from '../types.ts';
+import { endOfTerm, normalizeEntryTerm, termLabel } from '../term.ts';
+import type { DetailPart, RequirementResult, Student } from '../types.ts';
+import { GRADE_POINTS } from '../grades.ts';
+import { isNotreDameInstitution } from '../../data/external.ts';
 import type { Ctx } from './context.ts';
 import { DUAL_DEGREE_SHARED_CREDITS_MAX } from '../allocate.ts';
 import { capRow, gpaMinText, joinedDetail, missingParamDetail } from './context.ts';
@@ -37,6 +39,43 @@ export function defendedBelowGpaNote(ctx: Ctx): string {
     : '';
 }
 
+/** A first-semester student who has not finished a semester yet has no
+ * cumulative GPA — the transcript prints 0.000 over 0 GPA hours — so the GPA
+ * card says "No GPA yet" instead of asking for a figure, and a 0.00 typed
+ * from that line is never read as "below the minimum" (DGS 2026-10-14: "Let's
+ * just say no GPA yet for the first-semester student who hasn't finished a
+ * semester yet"). Read from the record: no GPA entered, or 0.00; the first
+ * semester (the entry term) has not ended; no Notre Dame course on the record
+ * has a grade that counts in the GPA (one registered as an undergraduate is on
+ * the other record); and no earlier Notre Dame graduate program is on file —
+ * its grades are in the same cumulative GPA. A GPA above zero the student
+ * entered is checked as entered: it may be an earlier program's real figure,
+ * and it is never set aside on a guess. */
+export function noGpaYet(student: Student, today: string): boolean {
+  if (student.gpa !== undefined && student.gpa !== 0) return false;
+  // (The entry term as entered, or the page's guess at it on a fresh record —
+  // the guess every other row runs on too, and which the page asks the student
+  // to set; review of the change, 2026-10-14.)
+  if (today > endOfTerm(normalizeEntryTerm(student.entryTerm).term).date) return false;
+  if (student.ndMasters !== undefined) return false;
+  const g = student.background?.graduate;
+  if (g === 'nd-mscse' || g === 'nd-4plus1' || g === 'nd-mscse-transfer' || g === 'nd-other') return false;
+  // A Notre Dame graduate course with a grade that counts, or still marked in
+  // progress in a semester that has ended (its grade has posted; an
+  // early-start summer, say): a GPA exists. A course on the undergraduate
+  // record is set aside — registered as an undergraduate, or typed with no
+  // level and filed as the bachelor's work, unless the record is a 4+1's,
+  // whose senior-year courses may be graduate-registered (review of the change).
+  const fourPlusOne = student.integratedBsMs === true || student.background?.ndIntegrated === true;
+  return !student.courses.some(
+    (c) =>
+      (c.origin === 'nd' || isNotreDameInstitution(c.institution)) &&
+      c.registeredLevel !== 'undergraduate' &&
+      !(c.registeredLevel === undefined && c.degreeLevel === 'bachelors' && !fourPlusOne) &&
+      (GRADE_POINTS[c.grade] !== undefined || (c.grade === 'IP' && endOfTerm(c.term).date < today)),
+  );
+}
+
 export function gpaRow(ctx: Ctx): RequirementResult {
   const quote =
     'Continuation in a CSE graduate degree program, admission to degree candidacy, and graduation require maintenance of at least a 3.0 (B) cumulative GPA.';
@@ -45,9 +84,14 @@ export function gpaRow(ctx: Ctx): RequirementResult {
   let status: RequirementResult['status'];
   // The GPA is the fact; what a low one means is a note (DGS 2026-10-03).
   const parts: DetailPart[] = [];
+  const none = noGpaYet(ctx.student, ctx.today);
   if (min === undefined) {
     status = 'cannot_evaluate';
     parts.push(missingParamDetail('gpa_min'));
+  } else if (none) {
+    // Nothing to check until the first grades post — not a missing entry.
+    status = 'in_progress';
+    parts.push('No GPA yet');
   } else if (gpa === undefined) {
     status = 'cannot_evaluate';
     // The graduate career's figure (P1-gpa-c4, DGS 2026-10-03): the label and this line say so.
@@ -75,7 +119,7 @@ export function gpaRow(ctx: Ctx): RequirementResult {
   // rather than the student choosing a figure (policy review 2026-10-03,
   // replacing the 2026-09-05 choice).
   const gs = ctx.student.gpaSource;
-  if (min !== undefined && gpa !== undefined && inRange(gpa, GPA_RANGE) && gs !== undefined) {
+  if (min !== undefined && !none && gpa !== undefined && inRange(gpa, GPA_RANGE) && gs !== undefined) {
     const other = gs.basis === 'transcript-graduate' ? gs.programGpa : gs.transcriptGpa;
     if (other !== undefined && inRange(other, GPA_RANGE) && other >= min !== gpa >= min) {
       status = 'needs_dgs_review';

@@ -367,7 +367,7 @@
     "phd.transfer": "not_applicable",
     "shared.advisor": "cannot_evaluate",
     "shared.approvals": "in_progress",
-    "shared.gpa": "cannot_evaluate"
+    "shared.gpa": "in_progress"
   },
   "life-mscse-4plus1-finished": {
     "ms.cap.fourk": "met 6/6",
@@ -699,7 +699,7 @@
     "ms.transfer": "not_applicable",
     "shared.advisor": "unmet [due_soon]",
     "shared.approvals": "not_applicable",
-    "shared.gpa": "cannot_evaluate"
+    "shared.gpa": "in_progress"
   },
   "mscse-advisor-overdue-after-first-semester": {
     "ms.cap.fourk": "not_applicable “Not used yet” 0/6",
@@ -2073,7 +2073,7 @@
     "phd.transfer": "not_applicable",
     "shared.advisor": "unmet",
     "shared.approvals": "not_applicable",
-    "shared.gpa": "cannot_evaluate"
+    "shared.gpa": "in_progress"
   },
   "phd-grade-below-c-excluded-from-credit": {
     "phd.candidacy": "unmet [upcoming]",

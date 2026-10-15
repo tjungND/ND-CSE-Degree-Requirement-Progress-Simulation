@@ -1,6 +1,6 @@
 {
   "name": "phd-fresh",
-  "description": "A brand-new Ph.D. student with nothing entered: coursework rows unmet, deadline rows show due-by dates, GPA cannot be evaluated. Since 2026-10-04 (DGS: the OCE can be scheduled at the earliest in the semester the qualifier is expected to be complete) the OCE and admission read Not started here.",
+  "description": "A brand-new Ph.D. student with nothing entered: coursework rows unmet, deadline rows show due-by dates, and no GPA yet — the first semester, no grade posted (DGS 2026-10-14; it read cannot be evaluated before). Since 2026-10-04 (DGS: the OCE can be scheduled at the earliest in the semester the qualifier is expected to be complete) the OCE and admission read Not started here.",
   "today": "2026-09-01",
   "rules": {
     "base": "default"
@@ -19,7 +19,10 @@
   },
   "expect": {
     "shared.gpa": {
-      "status": "cannot_evaluate"
+      "status": "in_progress",
+      "detailIncludes": [
+        "No GPA yet"
+      ]
     },
     "shared.advisor": {
       "status": "unmet"

@@ -227,7 +227,10 @@ function metTable(r: RequirementResult, student: Student, countedEntries?: (cour
     return { heading, columns: ['What', evidence], rows };
   }
   // As the §2.2 card prints it: 2.996 is not "3.00" (P3-cse-1-2-1, DGS 2026-10-06).
-  if (r.id === 'shared.gpa') return { heading, columns: ['What', evidence], rows: [['Cumulative GPA', student.gpa !== undefined ? gpaText(student.gpa) : 'not entered']] };
+  // The GPA row is in progress only while no GPA exists yet — the first
+  // semester, no grade posted (DGS 2026-10-14): no figure to list, so the
+  // request prints the card's own fact ("Progress: No GPA yet.").
+  if (r.id === 'shared.gpa') return { heading, columns: ['What', evidence], rows: r.status === 'in_progress' ? [] : [['Cumulative GPA', student.gpa !== undefined ? gpaText(student.gpa) : 'not entered']] };
   return { heading, columns: [evidence], rows: [[r.detail || statusWord(r).toLowerCase()]] };
 }
 
@@ -538,7 +541,8 @@ export function gradAdminRequest(
     'Could you process the items below for my degree record? The DGS, in cc, decides eligibility; this request is only for processing what has already been decided.';
   const standing =
     `My standing from the CSE degree self-check tool, as of ${asOf}: ${programLabel(report.program)}; entered ${opts.entryTerm}; ${prior}; ` +
-    `cumulative GPA ${opts.gpa !== undefined ? gpaText(opts.gpa) : 'not entered yet'}.`;
+    // The first semester, no grade yet: no GPA exists (DGS 2026-10-14).
+    `${report.noGpaYet ? 'no GPA yet' : `cumulative GPA ${opts.gpa !== undefined ? gpaText(opts.gpa) : 'not entered yet'}`}.`;
   // (The self-check file is no longer attached — DGS 2026-09-15.) The
   // "whichever apply" hedge instructs the student and lives in the dialog step
   // (trim review 2026-09-18, P-14). Asked for only when there is transfer
