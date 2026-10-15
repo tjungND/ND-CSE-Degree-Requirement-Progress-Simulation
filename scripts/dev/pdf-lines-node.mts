@@ -1,8 +1,12 @@
 // The one Node-side PDF loader for the dev scripts (2026-10-09, transcript
 // accuracy program, Batch A): pdfjs's legacy build run in node, through the
 // SAME layout stage the browser uses (`runsFromTextItems` → `runsToLines` in
-// src/transcript/layout.ts), so a line list made here is exactly what
-// src/transcript/pdf.ts would hand the parser. scripts/dev/pdf-to-lines.mts,
+// src/transcript/layout.ts). Opened with `standardFonts: false`, a line list
+// made here is exactly what src/transcript/pdf.ts hands the parser (the
+// review of 2026-10-15 ran the app's own reader in Chrome and WebKit: the
+// lines were equal); by default it keeps pdfjs's standard-font folder, as the
+// committed corpora were made, which keeps a glyph the font's encoding lacks
+// where the browser drops it. scripts/dev/pdf-to-lines.mts,
 // scripts/dev/replay.mts, scripts/diagnose-transcript.mjs and the OCR bench
 // all call this instead of carrying their own pdfjs loop.
 //
@@ -45,8 +49,10 @@ function pdfjs(): Promise<any> {
  * font faces (node has none), pdfjs's own warnings silenced (verbosity 0 —
  * pdfjs prints them through console.log, which would land in a script's JSON
  * output), and the standard-font folder named so PDFs set in the base-14
- * fonts do not complain. */
-async function openDocument(file: string): Promise<any> {
+ * fonts do not complain. `standardFonts: false` leaves that folder out, as
+ * the app's own pdfjs (src/transcript/pdf.ts) is opened — the diagnosis's
+ * second, browser-style read (2026-10-15). */
+async function openDocument(file: string, { standardFonts = true }: { standardFonts?: boolean } = {}): Promise<any> {
   const lib = await pdfjs();
   const data = new Uint8Array(readFileSync(file));
   return lib.getDocument({
@@ -55,16 +61,17 @@ async function openDocument(file: string): Promise<any> {
     isEvalSupported: false,
     disableFontFace: true,
     verbosity: 0,
-    standardFontDataUrl: join(root, 'node_modules', 'pdfjs-dist', 'standard_fonts') + '/',
+    ...(standardFonts ? { standardFontDataUrl: join(root, 'node_modules', 'pdfjs-dist', 'standard_fonts') + '/' } : {}),
   }).promise;
 }
 
-/** The text lines of a PDF, exactly as the browser's `pdfToLines` reads them:
- * each page's runs in reading orientation → lines, with an empty line after
- * every page (the page break the parser expects). `onPage` receives each
- * page's runs and lines as they are read. */
-export async function pdfToLinesNode(file: string, onPage?: (page: PageRuns) => void): Promise<string[]> {
-  const doc = await openDocument(file);
+/** The text lines of a PDF, as the browser's `pdfToLines` reads them: each
+ * page's runs in reading orientation → lines, with an empty line after every
+ * page (the page break the parser expects). `onPage` receives each page's
+ * runs and lines as they are read; `options.standardFonts: false` opens it
+ * without the standard-font folder, exactly as the browser does (above). */
+export async function pdfToLinesNode(file: string, onPage?: (page: PageRuns) => void, options: { standardFonts?: boolean } = {}): Promise<string[]> {
+  const doc = await openDocument(file, options);
   const lines: string[] = [];
   // The previous page's column layout, as the browser passes it (F4, 2026-10-09).
   let hint: ColumnHint | undefined;

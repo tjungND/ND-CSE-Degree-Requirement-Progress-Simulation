@@ -214,6 +214,43 @@ const bachelorsIn = (text: string): boolean => BACHELORS_WORDS_RE.test(text) || 
 const DEGREE_NAME_RE = /\b(bachelor|master|doctor)/i;
 const namesDegreeIn = (text: string): boolean => /\b(bachelor|master|doctor|ph\.?\s?d)\b/i.test(text) || bachelorsIn(text) || GRAD_ABBR_RE.test(text) || GRAD_WORDS_RE.test(text);
 const NOT_AWARDED_RE = /\bsought\b|\bexpected\b|\bcandidate\b|\bcurrent program\b/i;
+/** The bachelor's degree named alone in its cell, after an optional
+ * "Degree:" label — "BACHELOR OF ARTS", "Bachelor of Science in Applied
+ * Mathematics", "Bachelor’s Degree in Economics" (2026-10-15); never a
+ * thesis or project line ("Bachelor Thesis": no "of" or "in"). */
+const BACHELORS_NAME_CELL_RE = /^bachelor(?:'s|’s)?(?:\s+degree)?\s+(?:of|in)\s+[A-Za-z][A-Za-z&.,'’() -]*$/i;
+/** A month and a year and nothing else ("MAY   2022", "Aug. 2021"): month
+ * names and their abbreviations only — "Marketing   2022" and "University
+ * of Maryland   2019" are no dates (review of the fix, 2026-10-15). */
+const MONTH_YEAR_CELLS_RE = /^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+((?:19|20)\d{2})\.?$/i;
+/** Words in the degree's cell that make its month and year something other
+ * than the award — an entry, a status, a forecast, a stage, a thesis or an
+ * exam ("Bachelor of Science Admission   August 2019", "Bachelor of
+ * Technology Semester VIII   May 2023"; review of the fix, 2026-10-15). */
+const NOT_AN_AWARD_WORD_RE = /\b(?:admi(?:t|ss)\w*|enrol\w*|entered|entry|enter|matriculat\w*|commenc\w*|intake|registr\w*|readmit\w*|reinstat\w*|start\w*|began|begin\w*|catalog|since|from|first\s+term|candida\w*|active|continuing|in[-\s]?progress|exp(?:ected)?|anticipated|projected|estimated|tentative|deferred|sought|pending|semester|year|withdr\w*|discontinu\w*|dismiss\w*|suspen\w*|terminat\w*|leave|inactive|lapsed|audit|as\s+of|requirements?|appl(?:y|ication)|applied\s+for|intend\w*|plan(?:ned)?|declared|status|effective|thesis|dissertation|exam\w*)\b/i;
+/** A record's closing degree line read as the bachelor's conferral (DGS
+ * 2026-10-15: "It also shows the degree and the conferral month year in the
+ * end, although it does not explicitly say 'awarded' or 'conferred.' Just
+ * the degree name and the month year."): the bachelor's degree's name in its
+ * own cell, after an optional "Degree:" label, then the month and the year
+ * and nothing else — "DEGREE: BACHELOR OF ARTS   MAY   2022". Returns its
+ * date: the 15th, as every month-and-year date is read (only the term
+ * matters), but August's 1st — termOfDate starts the fall on August 15th, and
+ * an August conferral is a summer one (review of the fix). The caller takes
+ * it only after the record's last course row and only when nothing else on
+ * the record dated the bachelor's; a master's or doctor's line is never read
+ * this way (the DGS spoke of a bachelor's record). */
+function closingBachelorsDate(flat: string): string | undefined {
+  let cells = flat.trim().split(/\s{2,}/);
+  if (cells.length > 1 && /^degree\s*:?$/i.test(cells[0]!)) cells = cells.slice(1);
+  if (cells.length < 2) return undefined;
+  const name = cells[0]!.replace(/^degree\s*:?\s*/i, '');
+  if (!BACHELORS_NAME_CELL_RE.test(name) || NOT_AN_AWARD_WORD_RE.test(name) || gradDegreeNameIn(name)) return undefined;
+  const date = MONTH_YEAR_CELLS_RE.exec(cells.slice(1).join(' '));
+  if (!date) return undefined;
+  const month = MONTHS.indexOf(date[1]!.slice(0, 3).toUpperCase()) + 1;
+  return `${date[2]}-${String(month).padStart(2, '0')}-${month === 8 ? '01' : '15'}`;
+}
 const gradDegreeNameIn = (text: string): boolean => /\b(master|doctor|ph\.?\s?d)\b/i.test(text) || GRAD_ABBR_RE.test(text) || GRAD_WORDS_RE.test(text);
 const DEGREE_CONFERRED_HEADER_RE = /degree\b.*\b(conferred|awarded)\b/i;
 const DEGREE_CONFERRED_HEADER_ALONE_RE = /^[^:]*\bdegree\b[^:]*\b(conferred|awarded)\b\s*:?\s*$/i;
@@ -236,10 +273,18 @@ const TRANSFER_FROM_RE = /^\s*transfer(?:red)?\s+(?:from|credit)\b/i;
 // An institution named on a term line ("Fall 2018: Purdue University" inside
 // Banner's transfer block) keeps that block open; a bare term header ends it.
 const NAMES_INSTITUTION_RE = /universit|college|institute|school|academy/i;
-/** A named transfer block's row coded as an elective of the record
+/** Another school's transferred row coded as an elective of the record
  * ("PROGRAMMING BASICS   TR   T01   EL2   3.0"): a title, three short code
- * cells, the credits and perhaps a grade (2026-10-14). */
+ * cells, the credits and perhaps a grade (2026-10-14). Read so inside a named
+ * transfer block — and, printed without a grade (`gradeless`), anywhere on a
+ * record whose own rows print a section (sectionedTitleFirstRecord,
+ * 2026-10-15). A totals line of that shape ("TERM TOTALS   07   007   025
+ * 3.57") is none (review of the fix). */
 const CODED_TRANSFER_ROW_RE = /^[^:]*[A-Za-z]{2}[^:]*\s{2,}[A-Z0-9]{1,4}\s{2,}[A-Z0-9]{1,4}\s{2,}[A-Z0-9]{1,4}\s{2,}\d{1,2}\.\d{1,2}(?:\s{2,}[A-Z][+-]?)?$/;
+function codedTransferRow(flat: string, gradeless = false): boolean {
+  if (!CODED_TRANSFER_ROW_RE.test(flat) || TOTALS_TITLE_RE.test(flat.split(/\s{2,}/)[0]!.trim())) return false;
+  return !gradeless || /\d\.\d{1,2}$/.test(flat);
+}
 /** The line naming a transfer block's source school (2026-10-14): a
  * university, institute, polytechnic or college — not a division ("School of
  * Arts and Sciences", "College of Engineering"). */
@@ -1253,12 +1298,75 @@ function namedTransferStarts(lines: readonly string[]): Set<number> {
   }
   return out;
 }
+/** A title-first record whose own rows print a section — at least three such
+ * rows (2026-10-15). On it a row printed with neither section nor grade is
+ * another school's equivalent wherever it stands (DGS 2026-10-15: "Those
+ * courses without grades are the transferred courses"), whether or not the
+ * block naming that school was found: the DGS's transcript was refused as
+ * "still in progress" in the browser for its transferred rows, by a cause
+ * the structure-only diagnosis could not show. */
+function sectionedTitleFirstRecord(lines: readonly string[]): boolean {
+  let sectioned = 0;
+  for (const line of lines) {
+    if (titleFirstNumericRow(line.replace(/\s{2,}/g, '  ').trim().split(/\s{2,}/))?.section !== undefined) sectioned += 1;
+    if (sectioned >= 3) return true;
+  }
+  return false;
+}
 /** A named block's term header that is the record's own: words left besides
  * the season and the year, none of them naming a university ("Fall   2019
  * SCHOOL OF ARTS AND SCIENCES"). */
 function termLineNamesOwnDivision(line: string): boolean {
   const beyond = line.replace(/\b(?:fall|spring|summer|autumn|winter)\b|\b(?:19|20)\d{2}\b|\b(?:semester|session|term|quarter)\b/gi, ' ').replace(/[\s:,-]+/g, ' ').trim();
   return /[A-Za-z]{3}/.test(beyond) && !/universit/i.test(beyond);
+}
+
+/** A name an institution goes by — the university guess's strong words
+ * (guessUniversity), shared with transferSourceLines (2026-10-15). */
+const INSTITUTION_NAME_RE =
+  /universit|\binst(?:itute)?\.?\s+of\s+(?:tech|information\s+technology|science|engineering)|\binstitut\w*\s+(?:of\s+)?(?:science|technology|teknologi)|polytechnic|politecnico|polytechnique|politécnic|technical\s+university|technische\s+universität|école|hochschule|academy\s+of\s+higher\s+education|vidyapeeth|vishwavidyalaya|viswavidyalaya|universidad|università|universität|universiteit|universitas|대학교|大学/i;
+/** A heading of another school's credit, or of credit by examination. */
+const TRANSFER_HEADING_RE = /^\s*(?:transfer|advanced\s+placement|examination|exam|test)\b/i;
+/** On a record whose own rows print a section (sectionedTitleFirstRecord),
+ * the lines naming the school a block of transferred rows came from, found
+ * without the block's own shape (2026-10-15 — review of the fix: where
+ * namedTransferStarts missed the block, the reader skipped its rows but the
+ * university guess still named that school, and the preview locks a name
+ * read from the transcript): a line with a cell that names a school (in the
+ * words the guess itself knows) and is not itself a course row, when one of
+ * the next three lines that carry a number — bare terms passed over — is an
+ * equivalent's row (neither section nor grade) or a coded elective without a
+ * grade, before any row of the record's own or a transfer heading. Such a
+ * line is never the transcript's university; at worst the box is left for
+ * the student (re-review of the fix: a name sharing its line with the term,
+ * "Universidad de …", a header line between). */
+function transferSourceLines(lines: readonly string[]): Set<number> {
+  const out = new Set<number>();
+  if (!sectionedTitleFirstRecord(lines)) return out;
+  const spacedOf = (l: string): string => l.replace(/\s{2,}/g, '  ').trim();
+  const namesSchool = (cell: string): boolean => NAMES_SOURCE_SCHOOL_RE.test(cell) || (INSTITUTION_NAME_RE.test(cell) && !/\b(?:school|college|faculty|department)\s+of\b/i.test(cell));
+  for (let i = 0; i < lines.length; i++) {
+    const cells = spacedOf(lines[i]!).split(/\s{2,}/);
+    if (titleFirstNumericRow(cells) || !cells.some(namesSchool)) continue;
+    let counted = 0;
+    for (let j = i + 1; j < lines.length && j <= i + 8 && counted < 3; j++) {
+      const next = spacedOf(lines[j]!);
+      const row = titleFirstNumericRow(next.split(/\s{2,}/));
+      if ((row !== undefined && row.section === undefined && row.grade === undefined) || codedTransferRow(next, true)) {
+        out.add(i);
+        break;
+      }
+      if (row !== undefined) break; // a row of the record's own
+      // A transfer heading below the name: the name is not that block's
+      // source — the issuer printed above it (re-review of the fix).
+      if (TRANSFER_HEADING_RE.test(next) || TRANSFER_BANNER_RE.test(next) || TRANSFER_TABLE_RE.test(next) || TRANSFER_PEOPLESOFT_RE.test(next)) break;
+      // Blank lines, bare terms and lines without a number (a column
+      // header, the school's city) are passed over, not counted.
+      if (EMPTY_FILLER_RE.test(next) || !/\d/.test(next) || BARE_TERM_LINE_RE.test(next.replace(/\s+/g, ' '))) continue;
+      counted += 1;
+    }
+  }
+  return out;
 }
 
 function transferScope(lines: readonly string[]): boolean[] {
@@ -1270,12 +1378,14 @@ function transferScope(lines: readonly string[]): boolean[] {
   // further school's name, and ends as the reader's 'named' block does.
   let named = false;
   const starts = namedTransferStarts(lines);
+  const sources = transferSourceLines(lines);
   return lines.map((raw, i) => {
     const line = raw.replace(/\s{2,}/g, ' ').trim();
     if (starts.has(i)) {
       named = true;
       return (inside = true);
     }
+    if (sources.has(i)) return true;
     if (named) {
       // Only what the block holds stays in it — bare terms, filler, a school's
       // name, the equivalents' rows and coded electives; anything else (the
@@ -1309,8 +1419,7 @@ function guessUniversity(lines: string[], weak: boolean): string | undefined {
   // Strong words name an institution; "college" alone is weak (it also names a
   // division — "College of Science" — or a Banner field, "College : …").
   // "Inst." is how Georgia Tech's transcript abbreviates it (DGS 2026-09-08).
-  const STRONG_RE =
-    /universit|\binst(?:itute)?\.?\s+of\s+(?:tech|information\s+technology|science|engineering)|\binstitut\w*\s+(?:of\s+)?(?:science|technology|teknologi)|polytechnic|politecnico|polytechnique|politécnic|technical\s+university|technische\s+universität|école|hochschule|academy\s+of\s+higher\s+education|vidyapeeth|vishwavidyalaya|viswavidyalaya|universidad|università|universität|universiteit|universitas|대학교|大学/i;
+  const STRONG_RE = INSTITUTION_NAME_RE;
   const WEAK_RE = /college/i;
   const DIVISION_RE = /^(college|school|department|faculty|institute)\s+of\b|\bcollege of\b|^(program|college|major|degree)\s*:/i;
   /** Candidate name cells: each line split at column gaps (a merged two-column
@@ -2449,6 +2558,9 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   let transferBlock: 'banner' | 'table' | 'exemptions' | 'named' | undefined;
   /** The lines naming the school a 'named' block's credit came from. */
   const namedStarts = namedTransferStarts(lines);
+  /** …and, on a record whose own rows print a section, the equivalents and
+   * coded electives without a grade are skipped outside any block too. */
+  const sectionedRecord = sectionedTitleFirstRecord(lines);
   const EXEMPTIONS_HEADING_RE = /^\s*credits?\s*\/\s*exemptions?\b|^\s*exemptions?\s*(?:and|\/|&)\s*credits?\b/i;
   // Banner's "COURSES IN PROGRESS" section (public keys, 2026-09-26): its rows
   // print credits and no grade — they are in progress until the next term
@@ -2483,6 +2595,24 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   let bachelorsConferred: true | undefined;
   let bachelorsNamed = false; // a bachelor's is named at all — dated or not (2026-09-08)
   let recentDegreeDate: { date: string; at: number } | undefined; // a dated "Degree Completion Date:" line, in case the degree name follows
+  /** The record's closing bachelor's lines and their dates
+   * (closingBachelorsDate), and whether one was printed beside a forecast or
+   * a status — which voids them all. */
+  const closingBachelors: { date: string; at: number }[] = [];
+  let closingVoided = false;
+  /** The line of the last course row read — with a code, and without one
+   * (CC15's rows, which go when any row has a code). */
+  let lastCodedRowLine = -1;
+  let lastCodelessRowLine = -1;
+  /** A line next to `i` (blank and filler lines passed over) forecasts or
+   * denies a degree: then `i`'s month and year are not its award. */
+  const besideNotAwarded = (i: number): boolean => {
+    const filled = (step: number): string | undefined => {
+      for (let j = i + step; j >= 0 && j < lines.length; j += step) if (!EMPTY_FILLER_RE.test(lines[j]!)) return lines[j];
+      return undefined;
+    };
+    return [filled(-1), filled(1)].some((l) => l !== undefined && (NOT_YET_RE.test(l) || NOT_AWARDED_RE.test(l) || NOT_CONFERRED_STATUS_RE.test(l) || NOT_COMPLETE_RE.test(l)));
+  };
   const rowLevels: (Level | undefined)[] = [];
   // Degrees (2026-09-05): a "Degrees Awarded" block makes the degree lines
   // under it conferred even without an award word on the line itself (USC,
@@ -2937,6 +3067,18 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // issue itself: a transcript's own "Date of Issue" header is no award.
     const issuedDegree = /^degree\s+of\s+/i.test(flat) && /\bdate\s+of\s+issue\s*:?\s*\d{4}-\d{2}-\d{2}\b/i.test(flat);
     const conferredHere = namesDegree && (saysConferred(flat) || degreeBlock > 0 || issuedDegree) && !NOT_YET_RE.test(flat) && !NOT_COMPLETE_RE.test(flat) && !notConferred;
+    // The record's closing degree line (closingBachelorsDate, DGS
+    // 2026-10-15), read after the record, below. One with a line beside it
+    // that forecasts or denies the degree ("Degree Sought   Anticipated
+    // Graduation" above, "Status: NOT CONFERRED" below) voids them all —
+    // an earlier "… May 2018" must not stand in for it (re-review of the fix).
+    if (!lead) {
+      const closing = closingBachelorsDate(flat);
+      if (closing !== undefined) {
+        if (besideNotAwarded(lineIndex)) closingVoided = true;
+        else closingBachelors.push({ date: closing, at: lineIndex });
+      }
+    }
     if (degreeBlock > 0 && !lead) degreeBlock -= 1;
     if (conferredHere && gradDegreeIn(flat)) blockConferredGrad = true;
     // Named, not necessarily conferred: "Degree Sought: Bachelor of Science"
@@ -2956,7 +3098,9 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       // Conferred:", "Graduation Date:", "Awarded:") — stopping at a course
       // row or at the NEXT degree's name, so a master's date is never taken;
       // else on such a line up to two lines before the name. A forecast
-      // ("Expected graduation: May 2027") never counts.
+      // ("Expected graduation: May 2027") never counts. (A record's closing
+      // line of only the degree and its month and year is read after the
+      // record, when none of these dated it — closingBachelorsDate.)
       if (conferredHere) {
         bachelorsConferred = true;
         bachelorsConferredOn = dateAfterLabel(flat) ?? looseDateOnLine(flat);
@@ -3335,8 +3479,10 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     if (!lead) {
       // A named block's other transferred rows, coded as the record's
       // electives ("PROGRAMMING BASICS   TR   T01   EL2   3.0"): skipped and
-      // counted with the rest (review of the fix, 2026-10-14).
-      if (transferBlock === 'named' && CODED_TRANSFER_ROW_RE.test(flat)) {
+      // counted with the rest (review of the fix, 2026-10-14) — and one
+      // printed without a grade on a record whose own rows print a section,
+      // wherever it stands (sectionedTitleFirstRecord, 2026-10-15).
+      if (transferBlock === 'named' ? codedTransferRow(flat) : sectionedRecord && codedTransferRow(flat, true)) {
         transferRowsSkipped += 1;
         return lineIndex;
       }
@@ -3349,8 +3495,12 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // A named block holds only the equivalents' shape — a title-first row with
     // neither section nor grade; any other row is the record's own and ends
     // it, whatever closing line the block lacked (review of the fix).
-    if (transferBlock === 'named' && !(lead.titleFirst && lead.titleFirst.section === undefined && lead.titleFirst.grade === undefined)) transferBlock = undefined;
-    if (transferBlock !== undefined) {
+    const equivalentShape = lead.titleFirst !== undefined && lead.titleFirst.section === undefined && lead.titleFirst.grade === undefined;
+    if (transferBlock === 'named' && !equivalentShape) transferBlock = undefined;
+    // Outside a block, on a record whose own rows print a section, that
+    // shape is still another school's equivalent (sectionedTitleFirstRecord,
+    // 2026-10-15).
+    if (transferBlock !== undefined || (sectionedRecord && equivalentShape)) {
       transferRowsSkipped += 1;
       return lineIndex;
     }
@@ -3596,7 +3746,12 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     }
     if (readLevelMarkers(flat, lead)) continue;
     readDegreeSignals(flat, lead, lineIndex);
+    const rowsBefore = courses.length;
     lineIndex = readCourseRow(line, flat, lead, lineIndex);
+    for (const c of courses.slice(rowsBefore)) {
+      if (c.codeMissing) lastCodelessRowLine = lineIndex;
+      else lastCodedRowLine = lineIndex;
+    }
   }
   // CC15: a document that prints a course number on any row has no
   // code-less courses — a line there without a code is a total, a remark or
@@ -3629,6 +3784,36 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
         rowBlocks.splice(i, 1);
       }
     }
+  }
+  // The record's closing degree line is the bachelor's conferral (DGS
+  // 2026-10-15, closingBachelorsDate) when it comes after the last course row
+  // — "in the end" — and before any legend, and nothing else on the record
+  // dated the degree (a conferral or award line read above keeps its own
+  // date; review of the fix). The record itself must be finished by then
+  // (re-review of the fix: an unfinished record printing "… MAY 2027" was
+  // accepted): no row in progress, a final result in its latest term, and
+  // the date in that term or the next — a January or October conferral
+  // after the fall or summer — never before it (an admission term, a prior
+  // degree, a key's example). Of two such lines, the later date.
+  const legendIndex = lines.findIndex((l) => /^\s*(?:transcript\s+key|legend|key\s+to\s+(?:the\s+)?transcript|guide\s+to\s+transcript|explanation\s+of\s+(?:the\s+)?transcript|grading\s+(?:system|scale|key))\b/i.test(l.replace(/\s{2,}/g, ' ').trim()));
+  const legendStart = legendIndex < 0 ? lines.length : legendIndex;
+  const lastRowLine = courses.some((c) => !c.codeMissing) ? lastCodedRowLine : lastCodelessRowLine;
+  const termed = courses.filter((c) => c.year !== undefined && c.season !== undefined);
+  const latestTerm = Math.max(...termed.map((c) => termIndex({ season: c.season!, year: c.year! })));
+  const finalResult = (c: ExternalCourseCandidate): boolean => (c.grade !== undefined && c.grade !== 'IP') || (c.rawGrade !== undefined && /^\d/.test(c.rawGrade.trim()));
+  const recordFinished =
+    termed.length > 0 && !courses.some((c) => c.grade === 'IP') && termed.some((c) => termIndex({ season: c.season!, year: c.year! }) === latestTerm && finalResult(c));
+  const closing = closingVoided || !recordFinished
+    ? undefined
+    : closingBachelors
+        .filter((k) => {
+          const term = termIndex(termOfDate(k.date));
+          return k.at > lastRowLine && k.at < legendStart && term >= latestTerm && term <= latestTerm + 1;
+        })
+        .sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (closing !== undefined && bachelorsConferredOn === undefined) {
+    bachelorsConferred = true;
+    bachelorsConferredOn = closing.date;
   }
   // Per-row level (2026-09-05): the row's or block's own marker first; else,
   // with a dated bachelor's conferral, the row's term against that date; else
@@ -3702,8 +3887,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   // term headers that use Autumn AND Winter AND Spring (a three-season year is
   // a quarter calendar; a semester school says Fall), and WPI's lettered
   // seven-week terms (two or more of A–D).
-  const legendIndex = lines.findIndex((l) => /^\s*(?:transcript\s+key|legend|key\s+to\s+(?:the\s+)?transcript|guide\s+to\s+transcript|explanation\s+of\s+(?:the\s+)?transcript|grading\s+(?:system|scale|key))\b/i.test(l.replace(/\s{2,}/g, ' ').trim()));
-  const legendStart = legendIndex < 0 ? lines.length : legendIndex;
+  // (legendStart: where the transcript's key begins — above, with the closing degree line.)
   // A term's GPA labelled with the term's name, printed with its value
   // ("Trimester GPA: 3.47", North South University; DGS 2026-10-10, answer
   // 4c) is the registrar saying what its terms are — read for quarters too,

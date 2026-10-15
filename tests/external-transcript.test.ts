@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { findExternalRule } from '../src/data/external.ts';
 import { looseDateOnLine, parseExternalTranscript } from '../src/transcript/external.ts';
+import { previewRowOf, undergraduateInProgress } from '../src/ui/external-upload.ts';
 import { buildRules } from './helpers.ts';
 
 const PURDUE = [
@@ -380,6 +381,92 @@ describe('bachelor’s conferral or completion date wording (2026-09-06, late ev
     assert.equal(parse(['Conferral Date: May 17, 2024', 'a', 'b', 'c', 'Bachelor of Science']).bachelorsConferredOn, undefined, 'a dated line four lines earlier is not this degree’s');
     assert.equal(parse(['Bachelor of Science', 'Master of Science — Conferred: May 10, 2025']).bachelorsConferredOn, undefined);
     assert.equal(parse(['Bachelor of Science', 'Master of Science — Conferred: May 10, 2025']).degreeConferred, true);
+  });
+
+  // DGS 2026-10-15: "It also shows the degree and the conferral month year
+  // in the end, although it does not explicitly say 'awarded' or
+  // 'conferred.' Just the degree name and the month year."
+  // A record that ends in Spring 2024, every row graded.
+  const finished = ['Fall 2023', 'CS 35400   Operating Systems   3.0   A', 'Spring 2024', 'CS 38100   Algorithms   3.0   A'];
+  const closing = (degreeLines: string[], before: string[] = [], record = finished) => parseExternalTranscript([...PURDUE.slice(0, 5), ...before, ...record, ...degreeLines, ...PURDUE.slice(13)]);
+  it('the record’s closing line — only the bachelor’s name and a month and year — is its conferral', () => {
+    const p = closing(['DEGREE: BACHELOR OF ARTS   MAY   2024']);
+    assert.deepEqual([p.bachelorsConferred, p.bachelorsConferredOn], [true, '2024-05-15']);
+    assert.deepEqual(p.courses.map((c) => [c.courseId, c.level]), [['CS 35400', 'undergraduate'], ['CS 38100', 'undergraduate']]);
+    for (const line of [
+      'DEGREE:   BACHELOR OF ARTS   MAY   2024',
+      'DEGREE: BACHELOR OF ARTS   MAY   2024.',
+      'Bachelor of Science in Computer Science   May 2024',
+      'Bachelor of Applied Science   May 2024',
+      'Bachelor of Science in Construction Project Management   May 2024',
+      'Bachelor’s Degree in Economics   May 2024',
+      "Bachelor's Degree in Economics   May 2024",
+    ]) assert.equal(closing([line]).bachelorsConferredOn, '2024-05-15', line);
+  });
+  it('…dated in the record’s last term or the one after it: an August conferral is a summer one, a January one follows the fall', () => {
+    assert.equal(closing(['DEGREE: BACHELOR OF SCIENCE   AUGUST   2024']).bachelorsConferredOn, '2024-08-01');
+    const fall = ['Fall 2023', 'CS 35400   Operating Systems   3.0   A', 'Fall 2024', 'CS 38100   Algorithms   3.0   A'];
+    assert.equal(closing(['DEGREE: BACHELOR OF SCIENCE   JANUARY   2025'], [], fall).bachelorsConferredOn, '2025-01-15');
+    // Two terms on, or years on, it is no record of this work's end.
+    for (const line of ['DEGREE: BACHELOR OF SCIENCE   DECEMBER   2024', 'DEGREE: BACHELOR OF SCIENCE   MAY   2027']) assert.equal(closing([line]).bachelorsConferred, undefined, line);
+  });
+  // Re-review of the fix (2026-10-15).
+  it('…never on a record still in progress: a row in progress, or a last term without a final grade', () => {
+    const inProgress = [...finished, 'Fall 2024   IN PROGRESS', 'CS 50300   Operating Systems   3.0'];
+    const ungraded = [...finished, 'Fall 2024', 'CS 50300   Operating Systems   3.0', 'CS 50100   Software Engineering   3.0'];
+    const oneStillOpen = [...finished, 'Fall 2024', 'CS 50300   Operating Systems   3.0   A', 'CS 50100   Software Engineering   3.0   IP'];
+    for (const record of [inProgress, ungraded, oneStillOpen]) {
+      const q = closing(['DEGREE: BACHELOR OF SCIENCE   DECEMBER   2024'], [], record);
+      assert.deepEqual([q.bachelorsConferred, q.bachelorsConferredOn], [undefined, undefined]);
+    }
+  });
+  it('…never a prior degree, a key’s example or a line voided by a status beside another; of two, the later date', () => {
+    assert.equal(closing(['Bachelor of Arts in Economics   May 2018']).bachelorsConferred, undefined, 'dated before the record’s work');
+    assert.equal(closing(['TRANSCRIPT KEY', 'Bachelor of Arts   May 2024']).bachelorsConferred, undefined, 'in the key');
+    assert.equal(closing(['Bachelor of Arts in Mathematics   May 2024', 'Bachelor of Science in Computer Science   August 2024', 'Status: IN PROGRESS - NOT CONFERRED']).bachelorsConferred, undefined);
+    assert.equal(closing(['Bachelor of Science in Computer Science   August 2024', 'Bachelor of Arts in Mathematics   May 2024']).bachelorsConferredOn, '2024-08-01');
+    assert.equal(closing(['Bachelor of Arts in Mathematics   May 2024', 'Bachelor of Science in Computer Science   August 2024']).bachelorsConferredOn, '2024-08-01');
+    // Above the record's rows it is no closing line, whatever its date.
+    assert.equal(closing([], ['DEGREE: BACHELOR OF SCIENCE   MAY   2024']).bachelorsConferred, undefined);
+  });
+  it('…only at the end of the record, and only when nothing else on it dated the degree', () => {
+    assert.equal(parse(['DEGREE: BACHELOR OF ARTS   MAY   2024']).bachelorsConferredOn, undefined, 'above the courses it is no award');
+    assert.equal(closing(['DEGREE: BACHELOR OF SCIENCE   MAY   2024'], ['Bachelor of Science — Conferred: May 10, 2023']).bachelorsConferredOn, '2023-05-10');
+    // An entry date printed like it never displaces the award line (review of the fix).
+    assert.equal(closing(['Degree Awarded: Bachelor of Science   May 2024'], ['Bachelor of Science   Admission   August 2019']).bachelorsConferredOn, '2024-05-15');
+  });
+  it('…never a forecast, an entry, a status, a stage, a thesis, an exam, a month-like word, or a line with more in it', () => {
+    for (const line of [
+      'Bachelor of Science   Expected May 2027',
+      'Bachelor of Science Admission   August 2019',
+      'Bachelor of Science Status Active   May 2024',
+      'Bachelor of Science Catalog   August 2020',
+      'Bachelor of Technology Examinations   May 2022',
+      'Bachelor of Technology Semester VIII   May 2023',
+      'Bachelor of Science Third Year   May 2023',
+      'Bachelor of Science In-Progress   May 2023',
+      'Bachelor of Science Thesis   May 2024',
+      'Bachelor Thesis   May 2024',
+      'Bachelor of Science   Marketing   2022',
+      'Bachelor of Science   University of Maryland   2019',
+      'Bachelor of Science   August 2020 - May 2026',
+      'Program: Bachelor of Science   May 2027',
+      'DEGREE: BACHELOR OF ARTS   MAY   2024   SUMMA CUM LAUDE',
+      'Bachelor of Science and Master of Science   May 2024',
+    ]) {
+      const q = closing([line]);
+      assert.deepEqual([q.bachelorsConferred, q.bachelorsConferredOn], [undefined, undefined], line);
+    }
+  });
+  it('…nor with a forecast or a status beside it', () => {
+    assert.equal(closing(['Degree Sought   Anticipated Graduation', 'Bachelor of Science   May 2025']).bachelorsConferred, undefined);
+    assert.equal(closing(['Bachelor of Science   May 2025', 'Status: IN PROGRESS - NOT CONFERRED']).bachelorsConferred, undefined);
+  });
+  it('a master’s or doctor’s closing line is not read this way: the DGS spoke of a bachelor’s record', () => {
+    for (const line of ['Master of Science   December 2024', 'DEGREE: DOCTOR OF PHILOSOPHY   MAY   2024']) {
+      const q = closing([line]);
+      assert.deepEqual([q.degreeConferred, q.bachelorsConferred], [undefined, undefined], line);
+    }
   });
 });
 
@@ -925,6 +1012,7 @@ describe('title first, then a three-number code (Rutgers’ undergraduate layout
     assert.deepEqual(read('01:750:229'), ['PHYSICS LAB A', 1, undefined]);
     assert.deepEqual(read('01:090:101'), ['NATURE OF SCIENCE', 3, undefined], 'a flag is not a grade');
     assert.ok(!q.courses.some((c) => /^07:/.test(c.courseId)), 'a totals line is no course');
+    assert.equal(q.transferRowsSkipped, 12, '…nor a transferred row (review of the fix, 2026-10-15)');
   });
   it('a year in a summary box merged after the grade is not the row’s term', () => {
     const q = parseExternalTranscript(TITLE_FIRST_NUMERIC.map((l) => (l.startsWith('AI FOUNDATIONS') ? 'AI FOUNDATIONS   01   198   440   01   4.0   A   EXPECTED GRADUATION:   MAY 2022' : l)));
@@ -958,5 +1046,86 @@ describe('title first, then a three-number code (Rutgers’ undergraduate layout
     const q = parseExternalTranscript([...TITLE_FIRST_NUMERIC.slice(0, at + 1), 'LAB II   01   750   228   01   1.0   A', 'CALCULUS   01   640   151   02   4.0   B', ...TITLE_FIRST_NUMERIC.slice(at + 1)]);
     assert.deepEqual(q.courses.slice(0, 2).map((c) => [c.courseId, c.title, c.credits, c.grade]), [['01:750:228', 'LAB II', 1, 'A'], ['01:640:151', 'CALCULUS', 4, 'B']]);
     assert.ok(!q.courses.some((c) => /^LAB/.test(c.courseId)));
+  });
+
+  // The same record refused in the DGS's browser as "still in progress"
+  // (2026-10-15): "the degree and the conferral month year in the end" —
+  // "Those courses without grades are the transferred courses."
+  const asUndergraduate = (r: ReturnType<typeof parseExternalTranscript>) => undergraduateInProgress('bachelors', r.courses.map((c) => previewRowOf(c, 'bachelors')), r.bachelorsConferred === true);
+  it('the degree and its month and year closing the record are its conferral: never refused as in progress', () => {
+    assert.deepEqual([p.bachelorsConferred, p.bachelorsConferredOn], [true, '2022-05-15']);
+    assert.equal(asUndergraduate(p), false);
+    // …even with a row read without a grade, which the student then sees in the preview.
+    const open = parseExternalTranscript(TITLE_FIRST_NUMERIC.map((l) => (l.startsWith('CODING THEORY') ? 'CODING THEORY   01   640   451   01   3.0' : l)));
+    assert.equal(asUndergraduate(open), false);
+    assert.equal(asUndergraduate({ ...open, bachelorsConferred: undefined }), true, 'without the degree line, refused as before');
+  });
+  it('the transferred rows are skipped, and their school never named as the university, even where the block naming it is not found', () => {
+    const school = 'JIAO TONG UNIVERSITY-SHANGHAI';
+    const at = TITLE_FIRST_NUMERIC.indexOf(school);
+    const variants = {
+      'school line missing': TITLE_FIRST_NUMERIC.filter((l) => l !== school),
+      'school line merged with a number': TITLE_FIRST_NUMERIC.map((l) => (l === school ? `${school}   1` : l)),
+      'its first term merged with a word': TITLE_FIRST_NUMERIC.map((l, i) => (i === at + 1 ? 'Fall   2017   TRANSFER' : l)),
+      'the school and its first term on one line': TITLE_FIRST_NUMERIC.flatMap((l, i) => (i === at ? [`${school}   Fall   2017`] : i === at + 1 ? [] : [l])),
+      'a column header between the school and its term': TITLE_FIRST_NUMERIC.flatMap((l, i) => (i === at ? [l, 'TITLE   SCH   DEPT NUM   SEC CRD   GRDE'] : [l])),
+    };
+    for (const [name, lines] of Object.entries(variants)) {
+      const q = parseExternalTranscript(lines);
+      assert.deepEqual([q.courses.length, q.transferRowsSkipped, q.university], [29, 12, undefined], name);
+      assert.ok(q.courses.every((c) => c.grade !== undefined), name);
+      assert.equal(asUndergraduate({ ...q, bachelorsConferred: undefined }), false, name);
+    }
+    // …while an issuer the text does name is still read — also when the
+    // record's own first row comes right under it.
+    assert.equal(parseExternalTranscript(['RUTGERS, THE STATE UNIVERSITY OF NEW JERSEY', ...variants['school line merged with a number']]).university, 'RUTGERS, THE STATE UNIVERSITY OF NEW JERSEY');
+    const own = TITLE_FIRST_NUMERIC.indexOf('INTRO TO REAL ANALYSIS   01   640   311   01   4.0   A   QQ');
+    const issuerAbove = [...TITLE_FIRST_NUMERIC.slice(0, own), 'SAMPLE STATE UNIVERSITY', TITLE_FIRST_NUMERIC[own]!, 'CALCULUS III   01   640   251   4.0', ...TITLE_FIRST_NUMERIC.slice(own + 1)].filter((l) => l !== school);
+    assert.equal(parseExternalTranscript(issuerAbove).university, 'SAMPLE STATE UNIVERSITY');
+  });
+  // Re-review of the fix (2026-10-15).
+  it('…whatever words the school’s name uses, and wherever on its line it stands', () => {
+    const school = 'JIAO TONG UNIVERSITY-SHANGHAI';
+    const at = TITLE_FIRST_NUMERIC.indexOf(school);
+    const swap = (lines: string[]) => TITLE_FIRST_NUMERIC.flatMap((l, i) => (i === at ? lines : i === at + 1 ? [] : [l]));
+    const variants: Record<string, string[]> = {
+      'Universidad': TITLE_FIRST_NUMERIC.map((l) => (l === school ? 'UNIVERSIDAD DE PUERTO RICO' : l)),
+      'Politecnico': TITLE_FIRST_NUMERIC.map((l) => (l === school ? 'POLITECNICO DI MILANO' : l)),
+      'term first on its line': swap(['Fall   2017   JIAO TONG UNIVERSITY-SHANGHAI']),
+      'the heading on its line': TITLE_FIRST_NUMERIC.flatMap((l) => (l === 'TRANSFER COURSES' ? [] : l === school ? [`TRANSFER COURSES   ${school}`] : [l])),
+      'its city and a column header between': TITLE_FIRST_NUMERIC.flatMap((l) => (l === school ? [l, 'SHANGHAI   CHINA', 'TITLE   SCH   DEPT NUM   SEC CRD   GRDE'] : [l])),
+    };
+    for (const [name, lines] of Object.entries(variants)) {
+      const q = parseExternalTranscript(lines);
+      assert.deepEqual([q.courses.length, q.university], [29, undefined], name);
+    }
+  });
+  it('…but the issuer printed well above the transferred rows, or above a transfer heading, keeps its name', () => {
+    const own = TITLE_FIRST_NUMERIC.slice(TITLE_FIRST_NUMERIC.indexOf('Fall   2019 SCHOOL OF ARTS AND SCIENCES'));
+    const far = ['SAMPLE STATE UNIVERSITY', 'RECORD OF: DOE   JO', 'STUDENT NUMBER: 000000000', 'ISSUED DATE: 10/14/26   PAGE:   1', 'PRINTED: 10/14/26', 'Fall   2017', 'CALCULUS I   01   640   151   4.0', 'GENERAL CHEMISTRY   01   160   161   4.0', ...own];
+    assert.equal(parseExternalTranscript(far).university, 'SAMPLE STATE UNIVERSITY');
+    const school = 'JIAO TONG UNIVERSITY-SHANGHAI';
+    for (const heading of ['TRANSFER COURSES', 'ADVANCED PLACEMENT']) {
+      const lines = TITLE_FIRST_NUMERIC.filter((l) => l !== school).flatMap((l) => (l === 'TRANSFER COURSES' ? ['RUTGERS, THE STATE UNIVERSITY OF NEW JERSEY', heading] : [l]));
+      assert.equal(parseExternalTranscript(lines).university, 'RUTGERS, THE STATE UNIVERSITY OF NEW JERSEY', heading);
+    }
+  });
+  it('a totals line inside the block keeps it open for the guess, as before', () => {
+    // Its own rows without sections: the block found by its shape alone.
+    const unsectioned = TITLE_FIRST_NUMERIC.map((l) => l.replace(/^(.+?   \d{2}   \d{3}   \d{3})   [A-Z0-9]{1,2}(   \d{1,2}\.\d{1,2}   )/, '$1$2')).flatMap((l) =>
+      l.startsWith('GENERAL CHEMISTRY') ? [l, 'TERM TOTALS   07   007   025   8.0'] : l === 'Spring   2018' ? ['PEKING UNIVERSITY', l, 'ELECTIVE STUDIES   TR   T01   EL3   3.0'] : [l],
+    );
+    assert.equal(parseExternalTranscript(unsectioned).university, undefined);
+  });
+  it('…only on a record whose own rows print a section, and a coded row with a grade is not one of them', () => {
+    const transferred = ['TRANSFER COURSES', 'Fall   2017', 'CALCULUS I   01   640   151   4.0', 'ACADEMIC WRITING   TR   T01   EL1   2.0'];
+    const own = ['OPERATING SYSTEMS   01   198   416   01   4.0   A', 'COMPLEX VARIABLES   01   640   403   01   3.0   A', 'MATHEMATICAL LOGIC   01   640   461   01   3.0   A'];
+    const record = (rows: string[], extra: string[] = []) => parseExternalTranscript([...head(1), ...transferred, 'Fall   2019 SCHOOL OF ARTS AND SCIENCES', ...rows, ...extra, 'TOTAL CREDITS ATTEMPTED:   10.0', '']);
+    const three = record(own);
+    assert.deepEqual([three.courses.map((c) => c.courseId), three.transferRowsSkipped], [['01:198:416', '01:640:403', '01:640:461'], 2]);
+    const two = record(own.slice(0, 2));
+    assert.ok(two.courses.some((c) => c.courseId === '01:640:151' && c.grade === undefined), 'two sectioned rows are not yet such a record: the row is read as before');
+    const graded = record(own, ['PROBABILITY THEORY   TR   T01   EL   3.0   B']);
+    assert.equal(graded.transferRowsSkipped, 2, 'a coded row with a grade is not counted as transferred');
   });
 });

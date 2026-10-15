@@ -731,9 +731,11 @@ const BACHELORS_IN_PROGRESS =
   'This undergraduate transcript is still in progress — it lists courses without a final grade. A completed bachelor’s transcript is required here: import it again once the degree is finished and every course has a grade.';
 /** `degreeStated`: the transcript itself says the bachelor's degree was
  * conferred ("Graduated on … with the degree of Bachelor …", a dated award
- * line). Then a row without a readable grade is a parsing gap to fix in the
- * preview, not an in-progress course — the transcript is complete (DGS
- * 2026-09-16: a false "still in progress"). */
+ * line, or — DGS 2026-10-15 — a closing line of only the degree's name and
+ * its month and year, "DEGREE: BACHELOR OF ARTS   MAY   2022"). Then a row
+ * without a readable grade is a parsing gap to fix in the preview, not an
+ * in-progress course — the transcript is complete (DGS 2026-09-16: a false
+ * "still in progress"). */
 /** A row whose grade cell printed a result the app has no letter for — a
  * mark ("92"), a band word ("Very Good"), a "Pass" a legend makes a band —
  * carries `rawGrade`: that is a FINAL result for the student to map, not a
