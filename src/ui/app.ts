@@ -2776,7 +2776,13 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // transfer credit; nothing else in the request is decided from a PDF, so
     // the attach step, the email's "Attached:" line and the card's clause
     // appear only when a transfer is in it (trim review 2026-09-18, P-45).
-    const needsTranscripts = built.items.transfers.length > 0;
+    // …and only while that credit is still to submit: transfer credit the
+    // student ticked as recorded goes along for the record (DGS 2026-10-15).
+    const needsTranscripts = built.items.transfers.length > 0 && student.attestations.transferRecorded !== true;
+    // The major events, the only things that make the button active (DGS
+    // 2026-10-15; grad-admin-request.ts ProcessingItems.count) — the MSCSE has
+    // no qualifier form and no MSCSE along the way.
+    const phd = student.program === 'phd';
     const label = 'Initiate the request';
     const attrs = { class: 'btn', 'data-key': 'gradadmin.copy' };
     const button = simulation
@@ -2785,7 +2791,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       : n === 0
         ? inactiveButton(
             attrs,
-            'Nothing to process yet — this button becomes active as soon as any requirement is met, or a transfer credit the DGS has approved, a milestone date, or the MSCSE along the way appears in your record.',
+            phd
+              ? 'Nothing for the Grad Admin to process yet. This becomes active when there is something to process — transfer credit the DGS approved for you (§5.2), the qualifier completion form (§4.4), the MSCSE along the way (§4.5), or an application for doctoral or master’s candidacy. Milestone dates and requirements met need no request of their own; they go along with the next one.'
+              : 'Nothing for the Grad Admin to process yet. This becomes active when there is something to process — transfer credit the DGS approved for you (§5.2) or your application for master’s degree candidacy (Academic Code §6.1.6). Milestone dates and requirements met need no request of their own; they go along with the next one.',
             toast,
             label,
           )
@@ -2832,7 +2840,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         ? el(
             'p',
             { class: 'hint' },
-            'Nothing to process yet — this fills in as requirements are met and milestones are dated. The Grad Admin (',
+            phd
+              ? 'Nothing to process yet — a request is needed only for transfer credit, the qualifier completion form, the MSCSE along the way or a candidacy application; your milestone dates and standing go along with it. The Grad Admin ('
+              : 'Nothing to process yet — a request is needed only for transfer credit or your master’s candidacy application; your milestone dates and standing go along with it. The Grad Admin (',
             `${GRAD_ADMIN.name}, `,
             mailto(GRAD_ADMIN.email),
             ') processes what the DGS has decided.',
@@ -2846,12 +2856,14 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             'The DGS decides; the Grad Admin (',
             `${GRAD_ADMIN.name}, `,
             mailto(GRAD_ADMIN.email),
-            student.program === 'phd'
-              ? ') records it — transfer credit (§5.2), the qualifier, exam and defense forms (§4.4–4.7), the MSCSE along the way (§4.5), the requirements you have met. '
-              : ') records it — transfer credit (§5.2), the project or thesis forms (§3.4), the requirements you have met. ',
+            phd
+              ? ') processes it — transfer credit (§5.2), the qualifier completion form (§4.4), the MSCSE along the way (§4.5), the candidacy applications; your milestone dates and standing go along. '
+              : ') processes it — transfer credit (§5.2), the master’s candidacy application (Academic Code §6.1.6); your milestone dates and standing go along. ',
             `The button opens the request in your email app, to the Grad Admin with the DGS in cc${needsTranscripts ? ' — attach your transcript PDFs' : ''}.`,
           ),
       ...built.items.lines.map((text) => el('div', { class: 'review-line', 'data-keep-dgs': '' }, text)),
+      // What goes along, never on its own (DGS 2026-10-15).
+      ...(n > 0 && built.items.forTheRecord !== undefined ? [el('p', { class: 'hint for-the-record' }, built.items.forTheRecord)] : []),
       el('div', { class: 'save-buttons' }, button),
     );
   }

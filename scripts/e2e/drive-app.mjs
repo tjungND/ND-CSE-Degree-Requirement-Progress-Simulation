@@ -603,6 +603,29 @@ export async function driveApp(s, baseUrl) {
   if (!/^(FA|SP|SU)\d{2}\|(Fall|Spring|Summer) \d{4}$/.test(termCell)) throw new Error('coursework term cell must read e.g. "FA26" with the full name as tooltip: ' + termCell);
 
   // The Grad Admin card (2026-09-06 evening) and its copy dialog, the DGS in cc.
+  // Active only for a major event (DGS 2026-10-15, superseding 2026-09-06):
+  // the example — an advisor identified, requirements met — has none, so the
+  // button is inactive and says why…
+  const gaCard = `JSON.stringify((() => { const card = document.querySelector('.grad-admin-request'); const b = card?.querySelector('[data-key="gradadmin.copy"]'); return { inactive: b?.getAttribute('aria-disabled') ?? null, reason: b?.getAttribute('title') ?? '', chip: card?.querySelector('.chip-note')?.textContent ?? '', hints: [...(card?.querySelectorAll('p.hint') ?? [])].map((p) => p.textContent), lines: [...(card?.querySelectorAll('.review-line') ?? [])].map((e) => e.textContent) }; })())`;
+  const gaIdle = JSON.parse(await s.evalJs(gaCard));
+  console.log('  Grad Admin card, the example (advisor identified):', JSON.stringify({ ...gaIdle, reason: gaIdle.reason.slice(0, 80) }));
+  if (gaIdle.inactive !== 'true' || !/^Nothing for the Grad Admin to process yet\. This becomes active when there is something to process — transfer credit the DGS approved for you \((?:CSE )?§5\.2\), the qualifier completion form/.test(gaIdle.reason) || gaIdle.chip !== '0 items' || gaIdle.lines.length !== 0 || !/^Nothing to process yet — a request is needed only for transfer credit, the qualifier completion form, the MSCSE along the way or a candidacy application; your milestone dates and standing go along with it\./.test(gaIdle.hints[0] ?? '')) throw new Error('an advisor date and met requirements must leave the Grad Admin button inactive, saying why: ' + JSON.stringify(gaIdle));
+  await s.shotElement('grad-admin-card-idle', '.grad-admin-request');
+  // …until one happens: two finished courses complete the qualifier's
+  // specialization, so the completion form is due (§4.4).
+  await s.evalJs(`(() => {
+    const entryYear = String(new Date().getFullYear() - 1); // the example entered last fall, a finished term
+    const set = (key, value) => { const e = document.querySelector('[data-key="course.new.' + key + '"]'); e.value = value; e.dispatchEvent(new Event('change')); };
+    set('origin', 'nd');
+    for (const id of ['CSE 60463', 'CSE 60535']) {
+      set('id', id); set('credits', '3'); set('season', 'fall'); set('year', entryYear); set('grade', 'A');
+      document.querySelector('[data-key="course.new.add"]').click();
+    }
+  })()`);
+  await s.waitFor(`document.querySelector('[data-key="gradadmin.copy"]')?.getAttribute('aria-disabled') !== 'true'`);
+  const gaBusy = JSON.parse(await s.evalJs(gaCard));
+  console.log('  Grad Admin card with the qualifier form due:', JSON.stringify(gaBusy));
+  if (gaBusy.chip !== '1 item' || gaBusy.lines.length !== 1 || !/^Qualifier completion form — not filed yet \((?:CSE )?§4\.4\)$/.test(gaBusy.lines[0]) || !gaBusy.hints.some((h) => /^Also in the request, for the record: 1 milestone date and your standing — \d+ requirements? met, /.test(h))) throw new Error('the qualifier form makes the Grad Admin button active, the advisor date going along: ' + JSON.stringify(gaBusy));
   const ga = await s.evalJs(`document.querySelector('.grad-admin-request')?.textContent ?? ''`);
   if (!ga.includes('Ask the Grad Admin to process') || !ga.includes('Two people, two jobs')) throw new Error('Grad Admin card: ' + ga.slice(0, 120));
   await s.shotElement('grad-admin-card', '.grad-admin-request');
@@ -638,6 +661,8 @@ export async function driveApp(s, baseUrl) {
   if (!/copied to your clipboard\.$|blocked the clipboard\.$/.test(gaLead)) throw new Error('Grad Admin dialog must lead with the copied-to-clipboard line: ' + gaLead);
   const gaText = await s.evalJs(`document.querySelector('dialog.copy-check textarea').value`);
   if (!gaText.includes('(You may edit anything above this line)') || !gaText.includes('(DO NOT MODIFY ANYTHING BELOW THIS LINE)') || !gaText.includes('[MET] Cumulative GPA of at least 3.0 (CSE §2.2)')) throw new Error('Grad Admin text must carry the markers and the standing list: ' + gaText.slice(0, 300));
+  // The one action is the major event; the advisor date goes along, for the record (DGS 2026-10-15).
+  if (!/\nACTION REQUESTED\n1\. Tell me what you need for the qualifier completion form — [^\n]*\n\nThank you!/.test(gaText) || !/\nMILESTONE DATES, FOR THE RECORD\n- Advisor identified: \d{4}-\d{2}-\d{2}, as I entered it \((?:CSE )?§2\.3\)\n/.test(gaText) || /Record the milestone|Keep my standing/.test(gaText)) throw new Error('the request asks only for the major event; milestone dates go along: ' + gaText.slice(gaText.indexOf('ACTION REQUESTED'), gaText.indexOf('ACTION REQUESTED') + 300));
   await s.shot('grad-admin-dialog');
   await s.evalJs(`document.querySelector('[data-key="copy.ok"]').click()`);
   await s.waitFor(`!document.querySelector('dialog.copy-check')`);

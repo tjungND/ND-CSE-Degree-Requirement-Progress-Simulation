@@ -191,12 +191,14 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     throw new Error('review card wrong: ' + ndReview.slice(0, 140));
   }
   console.log('  unlisted ND course → review request offered');
-  // The Grad Admin button is active on met requirements alone (DGS 2026-09-06, late evening):
-  // nothing to transfer and no milestone yet, but the GPA and Notre Dame-credit rows are met.
-  const gaState = JSON.parse(await s.evalJs(`JSON.stringify((() => { const card = document.querySelector('.grad-admin-request'); const b = card?.querySelector('[data-key="gradadmin.copy"]'); return { inactive: b?.getAttribute('aria-disabled'), chip: card?.querySelector('.chip-note')?.textContent, line: [...(card?.querySelectorAll('.review-line') ?? [])].map(e => e.textContent).find(t => / met, /.test(t)) ?? '' }; })())`));
+  // The Grad Admin button is active only for a major event (DGS 2026-10-15,
+  // superseding 2026-09-06, when met requirements alone made it active): the
+  // imported courses complete the qualifier's course components, so the
+  // completion form is due (§4.4) — the one item; the met rows go along.
+  const gaState = JSON.parse(await s.evalJs(`JSON.stringify((() => { const card = document.querySelector('.grad-admin-request'); const b = card?.querySelector('[data-key="gradadmin.copy"]'); return { inactive: b?.getAttribute('aria-disabled') ?? null, chip: card?.querySelector('.chip-note')?.textContent, lines: [...(card?.querySelectorAll('.review-line') ?? [])].map((e) => e.textContent), record: card?.querySelector('p.for-the-record')?.textContent ?? '' }; })())`));
   console.log('  Grad Admin card after the ND import:', JSON.stringify(gaState));
-  if (gaState.inactive === 'true' || !/^\d+ requirements? met, \d+ in progress, \d+ not started — /.test(gaState.line)) throw new Error('the Grad Admin button must be active on met requirements alone: ' + JSON.stringify(gaState));
-  await s.shotElement('grad-admin-met-only', '.grad-admin-request');
+  if (gaState.inactive !== null || gaState.chip !== '1 item' || gaState.lines.length !== 1 || !/^Qualifier completion form — not filed yet \((?:CSE )?§4\.4\)$/.test(gaState.lines[0]) || !/^Also in the request, for the record: your standing — \d+ requirements? met, \d+ in progress, \d+ not started/.test(gaState.record)) throw new Error('the qualifier form, a major event, makes the Grad Admin button active; the met rows go along: ' + JSON.stringify(gaState));
+  await s.shotElement('grad-admin-after-nd-import', '.grad-admin-request');
   // The review card at the top of the window: the page leaves room for the
   // floating boxes at its end since 2026-10-10, so a shot left at the end showed
   // the footer and blank space instead of the card.

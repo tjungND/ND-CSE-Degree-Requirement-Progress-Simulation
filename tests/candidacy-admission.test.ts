@@ -91,6 +91,10 @@ describe('every condition met, not yet admitted', () => {
     const { text } = gradAdminRequest(report, s, rules, { todayIso: today, entryTerm: 'Fall 2026', priorStudy: 'None', gpa: 3.6 });
     assert.match(text, /\d\. Initiate my Application for Admission to Doctoral Candidacy — the self-check shows every condition met \(DGS Handbook §3\.22\.3\)\.\n/);
     assert.match(text, /ADMISSION TO DOCTORAL CANDIDACY \(ACADEMIC CODE §6\.2\.9\)\n/i);
+    // A major event: it makes the Grad Admin button active (DGS 2026-10-15).
+    const { items: ga } = gradAdminRequest(report, s, rules, { todayIso: today, entryTerm: 'Fall 2026', priorStudy: 'None', gpa: 3.6 });
+    assert.equal(ga.candidacyApplicationDue, true);
+    assert.ok(ga.count >= 1 && ga.lines.some((l) => l.startsWith('Application for Admission to Doctoral Candidacy')), JSON.stringify(ga.lines));
   });
 });
 
