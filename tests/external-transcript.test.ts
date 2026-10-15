@@ -737,3 +737,222 @@ describe('Georgia Tech’s name as its official transcript prints it (DGS 2026-1
     assert.ok(findExternalRule(rules.external, NAME, 'ECE 6122'));
   });
 });
+
+// A US undergraduate record that prints each course's TITLE first and its
+// code as three number cells — school, subject, course — then the section,
+// the credits, the grade and sometimes a flag (Rutgers' undergraduate layout;
+// DGS 2026-10-14: "there were a lot of courses, but it says there were only
+// two"). Its shape was read with scripts/diagnose-transcript.mjs on the DGS's
+// machine (letters and digits masked) and is rebuilt here with invented
+// values. It opens with credit transferred from another university, under a
+// "TRANSFER …" heading and that school's name, in that school's own terms;
+// its own terms name the division ("Fall   2019 SCHOOL OF ARTS AND
+// SCIENCES"); the issuer's name is only in an image; on the last page a
+// summary box shares two course rows' lines.
+const H = ['RECORD OF: DOE   JO', 'STUDENT NUMBER: 000000000'];
+const head = (page: number, extra = '') => [...H, `ISSUED DATE: 10/14/26   PAGE:   ${page}`, `TITLE   SCH   DEPT NUM   SEC CRD   GRDE${extra}`];
+const TITLE_FIRST_NUMERIC = [
+  ...head(1),
+  'TRANSFER COURSES',
+  'JIAO TONG UNIVERSITY-SHANGHAI',
+  'Fall   2017',
+  'CALCULUS I   01   640   151   4.0',
+  'GENERAL CHEMISTRY   01   160   161   4.0',
+  'INTRO TO CHINESE CULTURE   TR   T01   EL1   2.0',
+  'ACADEMIC WRITING   TR   T01   EL1   2.0',
+  'Spring   2018',
+  'CALCULUS II (H)   01   640   152   4.0',
+  'LINEAR ALGEBRA   01   640   250   3.0',
+  'PROGRAMMING BASICS   TR   T01   EL2   3.0',
+  'Fall   2018',
+  'DISCRETE STRUCTURES   01   198   205   4.0',
+  'PROBABILITY THEORY   TR   T01   EL   3.0',
+  'Spring   2019',
+  'DATA STRUCTURES   01   198   112   4.0',
+  'IN TRANSFER   COURSE   SCH   DEPT NUM   SEC CRD   GRDE   QQ CODES',
+  'MULTIVARIABLE CALCULUS   01   640   251   4.0',
+  '.',
+  'ORDINARY DIFFERENTIAL EQUATIONS   TR   T01   EL   3.0',
+  'TOTAL TRANSFER CREDITS:   36.0',
+  'TOTAL TRANSFER CREDITS:   36.0',
+  '(EQUIVALENTS OF INSTITUTION COURSES)',
+  '.',
+  'Fall   2019 SCHOOL OF ARTS AND SCIENCES',
+  'MAJOR: MATHEMATICS',
+  'CLASS: 03   DEANS LIST',
+  'INTRO TO REAL ANALYSIS   01   640   311   01   4.0   A   QQ',
+  'ABSTRACT ALGEBRA I   01   640   351   02   3.0   A',
+  'COMPUTER ARCHITECTURE   01   198   211   03   4.0   B+   QR',
+  'OPERATING SYSTEMS   01   198   416   01   4.0   A',
+  'NUMERICAL ANALYSIS I   01   640   373   H1   3.0   A',
+  'THEORY OF COMPUTATION   01   198   452   01   4.0   B',
+  'TOTAL SEMESTER CREDITS:   22.0',
+  'DEGREE CREDITS EARNED: 58.0   TERM GPA: 3.800   CUMULATIVE GPA: 3.800',
+  '.',
+  '** CONTINUED ON NEXT PAGE **',
+  '',
+  ...head(2, '   QQ CODES'),
+  'Spring 2020 SCHOOL OF ARTS AND SCIENCES',
+  'MAJOR: MATHEMATICS',
+  'CLASS: 03   DEANS LIST',
+  'DESIGN AND ANALYSIS OF ALGORITHMS   01   198   344   01   4.0   A',
+  'COMPLEX VARIABLES   01   640   403   01   3.0   A',
+  'SOFTWARE METHODOLOGY   01   198   213   AB   4.0   A',
+  'ABSTRACT ALGEBRA II   01   640   352   01   3.0   A-',
+  'PRINCIPLES OF DATA SCIENCE   01   198   439   01   4.0   A',
+  'MATHEMATICAL LOGIC   01   640   461   01   3.0   A',
+  'TOTAL SEMESTER CREDITS:   21.0',
+  'DEGREE CREDITS EARNED: 79.0   TERM GPA: 3.950   CUMULATIVE GPA: 3.870',
+  'Summer 2020 SCHOOL OF ARTS AND SCIENCES',
+  'MAJOR: MATHEMATICS',
+  'MINOR: COMPUTER SCIENCE',
+  'CLASS: 04',
+  'TOPICS IN GEOMETRY A   01   640   495   B1   3.0   A',
+  'TOTAL SEMESTER CREDITS:   3.0',
+  'DEGREE CREDITS EARNED: 82.0   TERM GPA: 4.000   CUMULATIVE GPA: 3.880',
+  'TITLE   SCH   DEPT NUM   SEC CRD   GRDE   QQ CODES',
+  'Fall   2020 SCHOOL OF ARTS AND SCIENCES',
+  'MAJOR: MATHEMATICS',
+  'MINOR: COMPUTER SCIENCE',
+  'CLASS: 04   DEANS LIST',
+  'COMPUTER SECURITY   01   198   419   01   4.0   A',
+  'GRAPH THEORY BASICS I   01   640   428   C1   3.0   A',
+  'MACHINE LEARNING   01   198   461   01   4.0   A',
+  'NUMERICAL METHODS & PDES   01   640   374   01   3.0   A',
+  'TOTAL SEMESTER CREDITS:   14.0',
+  'DEGREE CREDITS EARNED: 96.0   TERM GPA: 4.000   CUMULATIVE GPA: 3.900',
+  '.',
+  '.',
+  'Spring 2021 SCHOOL OF ARTS AND SCIENCES',
+  'MAJOR: MATHEMATICS',
+  'MINOR: COMPUTER SCIENCE',
+  'CLASS: 04   DEANS LIST',
+  'DATA&SYSTEMS WEB DESIGN   01   198   336   01   4.0   B+',
+  'STOCHASTIC MODELS   01   640   477   01   3.0   A',
+  'DISTRIBUTED COMPUTING   01   198   417   01   4.0   A',
+  'NUMBER THEORY TOPICS   01   640   356   01   3.0   A',
+  'TOTAL SEMESTER CREDITS:   14.0',
+  '.',
+  'DEGREE CREDITS EARNED: 110.0   TERM GPA: 3.900   CUMULATIVE GPA: 3.900',
+  '.',
+  '** CONTINUED ON NEXT PAGE **',
+  '',
+  ...head(3, '   QQ CODES   TITLE   SCH   DEPT NUM   SEC CRD   GRDE   QQ CODES'),
+  'Fall   2021 SCHOOL OF ARTS AND SCIENCES',
+  'Term Note Information',
+  'MAJOR: MATHEMATICS',
+  'MINOR: COMPUTER SCIENCE   HOUR LOAD STATUS   HOURS:   15.0',
+  'CLASS: 04   DEANS LIST   BASE HOUR CREDITS ON TRK:   12.0',
+  'UPPER HOUR LIMIT   PT REQ:   18.0',
+  'AI FOUNDATIONS   01   198   440   01   4.0   A   UPPR HOUR CREDITS TOWARDS LIMIT ON REC:   18.0',
+  'CRYPTOGRAPHY TOPICS   01   640   448   01   3.0   A   LOWR HOUR CREDITS TOWARDS DEGREE   ON REC:   120.0',
+  'SAS NOTES: HONORS, MATHS, INTERNATIONAL',
+  '.',
+  'TOPOLOGY I   01   640   441   01   3.0   A',
+  'COMP VISION BASICS   01   198   461   01   4.0   A',
+  '*** NOT IN ATTENDANCE ***',
+  'TOTAL SEMESTER CREDITS:   14.0',
+  'DEGREE CREDITS EARNED: 124.0   TERM GPA: 4.000   CUMULATIVE GPA: 3.910',
+  '.',
+  'Spring 2022 SCHOOL OF ARTS AND SCIENCES',
+  'MAJOR: MATHEMATICS',
+  'MINOR: COMPUTER SCIENCE',
+  'CLASS: 04   DEANS LIST',
+  'LOGIC & COMPUTING   01   198   205   01   4.0   A',
+  'GAME THEORY BASICS   01   640   410   01   3.0   A',
+  'CODING THEORY   01   640   451   01   3.0   A',
+  'APPLIED REGRESSION ANALYSIS   01   960   463   01   3.0   A',
+  'TOTAL SEMESTER CREDITS:   13.0',
+  'DEGREE CREDITS EARNED: 137.0   TERM GPA: 4.000   CUMULATIVE GPA: 3.920',
+  '.',
+  'DEGREE: BACHELOR OF ARTS   MAY   2022',
+  'MAJOR: MATHEMATICS',
+  'MINOR: COMPUTER SCIENCE',
+  'HONORS/AWARDS EARNED: SUMMA CUM LAUDE',
+  '.',
+  '',
+];
+
+describe('title first, then a three-number code (Rutgers’ undergraduate layout, 2026-10-14)', () => {
+  const p = parseExternalTranscript(TITLE_FIRST_NUMERIC);
+  it('reads every course of the record’s own terms, with its code, credits, grade and term', () => {
+    assert.equal(p.courses.length, 29);
+    assert.ok(p.courses.every((c) => /^01:\d{3}:\d{3}$/.test(c.courseId) && c.credits !== undefined && c.grade !== undefined), JSON.stringify(p.courses.map((c) => c.courseId)));
+    const os = p.courses.find((c) => c.courseId === '01:198:416');
+    assert.deepEqual(os && [os.title, os.credits, os.grade, os.season, os.year], ['OPERATING SYSTEMS', 4, 'A', 'fall', 2019]);
+    // The section ("H1", "AB") and the flag after the grade ("QQ") are not read.
+    const na = p.courses.find((c) => c.courseId === '01:640:373');
+    assert.deepEqual(na && [na.title, na.credits, na.grade], ['NUMERICAL ANALYSIS I', 3, 'A']);
+    assert.equal(p.courses.find((c) => c.courseId === '01:198:211')?.grade, 'B+');
+    // A summary box's text merged onto a row's line is left unread.
+    const merged = p.courses.find((c) => c.courseId === '01:640:448');
+    assert.deepEqual(merged && [merged.title, merged.credits, merged.grade, merged.season, merged.year], ['CRYPTOGRAPHY TOPICS', 3, 'A', 'fall', 2021]);
+    assert.equal(p.courses.filter((c) => c.year === 2022 && c.season === 'spring').length, 4);
+  });
+  it('skips the other university’s transferred courses — both shapes — and never names it as the transcript’s university', () => {
+    assert.equal(p.transferRowsSkipped, 12);
+    assert.ok(!p.courses.some((c) => (c.year ?? 0) < 2019), 'no row from the transfer block');
+    assert.equal(p.university, undefined, 'the issuer is named only in an image: the student types it');
+  });
+  it('the heading’s words do not matter: the block is known by its shape', () => {
+    for (const heading of ['TRANSFER CREDITS', 'TRANSFER SUMMARY', 'EXTERNAL CREDITS', 'ADVANCED STANDING']) {
+      const q = parseExternalTranscript(TITLE_FIRST_NUMERIC.map((l) => (l === 'TRANSFER COURSES' ? heading : l)));
+      assert.deepEqual([q.courses.length, q.transferRowsSkipped, q.university], [29, 12, undefined], heading);
+    }
+  });
+  // The review of the fix (2026-10-14), each case read as the reader read it before.
+  it('a “Transfer Credit” block over a school’s name still ends at the record’s next term (PeopleSoft’s own block)', () => {
+    const header = ['SAMPLE STATE UNIVERSITY', 'Unofficial Transcript', 'Name: Jo Doe   Student ID: 0000000', 'This transcript lists the courses taken at the university and the credit it accepted from other schools.'];
+    const ucf = parseExternalTranscript([...header, 'TRANSFER CREDIT', 'Valencia College', 'ENC 1101   Freshman Composition I   3.00   T', 'MAC 2311   Calculus with Analytic Geometry I   4.00   T', 'Fall 2019', 'COP 3502   Computer Science I   3.00   A', 'COT 3100   Discrete Structures   3.00   B+', 'Spring 2020', 'COP 3503   Computer Science II   3.00   A-', 'CDA 3103   Computer Logic and Organization   3.00   B']);
+    assert.deepEqual([ucf.courses.map((c) => c.courseId), ucf.transferRowsSkipped], [['COP 3502', 'COT 3100', 'COP 3503', 'CDA 3103'], 2]);
+    const mid = parseExternalTranscript([...header, 'Fall 2019', 'COP 3502   Computer Science I   3.00   A', 'Transfer Credit', 'Purdue University', 'MA 26100   Multivariate Calculus   4.00   T', 'Fall 2020', 'COP 4600   Operating Systems   3.00   A', 'Spring 2021', 'COP 4020   Programming Languages   3.00   B']);
+    assert.deepEqual(mid.courses.map((c) => c.courseId), ['COP 3502', 'COP 4600', 'COP 4020']);
+    // A heading of another wording on a code-first record opens nothing: read as before, no row lost.
+    const miami = parseExternalTranscript([...header, 'TRANSFER COURSES', 'Miami Dade College', 'Fall 2017', 'ENC 1101   Composition I   3.00', 'Fall 2019', 'COP 3502   Computer Science I   3.00   P', 'COT 3100   Discrete Structures   3.00   S']);
+    assert.deepEqual(miami.courses.map((c) => c.courseId), ['ENC 1101', 'COP 3502', 'COT 3100']);
+    // "Transfer Totals:" alone closes the block, as before.
+    const totals = parseExternalTranscript([...header, 'Transfer Credits', 'MATH 1200   Calculus I   4.00   T', 'Transfer Totals:', '4.00   4.00', 'Fall 2021', 'CS 1400   Computer Science I   3.00   A', 'CS 1410   Discrete Mathematics   3.00   B+']);
+    assert.deepEqual(totals.courses.map((c) => c.courseId), ['CS 1400', 'CS 1410']);
+  });
+  it('the row’s own cells: a title ending in a code-like word, a colon, a pass grade, a flag, a totals line', () => {
+    const at = TITLE_FIRST_NUMERIC.indexOf('CLASS: 03   DEANS LIST');
+    const rows = ['TOPICS IN CS   01   198   351   01   3.0   B+', 'LATIN AMER: AN INTRO   01   590   101   01   3.0   A', 'RESEARCH SEMINAR   01   640   491   01   1.0   PA', 'PHYSICS LAB A   01   750   229   01   1.0', 'NATURE OF SCIENCE   01   090   101   01   3.0   NS', 'TERM TOTALS   07   007   025   3.57'];
+    const q = parseExternalTranscript([...TITLE_FIRST_NUMERIC.slice(0, at + 1), ...rows, ...TITLE_FIRST_NUMERIC.slice(at + 1)]);
+    const read = (id: string) => { const c = q.courses.find((x) => x.courseId === id); return c && [c.title, c.credits, c.grade ?? c.rawGrade]; };
+    assert.deepEqual(read('01:198:351'), ['TOPICS IN CS', 3, 'B+']);
+    assert.deepEqual(read('01:590:101'), ['LATIN AMER: AN INTRO', 3, 'A']);
+    assert.deepEqual(read('01:640:491'), ['RESEARCH SEMINAR', 1, 'S']);
+    assert.deepEqual(read('01:750:229'), ['PHYSICS LAB A', 1, undefined]);
+    assert.deepEqual(read('01:090:101'), ['NATURE OF SCIENCE', 3, undefined], 'a flag is not a grade');
+    assert.ok(!q.courses.some((c) => /^07:/.test(c.courseId)), 'a totals line is no course');
+  });
+  it('a year in a summary box merged after the grade is not the row’s term', () => {
+    const q = parseExternalTranscript(TITLE_FIRST_NUMERIC.map((l) => (l.startsWith('AI FOUNDATIONS') ? 'AI FOUNDATIONS   01   198   440   01   4.0   A   EXPECTED GRADUATION:   MAY 2022' : l)));
+    const ai = q.courses.find((c) => c.courseId === '01:198:440');
+    assert.deepEqual(ai && [ai.season, ai.year], ['fall', 2021]);
+  });
+  it('the university guess never takes a course title or a second source school', () => {
+    const swap = (from: string, to: string[]) => TITLE_FIRST_NUMERIC.flatMap((l) => (l === from ? to : [l]));
+    const physics = parseExternalTranscript(swap('CALCULUS I   01   640   151   4.0', ['UNIVERSITY PHYSICS   01   750   203   4.0']));
+    assert.equal(physics.university, undefined);
+    const second = parseExternalTranscript(swap('Spring   2019', ['PEKING UNIVERSITY', 'Spring   2019']));
+    assert.equal(second.university, undefined);
+    assert.equal(second.courses.length, 29);
+    // …nor a course of the record's own terms, outside any transfer block.
+    const own = parseExternalTranscript(swap('INTRO TO REAL ANALYSIS   01   640   311   01   4.0   A   QQ', ['UNIVERSITY WRITING   01   355   201   01   3.0   B']));
+    assert.equal(own.university, undefined);
+    assert.ok(own.courses.some((c) => c.courseId === '01:355:201'));
+  });
+  it('“Transfer Totals” over a school’s name opens nothing', () => {
+    const header = ['SAMPLE STATE UNIVERSITY', 'Unofficial Transcript', 'Name: Jo Doe   Student ID: 0000000', 'This transcript lists the courses taken at the university and the credit it accepted from other schools.'];
+    const q = parseExternalTranscript([...header, 'Transfer Totals:', 'Hudson County College', 'Fall 2021', 'CS 1400   Computer Science I   3.00   P', 'CS 1410   Discrete Mathematics   3.00   P']);
+    assert.deepEqual(q.courses.map((c) => c.courseId), ['CS 1400', 'CS 1410']);
+  });
+  it('a short title is never read as a subject with the school number as its course number', () => {
+    // "LAB II   01 …" read as course "LAB II 01" before (the DGS's file: two such rows were all it read).
+    const at = TITLE_FIRST_NUMERIC.indexOf('CLASS: 03   DEANS LIST');
+    const q = parseExternalTranscript([...TITLE_FIRST_NUMERIC.slice(0, at + 1), 'LAB II   01   750   228   01   1.0   A', 'CALCULUS   01   640   151   02   4.0   B', ...TITLE_FIRST_NUMERIC.slice(at + 1)]);
+    assert.deepEqual(q.courses.slice(0, 2).map((c) => [c.courseId, c.title, c.credits, c.grade]), [['01:750:228', 'LAB II', 1, 'A'], ['01:640:151', 'CALCULUS', 4, 'B']]);
+    assert.ok(!q.courses.some((c) => /^LAB/.test(c.courseId)));
+  });
+});

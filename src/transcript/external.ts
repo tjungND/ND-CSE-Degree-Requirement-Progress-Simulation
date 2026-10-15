@@ -236,6 +236,14 @@ const TRANSFER_FROM_RE = /^\s*transfer(?:red)?\s+(?:from|credit)\b/i;
 // An institution named on a term line ("Fall 2018: Purdue University" inside
 // Banner's transfer block) keeps that block open; a bare term header ends it.
 const NAMES_INSTITUTION_RE = /universit|college|institute|school|academy/i;
+/** A named transfer block's row coded as an elective of the record
+ * ("PROGRAMMING BASICS   TR   T01   EL2   3.0"): a title, three short code
+ * cells, the credits and perhaps a grade (2026-10-14). */
+const CODED_TRANSFER_ROW_RE = /^[^:]*[A-Za-z]{2}[^:]*\s{2,}[A-Z0-9]{1,4}\s{2,}[A-Z0-9]{1,4}\s{2,}[A-Z0-9]{1,4}\s{2,}\d{1,2}\.\d{1,2}(?:\s{2,}[A-Z][+-]?)?$/;
+/** The line naming a transfer block's source school (2026-10-14): a
+ * university, institute, polytechnic or college — not a division ("School of
+ * Arts and Sciences", "College of Engineering"). */
+const NAMES_SOURCE_SCHOOL_RE = /^(?!.*\b(?:school|college|faculty)\s+of\b).*\b(?:universit\w*|institute|polytechnic|college)\b/i;
 // An academic-year term header, "2023-24 Spring Term" (2026-09-20): Fall is
 // the first year, Winter / Spring / Summer the second.
 // Two-digit or four-digit second year (2026-09-26: Wisconsin "Spring 2023-2024",
@@ -1169,12 +1177,120 @@ const expandName = (name: string | undefined): string | undefined => (name === u
  * another short all-capitals section heading ending in a colon ("EVERGREEN
  * CREDIT:"), a page break, or a short term header that names no institution.
  * The heading line itself counts as inside. */
+/** A row whose code follows its title as three number cells — Rutgers'
+ * undergraduate layout (DGS 2026-10-14, read structure-only with
+ * scripts/diagnose-transcript.mjs): `TITLE   SS   DDD   CCC   [SECTION]
+ * CREDITS   [GRADE]   …` — two digits, three, three (school, subject,
+ * course); the section one or two letters or digits; the credits a decimal;
+ * the grade, when printed, the cell right after them. The code is Rutgers' own
+ * "SS:DDD:CCC", as its official transcript prints it (COLON_SUBJECT_RE). The
+ * cells are kept as cells (review of the fix, 2026-10-14: re-scanned as loose
+ * tokens, a title ending in "CS" read as grade S); anything after the grade —
+ * a flag, a summary box's text merged onto the line — is left unread. A title
+ * may hold a colon ("LATIN AMER: AN INTRO"), not END in one (a label), and is
+ * never a totals word alone ("TERM TOTALS   07   007   025   3.57"). */
+export interface TitleFirstRow {
+  code: string;
+  title: string;
+  credits: string;
+  grade?: string;
+  /** The section cell, when printed: the record's own rows carry one, the
+   * equivalents of another school's transferred courses do not. */
+  section?: string;
+}
+const TITLE_FIRST_GRADE_RE = /^(?:[A-F][+-]?|P|S|U|W|NC|NR|IP|TZ|INC|I|PA|NG|TF|AU)$/;
+const TOTALS_TITLE_RE = /^(?:(?:term|semester|quarter|session|cum(?:ulative)?|overall|institution(?:al)?|undergraduate|graduate|grand|career|transfer)\s+)*(?:totals?|subtotals?|cumulative|overall|summary)$/i;
+function titleFirstNumericRow(cells: readonly string[]): TitleFirstRow | undefined {
+  if (cells.length < 5) return undefined;
+  const [title, school, subject, number, ...rest] = cells as [string, string, string, string, ...string[]];
+  if (!/^\d{2}$/.test(school) || !/^\d{3}$/.test(subject) || !/^\d{3}$/.test(number)) return undefined;
+  if (!/[A-Za-z]{2}/.test(title) || /:\s*$/.test(title) || TOTALS_TITLE_RE.test(title.trim())) return undefined;
+  const CREDITS_CELL_RE = /^\d{1,2}\.\d{1,2}$/;
+  const sectioned = rest[0] !== undefined && /^[A-Z0-9]{1,2}$/.test(rest[0]) && CREDITS_CELL_RE.test(rest[1] ?? '');
+  const k = sectioned ? 1 : 0;
+  const credits = rest[k];
+  if (credits === undefined || !CREDITS_CELL_RE.test(credits)) return undefined;
+  const grade = rest[k + 1];
+  return {
+    code: `${school}:${subject}:${number}`,
+    title: title.trim(),
+    credits,
+    ...(grade !== undefined && TITLE_FIRST_GRADE_RE.test(grade) ? { grade } : {}),
+    ...(sectioned ? { section: rest[0] } : {}),
+  };
+}
+
+/** A term header and nothing else ("Fall   2017", "Spring 2018"). */
+const BARE_TERM_LINE_RE = /^(?:fall|spring|summer|autumn|winter)(?:\s+(?:semester|session|term|quarter))?\s+(?:19|20)\d{2}$/i;
+/** Lines that stand between a transfer heading and the school it names
+ * without saying anything — a lone "." or a rule. */
+const EMPTY_FILLER_RE = /^[\s.\-_*]*$/;
+
+/** Where a block of ANOTHER school's credit begins on a title-first record
+ * (the line naming that school), for both the row reader and the university
+ * guess (2026-10-14): a line naming a school, then a bare term header, then a
+ * title-first row printed with neither a section nor a grade — the shape the
+ * record gives the equivalents of another school's courses. Known by that
+ * shape, whatever the heading above says; never by a heading alone (review
+ * of the fix: on other layouts such a block could swallow the record). */
+function namedTransferStarts(lines: readonly string[]): Set<number> {
+  const flat = lines.map((l) => l.replace(/\s{2,}/g, ' ').trim());
+  const cells = lines.map((l) => l.replace(/\s{2,}/g, '  ').trim().split(/\s{2,}/));
+  const out = new Set<number>();
+  const nextFilled = (i: number): number => {
+    let j = i + 1;
+    while (j < flat.length && EMPTY_FILLER_RE.test(flat[j]!)) j += 1;
+    return j;
+  };
+  for (let i = 0; i < flat.length; i++) {
+    const line = flat[i]!;
+    if (!NAMES_SOURCE_SCHOOL_RE.test(line) || /\d/.test(line)) continue;
+    const t = nextFilled(i);
+    const r = nextFilled(t);
+    const row = r < flat.length ? titleFirstNumericRow(cells[r]!) : undefined;
+    const byShape = t < flat.length && BARE_TERM_LINE_RE.test(flat[t]!) && row !== undefined && row.section === undefined && row.grade === undefined;
+    if (byShape) out.add(i);
+  }
+  return out;
+}
+/** A named block's term header that is the record's own: words left besides
+ * the season and the year, none of them naming a university ("Fall   2019
+ * SCHOOL OF ARTS AND SCIENCES"). */
+function termLineNamesOwnDivision(line: string): boolean {
+  const beyond = line.replace(/\b(?:fall|spring|summer|autumn|winter)\b|\b(?:19|20)\d{2}\b|\b(?:semester|session|term|quarter)\b/gi, ' ').replace(/[\s:,-]+/g, ' ').trim();
+  return /[A-Za-z]{3}/.test(beyond) && !/universit/i.test(beyond);
+}
+
 function transferScope(lines: readonly string[]): boolean[] {
   const SECTION_HEADING_LINE_RE = /^[A-Z][A-Z &/'-]{2,40}:\s*$/;
   const TERM_LINE_RE = /^(?:fall|spring|summer|autumn|winter|term|semester)\b[^\n]{0,30}\b(?:19|20)\d{2}\b[^\n]{0,20}$/i;
   let inside = false;
-  return lines.map((raw) => {
+  // A block naming the school its credit came from (2026-10-14,
+  // namedTransferStarts): it holds that school's own bare terms, rows and any
+  // further school's name, and ends as the reader's 'named' block does.
+  let named = false;
+  const starts = namedTransferStarts(lines);
+  return lines.map((raw, i) => {
     const line = raw.replace(/\s{2,}/g, ' ').trim();
+    if (starts.has(i)) {
+      named = true;
+      return (inside = true);
+    }
+    if (named) {
+      const row = titleFirstNumericRow(raw.replace(/\s{2,}/g, '  ').trim().split(/\s{2,}/));
+      if (
+        line === '' ||
+        INSTITUTION_CREDIT_RE.test(line) ||
+        TRANSFER_END_RE.test(line) ||
+        TRANSFER_TOTALS_RE.test(line) ||
+        (TERM_LINE_RE.test(line) && termLineNamesOwnDivision(line)) ||
+        (row !== undefined && (row.section !== undefined || row.grade !== undefined))
+      ) {
+        named = false;
+        return (inside = false);
+      }
+      return true;
+    }
     if (TRANSFER_BANNER_RE.test(line) || TRANSFER_TABLE_RE.test(line) || TRANSFER_PEOPLESOFT_RE.test(line)) return (inside = true);
     if (!inside) return false;
     if (line === '' || INSTITUTION_CREDIT_RE.test(line) || TRANSFER_END_RE.test(line) || TRANSFER_TOTALS_RE.test(line)) return (inside = false);
@@ -1297,6 +1413,9 @@ function guessUniversity(lines: string[], weak: boolean): string | undefined {
   for (const [scope, re] of passes) {
     for (const [i, line] of scope.entries()) {
       if (inTransfer[i]) continue;
+      // A course row of the title-first layout ("UNIVERSITY PHYSICS   01   750
+      // 203   4.0") is never the university (review of the fix, 2026-10-14).
+      if (titleFirstNumericRow(line.replace(/\s{2,}/g, '  ').trim().split(/\s{2,}/))) continue;
       for (const cell of cells(line)) {
         if (!re.test(cell)) continue;
         const name = stripRecordWords(cell);
@@ -2188,12 +2307,23 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
    * "cs 430"); `decimalCell`: a code of digits whose cell is a decimal
    * number ("3837.3635", "2430.24") — the two facts the scan-only junk-code
    * guard reads (OCR plan step 2.5, `ocrJunkCode`). */
-  const leadCode = (flat: string): { code: string; tokens: string[]; date?: string; preCell?: string; printed: string; decimalCell?: true } | undefined => {
+  const leadCode = (flat: string): { code: string; tokens: string[]; date?: string; preCell?: string; printed: string; decimalCell?: true; titleFirst?: TitleFirstRow } | undefined => {
     // A stray 1–2-letter security mark merged onto the row's start ("XK ITWS
     // 1882 …", 2026-09-05) is skipped when a real code follows it. Three
     // letters are a college prefix that belongs to the code — BU's "CAS CS
     // 505" (DGS 2026-09-20) — so the mark is now at most two letters.
     // "C S 50300" reads as "CS 50300" (DGS 2026-09-20; see joinSpacedSubject).
+    // Rutgers' undergraduate layout (DGS 2026-10-14, read structure-only with
+    // scripts/diagnose-transcript.mjs): the title first, then the code as three
+    // number cells — school, subject, course — then the section, the credits,
+    // the grade and sometimes a flag ("OPERATING SYSTEMS   01   198   416   01
+    // 4.0   A"). Read before the stray-mark strip below, which took a short
+    // title for a subject ("LAB II   01 …" read as course "LAB II 01"). The
+    // code is Rutgers' own form, "01:198:416", as its official transcript
+    // prints it (COLON_SUBJECT_RE); the section and anything after the grade
+    // (a flag, or a summary box's text merged onto the line) are not read.
+    const titleFirst = titleFirstNumericRow(joinSpacedSubject(flat).split(/\s{2,}/));
+    if (titleFirst) return { code: titleFirst.code, tokens: tokensOf([titleFirst.title, titleFirst.credits, ...(titleFirst.grade ? [titleFirst.grade] : [])]), printed: titleFirst.code, titleFirst };
     const cells = joinSpacedSubject(flat).replace(/^[A-Z]{1,2}\s+(?=[A-Za-z]{2,10}(?: [A-Za-z]{1,4})?\s+\d)/, '').split(/\s{2,}/);
     // Banner / PeopleSoft layouts print the subject and the number in SEPARATE
     // columns ("CS   455   Data Communication   3.00 A   12.00"; Western's
@@ -2306,7 +2436,16 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   // Those are exemptions from another school's work, skipped and counted like
   // the transfer rows; the block ends at the first full course row (title,
   // credits, grade) or the next term header.
-  let transferBlock: 'banner' | 'table' | 'exemptions' | undefined;
+  // …and, on a title-first record, a block of another school's credit that
+  // names the school ('named', 2026-10-14 — "JIAO TONG UNIVERSITY-SHANGHAI",
+  // then that school's own terms, "Fall   2017"; namedTransferStarts): it
+  // holds only the equivalents' rows (no section, no grade), the coded
+  // electives and bare term headers; it ends at "TOTAL TRANSFER …", the
+  // record's own credit heading, a term header that names the record's own
+  // division ("Fall   2019 SCHOOL OF ARTS AND SCIENCES"), or any other row.
+  let transferBlock: 'banner' | 'table' | 'exemptions' | 'named' | undefined;
+  /** The lines naming the school a 'named' block's credit came from. */
+  const namedStarts = namedTransferStarts(lines);
   const EXEMPTIONS_HEADING_RE = /^\s*credits?\s*\/\s*exemptions?\b|^\s*exemptions?\s*(?:and|\/|&)\s*credits?\b/i;
   // Banner's "COURSES IN PROGRESS" section (public keys, 2026-09-26): its rows
   // print credits and no grade — they are in progress until the next term
@@ -2468,6 +2607,10 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       // A bare term header ends Banner's block too (2026-09-20) — one that
       // names an institution is a transfer term inside it.
       if (transferBlock === 'banner' && !NAMES_INSTITUTION_RE.test(line)) transferBlock = undefined;
+      // A named block's own terms are bare ("Fall   2017"); the record's own
+      // term line carries its division ("Fall   2019 SCHOOL OF ARTS AND
+      // SCIENCES") — that one ends the block, one naming a university does not.
+      if (transferBlock === 'named' && termLineNamesOwnDivision(line)) transferBlock = undefined;
       currentYear = term.year;
       // A header that names no season ("Term 2234", a bare "Session:
       // 2018-2019") leaves the season open rather than keeping the previous
@@ -3162,6 +3305,19 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     }
     return { scan: fixed, read: { ...(creditsRead !== undefined ? { credits: creditsRead } : {}), ...(gradeRead !== undefined ? { grade: gradeRead } : {}) } };
   };
+  /** A title-first row's scan, from its own cells (review of the fix,
+   * 2026-10-14): the whole title, the credits, and the grade as the legend
+   * maps it — or kept as printed for the student when it maps to none. */
+  const titleFirstScan = (row: TitleFirstRow, tokens: string[]): LeadScan => {
+    const into: RowScan = { titleParts: row.title.split(/\s+/), credits: asCredits(row.credits) ?? Number(row.credits), creditsText: row.credits };
+    if (row.grade !== undefined) {
+      const g = mapGrade(row.grade, legend, true);
+      if (g !== undefined) into.grade = g;
+      else into.rawGrade = row.grade;
+      into.gradeText = row.grade;
+    }
+    return { into, mapped: undefined, tokens };
+  };
   const readCourseRow = (line: string, flat: string, lead: Lead, lineIndex: number): number => {
     // The row line's own confidence, before a title line below it is consumed.
     const rowConfidence = confidences?.[lineIndex];
@@ -3173,26 +3329,40 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // the rest of the line is TOKENIZED: credits and grade are searched among
     // the tokens after the title; the title is the leading run of wordy tokens.
     // A line with no code may still be a code-less course (CC15, Batch C).
-    if (!lead) return readCodelessRow(line, flat, lineIndex);
+    if (!lead) {
+      // A named block's other transferred rows, coded as the record's
+      // electives ("PROGRAMMING BASICS   TR   T01   EL2   3.0"): skipped and
+      // counted with the rest (review of the fix, 2026-10-14).
+      if (transferBlock === 'named' && CODED_TRANSFER_ROW_RE.test(flat)) {
+        transferRowsSkipped += 1;
+        return lineIndex;
+      }
+      return readCodelessRow(line, flat, lineIndex);
+    }
     // An exemption row has no title: a code and "EXC" or a number. The first
     // row with a title ends the block and is read as the university's own.
     const bareExemption = transferBlock === 'exemptions' && !lead.tokens.some((t) => /[\p{L}]{2}/u.test(t) && !/^[A-Z]{1,4}$/.test(t));
     if (transferBlock === 'exemptions' && !bareExemption) transferBlock = undefined;
+    // A named block holds only the equivalents' shape — a title-first row with
+    // neither section nor grade; any other row is the record's own and ends
+    // it, whatever closing line the block lacked (review of the fix).
+    if (transferBlock === 'named' && !(lead.titleFirst && lead.titleFirst.section === undefined && lead.titleFirst.grade === undefined)) transferBlock = undefined;
     if (transferBlock !== undefined) {
       transferRowsSkipped += 1;
       return lineIndex;
     }
     // The header's column order first (2026-09-26); the position-free scan
-    // when there is no header or the row does not fit it.
+    // when there is no header or the row does not fit it. A title-first row's
+    // cells are already known, and are taken as they are.
     const headerGradesBefore = { ...headerGrades };
-    let scan = scanLead(lead.tokens);
+    let scan = lead.titleFirst ? titleFirstScan(lead.titleFirst, lead.tokens) : scanLead(lead.tokens);
     // OCR numeric corrections (Batch C answer (4), DGS 2026-10-09): on an OCR
     // line, a credits or grade cell the scan printed with a letter for a digit
     // ("3.O", "Bt") is read corrected — only where that fills what the scan's
     // own reading left empty (`ocrCorrectedScan`); the row is then flagged and
     // the preview shows the raw reading beside the value.
     let ocrRead: ExternalCourseCandidate['ocrRead'];
-    if (ocrLines) {
+    if (ocrLines && !lead.titleFirst) {
       const corrected = ocrCorrectedScan(lead.tokens, scan, headerGradesBefore);
       if (corrected) ({ scan, read: ocrRead } = corrected);
     }
@@ -3316,7 +3486,9 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // first, so "CSCI 2018" is never read as the year 2018 (2026-09-05).
     const codeDigits = lead.code.replace(/^[A-Z ]+[- ]?/, '');
     const withoutCode = (text: string) => text.replace(codeDigits, ' ');
-    const yearLine = withoutCode(usedContinuation ? `${line} ${lines[lineIndex + 1] ?? ''}` : line);
+    // (A title-first row prints no year of its own: the term header decides —
+    // a summary box's "MAY 2022" merged onto the line is not the row's.)
+    const yearLine = lead.titleFirst ? '' : withoutCode(usedContinuation ? `${line} ${lines[lineIndex + 1] ?? ''}` : line);
     // A year inside the title ("Lab for CS 2000", 2026-09-20) is not the row's.
     const yearMatch = YEAR_RE.exec(yearLine);
     // A date on the row (a semester-ending date before the code, a result
@@ -3390,6 +3562,7 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex]!;
     trackTermAndTransfer(line);
+    if (namedStarts.has(lineIndex)) transferBlock = 'named';
     const flat = line.replace(/\s{2,}/g, '  ').trim();
     // The transcript's own totals (item 11, 2026-10-11): recorded for the
     // preview's check, never a course row.
