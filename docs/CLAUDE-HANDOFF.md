@@ -1265,7 +1265,7 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   live behind the § chips). `msAlongTheWayRow` needs candidacy passed AND
   `ms_regular_credits_min` regular credits at ND (`alloc.ndRegular.definite`; scenario
   phd-ms-along-the-way). Unreviewed undergrad courses whose titles match `CORE_TITLE_RE` in
-  app.ts (algorithm/operating/architect — DGS keywords) join the review request. A graduate
+  app.ts (algorithm/operating/architect and their abbreviations, src/engine/core-title.ts — DGS keywords) join the review request. A graduate
   conferral line on a Master's/Ph.D. transcript (`degreeConferred` in
   `parseExternalTranscript`, positive evidence only) sets priorMs='none'→'completed' on add.
 - **Parser pass over 20 de-identified samples** (2026-09-05, DGS-provided; see the DECISIONS row
