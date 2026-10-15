@@ -12,8 +12,8 @@
 // grade or date survives, so the output can be shared with whoever maintains
 // the parser (FERPA). A tiled watermark phrase is shown verbatim only when it
 // names an institution; anything else is masked too. Since 2026-10-15 it
-// reads the PDF exactly as the app's pdfjs opens it (and compares the dev
-// tools' read), says whether the app reads it as a scanner's text layer, and
+// reads the PDF exactly as the app's pdfjs opens it (and compares the read
+// with pdfjs's standard-font folder, the dev tools' read until then), says whether the app reads it as a scanner's text layer, and
 // says what the Previous Undergraduate row does with it, with the line INDEX
 // of each row read without a final grade (an index into the shapes printed
 // below, never the row's text).
@@ -102,10 +102,12 @@ const allLines = await readOrSay(() => pdfToLinesNode(
 console.log(`pages: ${pageReports.length}`);
 for (const line of pageReports) console.log(line);
 
-// The dev tools' read (the replay, pdf-to-lines.mts) keeps the standard-font
-// folder: compared line by line, shapes only, labelled with the APP's line
-// numbers.
-const devLines = await readOrSay(() => pdfToLinesNode(file));
+// The read WITH pdfjs's standard-font folder — the dev tools' read until
+// 2026-10-15, when they took the app's (scripts/dev/pdf-lines-node.mts), and
+// the read the corpora pinned before then: compared line by line, shapes
+// only, labelled with the APP's line numbers. A difference is a glyph outside
+// its font's encoding, which the folder keeps and the browser drops.
+const devLines = await readOrSay(() => pdfToLinesNode(file, undefined, { standardFonts: true }));
 // The two reads aligned line by line (a longest common subsequence), so a
 // line one read has and the other lacks does not shift every pair after it
 // (re-review of the fix): each differing line is shown once, under the app's
@@ -122,10 +124,10 @@ for (let i = 0, j = 0; i < n || j < m; ) {
 }
 const shapeOf = (l) => mask(l).replace(/\s{2,}/g, ' | ').slice(0, 120);
 console.log(
-  `the dev tools' read (with pdfjs's standard-font folder): ${differing.length === 0 ? `the same ${n} lines` : `${differing.length} line${differing.length === 1 ? ' differs' : 's differ'} from the app's`}`,
+  `the read with pdfjs's standard-font folder (the dev tools' read until 2026-10-15): ${differing.length === 0 ? `the same ${n} lines` : `${differing.length} line${differing.length === 1 ? ' differs' : 's differ'} from the app's`}`,
 );
 for (const d of differing.slice(0, 12)) {
-  console.log(d.app !== undefined ? `  line ${d.at}: app only "${shapeOf(d.app)}"` : `  before app line ${d.at}: dev tools only "${shapeOf(d.dev)}"`);
+  console.log(d.app !== undefined ? `  line ${d.at}: app only "${shapeOf(d.app)}"` : `  before app line ${d.at}: folder read only "${shapeOf(d.dev)}"`);
 }
 // A PDF whose every page is one image under invisible text is read OCR-grade
 // by the app (src/ui/external-upload.ts), so it is here too.
@@ -219,7 +221,7 @@ console.log(
 );
 if (differing.length > 0) {
   const dev = parseAsApp(devLines);
-  console.log(`…on the dev tools' read: course rows accepted ${dev.courses.length}, transfer-block rows skipped ${dev.transferRowsSkipped ?? 0}, bachelor's degree read as conferred: ${dev.bachelorsConferred ? 'yes' : 'no'}`);
+  console.log(`…on the read with the folder: course rows accepted ${dev.courses.length}, transfer-block rows skipped ${dev.transferRowsSkipped ?? 0}, bachelor's degree read as conferred: ${dev.bachelorsConferred ? 'yes' : 'no'}`);
 }
 
 // The Notre Dame reader's own verdict (2026-10-14: a Parchment-delivered

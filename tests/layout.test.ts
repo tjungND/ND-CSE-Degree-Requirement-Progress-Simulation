@@ -506,3 +506,16 @@ describe('an OCR-word two-column page', () => {
     assert.equal(dropWatermarks(runs).filter((r) => r.text === 'College of Science').length, 2);
   });
 });
+
+// The dev tools' Node reader (scripts/dev/pdf-lines-node.mts) opens a PDF as
+// src/transcript/pdf.ts does — without pdfjs's standard-font folder — so every
+// line list it makes is the browser's (2026-10-15: the review of that day ran
+// the app's reader in Chrome and WebKit, and its lines equalled this read).
+describe("the dev tools' PDF read is the browser's (2026-10-15)", () => {
+  it("combined-transcript.pdf's em dash, written as byte 0x14 outside its font's encoding, is dropped by default, as the browser drops it, and kept only when the standard-font folder is asked for", async () => {
+    const file = new URL('./fixtures/combined-transcript.pdf', import.meta.url).pathname;
+    const degreeLines = (lines: string[]) => lines.filter((l) => l.includes('Conferred:'));
+    assert.deepEqual(degreeLines(await pdfToLinesNode(file)), ['Bachelor of Science in Computer Science Conferred: May 11, 2024', 'Master of Science in Computer Science Conferred: May 10, 2025']);
+    assert.deepEqual(degreeLines(await pdfToLinesNode(file, undefined, { standardFonts: true })), ['Bachelor of Science in Computer Science \u0014 Conferred: May 11, 2024', 'Master of Science in Computer Science \u0014 Conferred: May 10, 2025']);
+  });
+});

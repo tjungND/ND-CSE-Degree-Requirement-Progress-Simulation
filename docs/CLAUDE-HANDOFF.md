@@ -662,12 +662,18 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   corpus test's own pass criterion — `tests/replay-score.test.ts` asserts that equality for every
   fixture of both corpora, so never let the scorer and the tests drift. `rowOf` lives in
   `tests/helpers/row-of.ts` (nothing imports a `*.test.ts` file — that runs its suite).
-  `scripts/dev/pdf-lines-node.mts` is the one Node pdfjs loader (`pdfToLinesNode(file, onPage?)`,
-  the browser's `runsFromTextItems` → `runsToLines` with verbosity 0 and the standard-font folder;
+  `scripts/dev/pdf-lines-node.mts` is the one Node pdfjs loader (`pdfToLinesNode(file, onPage?,
+  { standardFonts? })`, the browser's `runsFromTextItems` → `runsToLines` with verbosity 0;
   `pdfToPagePngs(file, dpi, outDir)` through pdfjs + `@napi-rs/canvas`, pdfjs-dist's own optional
-  dependency, for the OCR bench) — `pdf-to-lines.mts`, `diagnose-transcript.mjs` and the replay call
-  it (diagnose therefore now opens a PDF exactly as pdf-to-lines does; it used to omit the font
-  folder, which changed a few column gaps). `npm run replay` (`scripts/dev/replay.mts`; `--corpus`,
+  dependency, for the OCR bench) — `pdf-to-lines.mts`, `diagnose-transcript.mjs`, `make-nd-corpus.mts`,
+  the OCR bench and the replay call it. **Since 2026-10-15 it opens a PDF as src/transcript/pdf.ts
+  does — WITHOUT pdfjs's standard-font folder — by default** (the review of 2026-10-15 ran the app's
+  reader in Chrome and WebKit: equal lines; the folder's read kept a glyph outside its font's
+  encoding — combined-transcript.pdf's em dash as "\u0014" — which the browser drops). Invariant:
+  every line list a dev tool makes is the browser's; `{ standardFonts: true }` is only for
+  diagnose's comparison read and for `pdfToPagePngsAt`, which renders WITH the folder because node
+  (no font faces) paints no base-14 text without it — a blank page. (2026-10-09 to 10-15 the
+  default named the folder; before 10-09 diagnose alone omitted it.) `npm run replay` (`scripts/dev/replay.mts`; `--corpus`,
   `--pdfs`, `--verify`, `--only`, `--out`, `--baseline`, `--quiet`) prints the scoreboard per corpus
   and per sources.json lens/country; `public-status.mts` is its alias and now agrees with the test
   (122/127, 5 known-failing at step 3; 129/147, 18 known-failing at the end of Batch A; 147/168, 21 at the end of Batch B). Sample PDFs live outside the repo in `$TRANSCRIPT_SAMPLES`

@@ -1,14 +1,20 @@
 // The one Node-side PDF loader for the dev scripts (2026-10-09, transcript
 // accuracy program, Batch A): pdfjs's legacy build run in node, through the
 // SAME layout stage the browser uses (`runsFromTextItems` → `runsToLines` in
-// src/transcript/layout.ts). Opened with `standardFonts: false`, a line list
-// made here is exactly what src/transcript/pdf.ts hands the parser (the
-// review of 2026-10-15 ran the app's own reader in Chrome and WebKit: the
-// lines were equal); by default it keeps pdfjs's standard-font folder, as the
-// committed corpora were made, which keeps a glyph the font's encoding lacks
-// where the browser drops it. scripts/dev/pdf-to-lines.mts,
-// scripts/dev/replay.mts, scripts/diagnose-transcript.mjs and the OCR bench
-// all call this instead of carrying their own pdfjs loop.
+// src/transcript/layout.ts), and opened as src/transcript/pdf.ts opens it —
+// WITHOUT pdfjs's standard-font folder — so a line list made here is exactly
+// what the app hands the parser. The review of 2026-10-15 ran the app's own
+// reader (`pdfToLinesForImport`) in Chrome and WebKit: its lines equalled this
+// read, and differed from a read WITH the folder wherever a glyph lies outside
+// its font's encoding (tests/fixtures/combined-transcript.pdf's em dash,
+// written as byte 0x14: the folder's read keeps "\u0014", the browser drops
+// it). The default has been the browser's since 2026-10-15 (before, the
+// folder was named, and the dev tools kept such glyphs); `standardFonts: true`
+// still asks for the folder — the diagnosis's comparison read, and the page
+// renderer below, which draws no base-14 text without it.
+// scripts/dev/pdf-to-lines.mts, scripts/dev/replay.mts,
+// scripts/dev/make-nd-corpus.mts, scripts/diagnose-transcript.mjs and the OCR
+// bench all call this instead of carrying their own pdfjs loop.
 //
 // FERPA: this module prints nothing and keeps nothing; what a caller does with
 // the verbatim lines is the caller's rule (pdf-to-lines.mts: public documents
@@ -48,11 +54,10 @@ function pdfjs(): Promise<any> {
 /** Open a PDF the way every dev script should: no worker fetch, no eval, no
  * font faces (node has none), pdfjs's own warnings silenced (verbosity 0 —
  * pdfjs prints them through console.log, which would land in a script's JSON
- * output), and the standard-font folder named so PDFs set in the base-14
- * fonts do not complain. `standardFonts: false` leaves that folder out, as
- * the app's own pdfjs (src/transcript/pdf.ts) is opened — the diagnosis's
- * second, browser-style read (2026-10-15). */
-async function openDocument(file: string, { standardFonts = true }: { standardFonts?: boolean } = {}): Promise<any> {
+ * output), and — by default, as the app's own pdfjs (src/transcript/pdf.ts)
+ * is opened — no standard-font folder (2026-10-15). `standardFonts: true`
+ * names the folder, for a caller that asks for it (above). */
+async function openDocument(file: string, { standardFonts = false }: { standardFonts?: boolean } = {}): Promise<any> {
   const lib = await pdfjs();
   const data = new Uint8Array(readFileSync(file));
   return lib.getDocument({
@@ -65,11 +70,11 @@ async function openDocument(file: string, { standardFonts = true }: { standardFo
   }).promise;
 }
 
-/** The text lines of a PDF, as the browser's `pdfToLines` reads them: each
- * page's runs in reading orientation → lines, with an empty line after every
- * page (the page break the parser expects). `onPage` receives each page's
- * runs and lines as they are read; `options.standardFonts: false` opens it
- * without the standard-font folder, exactly as the browser does (above). */
+/** The text lines of a PDF, exactly as the browser's `pdfToLines` reads them:
+ * each page's runs in reading orientation → lines, with an empty line after
+ * every page (the page break the parser expects). `onPage` receives each
+ * page's runs and lines as they are read; `options.standardFonts: true` opens
+ * it with the standard-font folder instead — not the browser's read (above). */
 export async function pdfToLinesNode(file: string, onPage?: (page: PageRuns) => void, options: { standardFonts?: boolean } = {}): Promise<string[]> {
   const doc = await openDocument(file, options);
   const lines: string[] = [];
@@ -152,7 +157,13 @@ export async function pdfToPagePngsAt(file: string, dpiOf: (page: { page: number
   mkdirSync(outDir, { recursive: true });
   const stem = basename(file).replace(/\.pdf$/i, '');
   const lib = await pdfjs();
-  const doc = await openDocument(file);
+  // WITH the standard-font folder, unlike the line reads: node has no font
+  // faces, so without it pdfjs paints no text set in a base-14 font it does
+  // not embed (every generator PDF — nd-transcript.pdf's first page rendered
+  // blank, 0 dark pixels against 30,935 with the folder, 2026-10-15). The
+  // browser paints such text with a system font; the app OCRs only scans,
+  // whose page is an image either way.
+  const doc = await openDocument(file, { standardFonts: true });
   const out: RenderedPage[] = [];
   try {
     for (let p = 1; p <= doc.numPages; p++) {
