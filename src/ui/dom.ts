@@ -41,6 +41,13 @@ export function option(value: string, label: string, selected = false): HTMLOpti
 export const PREVIEW_OPEN_NOTE =
   'Not available while a transcript preview is open: finish selecting and adding those courses (“Add …”), or cancel the preview, and this button becomes active again.';
 
+/** Why a previous transcript's import is inactive until the earlier-degrees
+ * questions are answered and Done is clicked (DGS 2026-10-14: "Disable
+ * previous transcript import buttons until these selections are finished and
+ * 'Done' is clicked"). */
+export const EARLIER_DEGREES_FIRST_NOTE =
+  'Not available yet: answer the questions under “Your earlier degrees” and click Done — they decide which earlier transcripts to add here and how CSE §5.2 applies to them.';
+
 /** Why every transcript import (and the OCR opt-in) is inactive in simulation
  * mode (DGS 2026-10-09, D6): a transcript is real data, and the mode holds a
  * plan — it is imported into the record, outside the mode. */

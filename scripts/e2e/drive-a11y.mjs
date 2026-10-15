@@ -212,6 +212,15 @@ async function checkDialog(s, baseUrl) {
   // A fresh record shows one line with "Answer here" (UI review item 2; DGS
   // 2026-10-09): the questions come after the click.
   if (!(await s.evalJs(`!!document.querySelector('#earlier-degrees [data-key="earlier.answer"]')`))) throw new Error('a fresh record must fold the earlier-degrees questions behind "Answer here"');
+  // Every previous-transcript Import waits for the answer, saved with Done
+  // (DGS 2026-10-14) — inactive, saying why when clicked.
+  const importStates = () => s.evalJs(`JSON.stringify([...document.querySelectorAll('[data-key^="ext.import."]')].map((b) => b.getAttribute('aria-disabled')))`).then(JSON.parse);
+  const before = await importStates();
+  if (before.length === 0 || !before.every((d) => d === 'true')) throw new Error('before the earlier degrees are answered, every Import must be inactive: ' + JSON.stringify(before));
+  await s.evalJs(`document.querySelector('[data-key="ext.import.bachelors"]').click()`);
+  await s.settle();
+  const why = await s.evalJs(`[...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | ')`);
+  if (!why.includes('answer the questions under “Your earlier degrees” and click Done')) throw new Error('the inactive Import must say why: ' + why.slice(0, 200));
   await s.evalJs(`document.querySelector('[data-key="earlier.answer"]').click()`);
   await s.waitFor(`!!document.querySelector('#earlier-degrees [data-key="earlier.bachelors.elsewhere"]')`);
   if (!(await s.evalJs(`!!document.querySelector('#earlier-degrees [data-key="earlier.bachelors.elsewhere"]')`))) throw new Error('the earlier-degrees questions must be in the Transcripts card');
@@ -238,10 +247,12 @@ async function checkDialog(s, baseUrl) {
   await s.evalJs(`(() => { const d = document.querySelector('[data-key="earlier.done"]'); d.focus(); d.click(); })()`);
   await s.settle();
   if (!(await s.evalJs(`!!document.querySelector('[data-key="transcripts.background"].background-line') && !document.querySelector('#earlier-degrees')`))) throw new Error('Done: the questions must give way to the one-line summary');
+  const after = await importStates();
+  if (after.length === 0 || after.some((d) => d === 'true')) throw new Error('after Done, the Imports must be active: ' + JSON.stringify(after));
   if ((await s.evalJs(`document.activeElement?.dataset?.key ?? ''`)) !== 'transcripts.background.change') throw new Error('Done must put focus on the summary’s Change');
   // …and bring it into view (UI review, 2026-10-08: it landed off screen).
   if (!(await s.evalJs(`(() => { const r = document.activeElement.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; })()`))) throw new Error('after Done the focused Change must be on screen');
-  console.log('  opening notice: focus inside, Tab contained, Escape never closes it, Enter does nothing until the button is live and then continues like it, focus returns to the heading; the earlier-degrees questions are on the page, keep focus through the completing answer, and give way to a summary on Done');
+  console.log('  opening notice: focus inside, Tab contained, Escape never closes it, Enter does nothing until the button is live and then continues like it, focus returns to the heading; the earlier-degrees questions are on the page, keep focus through the completing answer, and give way to a summary on Done; the previous-transcript Imports wait for Done');
 }
 
 // 1b. The first screen belongs to the work, not the preamble (blue-team B1,

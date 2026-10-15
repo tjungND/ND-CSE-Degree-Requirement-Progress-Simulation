@@ -36,7 +36,7 @@ import { unfinishedPriorLabel } from './program-history.ts';
 import { canonicalUniversityName } from './university-name.ts';
 import { confirmDialog } from './copy-dialog.ts';
 import { parseTranscript } from '../transcript/parse.ts';
-import { el, inactiveButton, option, PREVIEW_OPEN_NOTE, SIMULATION_IMPORT_NOTE } from './dom.ts';
+import { EARLIER_DEGREES_FIRST_NOTE, el, inactiveButton, option, PREVIEW_OPEN_NOTE, SIMULATION_IMPORT_NOTE } from './dom.ts';
 import { campusQuestion, MULTI_CAMPUS_SYSTEMS } from '../transcript/campus.ts';
 import { stripRegion, type StripRegion } from '../transcript/scan-strip.ts';
 import { SCANNER_LAYER_CONFIDENCE } from '../transcript/scanner-layer.ts';
@@ -676,7 +676,9 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
       el('br'),
       'A Notre Dame degree is different: it is on the same insideND transcript as your current program, so it goes in the ND row above, once.',
     ),
-    ...DEGREE_SLOTS.filter((slot) => slots.includes(slot.level)).map((slot) => slotRow(slot, args)),
+    // Each Import waits for the earlier-degrees answer, saved with Done and not
+    // reopened (DGS 2026-10-14).
+    ...DEGREE_SLOTS.filter((slot) => slots.includes(slot.level)).map((slot) => slotRow(slot, args, !(background && !answeringEarlier))),
     pendingScan ? scanOptInBlock(args) : null,
     ocrBusy ? ocrProgressBlock() : null,
     preview ? previewBlock(args) : null,
@@ -917,7 +919,7 @@ export function noRowsRoute(parsed: { cyrillicCodes?: true }, scannedTextLayer: 
 export const NON_LATIN_NOTE =
   'This transcript has Cyrillic text. The reader reads Latin-letter course codes only, so courses with Cyrillic codes may be missing below — add each one with “+ Add a row by hand”: the code as printed (or in Latin letters) and the English title.';
 
-function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCardArgs): HTMLElement {
+function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCardArgs, earlierOpen = false): HTMLElement {
   const { student, update, toast, render } = args;
   const have = coursesInSlot(student, slot.level);
   const fileInput = el('input', { type: 'file', accept: '.pdf,application/pdf', class: `hidden external-file-${slot.level}`, 'aria-label': `${slot.label} PDF` });
@@ -1061,7 +1063,11 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
       // reached four identical controls and could not tell which transcript
       // each one wanted. The file inputs behind them were already named.
       // In simulation mode the import is inactive with its own reason (D6).
-      (args.simulation ? (attrs: Record<string, string | boolean | ((ev: Event) => void)>, label: string) => inactiveButton(attrs, SIMULATION_IMPORT_NOTE, toast, label) : button)(
+      (args.simulation
+        ? (attrs: Record<string, string | boolean | ((ev: Event) => void)>, label: string) => inactiveButton(attrs, SIMULATION_IMPORT_NOTE, toast, label)
+        : earlierOpen
+          ? (attrs: Record<string, string | boolean | ((ev: Event) => void)>, label: string) => inactiveButton(attrs, EARLIER_DEGREES_FIRST_NOTE, toast, label)
+          : button)(
         {
           class: 'btn',
           'data-key': `ext.import.${slot.level}`,
