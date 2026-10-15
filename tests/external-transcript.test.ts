@@ -943,6 +943,10 @@ describe('title first, then a three-number code (Rutgers’ undergraduate layout
     assert.equal(own.university, undefined);
     assert.ok(own.courses.some((c) => c.courseId === '01:355:201'));
   });
+  it('the issuer’s name printed below the transferred rows is still read (re-review of the fix)', () => {
+    const q = parseExternalTranscript(['RECORD OF: DOE   JO', 'STUDENT NUMBER: 000000000', 'This transcript lists the courses taken at the university and the credit it accepted from other schools.', 'TRANSFER COURSES', 'Miami Dade College', 'Fall   2017', 'CALCULUS I   01   640   151   4.0', 'Fall 2019', 'COP 3503   Computer Science II   3.00   A', 'COP 3530   Data Structures   3.00   B+', 'Sample State University', '']);
+    assert.equal(q.university, 'Sample State University');
+  });
   it('“Transfer Totals” over a school’s name opens nothing', () => {
     const header = ['SAMPLE STATE UNIVERSITY', 'Unofficial Transcript', 'Name: Jo Doe   Student ID: 0000000', 'This transcript lists the courses taken at the university and the credit it accepted from other schools.'];
     const q = parseExternalTranscript([...header, 'Transfer Totals:', 'Hudson County College', 'Fall 2021', 'CS 1400   Computer Science I   3.00   P', 'CS 1410   Discrete Mathematics   3.00   P']);

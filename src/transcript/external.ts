@@ -1277,19 +1277,22 @@ function transferScope(lines: readonly string[]): boolean[] {
       return (inside = true);
     }
     if (named) {
-      const row = titleFirstNumericRow(raw.replace(/\s{2,}/g, '  ').trim().split(/\s{2,}/));
-      if (
-        line === '' ||
-        INSTITUTION_CREDIT_RE.test(line) ||
-        TRANSFER_END_RE.test(line) ||
-        TRANSFER_TOTALS_RE.test(line) ||
-        (TERM_LINE_RE.test(line) && termLineNamesOwnDivision(line)) ||
-        (row !== undefined && (row.section !== undefined || row.grade !== undefined))
-      ) {
-        named = false;
-        return (inside = false);
-      }
-      return true;
+      // Only what the block holds stays in it — bare terms, filler, a school's
+      // name, the equivalents' rows and coded electives; anything else (the
+      // record's own term or rows, the issuer's name printed below) ends it
+      // (re-review of the fix, 2026-10-14).
+      const spaced = raw.replace(/\s{2,}/g, '  ').trim();
+      const row = titleFirstNumericRow(spaced.split(/\s{2,}/));
+      const holds =
+        line !== '' &&
+        (BARE_TERM_LINE_RE.test(line) ||
+          EMPTY_FILLER_RE.test(line) ||
+          (row !== undefined && row.section === undefined && row.grade === undefined) ||
+          CODED_TRANSFER_ROW_RE.test(spaced) ||
+          (NAMES_SOURCE_SCHOOL_RE.test(line) && !/\d/.test(line)));
+      if (holds) return true;
+      named = false;
+      inside = false;
     }
     if (TRANSFER_BANNER_RE.test(line) || TRANSFER_TABLE_RE.test(line) || TRANSFER_PEOPLESOFT_RE.test(line)) return (inside = true);
     if (!inside) return false;
