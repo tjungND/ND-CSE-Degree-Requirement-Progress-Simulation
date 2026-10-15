@@ -293,6 +293,7 @@ try {
       scanClean: 'external-transcript-scan-clean.pdf',
       scannerLayer: 'scanner-layer-transcript.pdf',
       outline: 'course-outline.pdf',
+      ndParchmentNew: 'nd-parchment-new-student-transcript.pdf',
     }).map(([name, file]) => [name, join(root, 'tests', 'fixtures', file)]),
   );
 

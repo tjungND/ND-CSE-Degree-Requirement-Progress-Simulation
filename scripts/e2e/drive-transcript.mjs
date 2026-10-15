@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { STAMP_RE } from './session-common.mjs';
 
 export async function driveTranscript(s, baseUrl, pdfs) {
-  const { nd: ndPdf, other: otherPdf, external: externalPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf, totalsMismatch: totalsMismatchPdf, scanClean: scanCleanPdf, scannerLayer: scannerLayerPdf } = pdfs;
+  const { nd: ndPdf, other: otherPdf, external: externalPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf, totalsMismatch: totalsMismatchPdf, scanClean: scanCleanPdf, scannerLayer: scannerLayerPdf, ndParchmentNew: ndParchmentNewPdf } = pdfs;
   await s.open(baseUrl, '.transcript-upload');
   await s.evalJs(`localStorage.clear()`);
   await s.open(baseUrl, '.transcript-upload');
@@ -1189,6 +1189,40 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     if (!extToast.includes('Your earlier degrees were partly filled in from it')) throw new Error('the previous-transcript toast must say the earlier degrees were filled in: ' + extToast.slice(0, 300));
     await s.shot('earlier-degrees-read-graduate');
     console.log('  Option 1: a fresh Ph.D. record importing an insideND transcript gets “Notre Dame — CSE” chosen and marked as read; changing it drops the mark; a previous master’s transcript reads “Yes, at another university”');
+  }
+
+  // A new student's official transcript as Parchment delivers it (DGS
+  // 2026-10-14: "This looks like an ND transcript, but no course lines could be
+  // read from it"): a delivery cover first, then the record, whose rows in
+  // progress print "IN PROGRESS" after the credits beside a one-letter cell.
+  // Every row reads, in progress, the entry term is that first semester, and
+  // Add puts the four courses on the record.
+  {
+    await s.evalJs(`window.confirm = () => true; document.querySelector('[data-key="tools.reset"]').click()`);
+    await s.waitFor(`document.querySelector('.consent-overlay')`);
+    await s.evalJs(`(() => { document.querySelector('[data-key="consent.program.phd"]').click(); document.querySelector('[data-key="consent.ack"]').click(); document.querySelector('.consent-overlay button.btn').click(); })()`);
+    await s.waitFor(`!document.querySelector('.consent-overlay')`);
+    await s.setFileInput('.transcript-upload input[type=file]', ndParchmentNewPdf);
+    await s.waitFor(`document.querySelector('.transcript-preview') || document.querySelector('[data-key="import.nd.error"]')`);
+    const error = await s.evalJs(`document.querySelector('[data-key="import.nd.error"]')?.textContent ?? ''`);
+    if (error) throw new Error('the new student’s official transcript must read: ' + error);
+    const rows = JSON.parse(await s.evalJs(`JSON.stringify([...document.querySelectorAll('.transcript-preview table tr')].slice(1).map((r) => [r.querySelector('.cid')?.textContent, r.querySelector('.ctitle')?.textContent, r.querySelector('[data-label="Credits"]')?.textContent, r.querySelector('[data-label="Grade"]')?.textContent, r.querySelector('input[type=checkbox]')?.checked]))`));
+    const expected = [
+      ['CSE 60111', 'Complexity and Algorithms', '3', 'In progress', true],
+      ['CSE 60641', 'Graduate Operating Systems', '3', 'In progress', true],
+      ['CSE 60321', 'Computer Architecture I', '3', 'In progress', true],
+      ['CSE 63801', 'Graduate Research Seminar', '1', 'In progress', true],
+    ];
+    if (JSON.stringify(rows) !== JSON.stringify(expected)) throw new Error('the four courses in progress, ticked, titles clean: ' + JSON.stringify(rows));
+    const entry = await s.evalJs(`document.querySelector('.transcript-preview .entry-term-line')?.textContent ?? ''`);
+    if (!entry.includes('Fall 2026')) throw new Error('the entry term is the first semester, Fall 2026: ' + entry.slice(0, 160));
+    await s.evalJs(`document.querySelector('.transcript-preview').scrollIntoView({ block: 'start' })`);
+    await s.shot('nd-parchment-new-student-preview');
+    await s.evalJs(`[...document.querySelectorAll('.transcript-preview button')].find(b => /^Add \\d+ selected course/.test(b.textContent)).click()`);
+    await s.waitFor(`!document.querySelector('.transcript-preview')`);
+    const saved = JSON.parse(await s.evalJs(`JSON.stringify(JSON.parse(localStorage.getItem('cse-degree-audit/v1/student')).courses.map((c) => [c.courseId, c.grade, c.credits, c.term.season + ' ' + c.term.year]))`));
+    if (JSON.stringify(saved) !== JSON.stringify(expected.map(([id, , cr]) => [id, 'IP', Number(cr), 'fall 2026']))) throw new Error('Add must put the four courses on the record, in progress: ' + JSON.stringify(saved));
+    console.log('  Parchment-delivered official transcript of a new student: 4 courses in progress read past the delivery cover, entry term Fall 2026, added');
   }
 }
 

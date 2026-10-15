@@ -130,6 +130,22 @@ const NOT_REPORTED_GRADES = new Set(['NR']);
 const WITHDRAWN_GRADES = new Set(['W', 'WF', 'WP']);
 
 const TERM_RE = /\b(Fall|Spring|Summer)\s+(?:Semester\s+|Session\s+)?(\d{4})\b/i;
+/** A course still in progress on Notre Dame's official (Parchment) PDF says so
+ * in its grade column, after the credits: "CSE   60111 F   Complexity and
+ * Algorithms   3.000 IN PROGRESS" (2026-10-14 — a new student's transcript
+ * read no course: every row ended in words, not in a credit figure; its shape
+ * was read with scripts/diagnose-transcript.mjs, nothing else of it seen).
+ * "IP" is the same mark abbreviated. Only right after a credit figure, so a
+ * title that ends in "IP" ("Voice over IP") is never read as the mark. */
+const IN_PROGRESS_TAIL_RE = /(\d+\.\d{1,3})\s+(?:IN[\s-]*PROGRESS|INPROG(?:RESS)?|IP)\s*$/i;
+/** The official PDF closes its record with "**** END OF TRANSCRIPT ****"; the
+ * legend page follows — grade scale, campus codes, the history of the
+ * numbering (2026-10-14). Nothing after the marker is read as the record —
+ * no level word, GPA sentence or degree name from the legend — unless a new
+ * record starts (`RECORD_START_RE`), should a combined transcript print the
+ * marker after each record. */
+const END_OF_TRANSCRIPT_RE = /^\**\s*END\s+OF\s+TRANSCRIPT\s*\**$/;
+const RECORD_START_RE = /^(COURSE\s+LEVEL\s*:|UNIVERSITY\s+OF\s+NOTRE\s+DAME\s+CREDIT|INSTITUTION(AL)?\s+CREDIT|TRANSFER\s+CREDIT\s+ACCEPTED)/;
 /** A long title Banner wrapped onto the line after its course row — words
  * only, no digits, at most six of them ("Architecture", "and Analysis") —
  * is the rest of that title (DGS 2026-09-22: "Advanced Computer" lost its
@@ -286,18 +302,29 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
    * keep, is skipped — with a note where the student should add it by hand. */
   /** The index of the course whose row was the previous line, while its title may continue. */
   let titleOpen: number | undefined;
-  const readNdCourseRow = (courseMatch: RegExpExecArray): void => {
+  const readNdCourseRow = (courseMatch: RegExpExecArray, rawLine: string): void => {
     expectInstitution = false;
 
-    const [, subject, number, levelCode, rest] = courseMatch;
+    const [, subject, number, levelCode, matchedRest] = courseMatch;
     const courseId = `${subject} ${number}`;
     // The Level column: UG = undergraduate; GR (graduate), PR (professional),
     // LW (law), EM/GB (business graduate) are all graduate-status registrations.
     const rowLevel: RegisteredLevel | undefined = levelCode === undefined ? undefined : levelCode === 'UG' ? 'undergraduate' : 'graduate';
 
+    let rest = matchedRest ?? '';
+    // The official PDF prints one letter beside the course number, in the
+    // number's own cell ("60111 F", then a column gap — 2026-10-14). It is
+    // not the title's first word: a title begins after the gap. Read only
+    // when the raw line shows it so; it means nothing to the audit.
+    if (levelCode === undefined && new RegExp(`\\b${number} [A-Z](?=\\s{2,})`).test(rawLine)) rest = rest.replace(/^[A-Z]\s+/, '');
+    // "3.000 IN PROGRESS" (or "3.000 IP"): in progress, whatever the title's
+    // last word looks like (2026-10-14).
+    const inProgress = IN_PROGRESS_TAIL_RE.test(rest);
+    if (inProgress) rest = rest.replace(IN_PROGRESS_TAIL_RE, '$1');
+
     // Walk the tail tokens: trailing decimals are credits [+ quality points];
     // the token before them, if it looks like a grade, is the grade.
-    const tokens = (rest ?? '').trim().split(' ').filter((t) => t !== '');
+    const tokens = rest.trim().split(' ').filter((t) => t !== '');
     while (tokens.length > 0 && /^(R|E)$/.test(tokens[tokens.length - 1]!)) tokens.pop(); // repeat/exclude markers
     const decimals: number[] = [];
     while (tokens.length > 0 && /^\d+\.\d{1,3}$/.test(tokens[tokens.length - 1]!)) {
@@ -322,7 +349,9 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
         creditsOverride = Number(tokens.pop());
       }
     };
-    if (LETTER_GRADES.includes(tailUpper as Grade) || tailUpper === 'A+') {
+    if (inProgress) {
+      // Marked in progress after its credits: no grade to read.
+    } else if (LETTER_GRADES.includes(tailUpper as Grade) || tailUpper === 'A+') {
       grade = tailUpper === 'A+' ? 'A' : (tailUpper as Grade); // A+ → A: the top of ND's scale (2026-09-05)
       tokens.pop();
       popCreditsBeforeGrade();
@@ -347,6 +376,12 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
     } else if (AUDIT_GRADES.has(tailUpper)) {
       // An audit: kept as a V (2026-10-04), which counts toward nothing.
       grade = 'V';
+      tokens.pop();
+      popCreditsBeforeGrade();
+    } else if (tailUpper === 'IP' && /^\d+\.\d{1,3}$/.test(tokens[tokens.length - 2] ?? '')) {
+      // "3.000 IP 0.000": the official PDF's grade column between the credits
+      // and the quality points (2026-10-14).
+      grade = 'IP';
       tokens.pop();
       popCreditsBeforeGrade();
     } else if (NOT_REPORTED_GRADES.has(tailUpper)) {
@@ -389,11 +424,21 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
     courseSectionLevel.push(sectionLevel);
   };
 
+  let afterEndOfTranscript = false;
   for (const rawLine of lines) {
     // "C S E 60641" reads as "CSE 60641" (DGS 2026-09-20).
     const line = joinSpacedSubject(rawLine.replace(/\s+/g, ' ').trim());
     if (line === '') continue;
     const upper = line.toUpperCase();
+    if (END_OF_TRANSCRIPT_RE.test(upper)) {
+      afterEndOfTranscript = true;
+      titleOpen = undefined;
+      continue;
+    }
+    if (afterEndOfTranscript) {
+      if (!RECORD_START_RE.test(upper)) continue;
+      afterEndOfTranscript = false;
+    }
     // Matched once per line: three guards below and the course-row reader all ask.
     const courseMatch = COURSE_HEAD_RE.exec(line);
     // The line right after a course row may be the rest of its title.
@@ -457,7 +502,7 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
       inDegreesAwarded = true;
       continue;
     }
-    if (/^(CURRENT\s+PROGRAM|CURRICULUM\s+INFORMATION|INSTITUTION(AL)?\s+CREDIT|TRANSFER\s+CREDIT|COURSES?\s+IN\s+PROGRESS|TRANSCRIPT\s+TOTALS)/.test(upper)) {
+    if (/^(CURRENT\s+PROGRAM|CURRICULUM\s+INFORMATION|INSTITUTION(AL)?\s+CREDIT|TRANSFER\s+CREDIT|COURSES?\s+IN\s+PROGRESS|IN\s+PROGRESS\s+WORK|TRANSCRIPT\s+TOTALS)/.test(upper)) {
       inDegreesAwarded = false;
       degreeAwaitingDate = undefined;
     }
@@ -531,7 +576,11 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
       totalsLevel = undefined;
       continue;
     }
-    if (/COURSE\(?S?\)? IN PROGRESS|WORK IN PROGRESS/.test(upper)) {
+    // The official PDF: "IN PROGRESS WORK" under the term (2026-10-14). Never
+    // a course row: a title such as "Research in Progress Workshop" is not a
+    // heading (review of the fix, 2026-10-14 — it dropped the row and turned
+    // the rest of a transfer block into Notre Dame courses).
+    if (!courseMatch && /COURSE\(?S?\)? IN PROGRESS|WORK IN PROGRESS|^IN PROGRESS WORK\b/.test(upper)) {
       origin = 'nd';
       institution = undefined;
       continue;
@@ -639,7 +688,7 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
       }
       continue;
     }
-    readNdCourseRow(courseMatch);
+    readNdCourseRow(courseMatch, rawLine);
   }
 
   if (skipped.length > 0) {

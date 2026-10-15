@@ -433,6 +433,174 @@ describe('Notre Dame layouts seen in real samples (2026-09-05)', () => {
   });
 });
 
+// A new student's official Parchment PDF (DGS 2026-10-14: "This looks like an
+// ND transcript, but no course lines could be read from it"). Its shape was read
+// with scripts/diagnose-transcript.mjs — letters and digits masked, nothing else
+// seen — and is rebuilt here with invented values: the in-progress rows end in
+// "IN PROGRESS" after the credits, a one-letter cell sits beside each course
+// number, and "IN PROGRESS WORK" heads the term's rows. (The "&amp;" in the
+// relayed shapes was the chat's escaping of "&": the script would have masked a
+// printed "&amp;" to "&aaa;" — review of the fix, 2026-10-14.)
+const ND_PARCHMENT_NEW_STUDENT = [
+  'Student, Sample   Date Issued: 14-OCT-2026',
+  'Student ID: XXXXX0000   Page:   1',
+  'Birth Date: 00-00-XXXX',
+  'Record Of: Sam St',
+  'Parchment DocumentID: ABCDEFGH',
+  'sst0@nd.edu',
+  'Course Level: Graduate',
+  'Program: PhD - Computer Science & Engr',
+  'College: College of Engineering',
+  'Major: Computer Science & Engineering',
+  '________________________________________________________________________________',
+  'THE GRADUATE SCHOOL   STUDENT RECORD',
+  'SUBJ   NO   COURSE TITLE   CRD   GRD   PNTS',
+  'UNIVERSITY OF NOTRE DAME CREDIT:',
+  'Fall Semester 2026',
+  'IN PROGRESS WORK',
+  'CSE   60111 F   Complexity and Algorithms   3.000 IN PROGRESS',
+  'CSE   60641 F   Graduate Operating Systems   3.000 IN PROGRESS',
+  'CSE   60321 F   Computer Architecture I   3.000 IN PROGRESS',
+  'CSE   63801 F   Graduate Research Seminar   1.000 IN PROGRESS',
+  'In Progress Credits   10.000',
+  '********************** TRANSCRIPT TOTALS ***********************',
+  'NOTRE DAME   Ehrs:   0.000 QPts:   0.000',
+  'GPA-Hrs:   0.000   GPA:   0.000',
+  'TRANSFER   Ehrs:   0.000 QPts:   0.000',
+  'GPA-Hrs:   0.000   GPA:   0.000',
+  'OVERALL   Ehrs:   0.000 QPts:   0.000',
+  'GPA-Hrs:   0.000   GPA:   0.000',
+  '********************** END OF TRANSCRIPT ***********************',
+];
+const ND_PARCHMENT_ROWS = [
+  'CSE 60111 | Complexity and Algorithms | 3 | IP | fall 2026 | nd | graduate',
+  'CSE 60641 | Graduate Operating Systems | 3 | IP | fall 2026 | nd | graduate',
+  'CSE 60321 | Computer Architecture I | 3 | IP | fall 2026 | nd | graduate',
+  'CSE 63801 | Graduate Research Seminar | 1 | IP | fall 2026 | nd | graduate',
+];
+const rowsOf = (p: ReturnType<typeof parseTranscript>) => p.courses.map((c) => `${c.courseId} | ${c.title} | ${c.credits} | ${c.grade} | ${c.term.season} ${c.term.year} | ${c.origin} | ${c.level}`);
+/** One official-layout row under "IN PROGRESS WORK", for the variants below. */
+const officialInProgress = (row: string) => parseTranscript(['Course Level: Graduate', 'UNIVERSITY OF NOTRE DAME CREDIT:', 'Fall Semester 2026', 'IN PROGRESS WORK', row]);
+
+describe('official Parchment PDF of a new student: courses in progress (2026-10-14)', () => {
+  it('reads every row as in progress, with its credits, term and level, and no letter cell in the title', () => {
+    const p = parseTranscript(ND_PARCHMENT_NEW_STUDENT);
+    assert.equal(p.isNotreDame, true);
+    assert.deepEqual(rowsOf(p), ND_PARCHMENT_ROWS);
+    assert.deepEqual(p.entryTerm?.term, { season: 'fall', year: 2026 });
+    assert.equal(p.cumulativeGpa, undefined, 'no GPA hours yet: no GPA');
+    assert.deepEqual(p.degreesAwarded, []);
+    assert.deepEqual(p.warnings, []);
+  });
+
+  it('the generator’s PDF of this layout (cover page, landscape record, legend) reads the same through pdfjs', async () => {
+    const { pdfToLinesNode } = await import('../scripts/dev/pdf-lines-node.mts');
+    const p = parseTranscript(await pdfToLinesNode(new URL('./fixtures/nd-parchment-new-student-transcript.pdf', import.meta.url).pathname));
+    assert.equal(p.isNotreDame, true);
+    assert.deepEqual(rowsOf(p), ND_PARCHMENT_ROWS);
+    assert.deepEqual(p.entryTerm?.term, { season: 'fall', year: 2026 });
+    // Its legend's "Undergraduate" and "cumulative GPA of 3.0" lines come after END OF TRANSCRIPT.
+    assert.equal(p.cumulativeGpa, undefined);
+  });
+
+  it('a graded row in the same layout keeps its credits and grade, and loses only the letter cell', () => {
+    const p = parseTranscript(['Course Level: Graduate', 'UNIVERSITY OF NOTRE DAME CREDIT:', 'Fall Semester 2026', 'CSE   60111 F   Complexity and Algorithms   3.000 A-   11.001']);
+    assert.deepEqual(p.courses.map((c) => [c.courseId, c.title, c.credits, c.grade]), [['CSE 60111', 'Complexity and Algorithms', 3, 'A-']]);
+  });
+
+  it('every spelling of the mark after the credits, and “IP” between the credits and the quality points', () => {
+    for (const tail of ['3.000 IN PROGRESS', '3.000   In Progress', '3.000 IN-PROGRESS', '3.000 INPROG', '3.000 INPROGRESS', '3.000 IP', '3.000 IP   0.000']) {
+      assert.deepEqual(officialInProgress(`CSE   60641 F   Graduate Operating Systems   ${tail}`).courses.map((c) => [c.title, c.credits, c.grade]), [['Graduate Operating Systems', 3, 'IP']], tail);
+    }
+  });
+
+  it('a row marked in progress never reads its title’s last word as a grade', () => {
+    for (const letter of ['A', 'B', 'P', 'S', 'W', 'X', 'I']) {
+      const p = officialInProgress(`CSE   60321 F   Graduate Seminar ${letter}   3.000 IN PROGRESS`);
+      assert.deepEqual(p.courses.map((c) => [c.title, c.credits, c.grade]), [[`Graduate Seminar ${letter}`, 3, 'IP']], letter);
+      assert.deepEqual(p.warnings, [], letter);
+    }
+  });
+
+  it('never reads a title’s own words as the mark or the letter cell', () => {
+    // A title ending in "IP" before the credits (Banner web, in progress).
+    const web = parseTranscript(['University of Notre Dame', 'COURSES IN PROGRESS', 'Term: Fall Semester 2026', 'CSE 60770 GR Voice over IP 3.000']).courses;
+    assert.deepEqual(web.map((c) => [c.title, c.credits, c.grade]), [['Voice over IP', 3, 'IP']]);
+    // A title that begins with a one-letter word, one space after it.
+    const title = parseTranscript(['University of Notre Dame', 'INSTITUTION CREDIT', 'Fall Semester 2026', 'CSE   60111   A Survey of Algorithms   A   3.000   12.000']).courses;
+    assert.deepEqual(title.map((c) => [c.title, c.grade]), [['A Survey of Algorithms', 'A']]);
+    // A graded title whose last word looks like a grade, when no mark follows.
+    const graded = parseTranscript(['Course Level: Graduate', 'UNIVERSITY OF NOTRE DAME CREDIT:', 'Fall Semester 2026', 'CSE   60321 F   Computer Architecture I   3.000 B+   9.999']).courses;
+    assert.deepEqual(graded.map((c) => [c.title, c.credits, c.grade]), [['Computer Architecture I', 3, 'B+']]);
+  });
+
+  it('a course titled “… in Progress Workshop” is a course, not the in-progress heading', () => {
+    const p = parseTranscript([
+      'Course Level: Graduate',
+      'TRANSFER CREDIT ACCEPTED BY THE UNIVERSITY:',
+      'Fall 2024   Purdue University',
+      'CS 59000   Research in Progress Workshop   3.000',
+      'CS 50300   Operating Systems   3.000',
+      'UNIVERSITY OF NOTRE DAME CREDIT:',
+      'Fall Semester 2025',
+      'CSE 60111   Complexity and Algorithms   3.000 A   12.000',
+    ]);
+    assert.deepEqual(
+      p.courses.map((c) => [c.courseId, c.origin, c.institution]),
+      [['CS 59000', 'transfer', 'Purdue University'], ['CS 50300', 'transfer', 'Purdue University'], ['CSE 60111', 'nd', undefined]],
+    );
+    assert.deepEqual(p.entryTerm?.term, { season: 'fall', year: 2025 });
+    assert.deepEqual(officialInProgress('SOC   63001 F   Research in Progress Workshop   1.000 IN PROGRESS').courses.map((c) => [c.courseId, c.title, c.grade]), [['SOC 63001', 'Research in Progress Workshop', 'IP']]);
+    // …nor “Work in Progress Seminar”, which the older headings swallowed too.
+    const seminar = parseTranscript(['Course Level: Graduate', 'TRANSFER CREDIT ACCEPTED BY THE UNIVERSITY:', 'Fall 2024   Purdue University', 'PUBH 60900   Work in Progress Seminar   3.000', 'CS 50300   Operating Systems   3.000', 'UNIVERSITY OF NOTRE DAME CREDIT:', 'Fall Semester 2025', 'CSE 60111   Complexity and Algorithms   3.000 A   12.000']);
+    assert.deepEqual(seminar.courses.map((c) => [c.courseId, c.origin, c.institution]), [['PUBH 60900', 'transfer', 'Purdue University'], ['CS 50300', 'transfer', 'Purdue University'], ['CSE 60111', 'nd', undefined]]);
+  });
+
+  it('“IN PROGRESS WORK” opens Notre Dame rows after a transfer block, and closes a degrees-awarded block', () => {
+    const transfer = parseTranscript([
+      'University of Notre Dame',
+      'Course Level: Graduate',
+      'TRANSFER CREDIT ACCEPTED BY THE UNIVERSITY:',
+      'Fall 2025   Purdue University',
+      'CS    50100   Compilers   3.000',
+      'Fall Semester 2026',
+      'IN PROGRESS WORK',
+      'CSE   60111 F   Complexity and Algorithms   3.000 IN PROGRESS',
+    ]);
+    assert.deepEqual(transfer.courses.map((c) => [c.courseId, c.origin, c.institution]), [['CS 50100', 'transfer', 'Purdue University'], ['CSE 60111', 'nd', undefined]]);
+    const degrees = parseTranscript([
+      'University of Notre Dame',
+      'DEGREES AWARDED',
+      'Bachelor of Science   20-MAY-2026',
+      'Fall Semester 2026',
+      'IN PROGRESS WORK',
+      'Master of Science Thesis Direction',
+      'CSE   60111 F   Complexity and Algorithms   3.000 IN PROGRESS',
+    ]);
+    assert.deepEqual(degrees.degreesAwarded, [{ name: 'Bachelor of Science', level: 'bachelors', date: '2026-05-20' }]);
+  });
+
+  it('nothing after END OF TRANSCRIPT is the record — the legend — unless another record starts', () => {
+    const legend = [
+      'GRADING SYSTEM - GRADUATE STUDENTS   CAMPUS CODES',
+      'Undergraduate',
+      'Good standing requires a cumulative GPA of 3.0.',
+      'Master of Science degrees are conferred in May, August and December.',
+      'Course numbers changed to five digits effective Fall 2010.',
+      'Graduate',
+    ];
+    const p = parseTranscript([...ND_PARCHMENT_NEW_STUDENT, ...legend]);
+    assert.deepEqual(rowsOf(p), ND_PARCHMENT_ROWS);
+    assert.deepEqual(p.entryTerm?.term, { season: 'fall', year: 2026 });
+    assert.equal(p.cumulativeGpa, undefined);
+    assert.deepEqual(p.degreesAwarded, []);
+    // A combined transcript that ended a record with the marker and started another.
+    const next = parseTranscript([...ND_PARCHMENT_NEW_STUDENT, 'Course Level: Graduate', 'UNIVERSITY OF NOTRE DAME CREDIT:', 'Spring Semester 2027', 'IN PROGRESS WORK', 'CSE   60770 F   Machine Learning   3.000 IN PROGRESS']);
+    assert.equal(next.courses.length, 5);
+    assert.deepEqual(next.courses[4] && [next.courses[4].courseId, next.courses[4].term], ['CSE 60770', { season: 'spring', year: 2027 }]);
+  });
+});
+
 describe('cumulative GPA per level (combined-transcript bug report 2026-09-05)', () => {
   // Banner 9 "All Levels" web transcript: the Transcript Totals section lists
   // the levels alphabetically — Graduate BEFORE Undergraduate — so "the last

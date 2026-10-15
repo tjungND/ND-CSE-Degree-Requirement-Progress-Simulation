@@ -30,6 +30,7 @@ if (!file) {
 const { pdfToLinesNode } = await import(pathToFileURL(join(root, 'scripts', 'dev', 'pdf-lines-node.mts')).href);
 const { dropWatermarks, columnLayout } = await import(pathToFileURL(join(root, 'src', 'transcript', 'layout.ts')).href);
 const { parseExternalTranscript } = await import(pathToFileURL(join(root, 'src', 'transcript', 'external.ts')).href);
+const { parseTranscript } = await import(pathToFileURL(join(root, 'src', 'transcript', 'parse.ts')).href);
 
 const mask = (s) => s.replace(/[A-Z]/g, 'A').replace(/[a-z]/g, 'a').replace(/\d/g, '9');
 const INSTITUTION_RE = /universit|college|institute|school|polytechnic|official|unofficial|copy/i;
@@ -70,6 +71,32 @@ console.log(
     `with season ${c.filter((x) => x.season).length}, distinct years ${new Set(c.map((x) => x.year)).size}`,
 );
 console.log(`code shapes: ${[...new Set(c.map((x) => mask(x.courseId)))].join(', ') || '(none)'}`);
+
+// The Notre Dame reader's own verdict (2026-10-14: a Parchment-delivered
+// Notre Dame transcript of a new student read no course — "no course lines
+// could be read"): its rows by kind, whether it read a GPA, the rows' levels,
+// the degrees it read, and its warnings as COUNTS per kind — a warning names
+// courses and grade codes, so its text is never printed (review of the fix,
+// 2026-10-14); an unknown kind is counted, never shown.
+const nd = parseTranscript(allLines);
+const ndRows = nd.courses;
+const count = (pred) => ndRows.filter(pred).length;
+console.log(
+  `\nNotre Dame reader: isNotreDame ${nd.isNotreDame}, rows read ${ndRows.length} ` +
+    `(in progress ${count((x) => x.grade === 'IP')}, graded ${count((x) => x.grade !== 'IP')}; Notre Dame ${count((x) => x.origin === 'nd')}, transfer ${count((x) => x.origin === 'transfer')}; ` +
+    `graduate ${count((x) => x.level === 'graduate')}, undergraduate ${count((x) => x.level === 'undergraduate')}, level unknown ${count((x) => x.level === undefined)}), ` +
+    `terms ${new Set(ndRows.map((x) => `${x.term.season} ${x.term.year}`)).size}, entry term read ${nd.entryTerm ? 'yes' : 'no'}, ` +
+    `GPA read ${nd.cumulativeGpa !== undefined ? 'yes' : 'no'}, degrees awarded read ${nd.degreesAwarded.length}`,
+);
+const ids = (w) => (w.match(/\b[A-Z]{2,5} \d{5}\b/g) ?? []).length;
+const kinds = { 'rows skipped for no grade': 0, 'not reported (NR)': 0, 'before any term header': 0, other: 0 };
+for (const w of nd.warnings) {
+  if (/^Skipped \(no grade shown\):/.test(w)) kinds['rows skipped for no grade'] += ids(w);
+  else if (/^Grade not reported yet \(NR\):/.test(w)) kinds['not reported (NR)'] += ids(w);
+  else if (/appeared before any term header/.test(w)) kinds['before any term header'] += ids(w) || 1;
+  else kinds.other += 1;
+}
+console.log(`  warnings: ${Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(', ')}`);
 
 console.log('\nline shapes in reading order (letters→a/A, digits→9; "|" marks a column gap):');
 for (const [i, line] of allLines.entries()) {

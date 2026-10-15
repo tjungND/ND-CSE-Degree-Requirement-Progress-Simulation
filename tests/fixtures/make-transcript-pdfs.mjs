@@ -38,12 +38,15 @@ function makePdf(lines) {
 
 /** A PDF from positioned text runs: pages = [[{x, y, text, size?}, …], …].
  * Each run is its own Tj, so pdfjs reports it as one text item at (x, y) —
- * exactly how a registrar's Banner PDF comes out. */
+ * exactly how a registrar's Banner PDF comes out. A page may also be
+ * `{ runs, width, height }` for another size — a landscape page (2026-10-14). */
 function makePositionedPdf(pages) {
   const esc = (s) => s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
   const objects = ['<< /Type /Catalog /Pages 2 0 R >>', null, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
   const kids = [];
-  for (const runs of pages) {
+  for (const page of pages) {
+    const runs = Array.isArray(page) ? page : page.runs;
+    const [width, height] = Array.isArray(page) ? [612, 792] : [page.width, page.height];
     let text = '';
     for (const r of runs) {
       // Optional rotation (degrees) and gray level — how watermarks are drawn.
@@ -53,7 +56,7 @@ function makePositionedPdf(pages) {
       text += `BT /F1 ${r.size ?? 8} Tf ${color}${matrix} ${r.x} ${r.y} Tm (${esc(r.text)}) Tj ET\n`;
     }
     const contentIndex = objects.length + 1; // 1-based object number of the stream
-    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentIndex + 1} 0 R >>`);
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentIndex + 1} 0 R >>`);
     objects.push(`<< /Length ${text.length} >>\nstream\n${text}\nendstream`);
     kids.push(`${contentIndex} 0 R`);
   }
@@ -474,6 +477,82 @@ writeFileSync(join(here, 'codeless-transcript.pdf'), makePositionedPdf([
   }),
 ]));
 writeFileSync(join(here, 'banner-transcript.pdf'), makePositionedPdf(bannerPages()));
+
+// Notre Dame's official transcript as Parchment delivers it, for a student in
+// the first semester (DGS 2026-10-14: "This looks like an ND transcript, but no
+// course lines could be read from it"). Built from the SHAPE of the DGS's file
+// as scripts/diagnose-transcript.mjs printed it (letters and digits masked) —
+// every value here is invented: a portrait delivery cover in the vendor's
+// manner (the wording is ours), then two landscape pages — the record, whose
+// university letterhead is an image (no text names the university above the
+// rows), and a legend. The rows in progress print "IN PROGRESS" after the
+// credits, a one-letter cell beside each course number, and "IN PROGRESS
+// WORK" under the term; the legend after "END OF TRANSCRIPT" holds lines the
+// reader must not take for the record (a level word, a GPA sentence).
+function ndParchmentNewStudentPages() {
+  const cover = [
+    { x: 160, y: 700, text: 'How to Authenticate This Official Transcript', size: 14 },
+    { x: 72, y: 660, text: 'This document was delivered electronically to the recipient named in the order and is for that recipient only.', size: 9 },
+    { x: 72, y: 646, text: 'Do not copy it or pass it on without the written consent of the person it describes.', size: 9 },
+    { x: 72, y: 618, text: 'Printed Transcript:', size: 9 },
+    { x: 72, y: 604, text: 'A printed copy can be checked against the security features described on its pages.', size: 9 },
+    { x: 72, y: 576, text: 'Electronic Transcript:', size: 9 },
+    { x: 72, y: 562, text: 'An electronic copy carries a digital signature; a PDF reader that shows signatures confirms it was not altered.', size: 9 },
+    { x: 72, y: 548, text: 'A missing or invalid signature means the document should not be accepted.', size: 9 },
+    { x: 72, y: 500, text: 'ABOUT THE SENDER: an electronic credential delivery service acting for the issuing university.', size: 9 },
+    // Text drawn sideways along the edge — never body text.
+    { x: 590, y: 120, text: 'Document certified electronically', size: 7, angle: 90 },
+  ];
+  const record = [];
+  let y = 560;
+  const line = (...cells) => {
+    for (const [x, text] of cells) record.push({ x, y, text, size: 8 });
+    y -= 11;
+  };
+  line([40, 'Student, Sample'], [470, 'Date Issued: 14-OCT-2026']);
+  line([40, 'Student ID: XXXXX0000'], [470, 'Page:'], [520, '1']);
+  line([40, 'Birth Date: 00-00-XXXX']);
+  line([40, 'Record Of: Sam St']);
+  line([40, 'Parchment DocumentID: ABCDEFGH']);
+  line([40, 'sst0@nd.edu']);
+  line([40, 'Course Level: Graduate']);
+  line([40, 'Program: PhD - Computer Science & Engr']);
+  line([40, 'College: College of Engineering']);
+  line([40, 'Major: Computer Science & Engineering']);
+  line([40, '__________________________________________________________________________________________________________']);
+  line([40, 'THE GRADUATE SCHOOL'], [470, 'STUDENT RECORD']);
+  line([40, 'SUBJ'], [75, 'NO'], [130, 'COURSE TITLE'], [330, 'CRD'], [365, 'GRD'], [400, 'PNTS']);
+  line([40, 'UNIVERSITY OF NOTRE DAME CREDIT:']);
+  line([40, 'Fall Semester 2026']);
+  line([40, 'IN PROGRESS WORK']);
+  for (const [num, title, cred] of [['60111 F', 'Complexity and Algorithms', '3.000'], ['60641 F', 'Graduate Operating Systems', '3.000'], ['60321 F', 'Computer Architecture I', '3.000'], ['63801 F', 'Graduate Research Seminar', '1.000']]) {
+    line([40, 'CSE'], [75, num], [130, title], [330, `${cred} IN PROGRESS`]);
+  }
+  line([130, 'In Progress Credits'], [330, '10.000']);
+  line([40, '********************** TRANSCRIPT TOTALS ***********************']);
+  for (const label of ['NOTRE DAME', 'TRANSFER', 'OVERALL']) {
+    line([40, label], [130, 'Ehrs:'], [180, '0.000 QPts:'], [250, '0.000']);
+    line([40, 'GPA-Hrs:'], [130, '0.000'], [180, 'GPA:'], [250, '0.000']);
+  }
+  line([40, '********************** END OF TRANSCRIPT ***********************']);
+  record.push({ x: 770, y: 90, text: 'Document certified electronically', size: 7, angle: 90 });
+  const legend = [];
+  y = 560;
+  const legendLine = (...cells) => {
+    for (const [x, text] of cells) legend.push({ x, y, text, size: 7 });
+    y -= 10;
+  };
+  legendLine([40, 'GRADING SYSTEM - GRADUATE STUDENTS'], [420, 'CAMPUS CODES']);
+  for (const [grade, points, meaning, code, place] of [['A', '4.000', 'Excellent', 'LA', 'London, England'], ['A-', '3.667', '', 'RE', 'Rome, Italy'], ['B+', '3.333', '', 'WA', 'Washington, DC'], ['B', '3.000', 'Good', 'CH', 'Chicago, Illinois'], ['S', '0', 'Satisfactory', 'DU', 'Dublin, Ireland'], ['U', '0', 'Unsatisfactory', '', '']]) {
+    legendLine([40, grade], [70, points], [110, meaning], [420, code], [450, place]);
+  }
+  legendLine([40, 'Courses taught off campus show a campus code before the course title.']);
+  legendLine([40, 'Good standing requires a cumulative GPA of 3.0.']);
+  legendLine([40, 'Undergraduate']);
+  legendLine([40, 'A course still in progress shows IN PROGRESS in place of a grade.']);
+  return [cover, { runs: record, width: 792, height: 612 }, { runs: legend, width: 792, height: 612 }];
+}
+writeFileSync(join(here, 'nd-parchment-new-student-transcript.pdf'), makePositionedPdf(ndParchmentNewStudentPages()));
 
 // The same transcript over a text watermark (2026-09-05: real UMass / Western
 // Ontario transcripts repeat the university's name across the background —

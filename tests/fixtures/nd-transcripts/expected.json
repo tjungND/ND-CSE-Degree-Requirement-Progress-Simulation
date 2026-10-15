@@ -119,5 +119,19 @@
     "degrees": [
       "masters 2026-05-15 Master of Science"
     ]
+  },
+  "nd-parchment-new-student-transcript": {
+    "isNotreDame": true,
+    "courses": [
+      "CSE 60111 | Complexity and Algorithms | 3 | IP | fall 2026 | graduate",
+      "CSE 60641 | Graduate Operating Systems | 3 | IP | fall 2026 | graduate",
+      "CSE 60321 | Computer Architecture I | 3 | IP | fall 2026 | graduate",
+      "CSE 63801 | Graduate Research Seminar | 1 | IP | fall 2026 | graduate"
+    ],
+    "cumulativeGpa": null,
+    "gpaGraduate": null,
+    "gpaUndergraduate": null,
+    "entryTerm": "fall 2026",
+    "degrees": []
   }
 }

@@ -21,7 +21,7 @@ import { ndFieldsOf, ndRowOf } from './score-nd.mts';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = join(root, 'tests', 'fixtures', 'nd-transcripts');
 
-const PDFS = ['nd-transcript', 'nd-official-transcript', 'nd-undergrad-transcript', 'nd-undergrad-in-progress-transcript', 'nd-insidend-transcript']; // combined-transcript.pdf is Purdue's (the external corpus)
+const PDFS = ['nd-transcript', 'nd-official-transcript', 'nd-undergrad-transcript', 'nd-undergrad-in-progress-transcript', 'nd-insidend-transcript', 'nd-parchment-new-student-transcript']; // combined-transcript.pdf is Purdue's (the external corpus)
 
 // tests/transcript.test.ts, "insideND layout: each term’s college, major and
 // level" — with each term's totals added up from its rows, as a real
