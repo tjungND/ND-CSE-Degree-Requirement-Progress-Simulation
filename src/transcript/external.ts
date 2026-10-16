@@ -1245,7 +1245,14 @@ export interface TitleFirstRow {
 }
 const TITLE_FIRST_GRADE_RE = /^(?:[A-F][+-]?|P|S|U|W|NC|NR|IP|TZ|INC|I|PA|NG|TF|AU)$/;
 const TOTALS_TITLE_RE = /^(?:(?:term|semester|quarter|session|cum(?:ulative)?|overall|institution(?:al)?|undergraduate|graduate|grand|career|transfer)\s+)*(?:totals?|subtotals?|cumulative|overall|summary)$/i;
-function titleFirstNumericRow(cells: readonly string[]): TitleFirstRow | undefined {
+function titleFirstNumericRow(printed: readonly string[]): TitleFirstRow | undefined {
+  // A cell of marks alone before the title — no letter, no digit — is not
+  // part of the row (DGS 2026-10-16: the official copy of a Rutgers record
+  // printed a lone "." before one course's title, ".   TITLE   01   640   448
+  // …", and the course was lost; its unofficial copy has no dot there).
+  let lead = 0;
+  while (lead < printed.length - 1 && /^[^\p{L}\p{N}]+$/u.test(printed[lead]!.trim())) lead += 1;
+  const cells = printed.slice(lead);
   if (cells.length < 5) return undefined;
   const [title, school, subject, number, ...rest] = cells as [string, string, string, string, ...string[]];
   if (!/^\d{2}$/.test(school) || !/^\d{3}$/.test(subject) || !/^\d{3}$/.test(number)) return undefined;

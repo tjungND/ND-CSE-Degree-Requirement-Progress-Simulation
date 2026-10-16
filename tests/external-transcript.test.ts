@@ -831,7 +831,8 @@ describe('Georgia Tech’s name as its official transcript prints it (DGS 2026-1
 // DGS 2026-10-14: "there were a lot of courses, but it says there were only
 // two"). Its shape was read with scripts/diagnose-transcript.mjs on the DGS's
 // machine (letters and digits masked) and is rebuilt here with invented
-// values. It opens with credit transferred from another university, under a
+// values — titles, numbers, YEARS and the degree's month and year alike
+// (never quote them as the student's: a reply of 2026-10-16 did). It opens with credit transferred from another university, under a
 // "TRANSFER …" heading and that school's name, in that school's own terms;
 // its own terms name the division ("Fall   2019 SCHOOL OF ARTS AND
 // SCIENCES"); the issuer's name is only in an image; on the last page a
@@ -1052,18 +1053,38 @@ describe('title first, then a three-number code (Rutgers’ undergraduate layout
   // (2026-10-15): "the degree and the conferral month year in the end" —
   // "Those courses without grades are the transferred courses."
   const asUndergraduate = (r: ReturnType<typeof parseExternalTranscript>) => undergraduateInProgress('bachelors', r.courses.map((c) => previewRowOf(c, 'bachelors')), r.bachelorsConferred === true);
-  // The official copy of the same kind of record (DGS 2026-10-16): no closing
-  // degree line, and one of its own courses graded W — a final result.
-  it('an official copy without the degree line: its own courses graded, one W — not refused', () => {
-    const official = TITLE_FIRST_NUMERIC.filter((l) => !l.startsWith('DEGREE: ')).map((l) => (l.startsWith('OPERATING SYSTEMS') ? 'OPERATING SYSTEMS   01   198   416   01   4.0   W   QQ' : l));
-    const q = parseExternalTranscript(official);
+  // The official copy of the same record (DGS 2026-10-16), as its diagnosis
+  // showed it: no closing degree line (it ends “*** END OF TRANSCRIPT ***”),
+  // the third course of its first term graded with one letter — by its shape
+  // a W — before its core code, and a lone “.” printed before one course's
+  // title, which lost that course (28 of 29 read).
+  const OFFICIAL = TITLE_FIRST_NUMERIC.slice(0, TITLE_FIRST_NUMERIC.findIndex((l) => l.startsWith('DEGREE: ')))
+    .map((l) => (l.startsWith('COMPUTER ARCHITECTURE') ? 'COMPUTER ARCHITECTURE   01   198   211   03   4.0   W   QR' : l))
+    .map((l) => (l.startsWith('CRYPTOGRAPHY TOPICS') ? '.   CRYPTOGRAPHY TOPICS   01   640   448   01   3.0   A' : l))
+    .concat(['*** END OF TRANSCRIPT ***', '']);
+  it('the official copy: no degree line, one course graded W, a dot before a title — every course read, not refused', () => {
+    const q = parseExternalTranscript(OFFICIAL);
     assert.equal(q.bachelorsConferred, undefined);
     assert.deepEqual([q.courses.length, q.transferRowsSkipped], [29, 12]);
-    assert.deepEqual(q.courses.filter((c) => c.grade === undefined).map((c) => [c.courseId, c.rawGrade]), [['01:198:416', 'W']]);
+    const dotted = q.courses.find((c) => c.courseId === '01:640:448');
+    assert.deepEqual(dotted && [dotted.title, dotted.credits, dotted.grade, dotted.season, dotted.year], ['CRYPTOGRAPHY TOPICS', 3, 'A', 'fall', 2021]);
+    assert.deepEqual(q.courses.filter((c) => c.grade === undefined).map((c) => [c.courseId, c.rawGrade]), [['01:198:211', 'W']]);
     assert.equal(asUndergraduate(q), false);
-    // …while an incomplete still is.
-    const incomplete = parseExternalTranscript(official.map((l) => (l.startsWith('OPERATING SYSTEMS') ? 'OPERATING SYSTEMS   01   198   416   01   4.0   I' : l)));
+    // …while an incomplete still is refused.
+    const incomplete = parseExternalTranscript(OFFICIAL.map((l) => (l.startsWith('COMPUTER ARCHITECTURE') ? 'COMPUTER ARCHITECTURE   01   198   211   03   4.0   I   QR' : l)));
     assert.equal(asUndergraduate(incomplete), true);
+  });
+  it('a cell of marks alone before a title is skipped; one with a letter or a digit is not', () => {
+    const before = TITLE_FIRST_NUMERIC.slice(0, 46); // the first term, then page 2's header
+    const read = (lead: string) => parseExternalTranscript([...before, `${lead}   TOPOLOGY I   01   640   441   01   3.0   A`]).courses;
+    const base = parseExternalTranscript(before).courses.length;
+    for (const mark of ['.', '*', '-', '•', '..']) {
+      const courses = read(mark);
+      assert.deepEqual([courses.length, courses.at(-1)?.courseId, courses.at(-1)?.title], [base + 1, '01:640:441', 'TOPOLOGY I'], mark);
+    }
+    // A letter or a digit in the first cell leaves the row unread, as before:
+    // the reader never guesses which cell is the title.
+    for (const lead of ['X', '1', 'XK']) assert.equal(read(lead).length, base, lead);
   });
   it('the degree and its month and year closing the record are its conferral: never refused as in progress', () => {
     assert.deepEqual([p.bachelorsConferred, p.bachelorsConferredOn], [true, '2022-05-15']);
