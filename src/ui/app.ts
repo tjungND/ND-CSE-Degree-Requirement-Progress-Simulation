@@ -2132,7 +2132,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   // — plus external courses the ExternalCourses tab has not ruled on. The
   // student MUST email the request to the DGS and the Graduate Program
   // Administrator; the page itself sends nothing.
-  function askDgsCard(classified: readonly ClassifiedCourse[], report: AuditReport): HTMLElement | null {
+  function askDgsCard(classified: readonly ClassifiedCourse[], report: AuditReport): HTMLElement {
     // Which courses need a DGS decision, and why, is the engine's call
     // (src/engine/review.ts, 2026-09-06 evening — with the test matrix that
     // pins it); this card only lists them and builds the copy-ready request.
@@ -2145,8 +2145,14 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // checks on a `yes` the DGS may not have meant (2026-10-04, P1-sheet-48 /
     // -c2). Read from the report, so the page and the request say the same.
     const notes = [...(report.reviewFlags ?? []), ...(report.staffChecks ?? [])];
-    if (n === 0 && notes.length === 0) return null;
-    const what = reviewRequestSummary(n, notes.length > 0);
+    // Shown all the time, its button inactive until a course needs a decision
+    // or a note needs the DGS (DGS 2026-10-16: "Apply it similarly to
+    // 'Initiate Review' for ADGS/DGS. Show it all the time, but the button is
+    // inactive until needed." — as the Grad Admin card, 2026-10-15).
+    const idle = n === 0 && notes.length === 0;
+    const what = idle ? '0 courses' : reviewRequestSummary(n, notes.length > 0);
+    const label = idle ? 'Initiate the review request' : `Initiate the review request for ${what}`;
+    const who = deciderTitle(student.program);
     const decider = deciderContact(student.program);
     // The two course lists — Courses-tab rows and ExternalCourses rows
     // (transcript/external.ts reviewRequestCourses; P3-dh-10-2).
@@ -2158,7 +2164,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       el('div', { class: 'review-line', 'data-keep-dgs': '' }, el('span', { class: 'cid' }, courseId), `${where ? ` (${where})` : ''} — ${reason}`);
     return el(
       'div',
-      { class: 'card dgs-review', id: 'dgs-review' },
+      { class: `card dgs-review${idle ? ' is-idle' : ''}`, id: 'dgs-review' },
       el('h2', {}, `Ask the ${deciderTitle(student.program)} to review `, el('span', { class: 'chip-note' }, what), simulationChip()), // the mode repeated on the card (D9; in every mode since the review fix of 2026-10-09)
       // Earlier coursework waits on the earlier-degrees answer (UI review,
       // 2026-10-08): said first; the request itself stays (DGS 2026-09-03).
@@ -2169,8 +2175,28 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       // app, the address, the attach reminder, the process — become one
       // sentence: nothing is sent from a plan. The course list stays.
       ...(simulation
-        ? [el('p', { class: 'hint simulation-hint' }, `In simulation mode nothing is sent: these are the courses this plan would put before the ${deciderTitle(student.program)} — exit the simulation to send the review request from your record.`)]
-        : [
+        ? [
+            el(
+              'p',
+              { class: 'hint simulation-hint' },
+              idle
+                ? `In simulation mode nothing is sent — and nothing in this plan needs the ${who}’s review yet.`
+                : `In simulation mode nothing is sent: these are the courses this plan would put before the ${deciderTitle(student.program)} — exit the simulation to send the review request from your record.`,
+            ),
+          ]
+        : idle
+          ? // Nothing to review: one line, as the Grad Admin card's (the two
+            // instruction paragraphs return with the first course).
+            [
+              el(
+                'p',
+                { class: 'hint' },
+                `Nothing to review yet — a request is needed only when a course needs the ${who}’s decision: one not in the course rules yet, one decided case by case, or one from another university not yet ruled on. The ${who} (`,
+                mailto(decider.email),
+                ') decides by email.',
+              ),
+            ]
+          : [
             el(
               'p',
               { class: 'hint' },
@@ -2202,8 +2228,15 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // In the mode the button is inactive with its reason (D7): no request
         // leaves a plan — `inactiveButton`, so the reason can be shown.
         simulation
-          ? inactiveButton({ class: 'btn', 'data-key': 'review.copy' }, simulationSendNote('the review request'), toast, `Initiate the review request for ${what}`)
-          : el(
+          ? inactiveButton({ class: 'btn', 'data-key': 'review.copy' }, simulationSendNote('the review request'), toast, label)
+          : idle
+            ? inactiveButton(
+                { class: 'btn', 'data-key': 'review.copy' },
+                `Nothing for the ${who} to review yet. This becomes active when a course needs the ${who}’s decision — one not in the course rules yet, one decided case by case, or one from another university not yet ruled on — or something on your record needs the ${who} to check.`,
+                toast,
+                label,
+              )
+            : el(
           'button',
           {
             class: 'btn',

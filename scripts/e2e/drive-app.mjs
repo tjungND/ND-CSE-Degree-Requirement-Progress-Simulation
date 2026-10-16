@@ -67,6 +67,12 @@ export async function driveApp(s, baseUrl) {
   })`));
   if (hidden.pills > 0 || hidden.emptyHeads.length > 0 || hidden.transferCard) throw new Error('a row that does not apply must not be shown: ' + JSON.stringify(hidden));
   console.log('  no "Does not apply" card and no empty group heading');
+  // The review card is shown all the time, its button inactive until a course
+  // needs a decision (DGS 2026-10-16): the example has nothing to review.
+  const reviewIdle = JSON.parse(await s.evalJs(`JSON.stringify((() => { const card = document.querySelector('#dgs-review'); const b = card?.querySelector('[data-key="review.copy"]'); return { shown: !!card, idle: !!card?.classList.contains('is-idle'), head: card?.querySelector('h2')?.textContent ?? '', inactive: b?.getAttribute('aria-disabled') ?? null, label: b?.textContent ?? '', reason: b?.getAttribute('title') ?? '', hint: card?.querySelector('p.hint')?.textContent ?? '', lines: card?.querySelectorAll('.review-line').length ?? -1 }; })())`));
+  console.log('  review card, nothing to review:', JSON.stringify({ ...reviewIdle, reason: reviewIdle.reason.slice(0, 70) }));
+  if (!reviewIdle.shown || !reviewIdle.idle || reviewIdle.head !== 'Ask the DGS to review 0 courses' || reviewIdle.inactive !== 'true' || reviewIdle.label !== 'Initiate the review request' || !/^Nothing for the DGS to review yet\. This becomes active when a course needs the DGS’s decision — /.test(reviewIdle.reason) || !/^Nothing to review yet — a request is needed only when a course needs the DGS’s decision: /.test(reviewIdle.hint) || reviewIdle.lines !== 0) throw new Error('the review card must be shown, inactive, saying why: ' + JSON.stringify(reviewIdle));
+  await s.shotElement('dgs-review-idle', '#dgs-review');
   await checkSectionChip(s, '[data-key="secref.coursework"]', 'Course Requirements.*twenty-four \\(24\\) credit hours of regular courses', 'Coursework card, CSE §4.2');
   // The deadline alert (DGS 2026-09-28): the example entered last fall, so
   // its qualifier's four semesters end next semester — the pill says so in
@@ -317,7 +323,7 @@ export async function driveApp(s, baseUrl) {
     const adgs = (await s.evalJs(`(() => { const c = document.querySelector('#app').cloneNode(true); c.querySelectorAll('.contact-card, details.glossary').forEach(e => e.remove()); return c.textContent; })()`));
     if (/ADGS/.test(adgs)) throw new Error('the Ph.D. tab must not send the student to the ADGS');
     const reviewHead = await s.evalJs(`document.querySelector('.dgs-review h2')?.textContent ?? ''`);
-    if (reviewHead && !/Ask the DGS to review/.test(reviewHead)) throw new Error('the review card must address the DGS on the Ph.D. tab: ' + reviewHead);
+    if (!/^Ask the DGS to review/.test(reviewHead)) throw new Error('the review card (always shown since 2026-10-16) must address the DGS on the Ph.D. tab: ' + reviewHead);
     console.log('  Ph.D. tab: every decision goes to the DGS');
   }
 
@@ -989,7 +995,6 @@ async function driveSimulation(s, baseUrl) {
   if (!/^Simulation mode on: this page is pretending it is /.test(entered.status)) throw new Error('entering must be announced: ' + entered.status);
   if (!entered.term || entered.simCourses !== outside.courses) throw new Error('the simulation key must hold the semester and a copy of the record: ' + JSON.stringify(entered));
   for (const [k, v] of Object.entries(entered.inert)) {
-    if (k === 'review.copy' && v === 'absent') continue; // the example has nothing to review yet; the card is checked below
     if (v === 'absent' || v.disabled !== 'true' || !/simulation mode/.test(v.reason)) throw new Error(`${k} must be inactive in the mode (aria-disabled="true") with a reason that names the mode, got ${JSON.stringify(v)}`);
   }
   if (entered.exits.length > 0 || !/^Start the simulation over/.test(entered.resetLabel) || entered.wayIn) throw new Error('the three ways out, the renamed Reset, no way in: ' + JSON.stringify(entered));
@@ -1047,7 +1052,7 @@ async function driveSimulation(s, baseUrl) {
   };
   await plan('CSE 60772', 'A');
   await plan('MATH 60610', 'A');
-  await s.waitFor(`document.querySelector('[data-key="review.copy"]')`);
+  await s.waitFor(`document.querySelector('#dgs-review .cid')`); // the card is always shown (2026-10-16); its first course
   await s.settle();
   const planned = JSON.parse(await s.evalJs(`JSON.stringify((() => {
     const sim = JSON.parse(localStorage.getItem('${SIM}') ?? 'null');

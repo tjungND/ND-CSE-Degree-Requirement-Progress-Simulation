@@ -200,6 +200,8 @@ body {
 .banner.official a { color: inherit; }
 .banner.privacy { background: var(--privacy-bg); border-color: var(--privacy-line); color: var(--privacy-ink); } /* the green strip: privacy, split from the alpha strip (DGS 2026-09-19) */
 .card.dgs-review { border-left: 4px solid var(--note-accent); }
+/* Nothing to review (DGS 2026-10-16: the card is always shown): no attention colour. */
+.card.dgs-review.is-idle { border-left-color: var(--line); }
 /* The opening notice is a native <dialog> (usability review 2026-09-05, item 3). */
 dialog.consent { border: 0; padding: 0; background: transparent; max-width: min(540px, calc(100vw - 32px)); }
 dialog.consent::backdrop { background: rgba(10, 22, 40, 0.55); }

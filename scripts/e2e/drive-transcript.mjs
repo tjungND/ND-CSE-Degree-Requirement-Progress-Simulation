@@ -172,7 +172,7 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     form.querySelector('input.course-id').value = 'MATH 60610'; // labelled "Course number" since 2026-09-05 (no placeholder)
     [...form.querySelectorAll('button')].find((b) => b.textContent === 'Add course').click();
   })()`);
-  await s.waitFor(`document.querySelector('.dgs-review')`);
+  await s.waitFor(`document.querySelector('.dgs-review .cid')`); // the card is always shown (2026-10-16); its first course
   const ndReview = await s.evalJs(`document.querySelector('.dgs-review').textContent`);
   // 3 pending: the typed MATH 60610, the ND transcript's transfer-credit
   // line EECS 58200 "Operating Systems" — counted as accepted credit (Option 1,
@@ -1084,8 +1084,10 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     .split(/[.!?]\s|\n/).map((l) => l.trim()).filter((l) => /\bDGS\b(?! Handbook| decision 20\d\d| 20\d\d-\d\d)/.test(l));
   if (dgsLines.length) throw new Error('the MSCSE tab must send the student to the ADGS, not the DGS:\n  ' + dgsLines.slice(0, 6).join('\n  '));
   const reviewHead = await s.evalJs(`document.querySelector('.dgs-review h2')?.textContent ?? ''`);
-  // No review card at all when the live sheet has settled every course (both 40xxx rows are `yes` since 2026-09-16); when there is one it addresses the ADGS.
-  if (reviewHead !== '' && !/Ask the ADGS to review/.test(reviewHead)) throw new Error('the review card must address the ADGS on the MSCSE tab: ' + reviewHead);
+  // The review card is always shown (DGS 2026-10-16) — with “0 courses” when the live sheet has settled every course (both 40xxx rows are `yes` since 2026-09-16) — and addresses the ADGS.
+  if (!/^Ask the ADGS to review/.test(reviewHead)) throw new Error('the review card must address the ADGS on the MSCSE tab: ' + reviewHead);
+  const reviewIdleMs = JSON.parse(await s.evalJs(`JSON.stringify((() => { const card = document.querySelector('#dgs-review'); const b = card?.querySelector('[data-key="review.copy"]'); return { idle: !!card?.classList.contains('is-idle'), inactive: b?.getAttribute('aria-disabled') ?? null, reason: (b?.getAttribute('title') ?? '').slice(0, 60) }; })())`));
+  if (reviewIdleMs.idle && (reviewIdleMs.inactive !== 'true' || reviewIdleMs.reason !== 'Nothing for the ADGS to review yet. This becomes active when')) throw new Error('with nothing to review the ADGS card waits, saying why: ' + JSON.stringify(reviewIdleMs));
   console.log('  MSCSE tab: every decision goes to the ADGS — no standalone "DGS" outside the contact card, notices, glossary and footer');
 
   // This record answered "no graduate degree", so it has no Master's row
