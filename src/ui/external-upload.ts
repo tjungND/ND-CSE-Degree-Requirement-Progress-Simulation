@@ -12,6 +12,7 @@
 import { checkTotals, doubtedTerms, type CheckedRow, type PrintedTotals, type TotalsMismatch } from '../transcript/totals-check.ts';
 import { deciderContact, type Contact } from './contacts.ts';
 import { deciderTitle } from '../engine/decider.ts';
+import { findNextStep, showNextStep } from './next-step.ts';
 import { transcriptProblemHref, type TranscriptProblem } from './report-problem.ts';
 import { APP_BUILD } from './build-info.ts';
 import { bachelorsPrefill, ocrReducedPagesNote, ocrTurnedNote, rowIsCompact, type OcrReducedPage } from '../transcript/preview-layout.ts';
@@ -603,7 +604,10 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
           args.student.backgroundRead ?? {},
         ),
         // Done: the student has checked what was read, so nothing is marked
-        // "read" after it; focus goes to the one-line answer's Change.
+        // "read" after it; the page then shows the next step — scrolled to,
+        // focused, ringed and said (next-step.ts; DGS 2026-10-16: "Highlight
+        // the next step on the page") — and focus stays on the one-line
+        // answer's Change only when there is none.
         // A primary button in its own row, clear of the options (DGS
         // 2026-10-08: "Leave some space between Done and others … make the
         // Done button look nicer like the rest of the app page").
@@ -624,6 +628,8 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
                       if (!confirmDraft(s)) s.backgroundRead = undefined;
                       s.backgroundReadFrom = undefined;
                     });
+                    // update() has re-rendered the page: the rows the answer opened are on it.
+                    showNextStep(findNextStep(document), args.toast);
                   },
                 },
                 'Done',

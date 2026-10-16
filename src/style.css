@@ -1030,6 +1030,13 @@ table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { bac
 .load-actions .or { color: var(--muted); font-size: 13px; }
 .load-note { font-size: 13px; color: var(--muted); }
 .load-fail .load-note a { color: inherit; }
+/* The next step after the earlier-degrees "Done" (DGS 2026-10-16:
+   "Highlight the next step on the page"): ringed, tagged, a pulse at first
+   (next-step.ts removes it after a few seconds). */
+.next-step-ring { position: relative; outline: 3px solid var(--info); outline-offset: 4px; border-radius: 8px; background-color: var(--navy-tint); animation: next-step-pulse 1.1s ease-out 2; }
+.next-step-tag { position: absolute; top: -11px; right: 10px; background: var(--info); color: var(--card); font-size: 11px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.6; padding: 0 8px; border-radius: 999px; pointer-events: none; }
+@keyframes next-step-pulse { from { outline-color: transparent; outline-offset: 14px; } to { outline-color: var(--info); outline-offset: 4px; } }
+@media (prefers-reduced-motion: reduce) { .next-step-ring { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: var(--spinner-track); } .load-card .load-bar i { transition: none; } }
 
 /* external transcripts card (src/ui/external-upload.ts) */

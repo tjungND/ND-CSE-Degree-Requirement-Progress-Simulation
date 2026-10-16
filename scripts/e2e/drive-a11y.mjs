@@ -249,9 +249,24 @@ async function checkDialog(s, baseUrl) {
   if (!(await s.evalJs(`!!document.querySelector('[data-key="transcripts.background"].background-line') && !document.querySelector('#earlier-degrees')`))) throw new Error('Done: the questions must give way to the one-line summary');
   const after = await importStates();
   if (after.length === 0 || after.some((d) => d === 'true')) throw new Error('after Done, the Imports must be active: ' + JSON.stringify(after));
-  if ((await s.evalJs(`document.activeElement?.dataset?.key ?? ''`)) !== 'transcripts.background.change') throw new Error('Done must put focus on the summary’s Change');
-  // …and bring it into view (UI review, 2026-10-08: it landed off screen).
-  if (!(await s.evalJs(`(() => { const r = document.activeElement.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; })()`))) throw new Error('after Done the focused Change must be on screen');
+  // The next step is shown (DGS 2026-10-16: "Highlight the next step on the
+  // page"): the first earlier-transcript row the answer opened, still empty —
+  // ringed and tagged, its Import focused and on screen, said in a toast.
+  await s.waitFor(`(() => { const r = document.activeElement?.getBoundingClientRect(); return !!r && r.bottom > 0 && r.top < window.innerHeight; })()`, 5000); // the smooth scroll lands
+  const next = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const row = document.querySelector('.external-slot.next-step-ring');
+    return {
+      label: row?.querySelector('.slot-label')?.textContent ?? '',
+      tag: row?.querySelector('.next-step-tag')?.textContent ?? '',
+      focused: document.activeElement?.dataset?.key ?? '',
+      rowImport: row?.querySelector('[data-key^="ext.import."]')?.dataset?.key ?? '',
+      rings: document.querySelectorAll('.next-step-ring').length,
+      toast: [...document.querySelectorAll('.toast')].map((t) => t.textContent).find((t) => /^Saved — next/.test(t ?? '')) ?? '',
+    };
+  })())`));
+  console.log('  after Done, the next step:', JSON.stringify(next));
+  if (next.rings !== 1 || next.tag !== 'Next step' || !next.rowImport || next.focused !== next.rowImport || next.toast !== `Saved — next, import your ${next.label} (highlighted).`) throw new Error('after Done the next step must be ringed, tagged, focused and said: ' + JSON.stringify(next));
+  await s.shot('earlier-degrees-next-step');
   console.log('  opening notice: focus inside, Tab contained, Escape never closes it, Enter does nothing until the button is live and then continues like it, focus returns to the heading; the earlier-degrees questions are on the page, keep focus through the completing answer, and give way to a summary on Done; the previous-transcript Imports wait for Done');
 }
 
