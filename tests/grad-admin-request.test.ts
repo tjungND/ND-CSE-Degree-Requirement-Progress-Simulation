@@ -77,22 +77,29 @@ describe('processingItems', () => {
     const q = audit(s, rules, opts.todayIso).requirements.find((r) => r.id === 'phd.qualifier')!;
     assert.notEqual(q.status, 'met', 'the research component is still open');
     assert.match(q.detail, /The qualifier’s course components are complete — file the qualifier completion form with the Grad Admin now \(§4\.4\); the research component has its own form, which your advisor files \(§4\.4\.3\)/);
-    assert.equal(items.count, 5, 'transfer + two milestones + the qualifier form + the met-requirements line');
+    // The major events only (DGS 2026-10-15): the transfer to submit and the
+    // qualifier form — the two milestone dates and the standing go along.
+    assert.equal(items.count, 2, 'transfer + the qualifier form');
     assert.equal(items.count, items.lines.length, 'the chip counts exactly what the card lists');
-    // Since 2026-09-28 the line tallies the open rows too, and the request
+    // Since 2026-09-28 the tally counts the open rows too, and the request
     // lists every requirement with its standing.
     // Two overdue since 2026-10-04: this student has no research seminar past the first year (P1-sheet-9).
-    assert.match(items.lines.at(-1)!, /^\d+ requirements met, 2 overdue, \d+ in progress, 1 not started — listed in the request with their standing and deadlines, for the record$/);
+    assert.match(items.forTheRecord!, /^Also in the request, for the record: 2 milestone dates and your standing — \d+ requirements met, 2 overdue, \d+ in progress, 1 not started\.$/);
     assert.deepEqual(items.standing.map((t) => t.color).filter((c, i, a) => a.indexOf(c) === i), ['red', 'green', 'amber', 'grey'], 'overdue first, then the page’s colours (grey: the dissertation submission, "Not started", since 2026-10-03)');
     assert.ok(!items.standing.some((t) => /Transfer credit from prior/.test(t.heading)), 'the transfer row is the transfer sections’ business');
     assert.match(items.lines[0]!, /^CS 50300 \(Purdue University\) — transfer credit recommended by the DGS in the course rules, to be submitted to the Graduate School \(§5\.2\)$/);
     // The DGS recommends, the Graduate School approves (policy review
-    // 2026-10-04, P1-page-text-ui-3): once the student ticks the Graduate
-    // School's approval, the Grad Admin is asked to check the record instead.
+    // 2026-10-04, P1-page-text-ui-3): once the student ticks it approved and
+    // recorded, nothing is left to process — it goes along for the record
+    // (DGS 2026-10-15), and the request needs no transcripts.
     const ticked = { ...s, attestations: { ...s.attestations, transferRecorded: true } };
     const after = processingItems(audit(ticked, rules, opts.todayIso), ticked, rules);
-    assert.match(after.lines[0]!, /^CS 50300 \(Purdue University\) — transfer credit approved by the Graduate School, to be checked on my record \(§5\.2\)$/);
-    assert.match(after.actions[0]!, /^Check that the transfer credit is on my record for CS 50300 .* — approved by the Graduate School, as I ticked \(§5\.2\)\.$/);
+    assert.equal(after.count, 1, 'the qualifier form alone');
+    assert.ok(!after.lines.some((l) => /CS 50300/.test(l)) && !after.actions.some((x) => /CS 50300/.test(x)));
+    assert.match(after.forTheRecord!, /^Also in the request, for the record: 2 milestone dates, the transfer credit already on your record and your standing — /);
+    const afterText = gradAdminRequest(audit(ticked, rules, opts.todayIso), ticked, rules, opts).text;
+    assert.match(afterText, /\nTRANSFER CREDIT THE GRADUATE SCHOOL APPROVED \(§5\.2\) — ON MY RECORD, AS I TICKED\n/);
+    assert.doesNotMatch(afterText, /Attached: copies of my transcripts/);
     const headings = items.met.map((t) => t.heading);
     assert.ok(headings.includes('Cumulative GPA of at least 3.0 (§2.2)'), JSON.stringify(headings));
     assert.ok(headings.includes(`${OCE_FULL} passed (§4.5)`), JSON.stringify(headings));
@@ -152,7 +159,7 @@ describe('gradAdminRequest', () => {
     assert.match(
       built.text,
     // (4 met and 5 in progress since 2026-10-04: the OCE and the RCR training show inside admission to candidacy.)
-      /\nAttached: copies of my transcripts as PDFs\. The official transcripts are to be sent directly to the Graduate School by each university’s registrar\.\n\nACTION REQUESTED\n1\. Submit the Transfer of Credits request to the Graduate School for CS 50300 Operating Systems \(Purdue University, Fall 2024, 3 credits\) — recommended by the DGS in the course rules \(§5\.2\)\.\n2\. Record the milestone: Advisor identified, 2026-09-10 — the date as I entered it \(§2\.3\)\.\n3\. Record the milestone: Oral Candidacy Exam \(OCE\) passed, 2029-04-01 — the date as I entered it \(§4\.5\)\.\n4\. Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet \(§4\.4\)\.\n5\. Keep my standing below on file: 4 requirements met, 2 overdue, 5 in progress, 1 not started\.\n\nThank you!\n\n\(You may edit anything above this line\)\n-{10,}\n\(DO NOT MODIFY ANYTHING BELOW THIS LINE\)\n\nTRANSFER CREDIT TO SUBMIT TO THE GRADUATE SCHOOL/,
+      /\nAttached: copies of my transcripts as PDFs\. The official transcripts are to be sent directly to the Graduate School by each university’s registrar\.\n\nACTION REQUESTED\n1\. Submit the Transfer of Credits request to the Graduate School for CS 50300 Operating Systems \(Purdue University, Fall 2024, 3 credits\) — recommended by the DGS in the course rules \(§5\.2\)\.\n2\. Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet \(§4\.4\)\.\n\nThank you!\n\n\(You may edit anything above this line\)\n-{10,}\n\(DO NOT MODIFY ANYTHING BELOW THIS LINE\)\n\nTRANSFER CREDIT TO SUBMIT TO THE GRADUATE SCHOOL/,
     );
     // ONE course table, each course with every requirement it feeds (DGS 2026-09-28).
     assert.match(built.text, /\nCOURSES COUNTED SO FAR\nCourse\tTitle\tCredits\tGrade\tTerm\tWhere\tCounts toward\tSource\nCS 50300\tOperating Systems\t3\tA\tFall 2024\tPurdue University\t60 total credits \(§4\.2\); 24 regular-course credits \(§4\.2\)\tsource not recorded \(entered before October 11, 2026\)\nCSE 60111\t\t3\tA\tFall 2026\tNotre Dame\t60 total credits \(§4\.2\); 24 regular-course credits \(§4\.2\); 9 regular credits at ND \(§4\.2\)\tsource not recorded \(entered before October 11, 2026\)\n/);
@@ -192,13 +199,15 @@ describe('gradAdminRequest', () => {
     assert.equal(selfCheckFileName('mscse'), 'cse-degree-audit-mscse.json');
   });
 
-  it('omits empty sections; a met requirement alone still makes the request worth sending (2026-09-06, late evening)', () => {
+  it('omits empty sections; a met requirement alone no longer makes the request worth sending (DGS 2026-10-15, superseding 2026-09-06)', () => {
     const bare = student({ courses: [], milestones: {}, attestations: {} });
     const built = build(bare);
     assert.doesNotMatch(built.text, /TRANSFER CREDIT|MSCSE ALONG THE WAY|QUALIFIER COMPLETION FORM/);
-    assert.equal(built.items.count, 1, 'nothing but the met-requirements line');
-    assert.equal(built.items.count, built.items.lines.length, 'the chip counts exactly what the card lists');
-    assert.ok(built.items.met.length >= 1, 'the met GPA row alone activates the Grad Admin button');
+    assert.equal(built.items.count, 0, 'a met GPA row is no major event');
+    assert.deepEqual(built.items.lines, []);
+    assert.ok(built.items.met.length >= 1);
+    assert.match(built.items.forTheRecord!, /^Also in the request, for the record: your standing — 1 requirement met, /);
+    assert.deepEqual(built.items.actions, [], 'nothing to ask the Grad Admin to do');
     // (the GPA row is met, so the standing list still follows the marker)
     assert.match(built.text, /\(DO NOT MODIFY ANYTHING BELOW THIS LINE\)\n\nMY STANDING, REQUIREMENT BY REQUIREMENT\n- 1 requirement met, 2 overdue, \d+ in progress, 3 not started\.\n\n\[OVERDUE\]/);
     assert.match(built.text, /\n\[NOT STARTED\] Dissertation defense passed \(§4\.7\)\n/);

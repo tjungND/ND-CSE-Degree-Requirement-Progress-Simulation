@@ -11,7 +11,8 @@ import { audit } from '../src/engine/audit.ts';
 import type { CourseEntry, Student } from '../src/engine/types.ts';
 import { buildCombinedReviewRequest } from '../src/transcript/external.ts';
 import { advisorSummary } from '../src/ui/advisor-summary.ts';
-import { unofficialTranscriptNote } from '../src/ui/email-html.ts';
+import { unofficialTranscriptNote, unofficialTranscriptSlots } from '../src/ui/email-html.ts';
+import { unofficialSlotNote, unofficialWarning } from '../src/ui/external-upload.ts';
 import { gradAdminRequest } from '../src/ui/grad-admin-request.ts';
 import { buildRules } from './helpers.ts';
 
@@ -26,23 +27,55 @@ const row = (courseId: string, degreeLevel: CourseEntry['degreeLevel'], unoffici
   ...(unofficial ? { fromUnofficialTranscript: true as const } : {}),
 });
 
-describe('unofficialTranscriptNote', () => {
+describe('unofficialTranscriptNote — worded for its reader (DGS 2026-10-16)', () => {
   it('is empty when no imported row was flagged', () => {
-    assert.equal(unofficialTranscriptNote([row('CS 50300', 'masters', false)]), '');
-    assert.equal(unofficialTranscriptNote([]), '');
+    for (const audience of ['review', 'gradAdmin', 'advisor'] as const) {
+      assert.equal(unofficialTranscriptNote([row('CS 50300', 'masters', false)], audience), '');
+      assert.equal(unofficialTranscriptNote([], audience), '');
+    }
   });
-  it('names the one transcript that was unofficial', () => {
+  // “An unofficial transcript will not be accepted for official processing. It
+  // will be accepted for informal review only (by ADGS or DGS).”
+  it('the DGS or ADGS: for an informal review; the Grad Admin: not for official processing; the advisor: both', () => {
+    const one = [row('CS 50300', 'masters', true), row('CS 24000', 'bachelors', false)];
     assert.equal(
-      unofficialTranscriptNote([row('CS 50300', 'masters', true), row('CS 24000', 'bachelors', false)]),
-      'Note: the master’s transcript I imported into the self-check was an unofficial copy. An official transcript from the university is required before any transfer credit can be reviewed, approved or added to my record (§5.2) — I will have the university’s registrar send it directly to the Graduate School.',
+      unofficialTranscriptNote(one, 'review'),
+      'Note: the master’s transcript I imported into the self-check is an unofficial copy, for your informal review — I understand it will not be accepted for official processing; the university’s registrar will send the official transcript directly to the Graduate School.',
     );
+    assert.equal(
+      unofficialTranscriptNote(one, 'gradAdmin'),
+      'Note: the master’s transcript I imported into the self-check is an unofficial copy — not for official processing; the transfer credit from it can be processed only once the university’s registrar has sent the official transcript directly to the Graduate School (§5.2).',
+    );
+    assert.equal(
+      unofficialTranscriptNote(one, 'advisor'),
+      'Note: the master’s transcript I imported into the self-check is an unofficial copy — accepted for the DGS’s informal review only, not for official processing, until the university’s registrar sends the official transcript directly to the Graduate School (§5.2).',
+    );
+    assert.match(unofficialTranscriptNote(one, 'advisor', 'ADGS'), /accepted for the ADGS’s informal review only/);
+    // The 2026-10-03 note asked for an official transcript before any review.
+    for (const audience of ['review', 'gradAdmin', 'advisor'] as const) assert.doesNotMatch(unofficialTranscriptNote(one, audience), /required before|can be reviewed/);
   });
   it('lists several, in bachelor’s / master’s / prior Ph.D. order', () => {
-    const note = unofficialTranscriptNote([row('CS 59000', 'phd', true), row('CS 24000', 'bachelors', true), row('CS 50300', 'masters', true)]);
-    assert.match(note, /^Note: the bachelor’s, master’s and prior Ph\.D\. transcripts I imported into the self-check were unofficial copies\./);
+    const several = [row('CS 59000', 'phd', true), row('CS 24000', 'bachelors', true), row('CS 50300', 'masters', true)];
+    assert.match(unofficialTranscriptNote(several, 'review'), /^Note: the bachelor’s, master’s and prior Ph\.D\. transcripts I imported into the self-check are unofficial copies, for your informal review — I understand they will not be accepted for official processing; each university’s registrar will send/);
+    assert.match(unofficialTranscriptNote(several, 'gradAdmin'), /the transfer credit from them can be processed only once each university’s registrar has sent/);
+    assert.deepEqual(unofficialTranscriptSlots(several), { list: 'bachelor’s, master’s and prior Ph.D.', one: false });
   });
   it('a hand-entered transfer row (no degree level) counts as the master’s transcript', () => {
-    assert.match(unofficialTranscriptNote([{ ...row('CS 50300', undefined, true) }]), /^Note: the master’s transcript/);
+    assert.match(unofficialTranscriptNote([{ ...row('CS 50300', undefined, true) }], 'review'), /^Note: the master’s transcript/);
+  });
+});
+
+describe('the page’s own warnings (DGS 2026-10-16)', () => {
+  it('the preview: check and simulate, an informal review by the DGS or ADGS, never official processing', () => {
+    assert.equal(
+      unofficialWarning('phd'),
+      'This transcript is marked “unofficial”. You can use it here to check your requirements and to simulate, and the DGS can review it informally, but it will not be accepted for official processing — transfer credit is processed only on the official transcript, which that university’s registrar sends directly to the Graduate School.',
+    );
+    assert.match(unofficialWarning('mscse'), /and the ADGS can review it informally/);
+  });
+  it('the Transcripts card row, after Add', () => {
+    assert.equal(unofficialSlotNote('phd'), 'Unofficial copy — for the DGS’s informal review only; it will not be accepted for official processing until the registrar sends the official transcript to the Graduate School.');
+    assert.match(unofficialSlotNote('mscse'), /^Unofficial copy — for the ADGS’s informal review only/);
   });
 });
 
@@ -63,7 +96,7 @@ describe('the three emails carry the warning', () => {
   };
   const report = audit(student, rules, '2027-06-01');
   const opts = { todayIso: '2027-06-01', entryTerm: 'Fall 2026', priorStudy: 'Completed prior M.S. or Ph.D.', gpa: 3.6 };
-  const note = unofficialTranscriptNote(student.courses);
+  const note = unofficialTranscriptNote(student.courses, 'gradAdmin');
   assert.match(note, /bachelor’s and master’s transcripts/);
 
   it('Grad Admin request: after the "Attached:" line, in text and HTML', () => {
@@ -71,16 +104,23 @@ describe('the three emails carry the warning', () => {
     assert.ok(built.text.includes(`Attached: copies of my transcripts as PDFs. The official transcripts are to be sent directly to the Graduate School by each university’s registrar.\n${note}\n`), built.text.slice(0, 900));
     assert.ok(built.html.includes(`<strong>${note.replace(/’/g, '’')}</strong>`) || built.html.includes(note.replace(/&/g, '&amp;')), 'HTML carries the note');
   });
+  it('Grad Admin request: the transfer from the unofficial copy is marked (DGS 2026-10-16)', () => {
+    const built = gradAdminRequest(report, student, rules, opts);
+    assert.deepEqual(built.items.transfers.map((t) => [t.courseId, t.unofficial]), [['CS 50300', true]]);
+  });
   it('advisor summary: in the standing paragraph when the app passes the note', () => {
-    const built = advisorSummary(report, { ...opts, unofficialNote: note });
-    assert.ok(built.text.includes(`\n${note}\n`), built.text.slice(0, 900));
-    assert.ok(built.html.includes(note.replace(/&/g, '&amp;')));
+    const advisorNote = unofficialTranscriptNote(student.courses, 'advisor');
+    const built = advisorSummary(report, { ...opts, unofficialNote: advisorNote });
+    assert.ok(built.text.includes(`\n${advisorNote}\n`), built.text.slice(0, 900));
+    assert.ok(built.html.includes(advisorNote.replace(/&/g, '&amp;')));
     assert.ok(!advisorSummary(report, opts).text.includes('unofficial copy'), 'nothing without the note');
   });
   it('review request: among the context lines after "My transcripts are attached."', () => {
-    const built = buildCombinedReviewRequest({ priorStudy: opts.priorStudy, nd: [], external: [], unofficial: note });
+    const reviewNote = unofficialTranscriptNote(student.courses, 'review');
+    const built = buildCombinedReviewRequest({ priorStudy: opts.priorStudy, nd: [], external: [], unofficial: reviewNote });
     assert.ok(built.text.includes('My transcripts are attached.'), built.text.slice(0, 600));
-    assert.ok(built.text.indexOf(note) > built.text.indexOf('My transcripts are attached.'), built.text.slice(0, 900));
-    assert.ok(built.html.includes(note.replace(/&/g, '&amp;')));
+    assert.ok(built.text.indexOf(reviewNote) > built.text.indexOf('My transcripts are attached.'), built.text.slice(0, 900));
+    assert.ok(built.html.includes(reviewNote.replace(/&/g, '&amp;')));
+    assert.match(reviewNote, /for your informal review/);
   });
 });

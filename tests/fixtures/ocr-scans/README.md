@@ -21,7 +21,9 @@ numbers: `docs/OCR-BENCHMARK.md`.
 Beside each page:
 
 - `<name>.expected.json` — the page's ground-truth lines (`truthLines`, the exact path's reading of
-  the clean page), its expected rows (`expected.courses`, the parser on those lines; the ND pages
+  the clean page — L4's two degree lines re-read on 2026-10-15 as the browser reads them, the em
+  dash the generator writes as byte 0x14 dropped, where the pinning read had kept "\u0014"), its
+  expected rows (`expected.courses`, the parser on those lines; the ND pages
   carry `university` for "is this Notre Dame"), the ladder parameters the page was drawn with
   (`params`), the page image's pixel size (`width`, `height` — with `dpi`, the scale the line
   builder needs: dpi / 72 pixels per PDF unit), the OCR lines the app's pipeline builds from the

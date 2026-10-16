@@ -10,21 +10,38 @@
 // engine/ui line.)
 import type { CourseEntry, Program } from '../engine/types.ts';
 
-/** The warning the three generated emails carry when any imported external
- * transcript was marked UNOFFICIAL (DGS 2026-10-03, P1-transfer-eligibility-16):
- * which transcripts — bachelor's, master's, prior Ph.D. — were unofficial
- * copies, because §5.2 adds credit only on an official transcript. Read from
- * the rows the import flagged, so removing a transcript's rows removes its
- * warning. Empty when no row carries the flag. */
-export function unofficialTranscriptNote(courses: readonly CourseEntry[]): string {
+/** Which imported external transcripts were marked UNOFFICIAL — bachelor's,
+ * master's, prior Ph.D. — read from the rows the import flagged
+ * (`fromUnofficialTranscript`), so removing a transcript's rows removes every
+ * warning about it: "master’s", "bachelor’s and master’s"; undefined when no
+ * row carries the flag. `one` says whether a single transcript is meant. */
+export function unofficialTranscriptSlots(courses: readonly CourseEntry[]): { list: string; one: boolean } | undefined {
   const order: Array<'bachelors' | 'masters' | 'phd'> = ['bachelors', 'masters', 'phd'];
   const label = { bachelors: 'bachelor’s', masters: 'master’s', phd: 'prior Ph.D.' } as const;
   const slots = order.filter((level) => courses.some((c) => c.fromUnofficialTranscript === true && c.origin === 'transfer' && (c.degreeLevel ?? 'masters') === level));
-  if (slots.length === 0) return '';
+  if (slots.length === 0) return undefined;
   const names = slots.map((s) => label[s]);
-  const list = names.length === 1 ? names[0]! : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  const one = slots.length === 1;
-  return `Note: the ${list} transcript${one ? '' : 's'} I imported into the self-check ${one ? 'was an unofficial copy' : 'were unofficial copies'}. An official transcript from the university is required before any transfer credit can be reviewed, approved or added to my record (§5.2) — I will have the university’s registrar send it directly to the Graduate School.`;
+  return { list: names.length === 1 ? names[0]! : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`, one: slots.length === 1 };
+}
+
+/** The note the three generated emails carry when any imported external
+ * transcript was marked UNOFFICIAL (DGS 2026-10-03, P1-transfer-eligibility-16),
+ * worded for its reader (DGS 2026-10-16: "an unofficial transcript will not be
+ * accepted for official processing. It will be accepted for informal review
+ * only (by ADGS or DGS)"): the review request asks the DGS/ADGS for an
+ * informal review; the Grad Admin request says the transfer credit waits for
+ * the official transcript; the advisor summary says both. `decider` is the
+ * DGS or the ADGS, by program. Empty when no row carries the flag. */
+export function unofficialTranscriptNote(courses: readonly CourseEntry[], audience: 'review' | 'gradAdmin' | 'advisor', decider: 'DGS' | 'ADGS' = 'DGS'): string {
+  const slots = unofficialTranscriptSlots(courses);
+  if (slots === undefined) return '';
+  const { list, one } = slots;
+  const copy = one ? 'is an unofficial copy' : 'are unofficial copies';
+  const what = `Note: the ${list} transcript${one ? '' : 's'} I imported into the self-check ${copy}`;
+  const registrar = one ? 'the university’s registrar' : 'each university’s registrar';
+  if (audience === 'review') return `${what}, for your informal review — I understand ${one ? 'it' : 'they'} will not be accepted for official processing; ${registrar} will send the official transcript directly to the Graduate School.`;
+  if (audience === 'gradAdmin') return `${what} — not for official processing; the transfer credit from ${one ? 'it' : 'them'} can be processed only once ${registrar} has sent the official transcript directly to the Graduate School (§5.2).`;
+  return `${what} — accepted for the ${decider}’s informal review only, not for official processing, until ${registrar} sends the official transcript directly to the Graduate School (§5.2).`;
 }
 
 /** Escape a string for the HTML flavour of a copied message. */

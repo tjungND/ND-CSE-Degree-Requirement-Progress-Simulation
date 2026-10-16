@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { STAMP_RE } from './session-common.mjs';
 
 export async function driveTranscript(s, baseUrl, pdfs) {
-  const { nd: ndPdf, other: otherPdf, external: externalPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf, totalsMismatch: totalsMismatchPdf, scanClean: scanCleanPdf, scannerLayer: scannerLayerPdf, ndParchmentNew: ndParchmentNewPdf } = pdfs;
+  const { nd: ndPdf, other: otherPdf, external: externalPdf, externalUnofficial: externalUnofficialPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf, totalsMismatch: totalsMismatchPdf, scanClean: scanCleanPdf, scannerLayer: scannerLayerPdf, ndParchmentNew: ndParchmentNewPdf } = pdfs;
   await s.open(baseUrl, '.transcript-upload');
   await s.evalJs(`localStorage.clear()`);
   await s.open(baseUrl, '.transcript-upload');
@@ -172,7 +172,7 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     form.querySelector('input.course-id').value = 'MATH 60610'; // labelled "Course number" since 2026-09-05 (no placeholder)
     [...form.querySelectorAll('button')].find((b) => b.textContent === 'Add course').click();
   })()`);
-  await s.waitFor(`document.querySelector('.dgs-review')`);
+  await s.waitFor(`document.querySelector('.dgs-review .cid')`); // the card is always shown (2026-10-16); its first course
   const ndReview = await s.evalJs(`document.querySelector('.dgs-review').textContent`);
   // 3 pending: the typed MATH 60610, the ND transcript's transfer-credit
   // line EECS 58200 "Operating Systems" — counted as accepted credit (Option 1,
@@ -191,12 +191,14 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     throw new Error('review card wrong: ' + ndReview.slice(0, 140));
   }
   console.log('  unlisted ND course → review request offered');
-  // The Grad Admin button is active on met requirements alone (DGS 2026-09-06, late evening):
-  // nothing to transfer and no milestone yet, but the GPA and Notre Dame-credit rows are met.
-  const gaState = JSON.parse(await s.evalJs(`JSON.stringify((() => { const card = document.querySelector('.grad-admin-request'); const b = card?.querySelector('[data-key="gradadmin.copy"]'); return { inactive: b?.getAttribute('aria-disabled'), chip: card?.querySelector('.chip-note')?.textContent, line: [...(card?.querySelectorAll('.review-line') ?? [])].map(e => e.textContent).find(t => / met, /.test(t)) ?? '' }; })())`));
+  // The Grad Admin button is active only for a major event (DGS 2026-10-15,
+  // superseding 2026-09-06, when met requirements alone made it active): the
+  // imported courses complete the qualifier's course components, so the
+  // completion form is due (§4.4) — the one item; the met rows go along.
+  const gaState = JSON.parse(await s.evalJs(`JSON.stringify((() => { const card = document.querySelector('.grad-admin-request'); const b = card?.querySelector('[data-key="gradadmin.copy"]'); return { inactive: b?.getAttribute('aria-disabled') ?? null, chip: card?.querySelector('.chip-note')?.textContent, lines: [...(card?.querySelectorAll('.review-line') ?? [])].map((e) => e.textContent), record: card?.querySelector('p.for-the-record')?.textContent ?? '' }; })())`));
   console.log('  Grad Admin card after the ND import:', JSON.stringify(gaState));
-  if (gaState.inactive === 'true' || !/^\d+ requirements? met, \d+ in progress, \d+ not started — /.test(gaState.line)) throw new Error('the Grad Admin button must be active on met requirements alone: ' + JSON.stringify(gaState));
-  await s.shotElement('grad-admin-met-only', '.grad-admin-request');
+  if (gaState.inactive !== null || gaState.chip !== '1 item' || gaState.lines.length !== 1 || !/^Qualifier completion form — not filed yet \((?:CSE )?§4\.4\)$/.test(gaState.lines[0]) || !/^Also in the request, for the record: your standing — \d+ requirements? met, \d+ in progress, \d+ not started/.test(gaState.record)) throw new Error('the qualifier form, a major event, makes the Grad Admin button active; the met rows go along: ' + JSON.stringify(gaState));
+  await s.shotElement('grad-admin-after-nd-import', '.grad-admin-request');
   // The review card at the top of the window: the page leaves room for the
   // floating boxes at its end since 2026-10-10, so a shot left at the end showed
   // the footer and blank space instead of the card.
@@ -421,6 +423,32 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     if (!(await s.evalJs(`[...document.querySelectorAll('table.courses .cid')].some((e) => e.textContent === 'CSE 30321')`))) throw new Error('the prior Notre Dame undergraduate course must stay on the record');
     console.log('  the prior ND undergraduate course stays with the Notre Dame transcript; the Undergraduate row stays free');
   }
+
+  // 3c') A transcript marked UNOFFICIAL (DGS 2026-10-16): it may be used to
+  //     check and simulate, and for the DGS's informal review — never for
+  //     official processing. The preview says so, the row keeps saying so
+  //     after Add, the review request notes it, and Remove takes it all back.
+  await s.setFileInput('.external-file-phd', externalUnofficialPdf);
+  await s.waitFor(`document.querySelector('.external-card .transcript-preview')`);
+  const unofficialPreview = await s.evalJs(`document.querySelector('[data-key="ext.preview.unofficial"]')?.textContent ?? ''`);
+  if (unofficialPreview !== 'This transcript is marked “unofficial”. You can use it here to check your requirements and to simulate, and the DGS can review it informally, but it will not be accepted for official processing — transfer credit is processed only on the official transcript, which that university’s registrar sends directly to the Graduate School.') throw new Error('the preview must warn about the unofficial transcript: ' + unofficialPreview);
+  await s.shotElement('unofficial-preview', '.external-card .transcript-preview');
+  await s.evalJs(`[...document.querySelectorAll('.external-card button')].find(b => /^Add \\d+ selected course/.test(b.textContent)).click()`);
+  await s.waitFor(`!document.querySelector('.external-card .transcript-preview') && !!document.querySelector('[data-key="ext.unofficial.phd"]')`);
+  const unofficialRow = await s.evalJs(`document.querySelector('[data-key="ext.unofficial.phd"]')?.textContent ?? ''`);
+  if (unofficialRow !== 'Unofficial copy — for the DGS’s informal review only; it will not be accepted for official processing until the registrar sends the official transcript to the Graduate School.') throw new Error('the Ph.D. row must keep the unofficial warning: ' + unofficialRow);
+  await s.evalJs(`(() => { const c = [...document.querySelectorAll('.card')].find(c => c.querySelector('h2')?.textContent.includes('Transcripts')); if (c) c.id = 'shot-transcripts'; })()`);
+  await s.shotElement('unofficial-row', '#shot-transcripts');
+  await s.waitFor(`document.querySelector('#dgs-review .cid')`);
+  await s.evalJs(`document.querySelector('[data-key="review.copy"]').click()`);
+  await s.waitFor(`document.querySelector('dialog.copy-check[open]')`);
+  const reviewWithUnofficial = await s.evalJs(`document.querySelector('dialog.copy-check textarea').value`);
+  await s.evalJs(`document.querySelector('[data-key="copy.ok"]').click()`);
+  await s.waitFor(`!document.querySelector('dialog.copy-check')`);
+  if (!reviewWithUnofficial.includes('Note: the prior Ph.D. transcript I imported into the self-check is an unofficial copy, for your informal review — I understand it will not be accepted for official processing; the university’s registrar will send the official transcript directly to the Graduate School.')) throw new Error('the review request must note the unofficial copy: ' + reviewWithUnofficial.slice(0, 900));
+  await s.evalJs(`document.querySelector('[data-key="ext.remove.phd"]').click()`);
+  await s.waitFor(`!document.querySelector('[data-key="ext.unofficial.phd"]') && !!document.querySelector('.external-file-phd')`);
+  console.log('  unofficial transcript: preview and row warnings, the review request’s note; Remove takes them back');
 
   // 3d) A text-layer PDF with NO readable course line (DGS 2026-09-16) is
   //     offered OCR, with its own lead sentence; Cancel leaves nothing behind.
@@ -1082,8 +1110,10 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     .split(/[.!?]\s|\n/).map((l) => l.trim()).filter((l) => /\bDGS\b(?! Handbook| decision 20\d\d| 20\d\d-\d\d)/.test(l));
   if (dgsLines.length) throw new Error('the MSCSE tab must send the student to the ADGS, not the DGS:\n  ' + dgsLines.slice(0, 6).join('\n  '));
   const reviewHead = await s.evalJs(`document.querySelector('.dgs-review h2')?.textContent ?? ''`);
-  // No review card at all when the live sheet has settled every course (both 40xxx rows are `yes` since 2026-09-16); when there is one it addresses the ADGS.
-  if (reviewHead !== '' && !/Ask the ADGS to review/.test(reviewHead)) throw new Error('the review card must address the ADGS on the MSCSE tab: ' + reviewHead);
+  // The review card is always shown (DGS 2026-10-16) — with “0 courses” when the live sheet has settled every course (both 40xxx rows are `yes` since 2026-09-16) — and addresses the ADGS.
+  if (!/^Ask the ADGS to review/.test(reviewHead)) throw new Error('the review card must address the ADGS on the MSCSE tab: ' + reviewHead);
+  const reviewIdleMs = JSON.parse(await s.evalJs(`JSON.stringify((() => { const card = document.querySelector('#dgs-review'); const b = card?.querySelector('[data-key="review.copy"]'); return { idle: !!card?.classList.contains('is-idle'), inactive: b?.getAttribute('aria-disabled') ?? null, reason: (b?.getAttribute('title') ?? '').slice(0, 60) }; })())`));
+  if (reviewIdleMs.idle && (reviewIdleMs.inactive !== 'true' || reviewIdleMs.reason !== 'Nothing for the ADGS to review yet. This becomes active when')) throw new Error('with nothing to review the ADGS card waits, saying why: ' + JSON.stringify(reviewIdleMs));
   console.log('  MSCSE tab: every decision goes to the ADGS — no standalone "DGS" outside the contact card, notices, glossary and footer');
 
   // This record answered "no graduate degree", so it has no Master's row

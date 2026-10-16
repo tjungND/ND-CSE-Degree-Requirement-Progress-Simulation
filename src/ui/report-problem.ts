@@ -94,7 +94,7 @@ export interface TranscriptProblem {
 export const PROBLEM_SHAPES_MAX = 8;
 
 /** What the shapes' marks stand for: A/a and 9 always; ? and ¤ only when a
- * row shown has one (2026-10-15, W-CL506). */
+ * row shown has one (2026-10-15, W-CL521). */
 function shapeLegend(reads: readonly string[]): string {
   const marks = ['letters shown as A/a', 'digits as 9'];
   if (reads.some((s) => SPECIAL_RE.test(s))) marks.push('special characters as ?');

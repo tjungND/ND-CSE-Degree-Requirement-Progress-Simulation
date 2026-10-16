@@ -84,6 +84,8 @@ describe('the Application for Admission to Master’s Degree Candidacy (Academic
     const report = audit(s, rules, '2027-03-01');
     const items = processingItems(report, s, rules);
     assert.equal(items.msCandidacyDue, true);
+    assert.equal(items.count, 1, 'the application is a major event (DGS 2026-10-15)');
+    assert.ok(items.lines.some((l) => l.startsWith('Application for Admission to Master’s Degree Candidacy')));
     assert.ok(items.actions.some((a) => a.startsWith('Initiate my Application for Admission to Master’s Degree Candidacy')));
     // The 30 credits are DGS Handbook §3.21.1's, the application Academic Code
     // §6.1.6's — the code sets the GPA and the thesis, no credit count (policy
@@ -99,7 +101,11 @@ describe('the Application for Admission to Master’s Degree Candidacy (Academic
     assert.match(row(s, 'shared.msCandidacy')!.detail, /^Submitted 2027-02-20/);
     const items = processingItems(audit(s, rules, '2027-03-01'), s, rules);
     assert.equal(items.msCandidacyDue, false);
-    assert.ok(items.actions.some((a) => a.startsWith('Record the milestone: Application for Admission to Master’s Degree Candidacy submitted, 2027-02-20')));
+    // A milestone date goes along for the record, never as an action (DGS 2026-10-15).
+    assert.ok(!items.actions.some((a) => a.startsWith('Record the milestone')));
+    assert.equal(items.count, 0);
+    const text = gradAdminRequest(audit(s, rules, '2027-03-01'), s, rules, { todayIso: '2027-03-01', entryTerm: 'Fall 2025', priorStudy: 'None' }).text;
+    assert.match(text, /\nMILESTONE DATES, FOR THE RECORD\n(?:- [^\n]*\n)*- Application for Admission to Master’s Degree Candidacy submitted: 2027-02-20, as I entered it \(Academic Code §6\.1\.6\)\n/);
   });
   it('not before its conditions: short of 30 credits, or below a 3.0 GPA', () => {
     assert.equal(row(ms({ courses: REGULAR.slice(0, 4).map((id) => ndCourse(id, { term: fall(2025) })) }), 'shared.msCandidacy'), undefined);

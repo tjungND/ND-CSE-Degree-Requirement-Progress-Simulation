@@ -278,6 +278,7 @@ try {
       nd: 'nd-transcript.pdf',
       other: 'other-transcript.pdf',
       external: 'external-transcript.pdf',
+      externalUnofficial: 'external-unofficial-transcript.pdf',
       scan: 'external-transcript-scan.pdf',
       banner: 'banner-transcript.pdf',
       watermarked: 'banner-watermarked-transcript.pdf',

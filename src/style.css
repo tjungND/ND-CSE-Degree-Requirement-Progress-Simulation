@@ -200,6 +200,8 @@ body {
 .banner.official a { color: inherit; }
 .banner.privacy { background: var(--privacy-bg); border-color: var(--privacy-line); color: var(--privacy-ink); } /* the green strip: privacy, split from the alpha strip (DGS 2026-09-19) */
 .card.dgs-review { border-left: 4px solid var(--note-accent); }
+/* Nothing to review (DGS 2026-10-16: the card is always shown): no attention colour. */
+.card.dgs-review.is-idle { border-left-color: var(--line); }
 /* The opening notice is a native <dialog> (usability review 2026-09-05, item 3). */
 dialog.consent { border: 0; padding: 0; background: transparent; max-width: min(540px, calc(100vw - 32px)); }
 dialog.consent::backdrop { background: rgba(10, 22, 40, 0.55); }
@@ -1038,6 +1040,8 @@ table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { bac
 .combined-note > summary { cursor: pointer; font-weight: 600; }
 .combined-note[open] > summary { margin-bottom: 5px; }
 .unofficial-note { margin-top: 2px; }
+/* The row's lasting warning, on a line of its own (DGS 2026-10-16). */
+.external-slot .unofficial-note { flex-basis: 100%; margin: 2px 0 0; }
 .external-slot:last-of-type { border-bottom: 0; }
 .external-slot .slot-label { font-weight: 600; color: var(--navy); min-width: 140px; display: inline-block; }
 .external-card .transcript-preview input, .external-card .transcript-preview select { padding: 4px 6px; font-size: 13px; max-width: 130px; }
