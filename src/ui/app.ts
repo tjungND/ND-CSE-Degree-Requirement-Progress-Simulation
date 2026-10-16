@@ -80,7 +80,7 @@ import { priorStudyLabel, programHistory } from './program-history.ts';
 import { ndUndergraduateClause, notFinishedSentence, totalCreditsWord, transferRuleText } from './coursework-text.ts';
 import { alongTheWayBox, applyCourseTick, examsTickOffered } from './page-decisions.ts';
 import { diagnosticsContent } from './sheet-warnings.ts';
-import { FILL_IN_STEP, unofficialTranscriptNote } from './email-html.ts';
+import { FILL_IN_STEP, unofficialTranscriptNote, unofficialTranscriptSlots } from './email-html.ts';
 import { advisorSummary } from './advisor-summary.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
 import { courseworkSentence, nearestDeadline, nextSteps } from './next-steps.ts';
@@ -2132,7 +2132,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   // — plus external courses the ExternalCourses tab has not ruled on. The
   // student MUST email the request to the DGS and the Graduate Program
   // Administrator; the page itself sends nothing.
-  function askDgsCard(classified: readonly ClassifiedCourse[], report: AuditReport): HTMLElement | null {
+  function askDgsCard(classified: readonly ClassifiedCourse[], report: AuditReport): HTMLElement {
     // Which courses need a DGS decision, and why, is the engine's call
     // (src/engine/review.ts, 2026-09-06 evening — with the test matrix that
     // pins it); this card only lists them and builds the copy-ready request.
@@ -2145,8 +2145,14 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // checks on a `yes` the DGS may not have meant (2026-10-04, P1-sheet-48 /
     // -c2). Read from the report, so the page and the request say the same.
     const notes = [...(report.reviewFlags ?? []), ...(report.staffChecks ?? [])];
-    if (n === 0 && notes.length === 0) return null;
-    const what = reviewRequestSummary(n, notes.length > 0);
+    // Shown all the time, its button inactive until a course needs a decision
+    // or a note needs the DGS (DGS 2026-10-16: "Apply it similarly to
+    // 'Initiate Review' for ADGS/DGS. Show it all the time, but the button is
+    // inactive until needed." — as the Grad Admin card, 2026-10-15).
+    const idle = n === 0 && notes.length === 0;
+    const what = idle ? '0 courses' : reviewRequestSummary(n, notes.length > 0);
+    const label = idle ? 'Initiate the review request' : `Initiate the review request for ${what}`;
+    const who = deciderTitle(student.program);
     const decider = deciderContact(student.program);
     // The two course lists — Courses-tab rows and ExternalCourses rows
     // (transcript/external.ts reviewRequestCourses; P3-dh-10-2).
@@ -2158,7 +2164,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       el('div', { class: 'review-line', 'data-keep-dgs': '' }, el('span', { class: 'cid' }, courseId), `${where ? ` (${where})` : ''} — ${reason}`);
     return el(
       'div',
-      { class: 'card dgs-review', id: 'dgs-review' },
+      { class: `card dgs-review${idle ? ' is-idle' : ''}`, id: 'dgs-review' },
       el('h2', {}, `Ask the ${deciderTitle(student.program)} to review `, el('span', { class: 'chip-note' }, what), simulationChip()), // the mode repeated on the card (D9; in every mode since the review fix of 2026-10-09)
       // Earlier coursework waits on the earlier-degrees answer (UI review,
       // 2026-10-08): said first; the request itself stays (DGS 2026-09-03).
@@ -2169,8 +2175,28 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       // app, the address, the attach reminder, the process — become one
       // sentence: nothing is sent from a plan. The course list stays.
       ...(simulation
-        ? [el('p', { class: 'hint simulation-hint' }, `In simulation mode nothing is sent: these are the courses this plan would put before the ${deciderTitle(student.program)} — exit the simulation to send the review request from your record.`)]
-        : [
+        ? [
+            el(
+              'p',
+              { class: 'hint simulation-hint' },
+              idle
+                ? `In simulation mode nothing is sent — and nothing in this plan needs the ${who}’s review yet.`
+                : `In simulation mode nothing is sent: these are the courses this plan would put before the ${deciderTitle(student.program)} — exit the simulation to send the review request from your record.`,
+            ),
+          ]
+        : idle
+          ? // Nothing to review: one line, as the Grad Admin card's (the two
+            // instruction paragraphs return with the first course).
+            [
+              el(
+                'p',
+                { class: 'hint' },
+                `Nothing to review yet — a request is needed only when a course needs the ${who}’s decision: one not in the course rules yet, one decided case by case, or one from another university not yet ruled on. The ${who} (`,
+                mailto(decider.email),
+                ') decides by email.',
+              ),
+            ]
+          : [
             el(
               'p',
               { class: 'hint' },
@@ -2202,8 +2228,15 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // In the mode the button is inactive with its reason (D7): no request
         // leaves a plan — `inactiveButton`, so the reason can be shown.
         simulation
-          ? inactiveButton({ class: 'btn', 'data-key': 'review.copy' }, simulationSendNote('the review request'), toast, `Initiate the review request for ${what}`)
-          : el(
+          ? inactiveButton({ class: 'btn', 'data-key': 'review.copy' }, simulationSendNote('the review request'), toast, label)
+          : idle
+            ? inactiveButton(
+                { class: 'btn', 'data-key': 'review.copy' },
+                `Nothing for the ${who} to review yet. This becomes active when a course needs the ${who}’s decision — one not in the course rules yet, one decided case by case, or one from another university not yet ruled on — or something on your record needs the ${who} to check.`,
+                toast,
+                label,
+              )
+            : el(
           'button',
           {
             class: 'btn',
@@ -2212,7 +2245,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
               // Copy, then the check-before-you-send dialog (DGS request 2026-09-06 evening).
               void import('../transcript/external.ts').then(({ buildCombinedReviewRequest, reviewRequestCourses }) => {
                 const { nd: ndReq, external: extReq } = reviewRequestCourses(pending, slotOf);
-                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses), decider: deciderTitle(student.program), stamp: checkedWithLine(stamp), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
+                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses, 'review'), decider: deciderTitle(student.program), stamp: checkedWithLine(stamp), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
                 return copyDialog({
                   what: 'Review request',
                   recipient: { role: decider.role, name: decider.name, email: decider.email },
@@ -2776,7 +2809,19 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // transfer credit; nothing else in the request is decided from a PDF, so
     // the attach step, the email's "Attached:" line and the card's clause
     // appear only when a transfer is in it (trim review 2026-09-18, P-45).
-    const needsTranscripts = built.items.transfers.length > 0;
+    // …and only while that credit is still to submit: transfer credit the
+    // student ticked as recorded goes along for the record (DGS 2026-10-15).
+    const needsTranscripts = built.items.transfers.length > 0 && student.attestations.transferRecorded !== true;
+    // Transfer credit to submit from a transcript marked unofficial waits for
+    // the official one (DGS 2026-10-16: "an unofficial transcript will not be
+    // accepted for official processing").
+    const unofficialSlots = needsTranscripts
+      ? unofficialTranscriptSlots(student.courses.filter((c) => built.items.transfers.some((t) => t.unofficial === true && t.courseId === c.courseId && t.institution === c.institution)))
+      : undefined;
+    // The major events, the only things that make the button active (DGS
+    // 2026-10-15; grad-admin-request.ts ProcessingItems.count) — the MSCSE has
+    // no qualifier form and no MSCSE along the way.
+    const phd = student.program === 'phd';
     const label = 'Initiate the request';
     const attrs = { class: 'btn', 'data-key': 'gradadmin.copy' };
     const button = simulation
@@ -2785,7 +2830,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       : n === 0
         ? inactiveButton(
             attrs,
-            'Nothing to process yet — this button becomes active as soon as any requirement is met, or a transfer credit the DGS has approved, a milestone date, or the MSCSE along the way appears in your record.',
+            phd
+              ? 'Nothing for the Grad Admin to process yet. This becomes active when there is something to process — transfer credit the DGS approved for you (§5.2), the qualifier completion form (§4.4), the MSCSE along the way (§4.5), or an application for doctoral or master’s candidacy. Milestone dates and requirements met need no request of their own; they go along with the next one.'
+              : 'Nothing for the Grad Admin to process yet. This becomes active when there is something to process — transfer credit the DGS approved for you (§5.2) or your application for master’s degree candidacy (Academic Code §6.1.6). Milestone dates and requirements met need no request of their own; they go along with the next one.',
             toast,
             label,
           )
@@ -2832,7 +2879,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         ? el(
             'p',
             { class: 'hint' },
-            'Nothing to process yet — this fills in as requirements are met and milestones are dated. The Grad Admin (',
+            phd
+              ? 'Nothing to process yet — a request is needed only for transfer credit, the qualifier completion form, the MSCSE along the way or a candidacy application; your milestone dates and standing go along with it. The Grad Admin ('
+              : 'Nothing to process yet — a request is needed only for transfer credit or your master’s candidacy application; your milestone dates and standing go along with it. The Grad Admin (',
             `${GRAD_ADMIN.name}, `,
             mailto(GRAD_ADMIN.email),
             ') processes what the DGS has decided.',
@@ -2846,12 +2895,25 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             'The DGS decides; the Grad Admin (',
             `${GRAD_ADMIN.name}, `,
             mailto(GRAD_ADMIN.email),
-            student.program === 'phd'
-              ? ') records it — transfer credit (§5.2), the qualifier, exam and defense forms (§4.4–4.7), the MSCSE along the way (§4.5), the requirements you have met. '
-              : ') records it — transfer credit (§5.2), the project or thesis forms (§3.4), the requirements you have met. ',
+            phd
+              ? ') processes it — transfer credit (§5.2), the qualifier completion form (§4.4), the MSCSE along the way (§4.5), the candidacy applications; your milestone dates and standing go along. '
+              : ') processes it — transfer credit (§5.2), the master’s candidacy application (Academic Code §6.1.6); your milestone dates and standing go along. ',
             `The button opens the request in your email app, to the Grad Admin with the DGS in cc${needsTranscripts ? ' — attach your transcript PDFs' : ''}.`,
           ),
       ...built.items.lines.map((text) => el('div', { class: 'review-line', 'data-keep-dgs': '' }, text)),
+      ...(n > 0 && unofficialSlots !== undefined
+        ? [
+            el(
+              'p',
+              { class: 'hint warn', 'data-key': 'gradadmin.unofficial' },
+              unofficialSlots.one
+                ? `The ${unofficialSlots.list} transcript you imported is an unofficial copy: the Grad Admin can process its transfer credit only once the university’s registrar has sent the official transcript to the Graduate School.`
+                : `The ${unofficialSlots.list} transcripts you imported are unofficial copies: the Grad Admin can process their transfer credit only once each university’s registrar has sent the official transcript to the Graduate School.`,
+            ),
+          ]
+        : []),
+      // What goes along, never on its own (DGS 2026-10-15).
+      ...(n > 0 && built.items.forTheRecord !== undefined ? [el('p', { class: 'hint for-the-record' }, built.items.forTheRecord)] : []),
       el('div', { class: 'save-buttons' }, button),
     );
   }
@@ -3288,7 +3350,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             gpa: student.gpa,
             advisors,
             history: programHistory(student),
-            unofficialNote: unofficialTranscriptNote(student.courses),
+            unofficialNote: unofficialTranscriptNote(student.courses, 'advisor', deciderTitle(student.program)),
             transfers: { courses: transfers, recorded: student.attestations.transferRecorded === true, firstSemesterDone: firstSemesterComplete(student, normalizeEntryTerm(student.entryTerm).term, todayIso()).done },
             qualifierFrom: qualifierTransferTerm(),
             stamp: checkedWithLine(stamp),

@@ -102,6 +102,9 @@ export interface ProcessingTransfer {
   cappedCredits?: number;
   /** Where the row came from (src/ui/provenance.ts; DGS 2026-10-11, item 6). */
   source: string;
+  /** Read from a transcript marked unofficial: not for official processing
+   * until the official transcript reaches the Graduate School (DGS 2026-10-16). */
+  unofficial?: true;
 }
 
 /** One met requirement as a table: what satisfies it. */
@@ -176,11 +179,24 @@ export interface ProcessingItems {
   actions: string[];
   /** The counts behind the standing list, and the sentence that states them. */
   tally: { met: number; conditional: number; inProgress: number; notStarted: number; cannot: number; overdue: number; dueSoon: number; text: string };
-  /** The card's item lines, one per processable thing. */
+  /** The card's item lines, one per processable thing — the major events
+   * (below) — and the over-cap courses, which are shown, never counted. */
   lines: string[];
-  /** transfers + milestones + the MSCSE + the qualifier form + every met
-   * requirement (DGS 2026-09-06, late evening: anything met is worth sending
-   * to the Grad Admin for the record, credits to transfer or not). */
+  /** What goes along in the request for the record, never on its own (DGS
+   * 2026-10-15): the milestone dates, transfer credit already on the record,
+   * and the standing — one line for the card, undefined when there is none. */
+  forTheRecord?: string;
+  /** The MAJOR events only (DGS 2026-10-15: "Can you determine major events
+   * so that only when those happen, students need to submit…" — superseding
+   * 2026-09-06, when any met requirement counted): transfer credit to submit
+   * (§5.2), the qualifier completion form (§4.4), the MSCSE along the way
+   * (§4.5), and the applications for admission to doctoral (DGS Handbook
+   * §3.22.3) and master's (Academic Code §6.1.6) candidacy — the things the
+   * Grad Admin must act on, the same list as the advisor email's "What the
+   * Grad Admin needs to do". A milestone date (the committee's form is the
+   * record of an exam or defense; the advisor files the research qualifier's),
+   * the standing and transfer credit already recorded go along with a request,
+   * never start one. The button is active only when this is above zero. */
   count: number;
 }
 
@@ -372,6 +388,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
       state: approvedForMe(c) ? ('approved' as const) : ('pre-approved' as const),
       ...(counted !== undefined && counted > 0 && counted < whole ? { cappedCredits: counted } : {}),
       source: sourceOf(c.entry).text,
+      ...(c.entry.fromUnofficialTranscript === true ? { unofficial: true as const } : {}),
       overCap: counted === 0,
       };
     });
@@ -456,12 +473,17 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   const closedWindow = report.transferRequestWindowClosed;
   // The tick is the student's own statement (DGS 2026-10-11, item 6).
   const recommendedBy = (t: ProcessingTransfer): string => (t.state === 'approved' ? 'recommended by the DGS for my case, as I ticked' : 'recommended by the DGS in the course rules');
+  // Transfer credit is a major event until the student ticks it recorded
+  // (DGS 2026-10-15): then it goes along for the record, nothing to do.
+  const toProcess = recorded ? [] : transfers;
+  // The numbered actions are the major events only (DGS 2026-10-15): a
+  // milestone date and the standing are below the line, for the record —
+  // each date is the evidence under its requirement — never an action.
   const actions = [
-    ...transfers.map(
+    ...toProcess.map(
       (t) =>
-        `${recorded ? 'Check that the transfer credit is on my record for' : closedWindow !== undefined ? 'Check whether the Transfer of Credits request was sent before ' + termLabel(closedWindow) + ', the semester I plan to graduate in, for' : 'Submit the Transfer of Credits request to the Graduate School for'} ${t.courseId}${t.title ? ` ${t.title}` : ''} (${t.institution ?? 'another university'}, ${t.termText}, ${formatCredits(t.credits)} credits${t.ndCredits !== undefined && t.ndCredits !== t.credits ? ` = ${formatCredits(t.ndCredits)} Notre Dame credits` : ''}${t.cappedCredits !== undefined ? ` — ${formatCredits(t.cappedCredits)} of them within the §5.2 cap` : ''}) — ${recorded ? 'approved by the Graduate School, as I ticked' : recommendedBy(t)} (§5.2).`,
+        `${closedWindow !== undefined ? 'Check whether the Transfer of Credits request was sent before ' + termLabel(closedWindow) + ', the semester I plan to graduate in, for' : 'Submit the Transfer of Credits request to the Graduate School for'} ${t.courseId}${t.title ? ` ${t.title}` : ''} (${t.institution ?? 'another university'}, ${t.termText}, ${formatCredits(t.credits)} credits${t.ndCredits !== undefined && t.ndCredits !== t.credits ? ` = ${formatCredits(t.ndCredits)} Notre Dame credits` : ''}${t.cappedCredits !== undefined ? ` — ${formatCredits(t.cappedCredits)} of them within the §5.2 cap` : ''}) — ${recommendedBy(t)} (§5.2).`,
     ),
-    ...milestones.map((m) => `Record the milestone: ${m.label}, ${m.date} — the date as I entered it (${m.section}).`),
     ...(qualifierFormDue ? ['Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet (§4.4).'] : []),
     ...(msAlongTheWay ? ['Process the MSCSE along the way — the self-check, which is the DGS’s review of the award (§3.1), shows its requirements met (§4.5).'] : []),
     ...(candidacyApplicationDue ? ['Initiate my Application for Admission to Doctoral Candidacy — the self-check shows every condition met (DGS Handbook §3.22.3).'] : []),
@@ -469,23 +491,27 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
     // §6.1.6's (P4-mscse-2, with P4-text-2's citation); a passed time limit is
     // named beside it (option (b), DGS 2026-10-11).
     ...(msCandidacyDue ? [`Initiate my Application for Admission to Master’s Degree Candidacy (Academic Code §6.1.6) — the self-check shows a 3.0 GPA and 30 credits, counting this semester’s (DGS Handbook §3.21.1)${msLimitPassedClause(report)}.`] : []),
-    ...(met.length > 0 ? [`Keep my standing below on file: ${tallyText}.`] : []),
   ];
   const lines = [
-    ...transfers.map(
+    ...toProcess.map(
       (t) =>
-        `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — transfer credit ${recorded ? 'approved by the Graduate School, to be checked on my record (§5.2)' : closedWindow !== undefined ? `${recommendedBy(t)} — was the request sent before ${termLabel(closedWindow)}, the semester I plan to graduate in? (§5.2)` : `${recommendedBy(t)}, to be submitted to the Graduate School (§5.2)`}${t.cappedCredits !== undefined ? `, ${formatCredits(t.cappedCredits)} credits of it within the cap` : ''}`,
+        `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — transfer credit ${closedWindow !== undefined ? `${recommendedBy(t)} — was the request sent before ${termLabel(closedWindow)}, the semester I plan to graduate in? (§5.2)` : `${recommendedBy(t)}, to be submitted to the Graduate School (§5.2)`}${t.cappedCredits !== undefined ? `, ${formatCredits(t.cappedCredits)} credits of it within the cap` : ''}`,
     ),
     ...transfersOverCap.map((t) => `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — ${overCapText(report.transferCap)}`),
-    ...milestones.map((m) => `${m.label} ${m.date} (${m.section})`),
     ...(qualifierFormDue ? ['Qualifier completion form — not filed yet (§4.4)'] : []),
     ...(msAlongTheWay ? ['MSCSE along the way — the self-check, which is the DGS’s review of the award (§3.1), shows its requirements met (§4.5)'] : []),
     ...(candidacyApplicationDue ? ['Application for Admission to Doctoral Candidacy — the self-check shows every condition met (DGS Handbook §3.22.3)'] : []),
     ...(msCandidacyDue ? [`Application for Admission to Master’s Degree Candidacy (Academic Code §6.1.6) — the self-check shows a 3.0 GPA and 30 credits, counting this semester’s (DGS Handbook §3.21.1)${msLimitPassedClause(report)}`] : []),
-    ...(met.length > 0
-      ? [`${tallyText} — listed in the request with their standing and deadlines${tally.dueSoon > 0 ? ` (${plural(tally.dueSoon, 'deadline')} this semester or next, highlighted)` : ''}, for the record`]
-      : []),
   ];
+  // What goes along with a request, for the record (DGS 2026-10-15).
+  const alongside = [
+    ...(milestones.length > 0 ? [plural(milestones.length, 'milestone date')] : []),
+    ...(recorded && transfers.length > 0 ? ['the transfer credit already on your record'] : []),
+  ];
+  const forTheRecord =
+    alongside.length > 0 || met.length > 0
+      ? `Also in the request, for the record: ${alongside.length > 0 ? `${alongside.join(', ')} and ` : ''}your standing — ${tallyText}${tally.dueSoon > 0 ? ` (${plural(tally.dueSoon, 'deadline')} this semester or next, highlighted)` : ''}.`
+      : undefined;
   return {
     transfers,
     transfersOverCap,
@@ -502,9 +528,10 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
     actions,
     tally: { ...tally, text: tallyText },
     lines,
-    // The met requirements are ONE line on the card, so they are one item in
-    // the chip (2026-09-08): "8 items" above two lines was never explainable.
-    count: transfers.length + milestones.length + (qualifierFormDue ? 1 : 0) + (msAlongTheWay ? 1 : 0) + (candidacyApplicationDue ? 1 : 0) + (msCandidacyDue ? 1 : 0) + (met.length > 0 ? 1 : 0),
+    ...(forTheRecord !== undefined ? { forTheRecord } : {}),
+    // The major events only (DGS 2026-10-15); the chip counts the card's
+    // item lines (2026-09-08), the over-cap courses excepted as before.
+    count: toProcess.length + (qualifierFormDue ? 1 : 0) + (msAlongTheWay ? 1 : 0) + (candidacyApplicationDue ? 1 : 0) + (msCandidacyDue ? 1 : 0),
   };
 }
 
@@ -547,13 +574,15 @@ export function gradAdminRequest(
   // "whichever apply" hedge instructs the student and lives in the dialog step
   // (trim review 2026-09-18, P-14). Asked for only when there is transfer
   // credit to process — nothing else in this request is decided from a
-  // transcript (P-45); the dialog step and the card hint follow the same
-  // condition (app.ts, items.transfers.length > 0).
+  // transcript (P-45), and not once the student ticked it recorded (DGS
+  // 2026-10-15); the dialog step and the card hint follow the same condition
+  // (app.ts needsTranscripts).
   // The official transcript goes from the registrar straight to the Graduate
   // School (DGS 2026-10-04, P1-page-text-ui-5); the attached PDFs are copies.
-  const attached = items.transfers.length > 0 ? 'Attached: copies of my transcripts as PDFs. The official transcripts are to be sent directly to the Graduate School by each university’s registrar.' : '';
-  // Which imported transcripts were unofficial copies (DGS 2026-10-03).
-  const unofficial = unofficialTranscriptNote(student.courses);
+  const attached = items.transfers.length > 0 && student.attestations.transferRecorded !== true ? 'Attached: copies of my transcripts as PDFs. The official transcripts are to be sent directly to the Graduate School by each university’s registrar.' : '';
+  // Which imported transcripts were unofficial copies (DGS 2026-10-03) —
+  // not for official processing (DGS 2026-10-16).
+  const unofficial = unofficialTranscriptNote(student.courses, 'gradAdmin');
   const earlier = opts.history?.earlier ?? '';
   // "Informational only" is not true of the MSCSE along the way (P3-cse-3-2):
   // when the request carries that award, the closing says so (DGS 2026-10-11, item 6).
@@ -587,7 +616,8 @@ export function gradAdminRequest(
   // Recommended by the DGS, approved by the Graduate School (2026-10-04,
   // P1-page-text-ui-3): the sections say which step is asked for.
   if (student.attestations.transferRecorded === true && items.transfers.length > 0) {
-    sections.push({ heading: 'Transfer credit the Graduate School approved (§5.2) — please check it is on my record', columns: TRANSFER_COLUMNS, table: items.transfers.map(transferRow) });
+    // Nothing to do: on the record, as the student ticked — for the record (DGS 2026-10-15).
+    sections.push({ heading: 'Transfer credit the Graduate School approved (§5.2) — on my record, as I ticked', columns: TRANSFER_COLUMNS, table: items.transfers.map(transferRow) });
   } else {
     // Once the semester of graduation has begun the window has closed, and the
     // action above asks whether the request was sent in time; the heading says
@@ -676,6 +706,12 @@ export function gradAdminRequest(
             : `I plan to graduate in ${termLabel(g.term)}; I will register for at least one credit hour${g.term.season === 'summer' ? ' (a zero-credit course is enough in a summer session)' : ''} and complete ND Roll Call then.`,
       ],
     });
+  }
+  // Every milestone date the student entered, for the record — never an
+  // action (DGS 2026-10-15): not every one has a requirement row of its own
+  // below (the master's candidacy application, say), so they are listed here.
+  if (items.milestones.length > 0) {
+    sections.push({ heading: 'Milestone dates, for the record', lines: items.milestones.map((m) => `${m.label}: ${m.date}, as I entered it (${m.section})`) });
   }
   // Every requirement, met or not, with what satisfies it so far (2026-09-06
   // evening; the open rows since 2026-09-28): the page's status word as a

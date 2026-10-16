@@ -11,6 +11,7 @@
 // transmits nothing — FERPA).
 import { checkTotals, doubtedTerms, type CheckedRow, type PrintedTotals, type TotalsMismatch } from '../transcript/totals-check.ts';
 import { deciderContact, type Contact } from './contacts.ts';
+import { deciderTitle } from '../engine/decider.ts';
 import { transcriptProblemHref, type TranscriptProblem } from './report-problem.ts';
 import { APP_BUILD } from './build-info.ts';
 import { bachelorsPrefill, ocrReducedPagesNote, ocrTurnedNote, rowIsCompact, type OcrReducedPage } from '../transcript/preview-layout.ts';
@@ -704,10 +705,19 @@ function inSlot(c: CourseEntry, level: DegreeLevel): boolean {
  * imported transcript has 'unofficial' anywhere, deem it unofficial and
  * reject it"). Only the Notre Dame row takes the unofficial self-service PDF. */
 /** Accepted with a warning since 2026-09-17 (DGS): an unofficial transcript
- * lets a student track their progress; the ADGS/DGS and the Grad Admin will
- * ask for the official one. */
-const UNOFFICIAL_WARNING =
-  'This transcript is marked “unofficial”. You can use it here to track your progress, but the ADGS, the DGS and the Grad Admin will require an OFFICIAL transcript for review, approval and processing — the official transcript must be sent directly to the Graduate School by that university’s registrar, so ask the registrar to send it before you send any request.';
+ * lets a student check and simulate their requirements and is accepted for
+ * the DGS's or the ADGS's informal review, never for official processing
+ * (DGS 2026-10-16: "an unofficial transcript will not be accepted for official
+ * processing. It will be accepted for informal review only (by ADGS or
+ * DGS)"). Shown on the preview; `unofficialSlotNote` stays on the row after Add. */
+export function unofficialWarning(program: Program): string {
+  return `This transcript is marked “unofficial”. You can use it here to check your requirements and to simulate, and the ${deciderTitle(program)} can review it informally, but it will not be accepted for official processing — transfer credit is processed only on the official transcript, which that university’s registrar sends directly to the Graduate School.`;
+}
+/** The row's lasting warning while its courses come from an unofficial copy
+ * (DGS 2026-10-16) — gone with the rows. */
+export function unofficialSlotNote(program: Program): string {
+  return `Unofficial copy — for the ${deciderTitle(program)}’s informal review only; it will not be accepted for official processing until the registrar sends the official transcript to the Graduate School.`;
+}
 /** "Unofficial" as a description of the TRANSCRIPT — a heading, a watermark
  * word, "this is not an official transcript" — never a grade legend's "UW
  * Unofficial Withdraw" (DGS 2026-09-16: a false rejection). */
@@ -1056,6 +1066,10 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
         'Remove',
       ),
     );
+    // Not for official processing while the rows come from an unofficial copy (DGS 2026-10-16).
+    if (have.some((c) => c.fromUnofficialTranscript === true)) {
+      parts.push(el('p', { class: 'hint warn unofficial-note', 'data-key': `ext.unofficial.${slot.level}` }, unofficialSlotNote(student.program)));
+    }
   } else {
     parts.push(
       el('span', { class: 'slot-sep', 'aria-hidden': 'true' }, ' — '),
@@ -1585,7 +1599,7 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
           })(),
         ]
       : []),
-    ...(p.unofficial ? [el('p', { class: 'hint warn unofficial-note', 'data-key': 'ext.preview.unofficial' }, UNOFFICIAL_WARNING)] : []),
+    ...(p.unofficial ? [el('p', { class: 'hint warn unofficial-note', 'data-key': 'ext.preview.unofficial' }, unofficialWarning(student.program))] : []),
     ...(p.mixedLevels
       ? [
           el(
