@@ -18,7 +18,7 @@ export interface NextStepTarget {
   box: HTMLElement;
   /** What takes focus: the row's Import button, or the card's heading. */
   focus: HTMLElement;
-  /** What the toast says (W-CL521 / W-CL522). */
+  /** What the toast says (W-CL523 / W-CL524). */
   message: string;
 }
 

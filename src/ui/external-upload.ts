@@ -770,9 +770,17 @@ const FINAL_MARK_RE = /^\d{1,3}(?:[.,]\d{1,3})?(?:\s*\/\s*\d{1,3})?\s*%?(?:\s*(?
 // ("Excellent", "Very Good", "Good", "Pass", "Fail") and their usual
 // neighbours — never a status ("Incomplete", "Registered", "Pending").
 const BAND_WORD_RE = /^(?:excellent|outstanding|very\s+good|good|fair|average|medium|acceptable|satisfactory|pass(?:ed)?|fail(?:ed)?|weak|very\s+weak|poor|distinction|merit)$/i;
+/** A withdrawal — W, and WD / WF / WP / WU / WX (withdrew, failing, passing…)
+ * — or an audit (AU) is a FINAL result too: the course is over and will never
+ * get a grade, so it never makes a bachelor's record "still in progress"
+ * (DGS 2026-10-16: an official Rutgers record of a finished degree, its own
+ * rows all graded but one W, was refused). An incomplete (I, IN, INC) and the
+ * status codes of 2026-10-10 (REG, CUR, PEND, NR, NG, DEF, X) stay unfinished. */
+const FINAL_STATUS_RE = /^(?:W[DFPUX]?|AU)$/;
 export function undergraduateInProgress(slot: DegreeLevel, rows: { grade: string; rawGrade?: string }[], degreeStated = false): boolean {
   if (slot !== 'bachelors' || degreeStated) return false;
-  const finalResult = (raw: string | undefined) => raw !== undefined && (FINAL_MARK_RE.test(raw.trim()) || BAND_WORD_RE.test(raw.trim().replace(/\s+/g, ' ')));
+  const finalResult = (raw: string | undefined) =>
+    raw !== undefined && (FINAL_MARK_RE.test(raw.trim()) || BAND_WORD_RE.test(raw.trim().replace(/\s+/g, ' ')) || FINAL_STATUS_RE.test(raw.trim().toUpperCase()));
   return rows.some((r) => (r.grade === '' && !finalResult(r.rawGrade)) || r.grade === 'IP');
 }
 

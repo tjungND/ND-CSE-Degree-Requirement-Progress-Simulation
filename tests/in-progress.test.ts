@@ -26,6 +26,13 @@ describe('is the undergraduate transcript still in progress?', () => {
     }
     assert.equal(undergraduateInProgress('bachelors', [{ grade: '', rawGrade: 'REG' }], true), false, 'a stated conferral still wins');
   });
+  // DGS 2026-10-16: an official Rutgers record of a finished degree, its own
+  // rows all graded but one withdrawal, was refused as still in progress.
+  it('a withdrawal or an audit is a final result; an incomplete is not', () => {
+    const lastRow = (rawGrade: string) => undergraduateInProgress('bachelors', [{ grade: 'A' }, { grade: '', rawGrade }]);
+    for (const code of ['W', 'WD', 'WF', 'WP', 'WU', 'WX', 'AU', 'w']) assert.equal(lastRow(code), false, code);
+    for (const code of ['I', 'IN', 'INC', 'NR', 'WW', 'AUD?']) assert.equal(lastRow(code), true, code);
+  });
   it('never applies to a master\'s or Ph.D. slot', () => {
     assert.equal(undergraduateInProgress('masters', rows), false);
     assert.equal(undergraduateInProgress('phd', rows), false);

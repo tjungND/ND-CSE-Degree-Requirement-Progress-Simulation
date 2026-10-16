@@ -1052,6 +1052,19 @@ describe('title first, then a three-number code (Rutgers’ undergraduate layout
   // (2026-10-15): "the degree and the conferral month year in the end" —
   // "Those courses without grades are the transferred courses."
   const asUndergraduate = (r: ReturnType<typeof parseExternalTranscript>) => undergraduateInProgress('bachelors', r.courses.map((c) => previewRowOf(c, 'bachelors')), r.bachelorsConferred === true);
+  // The official copy of the same kind of record (DGS 2026-10-16): no closing
+  // degree line, and one of its own courses graded W — a final result.
+  it('an official copy without the degree line: its own courses graded, one W — not refused', () => {
+    const official = TITLE_FIRST_NUMERIC.filter((l) => !l.startsWith('DEGREE: ')).map((l) => (l.startsWith('OPERATING SYSTEMS') ? 'OPERATING SYSTEMS   01   198   416   01   4.0   W   QQ' : l));
+    const q = parseExternalTranscript(official);
+    assert.equal(q.bachelorsConferred, undefined);
+    assert.deepEqual([q.courses.length, q.transferRowsSkipped], [29, 12]);
+    assert.deepEqual(q.courses.filter((c) => c.grade === undefined).map((c) => [c.courseId, c.rawGrade]), [['01:198:416', 'W']]);
+    assert.equal(asUndergraduate(q), false);
+    // …while an incomplete still is.
+    const incomplete = parseExternalTranscript(official.map((l) => (l.startsWith('OPERATING SYSTEMS') ? 'OPERATING SYSTEMS   01   198   416   01   4.0   I' : l)));
+    assert.equal(asUndergraduate(incomplete), true);
+  });
   it('the degree and its month and year closing the record are its conferral: never refused as in progress', () => {
     assert.deepEqual([p.bachelorsConferred, p.bachelorsConferredOn], [true, '2022-05-15']);
     assert.equal(asUndergraduate(p), false);
