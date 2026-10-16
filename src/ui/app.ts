@@ -80,7 +80,7 @@ import { priorStudyLabel, programHistory } from './program-history.ts';
 import { ndUndergraduateClause, notFinishedSentence, totalCreditsWord, transferRuleText } from './coursework-text.ts';
 import { alongTheWayBox, applyCourseTick, examsTickOffered } from './page-decisions.ts';
 import { diagnosticsContent } from './sheet-warnings.ts';
-import { FILL_IN_STEP, unofficialTranscriptNote } from './email-html.ts';
+import { FILL_IN_STEP, unofficialTranscriptNote, unofficialTranscriptSlots } from './email-html.ts';
 import { advisorSummary } from './advisor-summary.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
 import { courseworkSentence, nearestDeadline, nextSteps } from './next-steps.ts';
@@ -2245,7 +2245,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
               // Copy, then the check-before-you-send dialog (DGS request 2026-09-06 evening).
               void import('../transcript/external.ts').then(({ buildCombinedReviewRequest, reviewRequestCourses }) => {
                 const { nd: ndReq, external: extReq } = reviewRequestCourses(pending, slotOf);
-                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses), decider: deciderTitle(student.program), stamp: checkedWithLine(stamp), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
+                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses, 'review'), decider: deciderTitle(student.program), stamp: checkedWithLine(stamp), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
                 return copyDialog({
                   what: 'Review request',
                   recipient: { role: decider.role, name: decider.name, email: decider.email },
@@ -2812,6 +2812,12 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // …and only while that credit is still to submit: transfer credit the
     // student ticked as recorded goes along for the record (DGS 2026-10-15).
     const needsTranscripts = built.items.transfers.length > 0 && student.attestations.transferRecorded !== true;
+    // Transfer credit to submit from a transcript marked unofficial waits for
+    // the official one (DGS 2026-10-16: "an unofficial transcript will not be
+    // accepted for official processing").
+    const unofficialSlots = needsTranscripts
+      ? unofficialTranscriptSlots(student.courses.filter((c) => built.items.transfers.some((t) => t.unofficial === true && t.courseId === c.courseId && t.institution === c.institution)))
+      : undefined;
     // The major events, the only things that make the button active (DGS
     // 2026-10-15; grad-admin-request.ts ProcessingItems.count) — the MSCSE has
     // no qualifier form and no MSCSE along the way.
@@ -2895,6 +2901,17 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             `The button opens the request in your email app, to the Grad Admin with the DGS in cc${needsTranscripts ? ' — attach your transcript PDFs' : ''}.`,
           ),
       ...built.items.lines.map((text) => el('div', { class: 'review-line', 'data-keep-dgs': '' }, text)),
+      ...(n > 0 && unofficialSlots !== undefined
+        ? [
+            el(
+              'p',
+              { class: 'hint warn', 'data-key': 'gradadmin.unofficial' },
+              unofficialSlots.one
+                ? `The ${unofficialSlots.list} transcript you imported is an unofficial copy: the Grad Admin can process its transfer credit only once the university’s registrar has sent the official transcript to the Graduate School.`
+                : `The ${unofficialSlots.list} transcripts you imported are unofficial copies: the Grad Admin can process their transfer credit only once each university’s registrar has sent the official transcript to the Graduate School.`,
+            ),
+          ]
+        : []),
       // What goes along, never on its own (DGS 2026-10-15).
       ...(n > 0 && built.items.forTheRecord !== undefined ? [el('p', { class: 'hint for-the-record' }, built.items.forTheRecord)] : []),
       el('div', { class: 'save-buttons' }, button),
@@ -3333,7 +3350,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             gpa: student.gpa,
             advisors,
             history: programHistory(student),
-            unofficialNote: unofficialTranscriptNote(student.courses),
+            unofficialNote: unofficialTranscriptNote(student.courses, 'advisor', deciderTitle(student.program)),
             transfers: { courses: transfers, recorded: student.attestations.transferRecorded === true, firstSemesterDone: firstSemesterComplete(student, normalizeEntryTerm(student.entryTerm).term, todayIso()).done },
             qualifierFrom: qualifierTransferTerm(),
             stamp: checkedWithLine(stamp),

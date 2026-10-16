@@ -464,6 +464,25 @@ writeFileSync(join(here, 'nd-insidend-transcript.pdf'), makePositionedPdf([
 writeFileSync(join(here, 'other-transcript.pdf'), makePdf(OTHER));
 writeFileSync(join(here, 'totals-mismatch-transcript.pdf'), makePdf(TOTALS_MISMATCH));
 writeFileSync(join(here, 'external-transcript.pdf'), makePdf(EXTERNAL));
+// An external transcript marked UNOFFICIAL (DGS 2026-10-16): accepted for
+// checking, simulating and the DGS's informal review, never for official
+// processing — invented school and courses, so it never meets the Purdue rows.
+writeFileSync(
+  join(here, 'external-unofficial-transcript.pdf'),
+  makePdf([
+    'Example State University',
+    'Office of the Registrar',
+    'Unofficial Transcript',
+    'Student: Jo Q. Example',
+    'Program: Doctor of Philosophy, Computer Science',
+    '',
+    'Fall 2022',
+    'CS 70100   Advanced Topics in Systems        3.0   A',
+    'CS 70200   Research Methods                  3.0   A-',
+    '',
+    'Cumulative GPA: 3.85',
+  ]),
+);
 writeFileSync(join(here, 'uc-system-transcript.pdf'), makePdf(UC_SYSTEM));
 writeFileSync(join(here, 'no-lines-transcript.pdf'), makePdf(NO_LINES));
 writeFileSync(join(here, 'course-outline.pdf'), makePdf(OUTLINE));

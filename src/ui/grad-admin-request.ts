@@ -102,6 +102,9 @@ export interface ProcessingTransfer {
   cappedCredits?: number;
   /** Where the row came from (src/ui/provenance.ts; DGS 2026-10-11, item 6). */
   source: string;
+  /** Read from a transcript marked unofficial: not for official processing
+   * until the official transcript reaches the Graduate School (DGS 2026-10-16). */
+  unofficial?: true;
 }
 
 /** One met requirement as a table: what satisfies it. */
@@ -385,6 +388,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
       state: approvedForMe(c) ? ('approved' as const) : ('pre-approved' as const),
       ...(counted !== undefined && counted > 0 && counted < whole ? { cappedCredits: counted } : {}),
       source: sourceOf(c.entry).text,
+      ...(c.entry.fromUnofficialTranscript === true ? { unofficial: true as const } : {}),
       overCap: counted === 0,
       };
     });
@@ -576,8 +580,9 @@ export function gradAdminRequest(
   // The official transcript goes from the registrar straight to the Graduate
   // School (DGS 2026-10-04, P1-page-text-ui-5); the attached PDFs are copies.
   const attached = items.transfers.length > 0 && student.attestations.transferRecorded !== true ? 'Attached: copies of my transcripts as PDFs. The official transcripts are to be sent directly to the Graduate School by each university’s registrar.' : '';
-  // Which imported transcripts were unofficial copies (DGS 2026-10-03).
-  const unofficial = unofficialTranscriptNote(student.courses);
+  // Which imported transcripts were unofficial copies (DGS 2026-10-03) —
+  // not for official processing (DGS 2026-10-16).
+  const unofficial = unofficialTranscriptNote(student.courses, 'gradAdmin');
   const earlier = opts.history?.earlier ?? '';
   // "Informational only" is not true of the MSCSE along the way (P3-cse-3-2):
   // when the request carries that award, the closing says so (DGS 2026-10-11, item 6).

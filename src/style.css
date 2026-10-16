@@ -1040,6 +1040,8 @@ table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { bac
 .combined-note > summary { cursor: pointer; font-weight: 600; }
 .combined-note[open] > summary { margin-bottom: 5px; }
 .unofficial-note { margin-top: 2px; }
+/* The row's lasting warning, on a line of its own (DGS 2026-10-16). */
+.external-slot .unofficial-note { flex-basis: 100%; margin: 2px 0 0; }
 .external-slot:last-of-type { border-bottom: 0; }
 .external-slot .slot-label { font-weight: 600; color: var(--navy); min-width: 140px; display: inline-block; }
 .external-card .transcript-preview input, .external-card .transcript-preview select { padding: 4px 6px; font-size: 13px; max-width: 130px; }
