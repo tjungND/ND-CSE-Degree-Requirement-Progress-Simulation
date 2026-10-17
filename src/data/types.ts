@@ -311,10 +311,11 @@ export const KNOWN_PARAMETER_KEYS = [
   'gpa_min',
   // The subject codes that mean "a CSE course" on ANOTHER university's
   // transcript (DGS 2026-09-09; the live list is now "CS; CSCI; COMPSCI; CSE;
-  // CMSC; EECS; CSYE; ECE; 198" — ECE on purpose, the department reading "a
+  // CMSC; EECS; CSYE; ECE; 198; 332" — ECE on purpose, the department reading "a
   // department other than CSE" as "outside computing", DGS 2026-10-04; 198
-  // the subject number of Rutgers' Computer Science, "16:198:507", DGS
-  // 2026-10-16 — external.ts subjectCode). §4.2
+  // the subject number of Rutgers' Computer Science, "16:198:507", and 332
+  // of its Electrical and Computer Engineering, DGS 2026-10-16 — external.ts
+  // subjectCode). §4.2
   // (and §3.2 for the MSCSE) caps credits
   // "taken from a department other than CSE" at nine, and until this existed
   // the app could not tell one department from another on a transcript it did

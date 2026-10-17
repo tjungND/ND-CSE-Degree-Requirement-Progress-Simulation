@@ -141,8 +141,9 @@ the Graduate School's 6 credits (§3.5; Academic Code §4.6) — `BS_SHARED_CRED
 Since 2026-09-09 the app can tell a CSE course from a non-CSE one on ANOTHER university's
 transcript, which is what §4.2's nine-credit limit on courses "taken from a department other than
 CSE" needs. Two places say so, and both are yours: the Parameters key `cse_subject_codes` lists the
-subject codes that mean CSE (`CS; CSCI; COMPSCI; CSE; CMSC; EECS; CSYE; ECE; 198` — a number is the subject
-of a school:subject:course code, Rutgers' `16:198:507` → `198`, Computer Science, DGS 2026-10-16), and an
+subject codes that mean CSE (`CS; CSCI; COMPSCI; CSE; CMSC; EECS; CSYE; ECE; 198; 332` — a number is the subject
+of a school:subject:course code, Rutgers' `16:198:507` → `198`, Computer Science, and `332`, its Electrical and
+Computer Engineering, DGS 2026-10-16), and an
 ExternalCourses row's `is_cse` cell (`yes` / `no`) settles one course the list should not decide.
 `ECE` is listed on purpose: the department reads "a department other than CSE" as "outside
 computing", so an ECE course is inside CSE whatever its topic (DGS 2026-10-04) — give a single ECE

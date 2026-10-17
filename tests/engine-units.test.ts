@@ -418,6 +418,7 @@ describe('is a transferred course a CSE course?', () => {
     assert.equal(isCseCourse('16:198:507', undefined, withRutgers), true);
     assert.equal(isCseCourse('01:198:344', undefined, withRutgers), true);
     assert.equal(isCseCourse('16:640:501', undefined, withRutgers), false, 'Mathematics is not on the list');
+    assert.equal(isCseCourse('16:332:563', undefined, buildRules().parameters.codeList('cse_subject_codes')), true, 'the live list: Rutgers ECE, under the ECE ruling');
     assert.equal(isCseCourse('16:198:507', undefined, codes), false, 'without 198 on the list, outside CSE as before');
     assert.equal(isCseCourse('16:198:507', rule(false), withRutgers), false, 'is_cse still wins');
     // The sheet's cell reads a number like any code.
@@ -451,8 +452,9 @@ describe('is a transferred course a CSE course?', () => {
     assert.equal(rules.parameters.codeList('nope'), undefined);
     // The fixture carries the live sheet's own list (DGS 2026-09-18: the live
     // sheet always wins) — ECE joined it when the DGS ruled it a computing
-    // department code, and Rutgers' 198 (Computer Science) on 2026-10-16.
-    assert.deepEqual(buildRules().parameters.codeList('cse_subject_codes'), ['CS', 'CSCI', 'COMPSCI', 'CSE', 'CMSC', 'EECS', 'CSYE', 'ECE', '198']);
+    // department code, and Rutgers' 198 (Computer Science) and 332 (Electrical and
+    // Computer Engineering, under the same ruling) on 2026-10-16.
+    assert.deepEqual(buildRules().parameters.codeList('cse_subject_codes'), ['CS', 'CSCI', 'COMPSCI', 'CSE', 'CMSC', 'EECS', 'CSYE', 'ECE', '198', '332']);
   });
 });
 
