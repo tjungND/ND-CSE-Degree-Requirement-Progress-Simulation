@@ -406,6 +406,24 @@ describe('is a transferred course a CSE course?', () => {
     assert.equal(subjectCode('60610'), '');
   });
 
+  // Rutgers numbers its courses school:subject:course, and its subject is a
+  // number — 198 is Computer Science (DGS 2026-10-16), which the list names
+  // as "198".
+  it('a school:subject:course code (Rutgers) has its middle number for a subject', () => {
+    assert.equal(subjectCode('01:198:344'), '198');
+    assert.equal(subjectCode('16:198:507'), '198');
+    assert.equal(subjectCode(' 14 : 332 : 345 '), '332');
+    for (const digitsOnly of ['60610', '30240233', '198:344', '01:198:3440', '198']) assert.equal(subjectCode(digitsOnly), '', digitsOnly);
+    const withRutgers = [...codes, '198'];
+    assert.equal(isCseCourse('16:198:507', undefined, withRutgers), true);
+    assert.equal(isCseCourse('01:198:344', undefined, withRutgers), true);
+    assert.equal(isCseCourse('16:640:501', undefined, withRutgers), false, 'Mathematics is not on the list');
+    assert.equal(isCseCourse('16:198:507', undefined, codes), false, 'without 198 on the list, outside CSE as before');
+    assert.equal(isCseCourse('16:198:507', rule(false), withRutgers), false, 'is_cse still wins');
+    // The sheet's cell reads a number like any code.
+    assert.deepEqual(buildRules({ parameters: { cse_subject_codes: 'CS; ECE; 198;' } }).parameters.codeList('cse_subject_codes'), ['CS', 'ECE', '198']);
+  });
+
   it('the sheet\u2019s code list decides, and a code it does not name is outside CSE', () => {
     assert.equal(isCseCourse('CS 50300', undefined, codes), true);
     assert.equal(isCseCourse('CompSci 537', undefined, codes), true);
@@ -433,8 +451,8 @@ describe('is a transferred course a CSE course?', () => {
     assert.equal(rules.parameters.codeList('nope'), undefined);
     // The fixture carries the live sheet's own list (DGS 2026-09-18: the live
     // sheet always wins) — ECE joined it when the DGS ruled it a computing
-    // department code.
-    assert.deepEqual(buildRules().parameters.codeList('cse_subject_codes'), ['CS', 'CSCI', 'COMPSCI', 'CSE', 'CMSC', 'EECS', 'CSYE', 'ECE']);
+    // department code, and Rutgers' 198 (Computer Science) on 2026-10-16.
+    assert.deepEqual(buildRules().parameters.codeList('cse_subject_codes'), ['CS', 'CSCI', 'COMPSCI', 'CSE', 'CMSC', 'EECS', 'CSYE', 'ECE', '198']);
   });
 });
 

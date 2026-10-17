@@ -106,8 +106,17 @@ export function needsApproval(t: Transferable | undefined): boolean {
 
 /** The subject code of a course id — "CompSci 537" → "COMPSCI". Everything
  * before the first space, upper-cased and stripped of punctuation, so
- * "CS-503" and "CS 503" answer the same. */
+ * "CS-503" and "CS 503" answer the same.
+ *
+ * A code of three numbers joined by colons is school:subject:course —
+ * Rutgers', "01:198:344" (its bachelor's record) and "16:198:507" (its
+ * graduate school) — and its subject is the middle number, "198": the
+ * `cse_subject_codes` list names such a subject by its number (DGS
+ * 2026-10-16: "The '198' in the middle refers to Computer Science."). A code
+ * of digits alone ("60610", "30240233") still has no subject. */
 export function subjectCode(courseId: string): string {
+  const numbered = /^\s*\d{1,2}\s*:\s*(\d{3})\s*:\s*\d{3}\s*$/.exec(courseId);
+  if (numbered) return numbered[1]!;
   return (courseId.split(' ')[0] ?? '').toUpperCase().replace(/[^A-Z]/g, '');
 }
 

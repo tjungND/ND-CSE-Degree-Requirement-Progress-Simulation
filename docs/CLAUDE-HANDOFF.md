@@ -1691,7 +1691,8 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   "outside computing", so an ECE course is inside CSE whatever its topic; `is_cse = no` is for a
   single course ruled otherwise (P4-data-6, 2026-10-12). `isCseCourse()` in
   src/data/external.ts is the only place that decides; `subjectCode()` normalises "CompSci 537" →
-  "COMPSCI". A code the list does not name is OUTSIDE CSE (its silence is an answer), but a MISSING
+  "COMPSCI", and reads a school:subject:course code's middle number ("16:198:507" → "198", Rutgers'
+  Computer Science; the live list carries 198 since 2026-10-16 — a code of digits alone has none). A code the list does not name is OUTSIDE CSE (its silence is an answer), but a MISSING
   or BLANK parameter is no answer at all — `codeList` returns undefined for both, and classify()
   then holds every transferred course without an `is_cse` cell for the DGS (`cseUnknown`, since
   2026-10-03; before that it left the allowance off — corrected here 2026-10-07, P3-sheet-6). Notre
