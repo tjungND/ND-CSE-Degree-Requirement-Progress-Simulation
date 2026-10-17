@@ -1054,25 +1054,45 @@ describe('title first, then a three-number code (Rutgers’ undergraduate layout
   // "Those courses without grades are the transferred courses."
   const asUndergraduate = (r: ReturnType<typeof parseExternalTranscript>) => undergraduateInProgress('bachelors', r.courses.map((c) => previewRowOf(c, 'bachelors')), r.bachelorsConferred === true);
   // The official copy of the same record (DGS 2026-10-16), as its diagnosis
-  // showed it: no closing degree line (it ends “*** END OF TRANSCRIPT ***”),
-  // the third course of its first term graded with one letter — by its shape
-  // a W — before its core code, and a lone “.” printed before one course's
-  // title, which lost that course (28 of 29 read).
+  // showed it: no closing degree line (it ends “*** END OF TRANSCRIPT ***”);
+  // the third course of its first term prints a credit-hour prefix before its
+  // grade, “E   PA” — the E (credits do not count toward degree) read as the
+  // grade refused the record as still in progress; and a lone “.” printed
+  // before one course's title lost that course (28 of 29 read).
   const OFFICIAL = TITLE_FIRST_NUMERIC.slice(0, TITLE_FIRST_NUMERIC.findIndex((l) => l.startsWith('DEGREE: ')))
-    .map((l) => (l.startsWith('COMPUTER ARCHITECTURE') ? 'COMPUTER ARCHITECTURE   01   198   211   03   4.0   W   QR' : l))
+    .map((l) => (l.startsWith('COMPUTER ARCHITECTURE') ? 'COMPUTER ARCHITECTURE   01   198   211   03   4.0   E   PA' : l))
     .map((l) => (l.startsWith('CRYPTOGRAPHY TOPICS') ? '.   CRYPTOGRAPHY TOPICS   01   640   448   01   3.0   A' : l))
     .concat(['*** END OF TRANSCRIPT ***', '']);
-  it('the official copy: no degree line, one course graded W, a dot before a title — every course read, not refused', () => {
+  it('the official copy: no degree line, a prefix before one grade, a dot before a title — every course read with its grade, not refused', () => {
     const q = parseExternalTranscript(OFFICIAL);
     assert.equal(q.bachelorsConferred, undefined);
     assert.deepEqual([q.courses.length, q.transferRowsSkipped], [29, 12]);
+    const prefixed = q.courses.find((c) => c.courseId === '01:198:211');
+    assert.deepEqual(prefixed && [prefixed.title, prefixed.credits, prefixed.grade, prefixed.rawGrade], ['COMPUTER ARCHITECTURE', 4, 'S', undefined]);
     const dotted = q.courses.find((c) => c.courseId === '01:640:448');
     assert.deepEqual(dotted && [dotted.title, dotted.credits, dotted.grade, dotted.season, dotted.year], ['CRYPTOGRAPHY TOPICS', 3, 'A', 'fall', 2021]);
-    assert.deepEqual(q.courses.filter((c) => c.grade === undefined).map((c) => [c.courseId, c.rawGrade]), [['01:198:211', 'W']]);
+    assert.ok(q.courses.every((c) => c.grade !== undefined), 'every grade read');
     assert.equal(asUndergraduate(q), false);
-    // …while an incomplete still is refused.
-    const incomplete = parseExternalTranscript(OFFICIAL.map((l) => (l.startsWith('COMPUTER ARCHITECTURE') ? 'COMPUTER ARCHITECTURE   01   198   211   03   4.0   I   QR' : l)));
-    assert.equal(asUndergraduate(incomplete), true);
+  });
+  it('a credit-hour prefix before the grade is not the grade; a lone one is read as before', () => {
+    const before = TITLE_FIRST_NUMERIC.slice(0, 46); // the first term, then page 2's header
+    const last = (cells: string) => parseExternalTranscript([...before, `TOPOLOGY I   01   640   441   01   3.0   ${cells}`]).courses.at(-1);
+    for (const prefix of ['E', 'N', 'G', 'PN', 'R', 'J', 'K', 'M']) {
+      assert.deepEqual([last(`${prefix}   PA`)?.courseId, last(`${prefix}   PA`)?.grade], ['01:640:441', 'S'], `${prefix} PA`);
+      assert.equal(last(`${prefix}   B+`)?.grade, 'B+', `${prefix} B+`);
+    }
+    // A grade and the code after it, and a prefix with no grade after it, as before.
+    assert.equal(last('A   QQ')?.grade, 'A');
+    assert.deepEqual([last('E')?.grade, last('E')?.rawGrade], [undefined, 'E']);
+  });
+  // A withdrawal on such a record (no degree line) is a final result; an
+  // incomplete is not (DGS 2026-10-16 — decided while the prefix above was
+  // still taken for a grade, and kept).
+  it('on such a record, an own course graded W is final and one graded I is not', () => {
+    const graded = (g: string) => parseExternalTranscript(OFFICIAL.map((l) => (l.startsWith('COMPUTER ARCHITECTURE') ? `COMPUTER ARCHITECTURE   01   198   211   03   4.0   ${g}   QR` : l)));
+    assert.deepEqual(graded('W').courses.filter((c) => c.grade === undefined).map((c) => [c.courseId, c.rawGrade]), [['01:198:211', 'W']]);
+    assert.equal(asUndergraduate(graded('W')), false);
+    assert.equal(asUndergraduate(graded('I')), true);
   });
   it('a cell of marks alone before a title is skipped; one with a letter or a digit is not', () => {
     const before = TITLE_FIRST_NUMERIC.slice(0, 46); // the first term, then page 2's header

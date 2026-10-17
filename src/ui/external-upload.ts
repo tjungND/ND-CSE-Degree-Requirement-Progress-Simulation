@@ -773,9 +773,11 @@ const BAND_WORD_RE = /^(?:excellent|outstanding|very\s+good|good|fair|average|me
 /** A withdrawal — W, and WD / WF / WP / WU / WX (withdrew, failing, passing…)
  * — or an audit (AU) is a FINAL result too: the course is over and will never
  * get a grade, so it never makes a bachelor's record "still in progress"
- * (DGS 2026-10-16: an official Rutgers record of a finished degree, its own
- * rows all graded but one W, was refused). An incomplete (I, IN, INC) and the
- * status codes of 2026-10-10 (REG, CUR, PEND, NR, NG, DEF, X) stay unfinished. */
+ * (2026-10-16 — decided while an official Rutgers record's refusal was put
+ * down to a W; the letter was its credit-hour prefix E before the grade PA,
+ * external.ts CREDIT_PREFIX_RE; the rule was kept on its own merit). An
+ * incomplete (I, IN, INC) and the status codes of 2026-10-10 (REG, CUR, PEND,
+ * NR, NG, DEF, X) stay unfinished. */
 const FINAL_STATUS_RE = /^(?:W[DFPUX]?|AU)$/;
 export function undergraduateInProgress(slot: DegreeLevel, rows: { grade: string; rawGrade?: string }[], degreeStated = false): boolean {
   if (slot !== 'bachelors' || degreeStated) return false;

@@ -1244,6 +1244,16 @@ export interface TitleFirstRow {
   section?: string;
 }
 const TITLE_FIRST_GRADE_RE = /^(?:[A-F][+-]?|P|S|U|W|NC|NR|IP|TZ|INC|I|PA|NG|TF|AU)$/;
+/** Rutgers' credit-hour prefixes, as its official transcript's legend lists
+ * them under "CREDIT HOUR PREFIXES" (DGS 2026-10-16, with a screenshot of
+ * it): E credits do not count toward degree, N noncredit course, G
+ * undergraduate course taken for graduate credit, PN pass/no credit basis, R
+ * repeated course, J degree credit not in the CUM GPA, K not degree credit
+ * but in the CUM GPA, M counts toward major. The row prints one between the
+ * credits and the grade ("4.0   E   PA": the grade is PA, a pass). Read as the
+ * grade, the E — a failing grade at some schools, left for the student to map
+ * — refused the record's official copy as "still in progress". */
+const CREDIT_PREFIX_RE = /^(?:E|N|G|PN|R|J|K|M)$/;
 const TOTALS_TITLE_RE = /^(?:(?:term|semester|quarter|session|cum(?:ulative)?|overall|institution(?:al)?|undergraduate|graduate|grand|career|transfer)\s+)*(?:totals?|subtotals?|cumulative|overall|summary)$/i;
 function titleFirstNumericRow(printed: readonly string[]): TitleFirstRow | undefined {
   // A cell of marks alone before the title — no letter, no digit — is not
@@ -1262,7 +1272,10 @@ function titleFirstNumericRow(printed: readonly string[]): TitleFirstRow | undef
   const k = sectioned ? 1 : 0;
   const credits = rest[k];
   if (credits === undefined || !CREDITS_CELL_RE.test(credits)) return undefined;
-  const grade = rest[k + 1];
+  // A credit-hour prefix before the grade is not the grade — only when a
+  // grade follows it; a lone "E" is read as before.
+  const prefixed = CREDIT_PREFIX_RE.test(rest[k + 1] ?? '') && TITLE_FIRST_GRADE_RE.test(rest[k + 2] ?? '');
+  const grade = rest[prefixed ? k + 2 : k + 1];
   return {
     code: `${school}:${subject}:${number}`,
     title: title.trim(),
