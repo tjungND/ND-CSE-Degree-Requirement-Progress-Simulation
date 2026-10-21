@@ -37,7 +37,8 @@ import type { RefusedValues } from './refusals.ts';
 export interface NdUploadArgs {
   student: Student;
   rules: Rules;
-  update: (fn: (s: Student) => void) => void;
+  /** `quiet`: a change that finishes no step of the student's — a removal (next-step.ts). */
+  update: (fn: (s: Student) => void, opts?: { quiet?: boolean }) => void;
   toast: (msg: string) => void;
   toastWithAction: (msg: string, actionLabel: string, action: () => void, opts?: { ttlMs?: number; focusKey?: string }) => void;
   render: () => void;
@@ -395,13 +396,14 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
             // keys are exactly as before the Remove.
             let snap: NdImportSnapshot | undefined;
             args.setFocusAfterRender('import.nd');
+            // A removal, and its Undo, finish no step (next-step.ts).
             args.update((s) => {
               snap = takeNdImport(s);
-            });
+            }, { quiet: true });
             args.toastWithAction(
               `${plural(snap!.removed.length, 'course')} from your ND transcript removed${snap!.before.gpaSource !== undefined ? ', and the GPA it filled in' : ''}.`,
               'Undo',
-              () => args.update((s) => putBackNdImport(s, snap!)),
+              () => args.update((s) => putBackNdImport(s, snap!), { quiet: true }),
               { ttlMs: 20000, focusKey: 'import.nd.remove' },
             );
           },
@@ -917,7 +919,7 @@ function applyNdPreview(tp: NdPreview, args: NdUploadArgs): void {
           stripNdPostings(s);
           s.courses = s.courses.filter((c) => c.fromNdTranscript !== true);
           putBackNdImport(s, snap, true);
-        }),
+        }, { quiet: true }),
       { ttlMs: 20000, focusKey: 'import.nd' },
     );
   } else args.toast(message);

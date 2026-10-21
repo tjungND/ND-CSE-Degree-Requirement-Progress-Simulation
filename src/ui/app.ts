@@ -69,7 +69,6 @@ import { labelCitationsIn } from './citations.ts';
 import { canonicalUniversityName, knownUniversities } from './university-name.ts';
 import { confirmDialog, copyDialog, openModal, returnFocusTo } from './copy-dialog.ts';
 import { plural } from './email-html.ts';
-import { EXAMPLE_ATTESTATIONS, EXAMPLE_MILESTONES, exampleFor } from './example.ts';
 import { policyFold, rareFold, clearInvalid, errorLine, field, fieldset, labelWrap, markInvalid, radios } from './form-helpers.ts';
 import { sectionRef } from './section-ref.ts';
 import { createFocusKeeper } from './focus-keeper.ts';
@@ -83,14 +82,17 @@ import { diagnosticsContent } from './sheet-warnings.ts';
 import { FILL_IN_STEP, unofficialTranscriptNote, unofficialTranscriptSlots } from './email-html.ts';
 import { advisorSummary } from './advisor-summary.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
-import { courseworkSentence, nearestDeadline, nextSteps } from './next-steps.ts';
+import { courseworkSentence, nearestDeadline, nextSteps, type NextStep } from './next-steps.ts';
+import { finishedBetween, nextAfter, pendingOn, showNextStep, targetOf, type PendingId } from './next-step.ts';
 import { sheetSourceLine, sheetSourceNote } from './sheet-source.ts';
 import {
+  type LoadCleanup,
   type Refusal,
   SEASONS,
   clearLocal,
   downloadJson,
   emptyStudent,
+  exampleRowsRemovedNote,
   exportFile,
   loadLocal,
   saveLocal,
@@ -120,8 +122,6 @@ function gradeLabel(g: string): string {
 // advisor report should be possible"; D6/D7): the reasons the inactive
 // buttons give on hover and click. The imports' reason is dom.ts's
 // SIMULATION_IMPORT_NOTE, shared with the two upload modules.
-/** "Load example" in the mode. */
-const SIMULATION_EXAMPLE_NOTE = 'Not available in simulation mode — the example is a record of its own. Exit the simulation to load it.';
 /** The three things that send: "the review request", "the processing
  * request", "the summary to your advisor". */
 const simulationSendNote = (what: string): string => `Not available in simulation mode — nothing is sent from a plan. Exit the simulation to send ${what} from your record.`;
@@ -158,14 +158,17 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
    * (R1, 2026-09-18) — shown once the page is up, and put back in the field
    * it came from, so a figure that vanished is never unexplained. */
   const loadRefusals: Refusal[] = [];
-  const saved = loadLocal(loadRefusals);
+  /** What opening the records on this device took out of them — the rows
+   * "Load example" left (2026-10-17) — said once the page is up. */
+  const loadCleanup: LoadCleanup = {};
+  const saved = loadLocal(loadRefusals, loadCleanup);
   // Simulation mode (DGS 2026-10-09; src/ui/simulation.ts): a stored
   // simulation means the student left the page in the mode, so it reopens in
   // it — the planning copy is the page's record, the real record stays in
   // memory (realStudent) and in its own storage key, untouched. A simulated
   // semester that has since become the past is lifted to the real one.
   const simulationRefusals: Refusal[] = [];
-  let simulation: Simulation | undefined = loadSimulation(simulationRefusals);
+  let simulation: Simulation | undefined = loadSimulation(simulationRefusals, loadCleanup);
   if (simulation) simulation.term = clampSimulationTerm(simulation.term, today.iso);
   /** The real record while the mode is on — what Exit puts back. Undefined
    * when no record was ever saved on this device. */
@@ -303,6 +306,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // 1, 2026-10-08).
     const incomplete = student.background !== undefined && completeBackground(student.background, chosenProgram ?? student.program) === undefined;
     if (programChanged || incomplete) {
+      // The program chosen, not a step finished: nothing is highlighted for it.
       update((s) => {
         if (programChanged) s.program = chosenProgram!;
         // An earlier-degrees answer that does not fit the new program (the
@@ -320,11 +324,15 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           pruneRead(s, d);
           reconcileInferences(s);
         }
-      });
+      }, { quiet: true });
     }
     if (consentDialog.open) consentDialog.close();
     consentDialog.remove();
     returnFocusTo();
+    // A new record starts at its Notre Dame transcript (DGS 2026-10-17: after
+    // the notice, "New record only"): the "Start here" row is highlighted, and
+    // focus goes to its Import. A returning student's page stays at the top.
+    showNextStep(askedFor.has('import.nd') ? targetOf(document, 'import.nd', stepsShown, student.program) : undefined, nextStepNote);
     // Say why the questions are back (coverage review, 2026-10-08).
     if (incomplete && !programChanged) toast('A question about your earlier degrees was added since you answered them — answer it in the Transcripts card.');
   };
@@ -432,7 +440,33 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     }
   };
 
-  const update = (mutate: (s: Student) => void): void => {
+  /** What the page asks the student for, read after every render, and the
+   * Next steps list it was read with (next-step.ts) — what a change is
+   * measured against. */
+  let askedFor: Set<PendingId> = new Set();
+  let stepsShown: NextStep[] = [];
+  /** A change's pending check: what was asked for before it, and whether it
+   * is one that finishes nothing (`quiet`). */
+  let stepCheck: { before: Set<PendingId>; quiet: boolean } | undefined;
+  /** The student's own change: saved, and the page rebuilt. A change that
+   * finishes a step — the page no longer asks for something it asked for —
+   * highlights the next one (DGS 2026-10-17, next-step.ts): measured once
+   * the handler's last render is done (some actions render twice), against
+   * what the page asked for before its first change. `quiet`: a change that
+   * finishes nothing of the student's (a removal, the opening dialog, the
+   * simulated semester) — the page re-renders and nothing is highlighted. */
+  const update = (mutate: (s: Student) => void, opts: { quiet?: boolean } = {}): void => {
+    if (stepCheck === undefined) {
+      stepCheck = { before: askedFor, quiet: false };
+      window.setTimeout(() => {
+        const check = stepCheck;
+        stepCheck = undefined;
+        if (!check || check.quiet) return;
+        const finished = finishedBetween(check.before, askedFor);
+        if (finished.length > 0) showNextStep(nextAfter(document, finished, askedFor, stepsShown, student.program), nextStepNote);
+      }, 0);
+    }
+    if (opts.quiet) stepCheck.quiet = true;
     mutate(student);
     persist();
     render();
@@ -447,7 +481,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   // it remembers which control had focus before and restores it after.
   const { remember: rememberFocus, restore: restoreFocus, setFocusAfterRender } = createFocusKeeper(root);
   // The toast stack (toasts.ts), created once outside the root.
-  const { toast, notice, cancelUndo, toastWithAction } = createToasts(setFocusAfterRender);
+  const { toast, notice, nextStepNote, cancelUndo, toastWithAction } = createToasts(setFocusAfterRender);
   let lastHeadline = '';
   /** Watches the two score headlines for the sticky bar (P-66); one per render. */
   let scoreObserver: IntersectionObserver | undefined;
@@ -680,13 +714,6 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // the mode is on.
         simulationBanner(),
         simulationStrip(),
-        // The example is saved like any other record, so say whose it is until
-        // the student takes it back (2026-09-08). What it says is counted from
-        // the rows themselves (R5, 2026-09-18): "Nothing here came from you"
-        // was sticky, so a student who loaded the example and then added one
-        // real course was told none of it was theirs — and offered a button
-        // that would have cleared their course along with the demo.
-        exampleBanner(),
         noticeStrip(),
         knownUniversitiesList,
         rules.source === 'snapshot' ? snapshotBanner() : null,
@@ -769,6 +796,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     root.querySelector('.warnings.floating .warnings-toggle')?.addEventListener('click', () => requestAnimationFrame(layoutFloats));
     root.querySelector('.attention.floating .attention-toggle')?.addEventListener('click', () => requestAnimationFrame(layoutFloats));
     restoreFocus(memo);
+    // What the page asks for now — a later change is measured against it (next-step.ts).
+    askedFor = pendingOn(root, next.steps, untouched);
+    stepsShown = next.steps;
     // Announce the recomputed result to screen readers — only when it changed,
     // so a keystroke in a title field does not chatter.
     const headline = root.querySelector('.scorehead .headline')?.textContent?.trim() ?? '';
@@ -862,19 +892,15 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         el(
           'div',
           {},
-          // In simulation mode the example stays outside (D6): it is a record
-          // of its own, and the mode holds a copy of the student's.
-          simulation
-            ? inactiveButton({ class: 'btn', 'data-key': 'tools.example' }, SIMULATION_EXAMPLE_NOTE, toast, 'Load example')
-            : el('button', { class: 'btn', 'data-key': 'tools.example', onclick: loadExample }, 'Load example'),
-          // The storage card's three buttons, here too (DGS 2026-09-24), between
-          // Load example and the advisor summary. "Load a file" opens the storage
-          // card's own file input, so there is one import path.
+          // The storage card's three buttons, here too (DGS 2026-09-24), first
+          // in the row ("Load example" stood before them until 2026-10-17).
+          // "Load a file" opens the storage card's own file input, so there is
+          // one import path.
           el('button', { class: 'btn', 'data-key': 'tools.save', onclick: saveActiveToFile }, 'Save to a file'),
           el('button', { class: 'btn', 'data-key': 'tools.load', onclick: () => document.querySelector<HTMLInputElement>('[data-key="save.fileinput"]')?.click() }, 'Load a file'),
           el('button', { class: 'btn', 'data-key': 'tools.print', onclick: () => window.print() }, 'Print'),
-          // Between Load example and Reset (DGS 2026-09-22); it was at the end
-          // of the report from the trim review (P-72) until then.
+          // Before Reset (DGS 2026-09-22); it was at the end of the report from
+          // the trim review (P-72) until then.
           advisorSummaryButton(report),
           // Simulation mode (DGS 2026-10-09): the way in, between the advisor
           // summary and Reset; in the mode the same slot holds a second way out.
@@ -2764,11 +2790,12 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             // course slides into this index), else the previous row, else the form.
             const last = index === student.courses.length - 1;
             setFocusAfterRender(last ? (index > 0 ? `course.${index - 1}.remove` : 'course.new.id') : `course.${index}.remove`);
-            update((s) => void s.courses.splice(index, 1));
+            // A removal, and its Undo, finish no step (next-step.ts).
+            update((s) => void s.courses.splice(index, 1), { quiet: true });
             toastWithAction(
               `${removed.courseId} removed.`,
               'Undo',
-              () => update((s) => void s.courses.splice(Math.min(index, s.courses.length), 0, removed)),
+              () => update((s) => void s.courses.splice(Math.min(index, s.courses.length), 0, removed), { quiet: true }),
               { focusKey: `course.${index}.remove` },
             );
           },
@@ -3388,7 +3415,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // preview or scan is open (review fix 2026-10-09): the same guard the
         // Simulate button has, since the preview's Add would otherwise file
         // the real transcript's rows into the plan and Exit would drop them.
-        const route = routeLoadedFile(raw, { student, simulation, realStudent, previewOpen: ndPreviewOpen() || importsBusy() }, realTodayIso, refusals);
+        const cleanup: LoadCleanup = {};
+        const route = routeLoadedFile(raw, { student, simulation, realStudent, previewOpen: ndPreviewOpen() || importsBusy() }, realTodayIso, refusals, cleanup);
         cancelUndo();
         refusedValues.clear(); // this file's own refusals replace the page's
         const previous = { student, simulation, realStudent };
@@ -3421,6 +3449,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
                 : `File loaded into the simulation — your record is untouched.`
               : 'File loaded.';
         toast(refusals.length > 0 ? `${loaded} ${refusals.map((r) => r.message).join(' ')}` : loaded);
+        if (cleanup.exampleRowsRemoved) notice(exampleRowsRemovedNote(cleanup.exampleRowsRemoved));
         if (route.outcome === 'entered' && simulation) {
           setFocusAfterRender('simulation.term');
           render();
@@ -3762,89 +3791,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   }
 
 
-  // ---------- example / clear ----------
-
-  function loadExample(): void {
-    // The example matches the tab the student is on, so pressing it never
-    // changes which degree the report is about (DGS 2026-09-18).
-    const program = student.program;
-    const name = program === 'mscse' ? 'MSCSE' : 'Ph.D.';
-    if (student.courses.length > 0 && !window.confirm(`Load the example ${name} student? This replaces what is on the page.`)) {
-      return;
-    }
-    cancelUndo(); // a stale Undo would splice old rows into the replaced record
-    refusedValues.clear(); // …and a stale refusal would mark a box the record no longer has
-    student = exampleFor(program, todayIso());
-    persist();
-    render();
-    // No visible toast: the banner at the top of the inputs says the same
-    // and names the right button, and the toast covered the page on a phone.
-    // Screen readers still hear what happened — the banner is a role=note,
-    // which is not announced (trim review 2026-09-18, P-27).
-    srStatus.textContent = `Example ${name} student loaded.`;
-  }
-
-  /** The rows "Load example" seeded that are still on the record. */
-  function exampleRows(): CourseEntry[] {
-    return student.courses.filter((c) => c.fromExample);
-  }
-
-  /** Does the record still carry anything the example put there? An older saved
-   * record has `isExample` but no per-row flags — it is the example whole. */
-  function hasExample(): boolean {
-    return exampleRows().length > 0 || (student.isExample === true && student.courses.length === 0);
-  }
-
-  function exampleBanner(): HTMLElement | null {
-    if (!hasExample()) return null;
-    const mine = exampleRows().length;
-    const all = student.courses.length;
-    const some = mine > 0 && mine < all;
-    return el(
-      'div',
-      { class: 'card example-banner', role: 'note' },
-      some
-        ? el('strong', {}, `${mine} of these ${all} courses are the example student’s. `)
-        : el('strong', {}, 'This is the example student, not your record. '),
-      some
-        ? 'Removing them leaves everything you entered yourself untouched.'
-        : 'Nothing here came from you. Remove it before entering your own record.', // "record", as in the first sentence (trim review 2026-09-18, P-57)
-      el(
-        'div',
-        { class: 'save-buttons' },
-        el('button', { class: 'btn', 'data-key': 'example.clear', onclick: removeExample }, 'Remove the example rows'),
-      ),
-    );
-  }
-
-  /** Take back exactly what "Load example" put in — the flagged rows, and the
-   * milestones and attestations it filled in WHERE THE STUDENT HAS NOT SINCE
-   * CHANGED THEM, since a value they edited is their own (R5, 2026-09-18). */
-  function removeExample(): void {
-    const before = JSON.parse(JSON.stringify(student)) as Student;
-    const removed = exampleRows().length;
-    cancelUndo();
-    update((s) => {
-      s.courses = s.courses.filter((c) => !c.fromExample);
-      for (const [k, v] of Object.entries(EXAMPLE_MILESTONES)) {
-        if ((s.milestones as Record<string, unknown>)[k] === v) delete (s.milestones as Record<string, unknown>)[k];
-      }
-      for (const [k, v] of Object.entries(EXAMPLE_ATTESTATIONS)) {
-        if ((s.attestations as Record<string, unknown>)[k] === v) delete (s.attestations as Record<string, unknown>)[k];
-      }
-      s.isExample = undefined; // nothing of the example is left to announce
-    });
-    toastWithAction(
-      `${plural(removed, 'example row')} removed${student.courses.length > 0 ? ` — your own ${student.courses.length} stay${student.courses.length === 1 ? 's' : ''}` : ''}.`,
-      'Undo',
-      () => {
-        student = before;
-        persist();
-        render();
-      },
-      { ttlMs: 20000 },
-    );
-  }
+  // ---------- clear ----------
 
   function resetAll(): void {
     if (!window.confirm('Reset everything you have entered on this device and start over?')) return;
@@ -3866,6 +3813,14 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   if (activeRefusals.length > 0) applyRefusals(refusedValues, activeRefusals);
   render();
   for (const r of activeRefusals) toast(r.message);
+  // A record that still held the example's rows has lost them (2026-10-17):
+  // saved without them at once, and said once. Through persist() — the one
+  // save (D2) — so a page reopened in simulation mode saves the plan, and
+  // the real record is saved without them at its next change.
+  if (loadCleanup.exampleRowsRemoved) {
+    persist();
+    notice(exampleRowsRemovedNote(loadCleanup.exampleRowsRemoved));
+  }
   // Reopened in simulation mode (the student left the page in it): say so
   // once, beyond the banner — a returning student may not expect it.
   if (simulation) toast(`Simulation mode is still on — this page is pretending it is ${termLabel(simulation.term)}. Exit it to see your record.`);

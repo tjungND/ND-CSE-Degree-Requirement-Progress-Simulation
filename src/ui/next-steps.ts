@@ -10,7 +10,20 @@ import { termLabel } from '../engine/term.ts';
 import type { AuditReport, CourseLine, Student } from '../engine/types.ts';
 import { completeBackground } from './background.ts';
 
+/** Each step's identity, the same from one render to the next whatever its
+ * text says (DGS 2026-10-17: "after student completes each step, highlight
+ * the next things to do"): a key that was on the list and is gone is a step
+ * the student finished, and next-step.ts highlights the one after it. In the
+ * order the steps are listed. */
+export const STEP_KEYS = ['standing.entry', 'standing.check', 'earlier-degrees', 'coursework.degrees', 'review.send', 'advisor.faculty', 'dual-plan', 'advisor.name', 'advisor.tenure', 'advisor.approved', 'thesis.topic', 'review.wait', 'processing.send', 'ms-candidacy', 'incomplete', 'graduation', 'advisor-summary', 'simulation'] as const;
+export type StepKey = (typeof STEP_KEYS)[number];
+
 export interface NextStep {
+  key: StepKey;
+  /** Nothing to do on the page until someone else acts (the Graduate
+   * School's approval, the DGS's answer) — never highlighted as the next
+   * step. */
+  waiting?: true;
   text: string;
   /** The place on the page where the step is done, as a fragment link. */
   href?: string;
@@ -64,7 +77,7 @@ function foldSentSteps(steps: NextStep[], dgs: { count: number; allCourses: bool
         ? `In simulation mode nothing is sent: this plan would put ${before || toRecord}.`
         : 'In simulation mode nothing is sent — no request or summary goes out from a plan.';
   const href = dgs.count > 0 ? '#dgs-review' : processingCount > 0 ? '#grad-admin' : undefined;
-  const folded: NextStep = { text, ...(href ? { href } : {}), ...(covers.length > 0 ? { covers } : {}) };
+  const folded: NextStep = { key: 'simulation', waiting: true, text, ...(href ? { href } : {}), ...(covers.length > 0 ? { covers } : {}) };
   return [...steps.slice(0, first), folded, ...steps.slice(first + 1).filter((s) => !sends(s))];
 }
 
@@ -136,17 +149,18 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // the step names its first term, read from the transcript.
   const earlierBackground = student.background ?? student.backgroundDraft;
   const unfinishedOther = inferred?.alternative?.otherProgram === true && earlierBackground?.graduate === 'nd-other' && earlierBackground.finished === false;
-  if (heldMscseReading) steps.push({ text: `Set the semester you entered the Ph.D. (Your standing) — ${termLabel(student.entryTerm)}, read from your transcript, is your MSCSE’s first semester.`, href: '#standing' });
-  else if (unfinishedOther && inferred?.alternative) steps.push({ text: `Set the semester you entered your earlier Notre Dame program (Your standing) — ${termLabel(student.entryTerm)}, read from your transcript, is your first CSE semester; a move from an unfinished program keeps that program’s clock, and your transcript shows ${termLabel(inferred.alternative.term)} (DGS Handbook §3.15).`, href: '#standing' });
+  if (heldMscseReading) steps.push({ key: 'standing.entry', text: `Set the semester you entered the Ph.D. (Your standing) — ${termLabel(student.entryTerm)}, read from your transcript, is your MSCSE’s first semester.`, href: '#standing' });
+  else if (unfinishedOther && inferred?.alternative) steps.push({ key: 'standing.entry', text: `Set the semester you entered your earlier Notre Dame program (Your standing) — ${termLabel(student.entryTerm)}, read from your transcript, is your first CSE semester; a move from an unfinished program keeps that program’s clock, and your transcript shows ${termLabel(inferred.alternative.term)} (DGS Handbook §3.15).`, href: '#standing' });
   else if (student.entryTermInferred) settings.push(`first semester ${termLabel(student.entryTerm)}`);
   if (student.bachelorsAwardedInferred && student.bachelorsAwarded) settings.push(`bachelor’s degree ${termLabel(student.bachelorsAwarded)}`);
-  if (settings.length > 0) steps.push({ text: `Check what your transcript set — ${settings.join(', ')} (Your standing).`, href: '#standing' });
+  if (settings.length > 0) steps.push({ key: 'standing.check', text: `Check what your transcript set — ${settings.join(', ')} (Your standing).`, href: '#standing' });
   // The earlier-degrees questions, asked on the page since 2026-10-08 (DGS,
   // Option 1: the opening dialog asks only the program).
   // Every question answered but not confirmed (the transcripts filled them):
   // the step is to check them and click Done (review of Option 1, 2026-10-08).
   if (student.background === undefined)
     steps.push({
+      key: 'earlier-degrees',
       text:
         completeBackground(student.backgroundDraft, student.program) !== undefined
           ? 'Check the answers about your earlier degrees in the Transcripts card and click Done — they decide which earlier transcripts to add and how §5.2 applies to them.'
@@ -161,7 +175,7 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   const asked = input.needsAnswer ?? [];
   if (asked.length > 0) {
     const ids = asked.length === 1 ? asked[0]! : `${asked.slice(0, -1).join(', ')} and ${asked[asked.length - 1]!}`;
-    steps.push({ text: `Say which degrees ${ids} already counted toward — next to ${asked.length === 1 ? 'the course' : 'each course'} under Coursework; if you are not sure, ask the DGS.`, href: '#coursework' });
+    steps.push({ key: 'coursework.degrees', text: `Say which degrees ${ids} already counted toward — next to ${asked.length === 1 ? 'the course' : 'each course'} under Coursework; if you are not sure, ask the DGS.`, href: '#coursework' });
   }
   // 2. The decisions the DGS has to make — the courses, two kinds (DGS
   // 2026-09-27); since policy review round 3 (P3-cse-1-2-2, DGS 2026-10-06)
@@ -201,7 +215,7 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
     // The transfer and approvals rows are this step's only while it carries
     // courses.
     const covers = reviewCount > 0 ? ['phd.transfer', 'ms.transfer', 'shared.approvals'] : [];
-    steps.push({ text, href: '#dgs-review', ...(covers.length > 0 ? { covers } : {}) });
+    steps.push({ key: 'review.send', text, href: '#dgs-review', ...(covers.length > 0 ? { covers } : {}) });
   }
   // An advisor who is not tenured or tenure-track CSE faculty: the card's two
   // cases, each with its own remedy (policy review round 4, P4-phd-6; DGS
@@ -213,6 +227,7 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // to be one review-request step for both, the wrong remedy for the second.
   if (advisorToDgs)
     steps.push({
+      key: 'advisor.faculty',
       text: `Your ${thesis ? 'thesis ' : ''}advisor is not tenured or tenure-track CSE faculty (or you are not sure): if they are tenured or tenure-track in another Notre Dame department, ${input.simulation ? 'the DGS approves them' : 'send the review request for the DGS’s approval'}; if not, add a tenured or tenure-track co-advisor under Milestones (§2.3; department policy).`,
       href: '#milestones',
       covers: ['shared.advisor'],
@@ -220,17 +235,17 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // The dual-degree plan of study (P3-dh-front-1-2-2; DGS Handbook §2.9): the
   // Graduate School approves it, and the tick under Approvals records it.
   const dualWaiting = report.requirements.some((r) => r.id === 'shared.approvals' && (r.detailParts ?? []).some((p) => typeof p === 'object' && 'lead' in p && /^Waiting for the Graduate School’s approval of your dual-degree plan of study/.test(p.lead)));
-  if (dualWaiting) steps.push({ text: 'Once the Graduate School approves your dual-degree plan of study, tick it under Approvals you already have (DGS Handbook §2.9).', href: '#milestones' });
+  if (dualWaiting) steps.push({ key: 'dual-plan', waiting: true, text: 'Once the Graduate School approves your dual-degree plan of study, tick it under Approvals you already have (DGS Handbook §2.9).', href: '#milestones' });
   // 3. The advisor, and the plan-of-study box — neither waits for the DGS.
   // The step says what the advisor card says (P3-cse-1-2-2): no advisor on
   // file → enter the name; a name on file but the faculty-status question
   // unanswered → answer it (since 2026-10-04 the card is not met then either,
   // and "Enter your advisor’s name" told a student who had done so to do it
   // again); a status the DGS must approve → its own step above (P4-phd-6).
-  if (advisor?.status === 'unmet') steps.push({ text: 'Enter your advisor’s name under Milestones.', href: '#milestones', covers: ['shared.advisor'] });
+  if (advisor?.status === 'unmet') steps.push({ key: 'advisor.name', text: 'Enter your advisor’s name under Milestones.', href: '#milestones', covers: ['shared.advisor'] });
   else if (advisor?.status === 'cannot_evaluate')
-    steps.push({ text: `Answer under Milestones whether your ${thesis ? 'thesis ' : ''}advisor is tenured or tenure-track CSE faculty (§2.3).`, href: '#milestones', covers: ['shared.advisor'] });
-  if (hasCourses && !student.attestations.advisorApprovedPlan) steps.push({ text: 'Confirm your advisor approved your coursework and tick the box under Approvals.', href: '#milestones' });
+    steps.push({ key: 'advisor.tenure', text: `Answer under Milestones whether your ${thesis ? 'thesis ' : ''}advisor is tenured or tenure-track CSE faculty (§2.3).`, href: '#milestones', covers: ['shared.advisor'] });
+  if (hasCourses && !student.attestations.advisorApprovedPlan) steps.push({ key: 'advisor.approved', text: 'Confirm your advisor approved your coursework and tick the box under Approvals.', href: '#milestones' });
   // The MSCSE thesis topic (policy review round 3, P3-emails-4 (3); DGS
   // 2026-10-07: option (a)) — the step the advisor email's to-do already
   // carries (Academic Code §6.1.7: "With the approval of his or her advisor,
@@ -238,15 +253,16 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // who reads only the page does not miss it.
   const topic = report.requirements.find((r) => r.id === 'ms.thesis.topic');
   if (topic !== undefined && topic.status !== 'met')
-    steps.push({ text: 'Propose your thesis topic, with your advisor’s approval, for the program’s approval (Academic Code §6.1.7).', href: '#milestones', covers: ['ms.thesis.topic'] });
+    steps.push({ key: 'thesis.topic', text: 'Propose your thesis topic, with your advisor’s approval, for the program’s approval (Academic Code §6.1.7).', href: '#milestones', covers: ['ms.thesis.topic'] });
   // 4. After the DGS answers; and what the Grad Admin can already record.
   const approvals = report.requirements.find((r) => r.id === 'shared.approvals');
-  if (!waitsForEarlierDegrees && (approvals?.status === 'needs_dgs_review' || reviewCount > 0)) steps.push({ text: 'When the DGS answers, come back to this page — it reads the latest course rules — and tick the box next to each course approved for you; then send the processing request, and the Grad Admin records it.', href: '#grad-admin', covers: ['shared.approvals'] });
-  if (processingCount > 0) steps.push({ text: `Send the processing request (${plural(processingCount, 'item')}) — the Grad Admin records it.`, href: '#grad-admin' });
+  if (!waitsForEarlierDegrees && (approvals?.status === 'needs_dgs_review' || reviewCount > 0)) steps.push({ key: 'review.wait', waiting: true, text: 'When the DGS answers, come back to this page — it reads the latest course rules — and tick the box next to each course approved for you; then send the processing request, and the Grad Admin records it.', href: '#grad-admin', covers: ['shared.approvals'] });
+  if (processingCount > 0) steps.push({ key: 'processing.send', text: `Send the processing request (${plural(processingCount, 'item')}) — the Grad Admin records it.`, href: '#grad-admin' });
   // The master's candidacy application, once its conditions are in hand
   // (Academic Code §6.1.6 — policy review 2026-10-04, P2-dh-front-1-2-2).
   if (report.requirements.some((r) => r.id === 'shared.msCandidacy' && r.status === 'unmet'))
     steps.push({
+      key: 'ms-candidacy',
       text: 'Ask the Grad Admin to submit your Application for Admission to Master’s Degree Candidacy by the Graduate School calendar’s deadline for the semester you graduate in — it is in the processing request (Academic Code §6.1.6).',
       href: '#grad-admin',
       covers: ['shared.msCandidacy'],
@@ -266,13 +282,13 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // §3.23.1): no "you are registered for it" as if the student were clear.
   const gradIncompletes = g?.incompletes ?? [];
   if (g !== undefined && gradIncompletes.length > 0)
-    steps.push({ text: `Have the I in ${gradIncompletes.join(', ')} made final before your degree is conferred — the Graduate School confers it only with no I grades in ${termLabel(g.term)}, the semester you graduate; otherwise move your graduation semester (DGS Handbook §3.23.1).` });
+    steps.push({ key: 'incomplete', text: `Have the I in ${gradIncompletes.join(', ')} made final before your degree is conferred — the Graduate School confers it only with no I grades in ${termLabel(g.term)}, the semester you graduate; otherwise move your graduation semester (DGS Handbook §3.23.1).` });
   if (g !== undefined && !g.registered)
-    steps.push({ text: `Register for at least one credit hour in ${termLabel(g.term)}${g.term.season === 'summer' ? ' (a zero-credit course is enough in a summer session)' : ''} and complete ND Roll Call — the Graduate School confers your degree only then (Academic Code §3.7; DGS Handbook §3.23.1).` });
+    steps.push({ key: 'graduation', text: `Register for at least one credit hour in ${termLabel(g.term)}${g.term.season === 'summer' ? ' (a zero-credit course is enough in a summer session)' : ''} and complete ND Roll Call — the Graduate School confers your degree only then (Academic Code §3.7; DGS Handbook §3.23.1).` });
   else if (allRequirementsMet(report) && gradIncompletes.length === 0)
-    steps.push({ text: g !== undefined ? `Complete ND Roll Call in ${termLabel(g.term)}, the semester you graduate — you are registered for it (Academic Code §3.7).` : GRADUATION_SEMESTER_STEP });
+    steps.push({ key: 'graduation', text: g !== undefined ? `Complete ND Roll Call in ${termLabel(g.term)}, the semester you graduate — you are registered for it (Academic Code §3.7).` : GRADUATION_SEMESTER_STEP });
   // 6. The advisor summary, any time.
-  if (hasCourses) steps.push({ text: ADVISOR_SUMMARY_STEP });
+  if (hasCourses) steps.push({ key: 'advisor-summary', text: ADVISOR_SUMMARY_STEP });
   // Simulation mode (D7): the sending steps become one "nothing is sent"
   // step naming what the plan would put before the DGS (the review card's
   // courses, plus the advisor and the other items when there are any) and

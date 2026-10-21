@@ -109,13 +109,6 @@ export interface CourseEntry {
    * line then says the letter is the student's own reading, for the DGS to
    * check against §5.2's B. */
   transcriptMark?: string;
-  /** True on every row "Load example" seeded (interface review R5,
-   * 2026-09-18). `isExample` was a flag on the WHOLE record, so adding one
-   * real course of your own left the banner still saying "Nothing here came
-   * from you" — and its button still offered to clear the lot. The flag is
-   * per row, so the banner can count what is the example's and the button can
-   * take back exactly those. */
-  fromExample?: true;
   /** transfer-only: §4.4.1 core area the student claims this course satisfies (decision Q12).
    *
    * Deprecated 2026-09-03 (the claim path is retired — the DGS's
@@ -565,11 +558,6 @@ export interface Student {
    * `sharedWithOtherDegree` tick, and at most nine credits of the ticked
    * courses count toward this degree. */
   concurrentDegree?: boolean;
-  /** Set only by "Load example" (2026-09-08). The record is saved like any
-   * other, so without a marker a student returning the next day cannot tell
-   * the demo from their own work. Never written by a transcript import, and
-   * stripped from a file the student loads. */
-  isExample?: true;
   courses: CourseEntry[];
   milestones: Milestones;
   attestations: Attestations;

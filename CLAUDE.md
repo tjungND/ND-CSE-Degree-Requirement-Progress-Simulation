@@ -91,7 +91,7 @@ it lives in git history only. `DGS-READ-THIS.md` was replaced by `README.md` on 
   `toasts.ts`, `stamp.ts` (the "Checked with" line every result carries — rules fingerprint,
   handbook edition, build — and the saved file's stamp; `npm run reproduce -- <saved file>` re-runs
   one, 2026-10-11), `focus-keeper.ts` (focus restored by `data-key` across re-renders), `refusals.ts`
-  (out-of-range numbers kept in their box), `example.ts`, `form-helpers.ts`, `email-html.ts`
+  (out-of-range numbers kept in their box), `form-helpers.ts`, `email-html.ts`
   (what the three generated emails share). A second page,
   `courses.html` → `src/courses.ts` → `src/ui/courses-page.ts`, is the public course-rules list
   (read-only view of the Courses tab; no student data); both pages are built by Vite from

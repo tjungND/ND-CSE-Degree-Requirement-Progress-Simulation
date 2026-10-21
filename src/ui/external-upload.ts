@@ -12,7 +12,6 @@
 import { checkTotals, doubtedTerms, type CheckedRow, type PrintedTotals, type TotalsMismatch } from '../transcript/totals-check.ts';
 import { deciderContact, type Contact } from './contacts.ts';
 import { deciderTitle } from '../engine/decider.ts';
-import { findNextStep, showNextStep } from './next-step.ts';
 import { transcriptProblemHref, type TranscriptProblem } from './report-problem.ts';
 import { APP_BUILD } from './build-info.ts';
 import { bachelorsPrefill, ocrReducedPagesNote, ocrTurnedNote, rowIsCompact, type OcrReducedPage } from '../transcript/preview-layout.ts';
@@ -326,7 +325,8 @@ let ocrBusy: { label: string; percent: number } | undefined;
 export interface ExternalCardArgs {
   student: Student;
   rules: Rules;
-  update: (fn: (s: Student) => void) => void;
+  /** `quiet`: a change that finishes no step of the student's — a removal (next-step.ts). */
+  update: (fn: (s: Student) => void, opts?: { quiet?: boolean }) => void;
   toast: (msg: string) => void;
   /** A toast with one action button (Undo) — app.ts supplies it; `ttlMs`
    * lengthens the window (20 s for a transcript-wide removal), `focusKey`
@@ -623,13 +623,15 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
                   'data-key': 'earlier.done',
                   onclick: () => {
                     answeringEarlier = false;
+                    // The Done is a finished step: update() highlights the
+                    // next one — the first row the answer opened that is
+                    // still empty (next-step.ts) — and focus goes there; the
+                    // answer's Change keeps it when there is none.
                     args.setFocusAfterRender?.(changeKey);
                     args.update((s) => {
                       if (!confirmDraft(s)) s.backgroundRead = undefined;
                       s.backgroundReadFrom = undefined;
                     });
-                    // update() has re-rendered the page: the rows the answer opened are on it.
-                    showNextStep(findNextStep(document), args.toast);
                   },
                 },
                 'Done',
@@ -1063,7 +1065,7 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
               // What this transcript read into a draft answer goes with it
               // (review of Option 1, 2026-10-08).
               forgetReadings(s, slot.level);
-            });
+            }, { quiet: true }); // a removal, and its Undo, finish no step (next-step.ts)
             args.toastWithAction?.(
               `${removed.length} ${slot.label} course${removed.length === 1 ? '' : 's'} removed.`,
               'Undo',
@@ -1074,7 +1076,7 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
                   s.priorMs = priorBefore.priorMs;
                   s.priorMsInferred = priorBefore.inferred;
                   restoreEarlierDegrees(s, priorBefore.earlier); // what Remove forgot (coverage review, 2026-10-08)
-                }),
+                }, { quiet: true }),
               { ttlMs: 20000, focusKey: `ext.remove.${slot.level}` },
             );
           },

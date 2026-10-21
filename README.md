@@ -310,7 +310,7 @@ repository.
 2. Expand **"Rules-sheet diagnostics"** at the bottom of the input column. Every sheet problem is
    listed there in plain English with its row number. Your rows should not appear; if one does, the
    message says which column and why (usually a value outside the dropdown set).
-3. Click **Load example**, or type the course you added into the course table (it autocompletes
+3. Type the course you added into the course table (it autocompletes
    when `active` = `yes`), and read the report as a student would. Open `courses.html` too — the
    public course-rules list should show your row with the right core area, category, and
    Confirmed/Pending mark.
@@ -430,8 +430,8 @@ Approve the commands it proposes (`npm test`, `npm run build`, …) when it asks
    `tests/scenarios/` for the case; keep `npm test` and `npm run build` green; run `npm run e2e`
    and look at the screenshots in `.e2e-out/` for anything visible. If it skips one of these, ask
    for it.
-5. **Check it yourself.** Run `npm run dev`, open http://localhost:5173, click **Load example**,
-   and read the report as a student would; exercise the case you changed. A wrong verdict is far
+5. **Check it yourself.** Run `npm run dev`, open http://localhost:5173, enter a record (type a
+   few courses, or **Load a file** you saved earlier) and read the report as a student would; exercise the case you changed. A wrong verdict is far
    easier to spot in the rendered report than in code.
 6. **Commit and push.** Either tell the agent *"commit with a message that explains why, then
    push"*, or do it yourself:
@@ -679,7 +679,7 @@ asks for the preview to be added to the record or cancelled first (the preview's
 record, not to a plan). Inside the mode, "Load a file" loads any file — a saved record or a saved plan — into the
 simulation, never into the real record (a plan brings its own semester with it; a record keeps the
 semester the page is in), and the toast says which happened. The buttons that would send something
-(the review request, the processing request, the advisor summary), Load example, the four
+(the review request, the processing request, the advisor summary), the four
 transcript imports and the OCR opt-in are greyed, and say why on hover or click (a transcript is
 real data — it is imported outside the mode); the two request cards still list what the plan
 would put before the DGS and the Grad Admin, and the Next steps list says so in one line instead

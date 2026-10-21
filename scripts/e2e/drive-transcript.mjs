@@ -9,6 +9,7 @@ import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { STAMP_RE } from './session-common.mjs';
+import { nextStepShown } from './drive-a11y.mjs';
 
 export async function driveTranscript(s, baseUrl, pdfs) {
   const { nd: ndPdf, other: otherPdf, external: externalPdf, externalUnofficial: externalUnofficialPdf, scan: scanPdf, banner: bannerPdf, watermarked: watermarkedPdf, combined: combinedPdf, ndUg: ndUgPdf, uc: ucPdf, ndOfficial: ndOfficialPdf, noLines: noLinesPdf, ndUgInProgress: ndUgInProgressPdf, ndInsideNd: ndInsideNdPdf, codeless: codelessPdf, outline: outlinePdf, totalsMismatch: totalsMismatchPdf, scanClean: scanCleanPdf, scannerLayer: scannerLayerPdf, ndParchmentNew: ndParchmentNewPdf } = pdfs;
@@ -106,6 +107,14 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   console.log('  bachelor’s award from the transcript:', bsSeason, bsYear, '|', bsNote.slice(0, 90));
   if (!addToast.includes('your bachelor’s semester (Spring 2021)') || !addToast.includes('confirm them under Your standing')) throw new Error('the add toast must say the award term was set: ' + addToast.slice(0, 220));
   if (bsYear !== '2021' || bsSeason !== 'spring' || !bsNote.startsWith('Spring 2021 was read from your transcript')) throw new Error(`standing card: bachelor’s award ${bsSeason} ${bsYear} — ${bsNote.slice(0, 100)}`);
+  // The Notre Dame import is a finished step (DGS 2026-10-17: "after student
+  // completes each step, highlight the next things to do"): what it set is
+  // next — its "Looks right" under Your standing, ringed, focused and said
+  // (W-CL526) below the import's own message.
+  const afterNd = await nextStepShown(s);
+  console.log('  after the Notre Dame Add, the next step:', JSON.stringify(afterNd));
+  if (!/^standing\.(entry|bachelors)\.confirm$/.test(afterNd.focused) || !afterNd.note.startsWith('Next step: Check what your transcript set — ')) throw new Error('after the Notre Dame Add, what it set must be the next step: ' + JSON.stringify(afterNd));
+  await s.shot('next-step-after-nd-import');
   // The Notre Dame row now names what it added and offers Remove (2026-09-06),
   // like a previous-university slot — and the import stays available.
   const ndRow = await s.evalJs(`document.querySelector('.transcript-upload')?.textContent ?? ''`);
@@ -136,6 +145,8 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   await s.settle();
   const undone = await s.evalJs(`document.querySelector('.transcript-upload')?.textContent ?? ''`);
   if (!undone.includes('7 courses from your transcript')) throw new Error('Undo must put the earlier import back: ' + undone.slice(0, 100));
+  // An Undo finishes no step: nothing is highlighted (DGS 2026-10-17, next-step.ts).
+  if (await s.evalJs(`document.querySelectorAll('.next-step-ring').length > 0`)) throw new Error('an Undo must highlight nothing');
   console.log('  Import again: every row offered, the earlier import replaced (7 rows stay 7), Undo restores it');
   // The standing card now shows the term read from the transcript, flagged.
   const entryNote = await s.evalJs(`document.querySelector('.entry-note')?.textContent ?? ''`);
@@ -692,6 +703,12 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   // Prior study is no longer inferred by an import once the earlier-degrees
   // answer exists (DGS 2026-09-22): the consent helper answered "finished".
   if (!combinedToast.includes('(2 undergraduate, 2 graduate)')) throw new Error('combined import must report the level split');
+  // An earlier transcript added is a finished step (DGS 2026-10-17): the next
+  // row the earlier degrees opened that is still empty — the Ph.D. row, its
+  // preview cancelled above — is next, ringed, focused and said (W-CL525).
+  const afterRow = await nextStepShown(s);
+  console.log('  after the Master’s row’s Add, the next step:', JSON.stringify(afterRow));
+  if (afterRow.focused !== 'ext.import.phd' || afterRow.note !== 'Next step: import your Previous Ph.D. Transcript (highlighted).') throw new Error('after a row’s Add, the next empty row must be the next step: ' + JSON.stringify(afterRow));
   if ((await s.evalJs(`JSON.parse(localStorage.getItem('cse-degree-audit/v1/student')).priorMs`)) !== 'completed') throw new Error('prior study must stay as the earlier-degrees answer set it');
   // The hand-set award term (3c) is kept — an import only replaces an inferred one (2026-09-06).
   if (combinedToast.includes('Bachelor’s degree awarded')) throw new Error('a hand-set award term must not be replaced by an import');

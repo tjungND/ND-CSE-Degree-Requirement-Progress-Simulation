@@ -844,7 +844,7 @@ function attentionList(report: AuditReport, untouched = false): HTMLElement | nu
       'div',
       { id: 'attention-body', class: 'attention-body' },
     steps.length > 0
-      ? el('ol', { class: 'next-steps' }, ...steps.map((s) => el('li', {}, s.href ? el('a', { href: s.href }, s.text) : s.text)))
+      ? el('ol', { class: 'next-steps' }, ...steps.map((s) => el('li', { 'data-step': s.key }, s.href ? el('a', { href: s.href }, s.text) : s.text)))
       : null,
     el(
       'ul',

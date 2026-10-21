@@ -65,7 +65,7 @@ The start-up choreography all three share — `waitFor`, the loading card, the o
 in `scripts/e2e/session-common.mjs`; change the page's start-up flow there, once. Four drivers,
 each in a fresh tab, in this order:
 
-- `drive-app.mjs` — initial Ph.D. report, "Load example", the § chip's handbook quote, the M.S.
+- `drive-app.mjs` — initial Ph.D. report, a mid-degree record loaded as a saved file (`example-record.mjs`; "Load example" was removed on 2026-10-17), the § chip's handbook quote, the M.S.
   tab, the rules-spreadsheet links; `driveCourses` (same file) — the public course-rules page:
   filters, the Notes disclosure, filters in the URL.
 - `drive-transcript.mjs` — uploads `tests/fixtures/other-transcript.pdf` (must be REJECTED with
@@ -95,7 +95,7 @@ Reuse the helpers instead of writing a new driver — the session shape is the s
 import { openSession } from './scripts/e2e/cdp.mjs';
 const s = await openSession(9333, '.e2e-out');       // Chrome must be up (see run.mjs)
 await s.open('http://localhost:4273/');              // past the loading card and the opening notice
-await s.evalJs(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Load example').click()`);
+await (await import('./scripts/e2e/example-record.mjs')).loadExampleRecord(s, 'phd'); // a mid-degree Ph.D. record, through "Load a file"
 await s.shot('my-check');                            // .e2e-out/my-check.png — the whole 1400×1900 frame
 await s.shotElement('my-card', '.external-card .transcript-preview'); // one element, cropped
 await s.setFileInput('.transcript-upload input[type=file]', '/abs/path/to.pdf');

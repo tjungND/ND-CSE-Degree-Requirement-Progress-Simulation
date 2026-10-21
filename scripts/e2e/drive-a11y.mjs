@@ -11,6 +11,7 @@
 //      contrast, labels, names, landmarks…).
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { loadExampleRecord } from './example-record.mjs';
 
 const require = createRequire(import.meta.url);
 const AXE_SOURCE = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
@@ -23,14 +24,15 @@ const key = (s, k, code, vk) =>
 export async function driveA11y(s, baseUrl) {
   await checkDialog(s, baseUrl);
   await s.open(baseUrl); // agrees, so the page beneath is usable
-  // Start from an empty record: "Load example" asks for confirmation when
-  // courses exist, and a native confirm() would block the page.
+  // Start from an empty record, then put the mid-degree Ph.D. record on the
+  // page as a saved file (the old "Load example" student — the button went on
+  // 2026-10-17; scripts/e2e/example-record.mjs).
   await s.evalJs(`localStorage.clear()`);
   await s.open(baseUrl);
   await checkFirstScreen(s, baseUrl);
-  await s.evalJs(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Load example').click()`);
-  await s.waitFor(`document.querySelectorAll('table.courses tr').length > 3`);
+  await loadExampleRecord(s, 'phd');
   await checkFocusPreserved(s);
+  await checkNextStepAfterAnswers(s);
   await checkAxe(s, 'self-check page (example student)');
   await checkNightMode(s, 'app', 'self-check page (example student)');
   await checkCopyDialog(s);
@@ -139,6 +141,28 @@ async function checkCopyDialog(s) {
 }
 
 // 1. The opening notice as a modal dialog.
+// The next step after a finished one (next-step.ts; DGS 2026-10-16 and
+// 2026-10-17): exactly one ring, its "Next step" tag (drawn by CSS), focus on
+// the step's control, on screen once the smooth scroll lands, and the
+// message in its own slot. Returns what it found, for the caller's checks.
+export async function nextStepShown(s) {
+  await s.waitFor(`document.querySelectorAll('.next-step-ring').length === 1 && (() => { const r = document.activeElement?.getBoundingClientRect(); return !!r && r.bottom > 0 && r.top < window.innerHeight; })()`, 5000);
+  const found = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const ring = document.querySelector('.next-step-ring');
+    return {
+      ringed: ring ? ring.tagName.toLowerCase() + '.' + [...ring.classList].join('.') : '',
+      label: ring?.querySelector('.slot-label')?.textContent ?? '',
+      tag: ring ? getComputedStyle(ring, '::after').content : '',
+      focused: document.activeElement?.dataset?.key ?? document.activeElement?.tagName ?? '',
+      focusInRing: !!ring && ring.contains(document.activeElement),
+      note: document.querySelector('.toast.next-step-note')?.textContent ?? '',
+    };
+  })())`));
+  if (!/Next step/.test(found.tag)) throw new Error('the ring must carry its "Next step" tag: ' + JSON.stringify(found));
+  if (!found.focusInRing) throw new Error('focus must be on the highlighted step: ' + JSON.stringify(found));
+  return found;
+}
+
 async function checkDialog(s, baseUrl) {
   // A fresh record: the earlier steps' saved answers would make the dialog
   // ready at once (every family must be answered since 2026-09-23).
@@ -205,8 +229,14 @@ async function checkDialog(s, baseUrl) {
   await s.evalJs(`document.querySelector('[data-key="consent.ack"]').focus()`);
   await key(s, 'Enter', 'Enter', 13);
   await s.waitFor(`!document.querySelector('dialog.consent')`);
-  const focusAfter = await s.evalJs(`document.activeElement?.tagName + ':' + (document.activeElement?.textContent ?? '').slice(0, 30)`);
-  if (!focusAfter.startsWith('H1:')) throw new Error('opening dialog: focus did not land on the page heading after closing — ' + focusAfter);
+  // A new record starts at its Notre Dame transcript (DGS 2026-10-17: after
+  // the notice, "New record only"): the "Start here" row is ringed, its
+  // Import focused and on screen, and the step said (W-CL525). A returning
+  // record keeps focus on the heading (checked at the end of this driver).
+  const started = await nextStepShown(s);
+  console.log('  after the notice, a new record:', JSON.stringify(started));
+  if (started.focused !== 'import.nd' || !started.ringed.includes('transcript-upload') || started.note !== `Next step: import your ${started.label} (highlighted).`) throw new Error('after the notice a new record must highlight the Notre Dame import: ' + JSON.stringify(started));
+  await s.shot('next-step-start-here');
   // The earlier-degrees questions on the page (2026-10-08, Option 1): in the
   // Transcripts card, each follow-up just below the answer that asks it.
   // A fresh record shows one line with "Answer here" (UI review item 2; DGS
@@ -228,20 +258,23 @@ async function checkDialog(s, baseUrl) {
   await s.settle();
   const under = await s.evalJs(`(() => { const row = document.querySelector('[data-key="earlier.graduate.elsewhere"]').closest('label'); const next = row?.nextElementSibling; return !!next && next.matches('fieldset') && !next.hidden && !!next.querySelector('[data-key="earlier.sameplace.no"]'); })()`);
   if (!under) throw new Error('"same university?" must sit just below "Yes, at another university"');
-  // Each answer is clicked with focus on it, as a keyboard user would: the
-  // answer that completes the questions leaves them (and the focus) in place,
-  // saved, until Done; Done gives way to the one-line summary and puts focus
-  // on its Change (review of Option 1, 2026-10-08).
-  // …and every answer keeps its focus, a follow-up included ("same
-  // university?" rebuilds its own box — UI review, 2026-10-08).
-  for (const k of ['earlier.bachelors.elsewhere', 'earlier.sameplace.no', 'earlier.finished.yes']) {
+  // Each answer is clicked with focus on it, as a keyboard user would, and
+  // keeps its focus, a follow-up included ("same university?" rebuilds its
+  // own box — UI review, 2026-10-08). The answer that completes the questions
+  // leaves them in place, saved, until Done (review of Option 1, 2026-10-08)
+  // — and is a finished step: Done is the next one, ringed, focused and said
+  // (W-CL527; DGS 2026-10-17, field answers "Scroll and focus too").
+  for (const k of ['earlier.bachelors.elsewhere', 'earlier.sameplace.no']) {
     await s.evalJs(`(() => { const i = document.querySelector('[data-key="${k}"]'); i.focus(); i.click(); })()`);
     await s.settle();
     const at = await s.evalJs(`document.activeElement?.dataset?.key ?? document.activeElement?.tagName`);
     if (at !== k) throw new Error(`answering ${k} must keep its focus, not move it to ${at}`);
   }
+  await s.evalJs(`(() => { const i = document.querySelector('[data-key="earlier.finished.yes"]'); i.focus(); i.click(); })()`);
+  const toDone = await nextStepShown(s);
+  console.log('  the completing answer, the next step:', JSON.stringify(toDone));
   if (!(await s.evalJs(`!!document.querySelector('#earlier-degrees') && !!document.querySelector('[data-key="earlier.done"]')`))) throw new Error('complete: the questions stay, with Done');
-  if ((await s.evalJs(`document.activeElement?.dataset?.key ?? ''`)) !== 'earlier.finished.yes') throw new Error('the completing answer must keep its focus');
+  if (toDone.focused !== 'earlier.done' || !toDone.ringed.includes('earlier-done') || toDone.note !== 'Next step: click Done to save your answers about your earlier degrees (highlighted).') throw new Error('the completing answer must make Done the next step: ' + JSON.stringify(toDone));
   await s.evalJs(`document.querySelector('#earlier-degrees').scrollIntoView({ block: 'start' })`);
   await s.shot('earlier-degrees-done');
   await s.evalJs(`(() => { const d = document.querySelector('[data-key="earlier.done"]'); d.focus(); d.click(); })()`);
@@ -250,24 +283,14 @@ async function checkDialog(s, baseUrl) {
   const after = await importStates();
   if (after.length === 0 || after.some((d) => d === 'true')) throw new Error('after Done, the Imports must be active: ' + JSON.stringify(after));
   // The next step is shown (DGS 2026-10-16: "Highlight the next step on the
-  // page"): the first earlier-transcript row the answer opened, still empty —
-  // ringed and tagged, its Import focused and on screen, said in a toast.
-  await s.waitFor(`(() => { const r = document.activeElement?.getBoundingClientRect(); return !!r && r.bottom > 0 && r.top < window.innerHeight; })()`, 5000); // the smooth scroll lands
-  const next = JSON.parse(await s.evalJs(`JSON.stringify((() => {
-    const row = document.querySelector('.external-slot.next-step-ring');
-    return {
-      label: row?.querySelector('.slot-label')?.textContent ?? '',
-      tag: row?.querySelector('.next-step-tag')?.textContent ?? '',
-      focused: document.activeElement?.dataset?.key ?? '',
-      rowImport: row?.querySelector('[data-key^="ext.import."]')?.dataset?.key ?? '',
-      rings: document.querySelectorAll('.next-step-ring').length,
-      toast: [...document.querySelectorAll('.toast')].map((t) => t.textContent).find((t) => /^Saved — next/.test(t ?? '')) ?? '',
-    };
-  })())`));
+  // page"; every step since 2026-10-17): the first earlier-transcript row the
+  // answer opened, still empty — ringed and tagged, its Import focused and on
+  // screen, said in its own message (W-CL525).
+  const next = await nextStepShown(s);
   console.log('  after Done, the next step:', JSON.stringify(next));
-  if (next.rings !== 1 || next.tag !== 'Next step' || !next.rowImport || next.focused !== next.rowImport || next.toast !== `Saved — next, import your ${next.label} (highlighted).`) throw new Error('after Done the next step must be ringed, tagged, focused and said: ' + JSON.stringify(next));
+  if (!next.focused.startsWith('ext.import.') || !next.ringed.includes('external-slot') || next.note !== `Next step: import your ${next.label} (highlighted).`) throw new Error('after Done the next step must be ringed, tagged, focused and said: ' + JSON.stringify(next));
   await s.shot('earlier-degrees-next-step');
-  console.log('  opening notice: focus inside, Tab contained, Escape never closes it, Enter does nothing until the button is live and then continues like it, focus returns to the heading; the earlier-degrees questions are on the page, keep focus through the completing answer, and give way to a summary on Done; the previous-transcript Imports wait for Done');
+  console.log('  opening notice: focus inside, Tab contained, Escape never closes it, Enter does nothing until the button is live and then continues like it; on a new record the Notre Dame import is the next step; the earlier-degrees questions are on the page, the completing answer makes Done the next step, Done gives way to a summary and makes the first empty row the next step; the previous-transcript Imports wait for Done');
 }
 
 // 1b. The first screen belongs to the work, not the preamble (blue-team B1,
@@ -278,6 +301,11 @@ async function checkFirstScreen(s, baseUrl) {
   await s.setViewport({ width: 708, height: 937 });
   // A FIRST visit is what B1 measured: no record, so nothing to summarise.
   await s.open(baseUrl, '.transcript-upload');
+  // B1 measured the page as it opens, at the top: the harness's answers
+  // (the notice, the earlier degrees) each highlight a next step, which
+  // scrolls (DGS 2026-10-17) — back to the top for the measurement.
+  await s.evalJs('window.scrollTo(0, 0)');
+  await s.settle();
   const first = JSON.parse(await s.evalJs(`JSON.stringify((() => {
     const start = [...document.querySelectorAll('h2')].find((h) => /START HERE/.test(h.textContent ?? ''));
     const importBtn = document.querySelector('[data-key="import.nd"]');
@@ -296,8 +324,9 @@ async function checkFirstScreen(s, baseUrl) {
   console.log('  first screen at 708×937:', JSON.stringify(first));
   if (first.importTop < 0 || first.importTop > 937) throw new Error('the first import control must be on the first screen: ' + first.importTop);
   // Seven focusables preceded the first import control once the program tabs
-  // left the masthead (DGS 2026-09-22): three masthead links, Load example,
-  // Reset, and the two notice strips' Details. The tools row has since gained
+  // left the masthead (DGS 2026-09-22): three masthead links, Load example
+  // (gone since 2026-10-17, so one fewer now), Reset, and the two notice
+  // strips' Details. The tools row has since gained
   // Send summary (DGS 2026-09-22) and Save / Load / Print (DGS 2026-09-24),
   // at the DGS's request; the skip link still jumps straight to the inputs.
   // The Auto · Light · Dark switch (night mode, DGS 2026-10-04) is one more —
@@ -338,6 +367,42 @@ async function checkFocusPreserved(s) {
   const cbKey = await s.evalJs(`document.activeElement?.dataset?.key ?? ''`);
   if (!cbKey.startsWith('attest.')) throw new Error('focus check: focus left the checkbox after the change — now on ' + cbKey);
   console.log('  focus is preserved across re-renders (text field, checkbox); Tab continues from the same control');
+}
+
+// 2c. An answer in a field that finishes a step highlights the next one, as
+// a button does (DGS 2026-10-17: "after student completes each step, highlight
+// the next things to do"; field answers "Scroll and focus too"): the advisor
+// named → the approval tick is next — ringed, focused, said; the tick given,
+// with nothing after it on the page, → the first step still open, the empty
+// Previous Undergraduate row this record's earlier degrees opened. The record
+// ends as it began.
+async function checkNextStepAfterAnswers(s) {
+  const TICK = '[data-key^="attest.my-advisor-approved-my-coursework"]';
+  const wasTicked = await s.evalJs(`document.querySelector('${TICK}').checked`);
+  if (wasTicked) await s.evalJs(`document.querySelector('${TICK}').click()`);
+  await s.settle();
+  // No advisor on record: neither the date nor the name (either identifies one).
+  const DATE = '[data-key="milestone.advisorIdentified"]';
+  const date = await s.evalJs(`document.querySelector('${DATE}').value`);
+  for (const sel of [DATE, '[data-key="milestone.advisorName"]']) {
+    await s.evalJs(`(() => { const d = document.querySelector('${sel}'); d.focus(); d.value = ''; d.dispatchEvent(new Event('change')); })()`);
+    await s.settle();
+  }
+  if (!(await s.evalJs(`!!document.querySelector('[data-key="report.nextsteps"] li[data-step="advisor.name"]')`))) throw new Error('with no advisor on record, the step to name one must be listed: ' + (await s.evalJs(`JSON.stringify([...document.querySelectorAll('[data-step]')].map((l) => l.dataset.step))`)));
+  await s.evalJs(`(() => { const d = document.querySelector('[data-key="milestone.advisorName"]'); d.focus(); d.value = 'Prof. Example'; d.dispatchEvent(new Event('change')); })()`);
+  const named = await nextStepShown(s);
+  console.log('  the advisor named, the next step:', JSON.stringify(named));
+  if (!named.focused.startsWith('attest.my-advisor-approved-my-coursework') || named.note !== 'Next step: Confirm your advisor approved your coursework and tick the box under Approvals.') throw new Error('naming the advisor must make the approval tick the next step: ' + JSON.stringify(named));
+  await s.shot('next-step-after-an-answer');
+  await s.evalJs(`(() => { const t = document.querySelector('${TICK}'); t.focus(); t.click(); })()`);
+  const wrapped = await nextStepShown(s);
+  console.log('  the tick given, the next step:', JSON.stringify(wrapped));
+  if (wrapped.focused !== 'ext.import.bachelors' || wrapped.note !== 'Next step: import your Previous Undergraduate Transcript (highlighted).') throw new Error('with nothing after the tick, the first step still open is next: ' + JSON.stringify(wrapped));
+  if (!wasTicked) await s.evalJs(`document.querySelector('${TICK}').click()`);
+  await s.settle();
+  await s.evalJs(`(() => { const d = document.querySelector('${DATE}'); d.value = '${date}'; d.dispatchEvent(new Event('change')); })()`);
+  await s.settle();
+  console.log('  a field answer that finishes a step: the next one is ringed, focused and said; with nothing after it, the first still open');
 }
 
 // 3. No sideways scrolling at a phone (390) or tablet-portrait (820) width.

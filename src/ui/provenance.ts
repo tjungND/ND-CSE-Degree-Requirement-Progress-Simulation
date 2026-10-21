@@ -13,7 +13,7 @@ import type { CourseEntry, ImportedField, Student } from '../engine/types.ts';
 const SLOT_WORD = { bachelors: 'bachelor’s', masters: 'master’s', phd: 'Ph.D.' } as const;
 const FIELD_WORD: Record<ImportedField, string> = { course: 'course number', title: 'title', credits: 'credits', term: 'term', grade: 'grade', level: 'level' };
 
-export type SourceKind = 'nd' | 'transcript' | 'changed' | 'typed' | 'example' | 'unrecorded';
+export type SourceKind = 'nd' | 'transcript' | 'changed' | 'typed' | 'unrecorded';
 
 /** The transcript a row was imported from, in words: "my Notre Dame transcript". */
 function transcriptWords(c: CourseEntry): string {
@@ -24,7 +24,6 @@ function transcriptWords(c: CourseEntry): string {
 /** One course's source: "imported from my Notre Dame transcript", "typed by
  * me", "imported from my master’s transcript, then changed by me (grade)". */
 export function sourceOf(c: CourseEntry): { kind: SourceKind; text: string } {
-  if (c.fromExample) return { kind: 'example', text: 'from the example student' };
   if (c.typedByStudent) return { kind: 'typed', text: 'typed by me' };
   if (c.imported !== undefined || c.fromNdTranscript) {
     const from = `imported from ${transcriptWords(c)}`;
@@ -57,7 +56,6 @@ export function sourcesLine(student: Student): string | undefined {
     if (s.kind === 'changed') bump(`imported from ${transcriptWords(c)}, then changed by me`);
     else if (s.kind === 'nd' || s.kind === 'transcript') bump(s.text);
     else if (s.kind === 'typed') bump('typed by me');
-    else if (s.kind === 'example') bump('from the example student');
     else bump('with no recorded source (entered before October 11, 2026)');
   }
   const parts = [...counts].map(([what, n]) => `${n} ${what}`);

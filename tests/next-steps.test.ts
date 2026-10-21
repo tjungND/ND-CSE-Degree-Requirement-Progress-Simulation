@@ -80,16 +80,16 @@ describe('next steps (DGS 2026-09-27)', () => {
     s.attestations.advisorApprovedPlan = true;
     const settled = report([row('shared.advisor', 'met'), row('shared.approvals', 'not_applicable')]);
     assert.deepEqual(nextSteps({ report: settled, student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: 2, simulation: true }), [
-      { text: 'In simulation mode nothing is sent: this plan would put 2 items before the Grad Admin.', href: '#grad-admin' },
+      { key: 'simulation', waiting: true, text: 'In simulation mode nothing is sent: this plan would put 2 items before the Grad Admin.', href: '#grad-admin' },
     ]);
     const advisorToDgs = report([row('shared.advisor', 'needs_dgs_review'), row('shared.approvals', 'not_applicable')]);
     const st = nextSteps({ report: advisorToDgs, student: s, review: { unlisted: 1, caseByCase: 0 }, processingCount: 0, simulation: true });
     // The advisor's step is its own since P4-phd-6, and sends nothing in the mode.
     assert.deepEqual(st, [
-      { text: 'In simulation mode nothing is sent: this plan would put 2 items before the DGS.', href: '#dgs-review', covers: ['phd.transfer', 'ms.transfer', 'shared.approvals'] },
-      { text: 'Your advisor is not tenured or tenure-track CSE faculty (or you are not sure): if they are tenured or tenure-track in another Notre Dame department, the DGS approves them; if not, add a tenured or tenure-track co-advisor under Milestones (§2.3; department policy).', href: '#milestones', covers: ['shared.advisor'] },
+      { key: 'simulation', waiting: true, text: 'In simulation mode nothing is sent: this plan would put 2 items before the DGS.', href: '#dgs-review', covers: ['phd.transfer', 'ms.transfer', 'shared.approvals'] },
+      { key: 'advisor.faculty', text: 'Your advisor is not tenured or tenure-track CSE faculty (or you are not sure): if they are tenured or tenure-track in another Notre Dame department, the DGS approves them; if not, add a tenured or tenure-track co-advisor under Milestones (§2.3; department policy).', href: '#milestones', covers: ['shared.advisor'] },
     ]);
-    assert.deepEqual(nextSteps({ report: settled, student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: 0, simulation: true }), [{ text: 'In simulation mode nothing is sent — no request or summary goes out from a plan.' }]);
+    assert.deepEqual(nextSteps({ report: settled, student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: 0, simulation: true }), [{ key: 'simulation', waiting: true, text: 'In simulation mode nothing is sent — no request or summary goes out from a plan.' }]);
     // Nothing to fold: the list as it is (an empty record has no steps).
     assert.deepEqual(nextSteps({ report: report([row('shared.advisor', 'met')]), student: { ...phdStudent(), background: ANSWERED }, review: { unlisted: 0, caseByCase: 0 }, processingCount: 0, simulation: true }), []);
   });
@@ -189,7 +189,7 @@ describe('the earlier-degrees questions, asked on the page (2026-10-08)', () => 
   it('unanswered: a step pointing at the Transcripts card; answered: none', () => {
     const r = report([row('shared.advisor', 'met')]);
     const steps = nextSteps({ report: r, student: phdStudent(), review: { unlisted: 0, caseByCase: 0 }, processingCount: 0 });
-    assert.deepEqual(steps[0], { text: 'Answer the questions about your earlier degrees in the Transcripts card — they decide which earlier transcripts to add and how §5.2 applies to them.', href: '#earlier-degrees' });
+    assert.deepEqual(steps[0], { key: 'earlier-degrees', text: 'Answer the questions about your earlier degrees in the Transcripts card — they decide which earlier transcripts to add and how §5.2 applies to them.', href: '#earlier-degrees' });
     assert.equal(nextSteps({ report: r, student: { ...phdStudent(), background: ANSWERED }, review: { unlisted: 0, caseByCase: 0 }, processingCount: 0 }).length, 0);
   });
 });

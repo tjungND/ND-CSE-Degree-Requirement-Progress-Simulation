@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { STAMP_RE } from './session-common.mjs';
+import { exampleRecord, loadExampleRecord } from './example-record.mjs';
 
 /** The WordPress-side listener, read out of the file the DGS copies and pastes
  * (docs/wordpress-footer-snippet.html) so the tested text and the pasted text
@@ -17,7 +18,7 @@ function wordPressSnippetScript() {
   return js;
 }
 
-// E2E: the basic app flow — initial Ph.D. report, example student, M.S. tab.
+// E2E: the basic app flow — initial Ph.D. report, a mid-degree record (the old example student, loaded from a file), M.S. tab.
 export async function driveApp(s, baseUrl) {
   await s.open(baseUrl);
   await s.evalJs(`localStorage.clear()`);
@@ -47,13 +48,10 @@ export async function driveApp(s, baseUrl) {
   await checkFormControls(s);
   await checkSheetLink(s, 'app');
 
-  await s.evalJs(
-    `[...document.querySelectorAll('button')].find(b => b.textContent === 'Load example').click()`,
-  );
-  await s.waitFor(`document.querySelectorAll('table.courses tr').length > 3`);
-  // The example is saved like any other record, so it says whose it is until
-  // it is cleared (2026-09-08).
-  if (!(await s.evalJs(`!!document.querySelector('.example-banner')`))) throw new Error('the example record must announce itself');
+  // The mid-degree Ph.D. record the checks below were written against — the
+  // old "Load example" student, loaded as a saved file since the button went
+  // (DGS 2026-10-17; scripts/e2e/example-record.mjs).
+  await loadExampleRecord(s, 'phd');
   if ((await s.evalJs(`document.querySelector('.dial .dial-arc:not(.dial-arc-conditional)')?.getAttribute('stroke')`)) === 'var(--bad)') {
     throw new Error('a student who is simply not finished must not see a red dial');
   }
@@ -684,8 +682,8 @@ export async function driveApp(s, baseUrl) {
   await s.evalJs(`document.querySelector('details.req-more[open] > summary').click()`); // close it again
 
   // The program is chosen in the opening dialog; Reset brings it back (DGS
-  // 2026-09-22). Reset empties the record, so "Load example" below fills a
-  // fresh MSCSE record rather than replacing the Ph.D. example.
+  // 2026-09-22). Reset empties the record; the MSCSE record below is then
+  // loaded from a file over the fresh MSCSE one.
   await s.evalJs(`(() => { window.__confirm = window.confirm; window.confirm = () => true; document.querySelector('[data-key="tools.reset"]').click(); })()`);
   await s.waitFor(`document.querySelector('.consent-overlay')`);
   await s.evalJs(`(() => {
@@ -703,17 +701,11 @@ export async function driveApp(s, baseUrl) {
   );
   await s.shot('app-example-ms');
 
-  // "Load example" loads the example for the tab you are on (DGS 2026-09-18).
-  // One example for both was a Ph.D. record, so an MSCSE student who pressed it
-  // was shown a dissertation and a qualifying examination, and the report
-  // switched to §4 under them.
-  // The record already holds the Ph.D. example, so the button asks first —
-  // answer it the way a student would. (A real `confirm` blocks the page and
-  // the harness has no dialog handler.)
-  await s.evalJs(`(() => { window.__confirm = window.confirm; window.confirm = () => true; })()`);
-  await s.evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent === 'Load example').click()`);
-  await s.waitFor(`[...document.querySelectorAll('table.courses .cid')].some((e) => e.textContent === 'CSE 68902')`, 5000).catch(() => {});
-  await s.evalJs(`(() => { window.confirm = window.__confirm; })()`);
+  // A mid-degree MSCSE record (the old MSCSE example, loaded as a saved file
+  // since "Load example" went, 2026-10-17): an MSCSE report must carry no
+  // Ph.D. requirement — one example for both once showed an MSCSE student a
+  // dissertation and a qualifying examination (DGS 2026-09-18).
+  await loadExampleRecord(s, 'mscse');
   const msEx = JSON.parse(await s.evalJs(`JSON.stringify((() => {
     const txt = document.body.innerText;
     return {
@@ -731,7 +723,7 @@ export async function driveApp(s, baseUrl) {
   if (!msEx.courses.includes('CSE 68902')) throw new Error('the MSCSE example must carry the §3.4 project course: ' + JSON.stringify(msEx.courses));
   if (msEx.courses.includes('CSE 98900')) throw new Error('the MSCSE example is still the Ph.D. record: ' + JSON.stringify(msEx.courses));
   if (msEx.futureGrades > 0) throw new Error('the example gives a final grade to a semester that has not happened');
-  console.log('  Load example on the M.S. tab loads an MSCSE record (' + msEx.courses.length + ' courses, project included, no Ph.D. rows)');
+  console.log('  an MSCSE record shows an MSCSE report (' + msEx.courses.length + ' courses, project included, no Ph.D. rows)');
   await s.shot('app-example-mscse');
 
   const summary = await s.evalJs(
@@ -751,7 +743,7 @@ export async function driveApp(s, baseUrl) {
       shared: /On a shared or public computer, clear your record before you walk away/.test(txt),
       // The finish card is gone (DGS 2026-09-22): Reset lives in the storage
       // card beside Print and in the tools row; the advisor summary button
-      // sits between Load example and Reset in that row.
+      // sits before Reset in that row ("Load example" led it until 2026-10-17).
       finishCard: document.querySelector('.finish-card') ? 'still there' : '',
       clearAtEnd: !!document.querySelector('[data-key="save.reset"]'),
       clearAtTop: !!document.querySelector('[data-key="tools.reset"]'),
@@ -766,60 +758,35 @@ export async function driveApp(s, baseUrl) {
   if (!privacy.clearAtEnd || !privacy.clearAtTop) throw new Error('Reset must be in the storage card and the tools row: ' + JSON.stringify(privacy));
   // "Simulate a future semester" sits between the advisor summary and Reset
   // (simulation mode, DGS 2026-10-09; in the mode that slot is a second Exit).
-  if (privacy.toolsOrder !== 'tools.example,tools.save,tools.load,tools.print,save.copy,tools.simulate,tools.reset') throw new Error('tools row order: ' + privacy.toolsOrder);
+  if (privacy.toolsOrder !== 'tools.save,tools.load,tools.print,save.copy,tools.simulate,tools.reset') throw new Error('tools row order: ' + privacy.toolsOrder);
+  if (await s.evalJs(`!![...document.querySelectorAll('button')].find((b) => b.textContent === 'Load example')`)) throw new Error('"Load example" is gone (DGS 2026-10-17)');
   // The who-to-contact card sits top right at desk width, as on the course
   // rules page (DGS 2026-09-30); one card in the document.
   const contactPlace = JSON.parse(await s.evalJs(`JSON.stringify({ inMasthead: !!document.querySelector('.masthead .contact-card'), atEnd: !!document.querySelector('footer .contact-card'), cards: document.querySelectorAll('.contact-card').length, win: innerWidth })`));
   if (!contactPlace.inMasthead || contactPlace.atEnd || contactPlace.cards !== 1) throw new Error('the who-to-contact card belongs top right at desk width, once: ' + JSON.stringify(contactPlace));
   await s.shotElement('masthead-contacts', '.masthead');
 
-  // The example banner tells the truth about whose rows these are (interface
-  // review R5, 2026-09-18). `isExample` used to be a flag on the whole record:
-  // load the example, add one course of your own, and the banner still said
-  // "Nothing here came from you" while offering to clear the lot.
+  // The example student is gone (DGS 2026-10-17: "remove 'Load example'
+  // button and the function"); a record that still holds its rows loses them
+  // when it is opened ("Remove automatically"), its advisor and approval
+  // tick with them, the student's own course stays, and the page says so
+  // once (W-CL528). The record is saved without them at once.
+  const legacy = exampleRecord('phd');
+  legacy.courses = [...legacy.courses.map((c) => ({ ...c, fromExample: true })), { courseId: 'CSE 60772', title: 'Machine Learning', credits: 3, term: legacy.courses[0].term, grade: 'A', origin: 'nd', typedByStudent: true }];
+  await s.evalJs(`localStorage.setItem('cse-degree-audit/v1/student', ${JSON.stringify(JSON.stringify(legacy))})`);
   await s.open(baseUrl);
-  await s.evalJs(`localStorage.clear()`);
-  await s.open(baseUrl);
-  await s.waitFor(`document.querySelectorAll('.req').length > 5`);
-  await s.evalJs(`[...document.querySelectorAll('button')].find((b) => b.textContent === 'Load example').click()`);
-  await s.waitFor(`document.querySelectorAll('table.courses tr').length > 3`);
-  const wholeExample = await s.evalJs(`document.querySelector('.example-banner')?.textContent ?? ''`);
-  if (!/This is the example student, not your record/.test(wholeExample)) {
-    throw new Error('an untouched example must still say it is the example: ' + wholeExample.slice(0, 120));
-  }
-  await s.evalJs(`(() => {
-    const id = document.querySelector('[data-key="course.new.id"]');
-    id.value = 'CSE 60772';
-    id.dispatchEvent(new Event('change'));
-    document.querySelector('[data-key="course.new.add"]').click();
-  })()`);
   await s.waitFor(`[...document.querySelectorAll('table.courses .cid')].some((e) => e.textContent === 'CSE 60772')`);
-  const mixed = JSON.parse(await s.evalJs(`JSON.stringify((() => {
-    const b = document.querySelector('.example-banner');
-    if (b) b.id = 'shot-example';
-    return { text: b?.textContent ?? '', button: b?.querySelector('button')?.textContent ?? '' };
-  })())`));
-  console.log('  example banner after one real course:', JSON.stringify(mixed));
-  if (!/8 of these 9 courses are the example student’s/.test(mixed.text)) {
-    throw new Error('the banner must count whose rows these are: ' + mixed.text.slice(0, 160));
-  }
-  if (/Nothing here came from you/.test(mixed.text)) throw new Error('…and must not claim nothing came from the student');
-  if (mixed.button !== 'Remove the example rows') throw new Error('the button must offer to remove only the example rows: ' + mixed.button);
-  await s.shotElement('example-banner-mixed', '#shot-example');
-  await s.evalJs(`document.querySelector('[data-key="example.clear"]').click()`);
-  await s.waitFor(`!document.querySelector('.example-banner')`);
   const after = JSON.parse(await s.evalJs(`JSON.stringify((() => ({
     ids: [...document.querySelectorAll('table.courses .cid')].map((e) => e.textContent),
-    banner: !!document.querySelector('.example-banner'),
     stored: (JSON.parse(localStorage.getItem('cse-degree-audit/v1/student') || '{}').courses ?? []).map((c) => c.courseId),
+    flags: (JSON.parse(localStorage.getItem('cse-degree-audit/v1/student') || '{}').courses ?? []).filter((c) => 'fromExample' in c).length,
     advisor: JSON.parse(localStorage.getItem('cse-degree-audit/v1/student') || '{}').milestones?.advisorName ?? null,
+    note: [...document.querySelectorAll('.toast')].map((t) => t.textContent).find((t) => /example/.test(t)) ?? '',
   }))())`));
-  console.log('  after removing the example rows:', JSON.stringify(after));
-  if (after.banner) throw new Error('with no example rows left the banner must go');
-  if (after.ids.join() !== 'CSE 60772' || after.stored.join() !== 'CSE 60772') {
-    throw new Error('removing the example rows must leave the student\'s own course: ' + JSON.stringify(after));
-  }
-  if (after.advisor !== null) throw new Error('the example\'s advisor should have gone with it: ' + after.advisor);
+  console.log('  an old record with the example’s rows, opened:', JSON.stringify(after));
+  if (after.ids.join() !== 'CSE 60772' || after.stored.join() !== 'CSE 60772' || after.flags !== 0) throw new Error('opening a record must take out the example’s rows and keep the student’s own: ' + JSON.stringify(after));
+  if (after.advisor !== null) throw new Error('the example’s advisor goes with its rows: ' + after.advisor);
+  if (after.note !== '8 example course rows were removed from this record: the example student is no longer part of the app.') throw new Error('the page says so once (W-CL528): ' + after.note);
   await s.evalJs(`localStorage.clear()`);
 
   // Printing opens the footer's closed disclosure ("Where the rules come
@@ -937,12 +904,10 @@ async function driveSimulation(s, baseUrl) {
   await s.evalJs(`localStorage.clear()`);
   await s.open(baseUrl);
   await s.waitFor(`document.querySelectorAll('.req').length > 5`);
-  // The example as the record. (The button asks first when the record holds
-  // courses, and a real `confirm` would block the page.)
-  await s.evalJs(`(() => { const c = window.confirm; window.confirm = () => true; [...document.querySelectorAll('button')].find((b) => b.textContent === 'Load example').click(); window.confirm = c; })()`);
-  await s.waitFor(`document.querySelectorAll('table.courses tr').length > 3`);
+  // The mid-degree Ph.D. record (scripts/e2e/example-record.mjs) as the record.
+  await loadExampleRecord(s, 'phd');
   const realBefore = await s.evalJs(`localStorage.getItem('${LS}')`);
-  if (!realBefore) throw new Error('the example must be saved as the record before the simulation starts');
+  if (!realBefore) throw new Error('the record must be saved before the simulation starts');
   const outside = JSON.parse(await s.evalJs(`JSON.stringify({
     title: document.title,
     courses: document.querySelectorAll('table.courses .cid').length,
@@ -984,7 +949,7 @@ async function driveSimulation(s, baseUrl) {
       real: localStorage.getItem('${LS}'),
     };
   })())`));
-  entered.inert = JSON.parse(await inertButtons(['gradadmin.copy', 'save.copy', 'save.summary', 'tools.example', 'import.nd', 'review.copy']));
+  entered.inert = JSON.parse(await inertButtons(['gradadmin.copy', 'save.copy', 'save.summary', 'import.nd', 'review.copy']));
   console.log('  entered:', JSON.stringify({ ...entered, real: entered.real === realBefore ? 'unchanged' : 'CHANGED' }));
   if (!/^Simulation mode — this page is pretending it is (Spring|Summer|Fall) \d{4}; nothing here is your record\.$/.test(entered.lead)) throw new Error('the banner must name the semester: ' + entered.lead);
   if (!entered.picked || !entered.lead.includes(entered.picked) || !entered.title.startsWith('Simulating ' + entered.picked)) throw new Error('the banner, the picker and the tab title must name the same semester: ' + JSON.stringify([entered.lead, entered.picked, entered.title]));

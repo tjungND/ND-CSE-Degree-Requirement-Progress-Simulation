@@ -4,7 +4,7 @@
 // toast after a Remove — the DGS's "the review card never comes back". Now
 // a plain toast has one slot (4 s), and each Undo is its own element (12 s
 // for a row, 20 s for a transcript-wide removal) that no plain toast
-// replaces; Load example / Clear / Load a file cancel every Undo, since a
+// replaces; Clear and Load a file cancel every Undo, since a
 // stale one would splice old rows into a replaced record. The stack is one
 // polite live region, so screen readers hear each message (a region created
 // per toast would not be announced). (Moved out of app.ts on 2026-09-20.)
@@ -19,6 +19,8 @@ export interface Toasts {
   toast: (msg: string) => void;
   /** A notice that a choice was made for the student: its own slot, 12 s. */
   notice: (msg: string) => void;
+  /** The next step after a finished one (next-step.ts): its own slot, 12 s. */
+  nextStepNote: (msg: string) => void;
   /** Dismiss every Undo toast (before the record is replaced wholesale). */
   cancelUndo: () => void;
   /** A toast carrying one action (Undo). */
@@ -67,6 +69,24 @@ export function createToasts(setFocusAfterRender: (key: string) => void): Toasts
       if (noticeToast === t) noticeToast = undefined;
     }, 12000);
   };
+  /** The next step after a finished one (DGS 2026-10-17): its own slot, so
+   * the action's own message ("… courses added") stays, and BELOW it — the
+   * stack's newest message is first, and the step follows the action. 12 s,
+   * a little longer than the ring. */
+  let nextStepToast: HTMLElement | undefined;
+  let nextStepTimer: number | undefined;
+  const nextStepNote = (msg: string): void => {
+    nextStepToast?.remove();
+    const t = el('div', { class: 'toast show next-step-note' }, labelCitations(msg));
+    nextStepToast = t;
+    placeToasts();
+    toastStack.append(t);
+    window.clearTimeout(nextStepTimer);
+    nextStepTimer = window.setTimeout(() => {
+      t.remove();
+      if (nextStepToast === t) nextStepToast = undefined;
+    }, 12000);
+  };
   const undoToasts = new Map<HTMLElement, number>();
   const cancelUndo = (): void => {
     for (const [t, timer] of undoToasts) {
@@ -111,5 +131,5 @@ export function createToasts(setFocusAfterRender: (key: string) => void): Toasts
     toastStack.prepend(t);
     undoToasts.set(t, window.setTimeout(dismiss, opts.ttlMs ?? 12000));
   };
-  return { toast, notice, cancelUndo, toastWithAction };
+  return { toast, notice, nextStepNote, cancelUndo, toastWithAction };
 }

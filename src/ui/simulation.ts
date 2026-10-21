@@ -21,7 +21,7 @@ import type { SavedStamp } from './stamp.ts';
 import { compareTerm, nthSemester, parseTermCode, startOfTerm, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
 import type { Season, Student, Term } from '../engine/types.ts';
 import { plural } from './email-html.ts';
-import { type Refusal, validateStudent } from './state.ts';
+import { type LoadCleanup, type Refusal, validateStudent } from './state.ts';
 
 /** Where the simulation lives in localStorage — never the real record's key. */
 export const SIM_KEY = 'cse-degree-audit/v1/simulation';
@@ -162,8 +162,8 @@ export interface LoadedFileRoute {
  * while a transcript preview or scan is open (`page.previewOpen`, the same
  * guard the Simulate button has; review fix 2026-10-09): the preview belongs
  * to the record, so the mode must start from a settled one. */
-export function routeLoadedFile(raw: unknown, page: { student: Student; simulation: Simulation | undefined; realStudent: Student | undefined; previewOpen?: boolean }, realIso: string, refusals: Refusal[] = []): LoadedFileRoute {
-  const imported = validateStudent(raw, refusals);
+export function routeLoadedFile(raw: unknown, page: { student: Student; simulation: Simulation | undefined; realStudent: Student | undefined; previewOpen?: boolean }, realIso: string, refusals: Refusal[] = [], cleanup: LoadCleanup = {}): LoadedFileRoute {
+  const imported = validateStudent(raw, refusals, cleanup);
   const fileTerm = simulationTermOfFile(raw);
   if (page.simulation) {
     const term = fileTerm === undefined ? page.simulation.term : clampSimulationTerm(fileTerm, realIso);
@@ -178,14 +178,14 @@ export function routeLoadedFile(raw: unknown, page: { student: Student; simulati
 
 // ---------- localStorage (mirrors state.ts loadLocal / saveLocal / clearLocal) ----------
 
-export function loadSimulation(refusals: Refusal[] = []): Simulation | undefined {
+export function loadSimulation(refusals: Refusal[] = [], cleanup: LoadCleanup = {}): Simulation | undefined {
   try {
     const raw = localStorage.getItem(SIM_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw) as { term?: unknown; student?: unknown };
     const term = simulationTermOfFile({ simulation: parsed });
     if (term === undefined) return undefined;
-    return { term, student: validateStudent(parsed.student, refusals) };
+    return { term, student: validateStudent(parsed.student, refusals, cleanup) };
   } catch {
     return undefined; // a corrupted simulation → the real record, as if the mode were off
   }

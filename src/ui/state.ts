@@ -3,7 +3,7 @@
 // Nothing ever leaves the browser (CLAUDE.md).
 import type { SavedStamp } from './stamp.ts';
 import { COURSE_CREDITS_RANGE, GPA_RANGE, inRange, rangeRefusal } from '../engine/ranges.ts';
-import { IMPORTED_FIELDS, type Season, type Student, type Term } from '../engine/types.ts';
+import { IMPORTED_FIELDS, type CourseEntry, type Season, type Student, type Term } from '../engine/types.ts';
 import { asksAlsoElsewhere, refileEarlyStartCourses, settleAnsweredPriorMs } from './prior-nd.ts';
 
 const LS_KEY = 'cse-degree-audit/v1/student';
@@ -314,11 +314,47 @@ function validMilestones(raw: unknown, refusals: Refusal[]): Student['milestones
   return out as Student['milestones'];
 }
 
-export function validateStudent(data: unknown, refusals: Refusal[] = []): Student {
+/** What opening a record took out of it, for the page to say once. */
+export interface LoadCleanup {
+  /** Rows "Load example" put there (2026-10-17: the example is gone). */
+  exampleRowsRemoved?: number;
+}
+
+/** The example student "Load example" put on a record, and what is left of
+ * it after the button was removed (DGS 2026-10-17: "remove 'Load example'
+ * button and the function"; asked what becomes of a record that still holds
+ * the example's rows: "Remove automatically"). The rows it flagged go; its
+ * advisor (the three values it filled in) and its approval tick go only
+ * where they still hold the example's values — what "Remove the example
+ * rows" took back (R5, 2026-09-18) — and only on a record that had its rows.
+ * The two flags go from every record. Returns the number of rows removed. */
+const EXAMPLE_MILESTONES: Record<string, string> = { advisorIdentified: '2026-09-10', advisorName: 'Prof. Example', advisorTtt: 'yes' };
+export function dropExampleRows(student: Student): number {
+  const flagged = (c: CourseEntry): boolean => (c as CourseEntry & { fromExample?: unknown }).fromExample === true;
+  const removed = student.courses.filter(flagged).length;
+  student.courses = student.courses.filter((c) => !flagged(c));
+  for (const c of student.courses) delete (c as CourseEntry & { fromExample?: unknown }).fromExample;
+  delete (student as Student & { isExample?: unknown }).isExample;
+  if (removed > 0) {
+    const milestones = student.milestones as Record<string, unknown>;
+    for (const [k, v] of Object.entries(EXAMPLE_MILESTONES)) if (milestones[k] === v) delete milestones[k];
+    if (student.attestations.advisorApprovedPlan === true) delete student.attestations.advisorApprovedPlan;
+  }
+  return removed;
+}
+
+/** What opening a record that still held the example's rows says, once
+ * (W-CL528; DGS 2026-10-17: "remove 'Load example' button and the function",
+ * and its rows "Remove automatically"). */
+export function exampleRowsRemovedNote(n: number): string {
+  return `${n} example course ${n === 1 ? 'row was' : 'rows were'} removed from this record: the example student is no longer part of the app.`;
+}
+
+export function validateStudent(data: unknown, refusals: Refusal[] = [], cleanup: LoadCleanup = {}): Student {
   const d = data as Partial<Student> & { state?: unknown };
   if (d && typeof d === 'object' && 'student' in (d as object)) {
     // accept { savedAt, student } wrapper from exportFile()
-    return validateStudent((d as { student: unknown }).student, refusals);
+    return validateStudent((d as { student: unknown }).student, refusals, cleanup);
   }
   if (!d || typeof d !== 'object') throw new Error('This file is not a saved audit (not a JSON object).');
   if (d.schemaVersion !== 1) {
@@ -377,7 +413,7 @@ export function validateStudent(data: unknown, refusals: Refusal[] = []): Studen
       delete e['registeredLevel']; // a hint only — drop a malformed one rather than refuse the file
     if (e['fromNdTranscript'] !== undefined && e['fromNdTranscript'] !== true)
       delete e['fromNdTranscript']; // likewise a hint (which rows the transcript import added)
-    if (e['fromExample'] !== undefined && e['fromExample'] !== true) delete e['fromExample']; // and which came from "Load example"
+    if (e['fromExample'] !== undefined && e['fromExample'] !== true) delete e['fromExample']; // "Load example"'s rows, which dropExampleRows takes out
     if (e['fromUnofficialTranscript'] !== undefined && e['fromUnofficialTranscript'] !== true) delete e['fromUnofficialTranscript']; // and which came from an unofficial transcript
     if (e['transcriptMark'] !== undefined && (typeof e['transcriptMark'] !== 'string' || e['transcriptMark'].trim() === '')) delete e['transcriptMark']; // the mark as the transcript printed it
     if (e['creditSystemChosen'] !== undefined && e['creditSystemChosen'] !== true) delete e['creditSystemChosen']; // who chose the credit system (2026-10-10)
@@ -487,10 +523,10 @@ export function validateStudent(data: unknown, refusals: Refusal[] = []): Studen
     milestones: validMilestones(d.milestones, refusals),
     attestations: validAttestationTerms(d.attestations),
     courses: d.courses,
-    // A file the student loads is THEIR record, whatever it was saved from
-    // (2026-09-08) — the example marker never rides in on an import.
-    isExample: undefined,
   } as Student;
+  // What is left of "Load example" goes (2026-10-17) — the page says so once.
+  const exampleRowsRemoved = dropExampleRows(student);
+  if (exampleRowsRemoved > 0) cleanup.exampleRowsRemoved = (cleanup.exampleRowsRemoved ?? 0) + exampleRowsRemoved;
   // An early start's summer courses are the program's own (P3-chg-other-1;
   // DGS 2026-10-05, option (a)): a record saved while they were filed as
   // earlier coursework gets them back, so the line stops refusing them.
@@ -501,11 +537,11 @@ export function validateStudent(data: unknown, refusals: Refusal[] = []): Studen
   return student;
 }
 
-export function loadLocal(refusals: Refusal[] = []): Student | undefined {
+export function loadLocal(refusals: Refusal[] = [], cleanup: LoadCleanup = {}): Student | undefined {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return undefined;
-    return validateStudent(JSON.parse(raw), refusals);
+    return validateStudent(JSON.parse(raw), refusals, cleanup);
   } catch {
     return undefined; // corrupted local state → start fresh rather than crash
   }
@@ -545,6 +581,6 @@ export function downloadJson(fileName: string, payload: unknown): void {
   URL.revokeObjectURL(a.href);
 }
 
-export function importFile(file: File, refusals: Refusal[] = []): Promise<Student> {
-  return file.text().then((text) => validateStudent(JSON.parse(text), refusals));
+export function importFile(file: File, refusals: Refusal[] = [], cleanup: LoadCleanup = {}): Promise<Student> {
+  return file.text().then((text) => validateStudent(JSON.parse(text), refusals, cleanup));
 }
