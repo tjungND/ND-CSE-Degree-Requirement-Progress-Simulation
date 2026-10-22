@@ -1399,7 +1399,7 @@ async function driveAppEmbed(s, baseUrl) {
         storageNote: !!document.querySelector('.banner.embed-storage'),
         privacy: !!document.querySelector('.legal-privacy'),
         exit: document.querySelector('footer.legal .embed-exit')?.getAttribute('target'),
-        coursesTarget: document.querySelector('.masthead .sub a[href="./courses.html"]')?.getAttribute('target'),
+        coursesTarget: document.querySelector('.masthead .sub a[href^="./courses.html"]')?.getAttribute('target'), // the link carries ?view=<program> since U29 (2026-10-17)
         stickyHidden: !document.querySelector('.sticky-score') || getComputedStyle(document.querySelector('.sticky-score')).display === 'none',
       });
     })()`),
@@ -1533,6 +1533,97 @@ export async function driveCourses(s, baseUrl) {
   console.log('  search ignores spacing: "cse60641" → 1 row');
   await s.evalJs(`document.querySelector('[data-key="filter.clear"]').click()`);
   await s.waitFor(`document.querySelectorAll('.all-courses table.course-rules tbody tr:not(.note-row)').length > 10`);
+  // Blue-team review 2026-10-17, U26: the deep-link spelling, two words in any
+  // order, and a core-knowledge area's name all find their courses; the
+  // empty-table sentence names what the search looks at. (The search box
+  // rebuilds the table 120 ms after the last keystroke since W7, so each
+  // step waits for the rows rather than reading them in the same tick.)
+  const rowsOf = async (query, want) => {
+    await s.evalJs(`(() => { const q = document.querySelector('[data-key="filter.search"]'); q.value = ${JSON.stringify(query)}; q.dispatchEvent(new Event('input')); })()`);
+    await s.waitFor(`document.querySelectorAll('.all-courses table.course-rules tbody tr:not(.note-row):not(.empty-row)').length ${want}`, 4000).catch(() => {});
+    return JSON.parse(await s.evalJs(`JSON.stringify([...document.querySelectorAll('.all-courses table.course-rules tbody tr:not(.note-row):not(.empty-row)')].map((tr) => tr.id))`));
+  };
+  const dash = await rowsOf('CSE-60641', '=== 1');
+  if (dash.length !== 1 || dash[0] !== 'CSE-60641') throw new Error('the deep-link spelling "CSE-60641" must find CSE 60641: ' + JSON.stringify(dash));
+  const twoWords = await rowsOf('60641 operating', '=== 1');
+  if (twoWords.length !== 1 || twoWords[0] !== 'CSE-60641') throw new Error('"60641 operating" must find CSE 60641 (every word, any order): ' + JSON.stringify(twoWords));
+  const area = await rowsOf('operating systems', '>= 2');
+  if (!area.includes('CSE-60641') || !area.includes('CSE-30341')) throw new Error('"operating systems" must find the courses whose core area is Operating Systems, title or not: ' + JSON.stringify(area));
+  const none = await rowsOf('zzqx-nothing', '=== 0');
+  const emptyText = await s.evalJs(`document.querySelector('.all-courses table.course-rules tbody tr.empty-row')?.textContent ?? ''`);
+  if (none.length !== 0 || !/the search matches a course number, a word in the title, or a qualifier area/.test(emptyText)) throw new Error('the empty-table sentence must say what the search looks at: ' + JSON.stringify(emptyText.slice(0, 200)));
+  console.log(`  search (U26): "CSE-60641" → 1 row, "60641 operating" → 1 row, "operating systems" → ${area.length} rows (core area included); the empty-table sentence names number, title words and qualifier area`);
+  await s.evalJs(`document.querySelector('[data-key="filter.clear"]').click()`);
+  await s.waitFor(`document.querySelectorAll('.all-courses table.course-rules tbody tr:not(.note-row)').length > 10`);
+
+  // "Copy link to this list" (U27): the standalone address of the CURRENT
+  // filters, read from the filters themselves rather than from the address
+  // bar (which follows on a 250 ms timer); the button says "Copied" and the
+  // live count line says so too, then both come back. The clipboard itself is
+  // stubbed — a headless run has no clipboard to read back — so what is
+  // checked is the address the page hands it. Then both routes refused: the
+  // address appears in a read-only box, selected, for a hand copy.
+  {
+    await s.evalJs(`(() => { const sel = document.querySelector('[data-key="filter.qualifier"]'); sel.value = 'core:algorithms'; sel.dispatchEvent(new Event('change')); })()`);
+    await s.waitFor(`document.querySelectorAll('.all-courses table.course-rules tbody tr:not(.note-row)').length < 20`);
+    const copied = JSON.parse(await s.evalJs(`(async () => {
+      window.__copied = [];
+      navigator.clipboard.writeText = (t) => { window.__copied.push(t); return Promise.resolve(); };
+      const btn = document.querySelector('[data-key="filter.copy-link"]');
+      const labelBefore = btn.textContent;
+      btn.click();
+      await new Promise((r) => setTimeout(r, 150));
+      return JSON.stringify({ labelBefore, label: btn.textContent, live: document.querySelector('.count').textContent, copied: window.__copied, fallbackHidden: document.querySelector('.copy-link-fallback').hidden });
+    })()`));
+    const expected = new URL('courses.html?core=algorithms', baseUrl).href;
+    if (copied.labelBefore !== 'Copy link to this list' || copied.copied.length !== 1 || copied.copied[0] !== expected) throw new Error('Copy link must copy the full-page address of the current filters: ' + JSON.stringify({ ...copied, expected }));
+    if (copied.label !== 'Copied' || copied.live !== 'Link copied.' || !copied.fallbackHidden) throw new Error('Copy link must confirm on the button and the live line: ' + JSON.stringify(copied));
+    await s.waitFor(`document.querySelector('[data-key="filter.copy-link"]').textContent === 'Copy link to this list' && /courses shown/.test(document.querySelector('.count').textContent)`, 4000);
+    const refused = JSON.parse(await s.evalJs(`(async () => {
+      navigator.clipboard.writeText = () => Promise.reject(new Error('blocked'));
+      const cmd = document.execCommand;
+      document.execCommand = () => false;
+      document.querySelector('[data-key="filter.copy-link"]').click();
+      await new Promise((r) => setTimeout(r, 150));
+      document.execCommand = cmd;
+      const box = document.querySelector('.copy-link-fallback');
+      return JSON.stringify({ hidden: box.hidden, value: box.value, focused: document.activeElement === box, selected: box.selectionEnd - box.selectionStart === box.value.length });
+    })()`));
+    if (refused.hidden || refused.value !== expected || !refused.focused || !refused.selected) throw new Error('with both clipboard routes refused the address must be offered for a hand copy: ' + JSON.stringify(refused));
+    console.log(`  Copy link to this list → ${copied.copied[0]}; "Copied" + live line, then back; refused clipboard → read-only box, selected`);
+    await s.evalJs(`document.querySelector('[data-key="filter.clear"]').click()`);
+    await s.waitFor(`document.querySelectorAll('.all-courses table.course-rules tbody tr:not(.note-row)').length > 10`);
+  }
+
+  // "Find a course ↓" (U25): on the masthead's top line, standalone only; the
+  // click lands ON the search box (fragment navigation alone focuses nothing).
+  {
+    const find = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+      const a = document.querySelector('[data-key="masthead.find-course"]');
+      if (!a) return { present: false };
+      const top = a.getBoundingClientRect().top + window.scrollY;
+      a.click();
+      return { present: true, href: a.getAttribute('href'), text: a.textContent, top, focused: document.activeElement?.id ?? '', hash: location.hash };
+    })())`));
+    if (!find.present || find.href !== '#filter-search' || find.text !== 'Find a course ↓') throw new Error('the masthead must carry the "Find a course ↓" link: ' + JSON.stringify(find));
+    if (find.top > 200) throw new Error('"Find a course ↓" must be on the masthead’s top line, not ' + find.top + ' px down');
+    if (find.focused !== 'filter-search') throw new Error('"Find a course ↓" must leave the search box focused: ' + JSON.stringify(find));
+    console.log(`  Find a course ↓ at ${Math.round(find.top)} px → the search box is focused (${find.hash})`);
+  }
+
+  // The key's "Not yet decided — ask first" entry (U31) only while some row —
+  // retired ones included — has a blank verdict, as "Pending" has been since
+  // P-18. Whatever today's sheet holds, the key and the table must agree.
+  {
+    await s.evalJs(`(() => { const c = document.querySelector('[data-key="filter.retired"]'); if (!c.checked) { c.click(); } })()`);
+    await s.waitFor(`document.querySelector('[data-key="filter.retired"]').checked && document.querySelectorAll('.all-courses table.course-rules tbody tr.retired').length > 0`, 4000).catch(() => {});
+    const undecided = JSON.parse(await s.evalJs(`JSON.stringify({ key: !!document.querySelector('.legend-key .pill.undecided'), table: !!document.querySelector('.all-courses table.course-rules tbody .pill.undecided'), retiredRows: document.querySelectorAll('.all-courses table.course-rules tbody tr.retired').length, keyText: document.querySelector('.legend-key').textContent })`));
+    if (undecided.key !== undecided.table) throw new Error('the key must show "Not yet decided" exactly when a row carries it: ' + JSON.stringify(undecided));
+    if (!/No does not count( · Not yet decided ask first)?( · Pending[^.]*)?\.$/.test(undecided.keyText)) throw new Error('the key line’s separators: ' + JSON.stringify(undecided.keyText));
+    console.log(`  key line: "Not yet decided" ${undecided.key ? 'shown — a row carries it' : 'not shown — no row (retired included: ' + undecided.retiredRows + ') carries it'}`);
+    await s.evalJs(`document.querySelector('[data-key="filter.clear"]').click()`);
+    await s.waitFor(`document.querySelectorAll('.all-courses table.course-rules tbody tr:not(.note-row)').length > 10`);
+  }
 
   // Embedded links (DGS 2026-09-16): with the host page named in the query
   // string, the cross-link goes there in the top window; without it, the
@@ -2043,6 +2134,20 @@ async function driveCoursesEmbed(s, baseUrl) {
   const reported = shrunk.heights[shrunk.heights.length - 1];
   if (Math.abs(reported - shrunk.docH) > 8) throw new Error(`the broadcast height (${reported}) does not match the document (${shrunk.docH})`);
   console.log(`  filtering to one row shrank the broadcast height to ${reported} px, matching the document`);
+  // Copy link inside the frame (U27): the FULL page's address — a WordPress
+  // page cannot take a query (DGS 2026-09-30) — with the current filters and
+  // without embed=1, and no "Find a course" link on the frame's text-free top.
+  const framed = JSON.parse(await s.evalJs(`(async () => {
+    window.__copied = [];
+    navigator.clipboard.writeText = (t) => { window.__copied.push(t); return Promise.resolve(); };
+    document.querySelector('[data-key="filter.copy-link"]').click();
+    await new Promise((r) => setTimeout(r, 150));
+    return JSON.stringify({ copied: window.__copied, find: !!document.querySelector('[data-key="masthead.find-course"]') });
+  })()`));
+  const framedWant = new URL('courses.html?q=cse60641', baseUrl).href;
+  if (framed.copied.length !== 1 || framed.copied[0] !== framedWant) throw new Error('embedded, Copy link must copy the full page’s address without embed=1: ' + JSON.stringify({ ...framed, framedWant }));
+  if (framed.find) throw new Error('embed mode must not add "Find a course ↓" to its text-free top (DGS 2026-09-16)');
+  console.log(`  embedded Copy link → ${framed.copied[0]} (no embed=1); no Find-a-course link at the top`);
 
   // The allowlist is the whole access control: a page framed by an origin that
   // is not one of the three ND hosts is told nothing at all. The preview server

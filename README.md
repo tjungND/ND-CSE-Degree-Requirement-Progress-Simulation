@@ -553,7 +553,7 @@ script goes in a plugin field rather than on the page. Do not ask ND to grant `u
 Add a **Shortcode block** containing exactly this — the `?embed=1` is what matters:
 
 ```
-[iframe src="https://tjungnd.github.io/ND-CSE-Degree-Requirement-Progress-Simulation/courses.html?embed=1" width="100%" height="1200" scrolling="yes"]
+[iframe src="https://tjungnd.github.io/ND-CSE-Degree-Requirement-Progress-Simulation/courses.html?embed=1" width="100%" height="1200" scrolling="yes" allow="clipboard-write"]
 ```
 
 This needs the **`iframe` plugin by webvitaly**, which is already active on `sites.nd.edu`.
