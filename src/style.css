@@ -452,6 +452,7 @@ button[disabled], button.inactive[aria-disabled="true"] { opacity: 0.45; cursor:
 /* course form */
 .course-form .row1 { display: grid; grid-template-columns: minmax(150px, 210px) minmax(0, 1fr); gap: 8px; margin-bottom: 8px; align-items: end; }
 .course-form .row1 input { width: 100%; }
+.course-form .id-note { margin: 4px 0 0; } /* "not in the course rules yet" under the number box (U10) */
 .course-form .row2 { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .course-form .row3 { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 /* A field may shrink below its drop-down's longest choice ("Grad student —
@@ -1173,6 +1174,11 @@ tr.ocr-low td { background: var(--note-bg); }
   .course-form .row2 input[type='number'][data-key='course.new.year'] { appearance: textfield; -moz-appearance: textfield; width: 64px; }
   .course-form .row2 input[type='number'][data-key='course.new.year']::-webkit-inner-spin-button, .course-form .row2 input[type='number'][data-key='course.new.year']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .btn { min-height: 40px; }
+  /* The rare-input, Relevant Policies and "more" folds open from one 13-px
+     line: 24 px tall beside 40–44 px controls, so a thumb opened the fold
+     above (blue-team review 2026-10-17, U13). Padding, not display: flex —
+     flex on a <summary> drops the ▶ marker that says the line opens. */
+  details.rare > summary, details.policy-fold > summary, .req .req-more > summary { min-height: 40px; padding: 10px 0; box-sizing: border-box; }
   /* A mis-tap on "Prior graduate study" silently changes the §5.2 caps, so the
      radios and the approval checkboxes get a real touch target (2026-09-08). */
   .radios { gap: 8px; }
@@ -1455,6 +1461,7 @@ html.embed .load-card { margin: 12px auto; }
 .dated { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 14px; row-gap: 2px; align-items: center; }
 .dated > .label { grid-column: 1 / -1; margin-bottom: 1px; }
 .dated > input { justify-self: start; } /* the box keeps its own width when the note goes under it */
+.dated > .field-error { grid-column: 1 / -1; margin: 4px 0 0; } /* a date after today (U12): its own line under the box and the deadline */
 .ms-deadline { min-width: 0; max-width: 560px; font-size: 13px; line-height: 1.35; color: var(--muted); }
 @container (max-width: 480px) {
   .dated { grid-template-columns: minmax(0, 1fr); }

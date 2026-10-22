@@ -7,7 +7,9 @@ import { el } from './dom.ts';
 export function field(label: string, control: HTMLElement): HTMLElement {
   return el('label', { class: 'field' }, el('span', { class: 'label' }, label), control);
 }
-export function labelWrap(label: string, control: HTMLElement, hint?: string): HTMLElement {
+/** `hint` may be an element the caller keeps a hold of — the Title box's
+ * hint shows only while the number is unlisted (U14, 2026-10-17). */
+export function labelWrap(label: string, control: HTMLElement, hint?: string | HTMLElement): HTMLElement {
   return el(
     'label',
     { class: 'field inline' },

@@ -485,6 +485,15 @@ async function checkPhone(s, page, readyExpr, width = 390) {
     if (phone.cardPad !== '12px') throw new Error('the phone card padding rule is dead again: ' + phone.cardPad);
     if (phone.small.length > 0) throw new Error('touch targets under 40 px: ' + JSON.stringify(phone.small));
     if (phone.pillRights.length > 1) throw new Error('the status pill must park in one column: ' + JSON.stringify(phone.pillRights));
+    // The folds' one-line summaries are 40 px tall on a phone, like every
+    // other control (blue-team review 2026-10-17, U13), and the Milestones
+    // card — where most of them are — is seen at phone width each run.
+    const folds = JSON.parse(await s.evalJs(`JSON.stringify((() => { const all = [...document.querySelectorAll('details.rare > summary, details.policy-fold > summary, .req .req-more > summary')].filter((e) => e.getClientRects().length > 0); return { n: all.length, short: all.map((e) => [e.textContent.trim().slice(0, 40), Math.round(e.getBoundingClientRect().height)]).filter(([, h]) => h < 40), marker: all.length > 0 ? getComputedStyle(all[0]).display : '' }; })())`));
+    if (folds.n < 3) throw new Error('expected the rare, policy and more folds on the phone page: ' + JSON.stringify(folds));
+    if (folds.short.length > 0) throw new Error('fold summaries under 40 px on a phone: ' + JSON.stringify(folds.short));
+    if (folds.marker === 'flex') throw new Error('a fold summary keeps its ▶ marker: display: flex on a <summary> drops it');
+    await s.shotElement('phone-milestones', '#milestones');
+    console.log(`  ${folds.n} fold summaries at 40 px or more on the phone page; Milestones card shot`);
   }
   console.log(`  ${width < 600 ? 'phone' : 'tablet'} width (${width} px), ${page} page: no horizontal scrolling`);
   await s.setViewport({ width: 1400, height: 1900 });

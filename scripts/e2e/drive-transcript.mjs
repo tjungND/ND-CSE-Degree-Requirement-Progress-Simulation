@@ -202,6 +202,10 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     throw new Error('review card wrong: ' + ndReview.slice(0, 140));
   }
   console.log('  unlisted ND course → review request offered');
+  // The typed course has no title: its line says so before the request is
+  // sent (blue-team review 2026-10-17, U14).
+  const mathLine = await s.evalJs(`[...document.querySelectorAll('.dgs-review .review-line')].map((e) => e.textContent).find((t) => t.startsWith('MATH 60610')) ?? ''`);
+  if (!/^MATH 60610 \(Notre Dame\) — .+ — no title entered$/.test(mathLine)) throw new Error('a pending Notre Dame course without a title must say so on the review card: ' + JSON.stringify(mathLine));
   // The Grad Admin button is active only for a major event (DGS 2026-10-15,
   // superseding 2026-09-06, when met requirements alone made it active): the
   // imported courses complete the qualifier's course components, so the

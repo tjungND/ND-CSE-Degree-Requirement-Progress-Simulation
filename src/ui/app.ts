@@ -149,6 +149,14 @@ function groupsOf(rule: { categoryGroups?: string[] }, rules: Rules): string[] {
 
 /** Whether every course shows its "Counts toward" links (session-only, 2026-09-27). */
 let showFeeds = false;
+/** What the last hand-typed course was entered with — season, year, Where,
+ * University and Taken as — so the next course form starts from it instead
+ * of the defaults: a student typing a semester's courses from one university
+ * re-picked five boxes per row (blue-team review 2026-10-17, U11). Never the
+ * grade: it differs per row, and a copied grade would be a silent slip —
+ * planned courses keep In progress anyway. Session-only, never saved; cleared
+ * by Reset, by Load a file and when simulation mode is entered or left. */
+let lastEntry: { season: Season; year: number; origin: CourseEntry['origin']; institution?: string; degreeLevel?: CourseEntry['degreeLevel'] } | undefined;
 
 export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): void {
   // Sheet-driven contacts (2026-09-04): must run before ANYTHING renders —
@@ -2186,8 +2194,12 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       p.course.entry.degreeLevel ? (DEGREE_SLOTS.find((sl) => sl.level === p.course.entry.degreeLevel)?.label ?? p.course.entry.degreeLevel) : undefined;
     const where = (p: PendingDgsReview): string =>
       p.kind === 'nd' ? 'Notre Dame' : p.kind === 'priorNd' ? 'Notre Dame, before entry' : (p.course.entry.institution ?? 'other university');
-    const line = (courseId: string, where: string | undefined, reason: string) =>
-      el('div', { class: 'review-line', 'data-keep-dgs': '' }, el('span', { class: 'cid' }, courseId), `${where ? ` (${where})` : ''} — ${reason}`);
+    // "— no title entered" on a pending Notre Dame course without one (blue-team
+    // review 2026-10-17, U14): the request's paste-ready row would otherwise
+    // reach the DGS as a bare number, and nothing on this card said so. The
+    // email builder is untouched — it prints the title it has.
+    const line = (courseId: string, where: string | undefined, reason: string, noTitle = false) =>
+      el('div', { class: 'review-line', 'data-keep-dgs': '' }, el('span', { class: 'cid' }, courseId), `${where ? ` (${where})` : ''} — ${reason}${noTitle ? ' — no title entered' : ''}`);
     return el(
       'div',
       { class: `card dgs-review${idle ? ' is-idle' : ''}`, id: 'dgs-review' },
@@ -2246,7 +2258,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
               `A course not in the course rules yet reaches the ${deciderTitle(student.program)} through this request; the ${deciderTitle(student.program)} enters it — yes, no, or case by case — and this page reads the updated rules on your next visit. A case-by-case course needs the ${deciderTitle(student.program)}’s answer for you: once it is given, tick the box next to the course.`,
             ),
           ]),
-      ...pending.map((p) => line(p.course.entry.courseId, where(p), p.reason)),
+      ...pending.map((p) => line(p.course.entry.courseId, where(p), p.reason, p.kind === 'nd' && !p.course.entry.title)),
       ...notes.map((t) => el('div', { class: 'review-line review-note', 'data-keep-dgs': '' }, el('span', { class: 'cid' }, 'Note'), ` — ${t}`)),
       el(
         'div',
@@ -2298,7 +2310,20 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // item 5): a placeholder vanishes as soon as the student types.
     const idInput = el('input', { list: 'known-courses', class: 'course-id', id: 'new-course-id', 'data-key': 'course.new.id', 'aria-describedby': 'new-course-id-hint' });
     const idError = errorLine('new-course-id-error');
+    // An unlisted Notre Dame number says so at once, under the box (blue-team
+    // review 2026-10-17, U10): the change handler fills the title for a listed
+    // course and used to say nothing for an unlisted one, so the empty title
+    // read as a typo. Nothing for a course from another university — its
+    // match is the ExternalCourses tab, decided after Add.
+    const idNote = el('p', { class: 'hint id-note hidden', id: 'new-course-id-note' });
     const titleInput = el('input', { class: 'course-title', 'data-key': 'course.new.title' });
+    // The Title box asks for a title when the number is not in the course
+    // rules (blue-team review 2026-10-17, U14): an unlisted hand-typed course
+    // otherwise reaches the DGS as a bare number, and the request's paste-ready
+    // row needs a Banner lookup before it can be decided. Add still works
+    // without one; the review card then says "no title entered".
+    const titleHint = el('span', { class: 'hidden', id: 'new-course-title-hint' }, `Not in the course rules yet — enter its title so the ${deciderTitle(student.program)} can identify it in your review request`);
+    titleInput.addEventListener('input', () => titleHint.classList.add('hidden'));
     const creditsInput = el('input', {
       type: 'number',
       min: String(COURSE_CREDITS_RANGE.min),
@@ -2310,22 +2335,23 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     });
     const creditsError = errorLine('new-course-credits-error');
     const seasonSel = el('select', { 'aria-label': 'Term — semester', 'data-key': 'course.new.season' });
-    seasonSel.append(...seasonOptions());
+    seasonSel.append(...seasonOptions(lastEntry?.season)); // the last entry's season, else the first (U11)
     const yearInput = el('input', {
       type: 'number',
       min: String(TERM_YEAR_RANGE.min),
       'aria-label': 'Term — year',
       'data-key': 'course.new.year',
-      value: String(termOfDate(todayIso()).year), // the year at Notre Dame, like every other date on the page — not the device clock; the simulated year in simulation mode
+      value: String(lastEntry?.year ?? termOfDate(todayIso()).year), // the last entry's year (U11), else the year at Notre Dame, like every other date on the page — not the device clock; the simulated year in simulation mode
     });
     const termYearError = errorLine('new-course-year-error');
     const gradeSel = el('select', { 'data-key': 'course.new.grade' });
     for (const g of GRADES) gradeSel.append(option(g, gradeLabel(g), g === 'IP'));
     const originSel = el('select', { 'data-key': 'course.new.origin' });
-    originSel.append(option('nd', 'Taken at Notre Dame', true), option('transfer', 'From another university'));
+    const seededTransfer = lastEntry?.origin === 'transfer'; // Where, University and Taken as follow the last entry (U11)
+    originSel.append(option('nd', 'Taken at Notre Dame', !seededTransfer), option('transfer', 'From another university', seededTransfer));
     // University: offered from the ExternalCourses tab, Title-Cased on leaving
     // the box (DGS 2026-09-06 evening); matching ignores case anyway.
-    const institutionInput = el('input', { list: 'known-universities', 'data-key': 'course.new.institution' });
+    const institutionInput = el('input', { list: 'known-universities', 'data-key': 'course.new.institution', value: lastEntry?.institution ?? '' });
     institutionInput.addEventListener('change', () => {
       (institutionInput as HTMLInputElement).value = canonicalUniversityName((institutionInput as HTMLInputElement).value);
     });
@@ -2340,13 +2366,14 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     const levelSel = el('select', { 'data-key': 'course.new.level' });
     // "… student" (DGS 2026-09-06, late evening): the choice is the student's
     // status at the time, never the course's level.
-    levelSel.append(option('', 'Grad student — after your bachelor’s degree was awarded (can transfer, §5.2)', true));
+    levelSel.append(option('', 'Grad student — after your bachelor’s degree was awarded (can transfer, §5.2)', lastEntry?.degreeLevel !== 'bachelors'));
     levelSel.append(
       option(
         'bachelors',
         student.program === 'phd'
           ? 'UG student — before your bachelor’s degree was awarded (core knowledge only, no transfer credit)'
           : 'UG student — before your bachelor’s degree was awarded (no transfer credit)',
+        lastEntry?.degreeLevel === 'bachelors',
       ),
     );
     const groupSel = el('select', { 'data-key': 'course.new.group' });
@@ -2356,17 +2383,26 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     const institutionField = labelWrap('University', institutionInput, '(as your transcript prints it — pick it from the list if it is there)');
     const levelField = labelWrap('Taken as', levelSel, '(your status when you took it — not the course’s level)');
     const groupField = labelWrap('Specialization group (§4.4.2)', groupSel);
-    institutionField.classList.add('hidden');
-    levelField.classList.add('hidden');
+    institutionField.classList.toggle('hidden', !seededTransfer); // open when the last entry was from another university (U11)
+    levelField.classList.toggle('hidden', !seededTransfer);
     groupField.classList.add('hidden');
 
     originSel.addEventListener('change', () => {
       const transfer = (originSel as HTMLSelectElement).value === 'transfer';
       institutionField.classList.toggle('hidden', !transfer);
       levelField.classList.toggle('hidden', !transfer);
+      // The two Notre Dame-only lines go when Where becomes another
+      // university (U10, U14): that course is matched after Add.
+      if (transfer) {
+        idNote.classList.add('hidden');
+        titleHint.classList.add('hidden');
+      }
     });
 
-    idInput.addEventListener('input', () => clearInvalid(idInput, idError, 'new-course-id-hint'));
+    idInput.addEventListener('input', () => {
+      clearInvalid(idInput, idError, 'new-course-id-hint');
+      idNote.classList.add('hidden'); // said again at the next change, if still unlisted (U10)
+    });
     idInput.addEventListener('change', () => {
       const id = canonicalCourseId(idInput.value);
       idInput.value = id;
@@ -2387,8 +2423,19 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
               : `${id} is listed under ${choices.length} specialization groups (§4.4.2) — pick whichever you still need.`,
           );
         }
+        idNote.classList.add('hidden'); // listed: no note (U10), and the title just filled itself (U14)
+        titleHint.classList.add('hidden');
       } else {
         groupField.classList.add('hidden');
+        // Not in the Courses tab (resolveRuleRow falls back to the earliest
+        // row, so no row at all means the number is absent): say so for a
+        // Notre Dame course, under the number box (U10) and — while the
+        // title is empty — on the Title box (U14). A course from another
+        // university is matched against the ExternalCourses tab after Add.
+        const unlistedNd = id !== '' && (originSel as HTMLSelectElement).value === 'nd';
+        idNote.textContent = unlistedNd ? `${id} is not in the course rules yet — add it anyway; it goes to the ${deciderTitle(student.program)} in the review request below.` : '';
+        idNote.classList.toggle('hidden', !unlistedNd);
+        titleHint.classList.toggle('hidden', !(unlistedNd && titleInput.value === ''));
       }
     });
 
@@ -2460,6 +2507,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         if (!yes) return;
       }
       setFocusAfterRender('course.new.id'); // ready for the next course
+      // …and that course's form starts from this one's semester and Where
+      // (U11): set before update(), whose render rebuilds the form.
+      lastEntry = { season: entry.term.season, year: entry.term.year, origin: entry.origin, ...(entry.institution ? { institution: entry.institution } : {}), ...(entry.degreeLevel ? { degreeLevel: entry.degreeLevel } : {}) };
       // A Notre Dame course dated before the entry term is coursework from an
       // earlier Notre Dame degree, whoever typed it (2026-09-09). The import
       // path has always re-filed those; a hand-typed one used to stay program
@@ -2488,9 +2538,26 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       );
     };
 
+    // A <form>, so Enter adds the course (blue-team review 2026-10-17, U9): the
+    // browser's implicit submission fires the number box's change event first
+    // (the title fills itself), then submit. The datalist's list comes first
+    // when it is showing: Chrome and Firefox pass Enter through unless a
+    // suggestion is highlighted; Safari's first Enter closes the list and the
+    // second adds. `novalidate`: the refusals are the page's own lines, not
+    // the browser's bubbles. The Add button is the
+    // form's submit button and has NO click handler of its own — one path, so
+    // a click cannot add the course twice.
     return el(
-      'div',
-      { class: 'course-form' },
+      'form',
+      {
+        class: 'course-form',
+        novalidate: true,
+        'aria-label': 'Add a course',
+        onsubmit: (e) => {
+          e.preventDefault();
+          void add();
+        },
+      },
       knownCoursesList,
       el(
         'div',
@@ -2498,11 +2565,13 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         el(
           'div',
           { class: 'field inline' },
-          el('label', { class: 'label', for: 'new-course-id' }, 'Course number ', el('span', { class: 'label-hint', id: 'new-course-id-hint' }, '(e.g. CSE 60641)')),
+          // The hint says what typing offers (U10): the list is the course rules'.
+          el('label', { class: 'label', for: 'new-course-id' }, 'Course number ', el('span', { class: 'label-hint', id: 'new-course-id-hint' }, '(e.g. CSE 60641 — start typing to pick from the course rules)')),
           idInput,
           idError,
+          idNote,
         ),
-        labelWrap('Title', titleInput), // the box fills itself for a listed course — the student sees it (trim review 2026-09-18, P-44)
+        labelWrap('Title', titleInput, titleHint), // the box fills itself for a listed course — the student sees it (trim review 2026-09-18, P-44); the hint shows for an unlisted one (U14)
       ),
       el(
         'div',
@@ -2518,7 +2587,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       termYearError,
       // The §4.4.2 group picker exists only for the Ph.D. (2026-09-11: the
       // hidden field still put "§4.4.2" on the MSCSE page).
-      el('div', { class: 'row3' }, institutionField, levelField, student.program === 'phd' ? groupField : null, el('button', { class: 'btn primary', 'data-key': 'course.new.add', onclick: add }, 'Add course')),
+      el('div', { class: 'row3' }, institutionField, levelField, student.program === 'phd' ? groupField : null, el('button', { class: 'btn primary', type: 'submit', 'data-key': 'course.new.add' }, 'Add course')),
     );
   }
 
@@ -3327,6 +3396,21 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     const inputId = `milestone-${key}`;
     const noteId = `deadline-${key}`;
     const note = deadlineNote(deadline, noteId);
+    // A date that has not happened yet (blue-team review 2026-10-17, U12): the
+    // engine reads every milestone date as "done", so a scheduled exam typed
+    // in flips its row to Met. Outside simulation mode the picker stops at
+    // today (`max`), and a stored later date — typed past the picker, or
+    // loaded from a file — gets an error-style line under the box, derived
+    // from the record at render time (no refusal map, no engine change). The
+    // date is still saved: the student's word, with a warning — the call made
+    // for a final grade dated after today (DGS 2026-09-13). In the mode no
+    // max and no line: a plan is forward-looking, and the engine's today is
+    // the semester's first day there (2026-10-09). Not an errorLine (its
+    // role=alert would be announced again at every re-render); the line
+    // describes the box through aria-describedby instead.
+    const afterToday = !simulation && value > realTodayIso; // ISO dates compare as text
+    const afterId = `after-today-${key}`;
+    const describedBy = [afterToday ? afterId : '', note ? noteId : ''].filter((id) => id !== '').join(' ');
     return el(
       'div',
       { class: 'field dated' },
@@ -3336,11 +3420,14 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         id: inputId,
         value,
         'data-key': `milestone.${key}`,
-        ...(note ? { 'aria-describedby': noteId } : {}),
+        ...(simulation ? {} : { max: realTodayIso }),
+        ...(afterToday ? { 'aria-invalid': 'true' } : {}),
+        ...(describedBy ? { 'aria-describedby': describedBy } : {}),
         onchange: (e) =>
           update((s) => void ((s.milestones as Record<string, string | undefined>)[key] = (e.target as HTMLInputElement).value || undefined)),
       }),
       note,
+      afterToday ? el('p', { class: 'field-error after-today', id: afterId }, `${label} is dated after today — the page counts it as done. Enter it once it has happened, or use Simulate a future semester to plan it.`) : null,
     );
   }
 
@@ -3419,6 +3506,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         const route = routeLoadedFile(raw, { student, simulation, realStudent, previewOpen: ndPreviewOpen() || importsBusy() }, realTodayIso, refusals, cleanup);
         cancelUndo();
         refusedValues.clear(); // this file's own refusals replace the page's
+        lastEntry = undefined; // the loaded record is another starting point (U11)
         const previous = { student, simulation, realStudent };
         const previousSimulation = simulation;
         ({ student, simulation, realStudent } = route);
@@ -3554,6 +3642,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     if (simulation || ndPreviewOpen() || importsBusy()) return;
     cancelUndo(); // an Undo would splice real rows into the copy
     refusedValues.clear();
+    lastEntry = undefined; // a plan's courses start from the simulated semester, not the last real entry (U11)
     realStudent = student;
     const term = defaultSimulationTerm(realTodayIso);
     simulation = { term, student: JSON.parse(JSON.stringify(student)) as Student };
@@ -3607,6 +3696,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     if (!ok) return;
     cancelUndo();
     refusedValues.clear();
+    lastEntry = undefined; // the plan's last entry is not the record's (U11)
     resetPriorImports();
     resetNdImport();
     simulation = undefined;
@@ -3797,6 +3887,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     if (!window.confirm('Reset everything you have entered on this device and start over?')) return;
     cancelUndo();
     refusedValues.clear();
+    lastEntry = undefined; // the next course form starts from the defaults again (U11)
     resetPriorImports();
     resetNdImport();
     student = emptyStudent();
