@@ -580,7 +580,3 @@ export function downloadJson(fileName: string, payload: unknown): void {
   a.click();
   URL.revokeObjectURL(a.href);
 }
-
-export function importFile(file: File, refusals: Refusal[] = [], cleanup: LoadCleanup = {}): Promise<Student> {
-  return file.text().then((text) => validateStudent(JSON.parse(text), refusals, cleanup));
-}

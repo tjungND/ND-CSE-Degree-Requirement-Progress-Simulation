@@ -5,7 +5,7 @@
 // MSCSE already held, the Integrated 4+1), which used to be controls of
 // their own. A Notre Dame degree of either kind is on the same insideND
 // transcript as the current program, so it never needs a row of its own.
-import { termLabel } from '../engine/term.ts';
+import { seasonName, termLabel } from '../engine/term.ts';
 import type { Program, Season, Student, Term } from '../engine/types.ts';
 import { labelCitationsIn } from './citations.ts';
 import { openModal, returnFocusTo } from './copy-dialog.ts';
@@ -332,7 +332,7 @@ export function backgroundQuestions(
   const termControls = (): HTMLElement => {
     const current = state.transferredTerm;
     const season = el('select', { 'data-key': `${prefix}.transferred.season`, 'aria-label': 'Semester of the transfer' }) as HTMLSelectElement;
-    season.append(...SEASONS.map((se) => option(se, se[0]!.toUpperCase() + se.slice(1), (current?.season ?? 'fall') === se)));
+    season.append(...SEASONS.map((se) => option(se, seasonName(se), (current?.season ?? 'fall') === se)));
     const year = el('input', { type: 'number', min: '2000', max: '2100', step: '1', 'data-key': `${prefix}.transferred.year`, 'aria-label': 'Year of the transfer', placeholder: 'year' }) as HTMLInputElement;
     if (current) year.value = String(current.year);
     const pick = (): void => {
@@ -354,7 +354,7 @@ export function backgroundQuestions(
   const admittedControls = (): HTMLElement => {
     const current = state.integratedAdmittedTerm;
     const season = el('select', { 'data-key': `${prefix}.admitted.season`, 'aria-label': 'Semester you were admitted to the Integrated program' }) as HTMLSelectElement;
-    season.append(...SEASONS.map((se) => option(se, se[0]!.toUpperCase() + se.slice(1), (current?.season ?? 'fall') === se)));
+    season.append(...SEASONS.map((se) => option(se, seasonName(se), (current?.season ?? 'fall') === se)));
     const year = el('input', { type: 'number', min: '2000', max: '2100', step: '1', 'data-key': `${prefix}.admitted.year`, 'aria-label': 'Year you were admitted to the Integrated program', placeholder: 'year' }) as HTMLInputElement;
     if (current) year.value = String(current.year);
     const pick = (): void => {

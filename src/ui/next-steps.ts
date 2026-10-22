@@ -9,6 +9,7 @@
 import { termLabel } from '../engine/term.ts';
 import type { AuditReport, CourseLine, Student } from '../engine/types.ts';
 import { completeBackground } from './background.ts';
+import { plural } from './email-html.ts'; // the one plural (W9, 2026-10-22): this file had a copy
 
 /** Each step's identity, the same from one render to the next whatever its
  * text says (DGS 2026-10-17: "after student completes each step, highlight
@@ -52,8 +53,6 @@ export interface NextStepsInput {
    * union of their `covers`, so the attention list below reads the same. */
   simulation?: boolean;
 }
-
-const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? '' : 's'}`;
 
 /** The advisor summary's step — a constant so the simulation fold can tell
  * it apart (it is the one step without a place on the page). */

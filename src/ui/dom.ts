@@ -54,6 +54,15 @@ export const EARLIER_DEGREES_FIRST_NOTE =
 export const SIMULATION_IMPORT_NOTE =
   'Not available in simulation mode — a transcript is real data. Exit the simulation, import it into your record, and simulate from there.';
 
+// Simulation mode (DGS 2026-10-09: "no DGS request, grad admin request, or
+// advisor report should be possible"; D6/D7): the reason the three sending
+// buttons give on hover and click — the two request cards' (request-cards.ts)
+// and the advisor summary's (app.ts). Beside SIMULATION_IMPORT_NOTE since
+// 2026-10-22 (W11), when the request cards left app.ts.
+/** The three things that send: "the review request", "the processing
+ * request", "the summary to your advisor". */
+export const simulationSendNote = (what: string): string => `Not available in simulation mode — nothing is sent from a plan. Exit the simulation to send ${what} from your record.`;
+
 /** A button that is inactive for a stated reason. Not the `disabled`
  * attribute: a disabled button gets no hover, no focus and no click, so its
  * reason could never be shown. `aria-disabled` keeps it in the tab order and

@@ -370,7 +370,13 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
       // B7 (2026-09-18): four buttons on this card read "Import from PDF".
       // The visible label stays short; the accessible name says which row.
       'aria-label': `${imported.length > 0 ? 'Import again' : 'Import'} — ${ndRowLabel(args.student)}`,
-      onclick: () => (fileInput as HTMLInputElement).click(),
+      onclick: () => {
+        // The pdfjs chunk and its worker download while the picker is open
+        // (W8, 2026-10-22). pdf-warm.ts is loaded here, not at the top: its
+        // worker-URL import is Vite's, which Node's test runner cannot read.
+        void import('./pdf-warm.ts').then((m) => m.warmTranscriptReader()).catch(() => undefined); // a failure is the change handler's to report
+        (fileInput as HTMLInputElement).click();
+      },
     },
     imported.length > 0 ? 'Import again' : 'Import from PDF',
   );

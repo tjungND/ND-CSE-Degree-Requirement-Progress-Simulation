@@ -355,12 +355,6 @@ button.sec-ref[aria-expanded="true"] { background: var(--note-bg); }
 
 .field { display: block; margin-bottom: 10px; }
 .field .label, .ft-terms .label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 3px; }
-/* The standing card's prior-degrees fold (trim review 2026-09-18, P-65): its
-   summary is styled like a fieldset legend, not 13 px bold ink; the fieldset
-   and the MSCSE field inside keep their own spacing. */
-.prior-fold { margin-bottom: 10px; }
-.prior-fold > summary { font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; margin-bottom: 3px; }
-.prior-fold[open] > summary { margin-bottom: 6px; }
 .field.inline { margin: 0; }
 input, select, button { font: inherit; }
 input, select { border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; background: var(--card); color: var(--ink); max-width: 100%; }
@@ -419,7 +413,6 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
   padding: 6px 8px; /* keep the box the same size as its neighbours */
 }
 .gpa-choice .hint { margin: 2px 0 6px; }
-.gpa-option { display: block; }
 .gpa-note { margin-top: -6px; }
 .ft-auto { color: var(--muted); }
 /* A semester with courses that did not reach full-time (DGS 2026-10-04): shown, in the warnings' amber. */

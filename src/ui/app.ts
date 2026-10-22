@@ -3,23 +3,22 @@
 // All rule logic lives in src/engine/ — this file only collects input and renders.
 import type { NotreDameNow } from '../data/clock.ts';
 import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
-import { findExternalRule, isNotreDameInstitution, normalizeUniversity, universityCreditSystem } from '../data/external.ts';
+import { findExternalRule, isNotreDameInstitution } from '../data/external.ts';
 import { CORE_TITLE_RE } from '../engine/core-title.ts';
 import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, mscseSeparation, ndUndergraduateCounting, overMaxTerms, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
 import { ndPostingOf } from '../engine/nd-posting.ts';
 import { fullTimeRecordsFrom, summerFullTimeFloor } from '../engine/requirements/residency.ts';
-import { compareTerm, normalizeEntryTerm, semesterSeq } from '../engine/term.ts';
+import { compareTerm, normalizeEntryTerm, seasonName, semesterSeq, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
 import type { Rules } from '../data/types.ts';
-import { coursesNeedingDgsReviewFor, reviewRequestSummary, type PendingDgsReview } from '../engine/review.ts';
+import { coursesNeedingDgsReviewFor } from '../engine/review.ts';
 import { shortName } from '../engine/short-names.ts';
 import { audit } from '../engine/audit.ts';
 import { GRADES } from '../engine/grades.ts';
 import { transcriptGapSemesters, withdrawalQuestion, withdrawalSemesters } from './withdrawals.ts';
 import { uncoveredRegistrationGaps } from '../engine/registration-gaps.ts';
-import { termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
 import type { AuditReport, CourseEntry, CourseLine, MilestoneDateKey, MilestoneDeadline, Program, Season, Student, Term } from '../engine/types.ts';
 import { deadlineText } from './milestone-deadline.ts';
-import { PREVIEW_OPEN_NOTE, clear, el, inactiveButton, option } from './dom.ts';
+import { PREVIEW_OPEN_NOTE, clear, el, inactiveButton, option, simulationSendNote } from './dom.ts';
 import {
   type Simulation,
   changesSentence,
@@ -37,15 +36,12 @@ import {
   simulationTerms,
   simulationToday,
 } from './simulation.ts';
-import { siblingAnchorAttrs } from './sibling-links.ts';
-import { BETA_SCOPE_NOTICE, RULES_ACCURACY_NOTICE, betaNotice, handbookLink, rulesDateLine } from './handbook.ts';
 import { checkedWithLine, resultStamp, savedStamp } from './stamp.ts';
 import { sourcesLine } from './provenance.ts';
 import { planNotes } from './plan-notes.ts';
 import { requirementProblemHref } from './report-problem.ts';
-import { DGS, GRAD_ADMIN, LICENSE_URL, REPO_URL, applyContactOverrides, contactCard, mailto, reportToDgs, deciderContact } from './contacts.ts';
-import { isEmbedded, openFullPageLink, placeInFrame } from './embed.ts';
-import { themeToggle } from './theme.ts';
+import { DGS, applyContactOverrides, contactCard, mailto, deciderContact } from './contacts.ts';
+import { isEmbedded, placeInFrame } from './embed.ts';
 import { deciderTitle } from '../engine/decider.ts';
 import {
   BACHELORS_YEAR_RANGE,
@@ -68,7 +64,7 @@ import { applyDeciderRule, applyFirstMentionRule } from './first-mention.ts';
 import { labelCitationsIn } from './citations.ts';
 import { canonicalUniversityName, knownUniversities } from './university-name.ts';
 import { confirmDialog, copyDialog, openModal, returnFocusTo } from './copy-dialog.ts';
-import { plural } from './email-html.ts';
+import { FILL_IN_STEP, plural, unofficialTranscriptNote } from './email-html.ts';
 import { policyFold, rareFold, clearInvalid, errorLine, field, fieldset, labelWrap, markInvalid, radios } from './form-helpers.ts';
 import { sectionRef } from './section-ref.ts';
 import { createFocusKeeper } from './focus-keeper.ts';
@@ -78,13 +74,12 @@ import { gradAdminRequest, processingItems } from './grad-admin-request.ts';
 import { priorStudyLabel, programHistory } from './program-history.ts';
 import { ndUndergraduateClause, notFinishedSentence, totalCreditsWord, transferRuleText } from './coursework-text.ts';
 import { alongTheWayBox, applyCourseTick, examsTickOffered } from './page-decisions.ts';
-import { diagnosticsContent } from './sheet-warnings.ts';
-import { FILL_IN_STEP, unofficialTranscriptNote, unofficialTranscriptSlots } from './email-html.ts';
 import { advisorSummary } from './advisor-summary.ts';
+import { diagnosticsCard, footer, masthead, noticeStrip, snapshotBanner } from './page-frame.ts';
+import { type RequestCardArgs, askDgsCard, askGradAdminCard } from './request-cards.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
 import { courseworkSentence, nearestDeadline, nextSteps, type NextStep } from './next-steps.ts';
 import { finishedBetween, nextAfter, pendingOn, showNextStep, targetOf, type PendingId } from './next-step.ts';
-import { sheetSourceLine, sheetSourceNote } from './sheet-source.ts';
 import {
   type LoadCleanup,
   type Refusal,
@@ -104,27 +99,24 @@ import {
 
 /** The three semesters as <option>s for a season dropdown, `selected` marked. */
 function seasonOptions(selected?: Season): HTMLOptionElement[] {
-  return SEASONS.map((se) => option(se, se[0]!.toUpperCase() + se.slice(1), selected === se));
+  return SEASONS.map((se) => option(se, seasonName(se), selected === se));
 }
 /** The ENTRY term's seasons: fall and spring only (DGS 2026-10-03 — "Admissions
  * happen in Spring and Fall only"); a summer start is an early start whose
  * official matriculation is that fall, and state.ts reads a stored summer as
  * the fall. */
 function entrySeasonOptions(selected?: Season): HTMLOptionElement[] {
-  return (['fall', 'spring'] as const).map((se) => option(se, se[0]!.toUpperCase() + se.slice(1), (selected === 'summer' ? 'fall' : selected) === se));
+  return (['fall', 'spring'] as const).map((se) => option(se, seasonName(se), (selected === 'summer' ? 'fall' : selected) === se));
 }
 /** How a grade reads in the dropdown and the table (I and W since 2026-10-03). */
 function gradeLabel(g: string): string {
   return g === 'IP' ? 'In progress' : g === 'I' ? 'I (incomplete)' : g === 'W' ? 'W (withdrawn)' : g === 'V' ? 'V (audit)' : g;
 }
 
-// Simulation mode (DGS 2026-10-09: "no DGS request, grad admin request, or
-// advisor report should be possible"; D6/D7): the reasons the inactive
-// buttons give on hover and click. The imports' reason is dom.ts's
-// SIMULATION_IMPORT_NOTE, shared with the two upload modules.
-/** The three things that send: "the review request", "the processing
- * request", "the summary to your advisor". */
-const simulationSendNote = (what: string): string => `Not available in simulation mode — nothing is sent from a plan. Exit the simulation to send ${what} from your record.`;
+// Simulation mode (DGS 2026-10-09; D6/D7): the reasons the inactive buttons
+// give on hover and click are dom.ts's — SIMULATION_IMPORT_NOTE for the
+// imports, simulationSendNote for the three things that send (moved there
+// with the request cards on 2026-10-22, W11).
 
 /** A §4.4.2 group's short name (short-names.ts) from its code, or the code
  * itself when the Categories tab does not define it. */
@@ -661,8 +653,16 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       student.courses.length === 0 && Object.keys(student.milestones).length === 0 && student.gpa === undefined;
     groupChoices = report.requirements.find((r) => r.id === 'phd.qualifier.categories')?.groupChoices ?? {};
     // The engine's classification of the record, once per render: the review
-    // card, the milestones card and the Grad Admin request all read it.
-    const { classified } = classify(student, rules);
+    // card, the milestones card and the Grad Admin request all read it — with
+    // the date the audit runs against (todayIso(): the simulated one in
+    // simulation mode), as audit() classifies. Until 2026-10-22 this call
+    // passed no date (blue-team review 2026-10-17, W6), so an Incomplete past
+    // its deadline was provisional in the report but missing from the review
+    // request and the Grad Admin request beside it.
+    const { classified } = classify(student, rules, todayIso());
+    // The courses waiting for a DGS decision, computed once from it (W6): the
+    // next-steps counts and the review card list the same courses.
+    const pending = coursesNeedingDgsReviewFor(classified, student);
     // The Grad Admin request, built once per render (efficiency, 2026-10-07):
     // the next-steps list counts its items, and the Grad Admin card shows and
     // copies it. Its count comes from processingItems, which `history` does
@@ -679,10 +679,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         report,
         student,
         needsAnswer,
-        review: (() => {
-          const pending = coursesNeedingDgsReviewFor(classified, student);
-          return { unlisted: pending.filter((p) => p.unlisted).length, caseByCase: pending.filter((p) => !p.unlisted).length, earlierOnly: pending.length > 0 && pending.every((p) => p.kind !== 'nd') };
-        })(),
+        review: { unlisted: pending.filter((p) => p.unlisted).length, caseByCase: pending.filter((p) => !p.unlisted).length, earlierOnly: pending.length > 0 && pending.every((p) => p.kind !== 'nd') },
         processingCount: gaRequest.items.count,
         simulation: simulation !== undefined, // the sending steps fold into one "nothing is sent" step (D7)
       }),
@@ -694,7 +691,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       // → main (notices, inputs, report, footer); the skip link jumps a
       // keyboard user straight to the report.
       el('a', { class: 'skip-link', href: '#report' }, 'Skip to the report'),
-      masthead(report),
+      masthead({ program: student.program, rules, realTodayIso, contactHost, simulationChip: simulationChip(), tools: mastheadTools(report) }),
       el(
         'main',
         { id: 'main' },
@@ -714,9 +711,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // the mode is on.
         simulationBanner(),
         simulationStrip(),
-        noticeStrip(),
+        noticeStrip(student.program),
         knownUniversitiesList,
-        rules.source === 'snapshot' ? snapshotBanner() : null,
+        rules.source === 'snapshot' ? snapshotBanner(rules.syncedAt) : null,
         // Phones and small tablets (2026-09-05, review item 2): the result
         // first, then the inputs, then the full report — plus a sticky score
         // bar with jump links (both hidden on wide screens by CSS).
@@ -735,11 +732,11 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             transcriptsCard(),
             standingCard(classified),
             coursesCard(report.courseLines),
-            askDgsCard(classified, report),
+            askDgsCard(requestCardArgs(), pending, report),
             milestonesCard(classified, report),
-            askGradAdminCard(gaRequest),
+            askGradAdminCard(requestCardArgs(), gaRequest),
             saveCard(report),
-            diagnosticsCard(),
+            diagnosticsCard(rules.issues),
           ),
           el(
             'div',
@@ -761,7 +758,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           // longer report column used to leave empty; on a phone the single
           // column keeps it last. Inside <main> it is no longer a contentinfo
           // landmark — a deliberate trade for the placement.
-          footer(),
+          footer({ program: student.program, stamp, contactHost: mainContactHost }),
         ),
         el(
           'nav',
@@ -808,186 +805,37 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     }
   }
 
-  // ---------- masthead ----------
+  // ---------- masthead, notice strips, snapshot banner ----------
 
-  function masthead(report: ReturnType<typeof audit>): HTMLElement {
-    // The two program buttons expose their pressed state (item 5): a screen
-    // reader says "M.S. in CSE §3, toggle button, pressed".
-    // The program tabs are gone (DGS 2026-09-22): the degree is chosen in the
-    // opening dialog, and Reset brings that dialog back.
-    // Embedded (?embed=1), the host page already carries the ND masthead and
-    // its own heading: the gold eyebrow goes and the <h1> stays only for screen
-    // readers and the document outline (DGS 2026-09-16, same treatment as the
-    // course-rules page). Everything else — the tabs, the tools, the notices,
-    // the whole FERPA footer — stays exactly as it is.
-    const embed = isEmbedded();
-    return el(
-      'header',
-      { class: 'masthead' },
-      el(
-        'div',
-        { class: 'masthead-main' },
-        // The eyebrow shares its line with the Auto · Light · Dark switch
-        // (night mode, DGS 2026-10-04 — src/ui/theme.ts); embedded, the
-        // switch is alone on it.
-        el(
-          'div',
-          { class: 'masthead-top' },
-          embed ? null : el('div', { class: 'eyebrow' }, 'University of Notre Dame · Computer Science and Engineering'),
-          themeToggle(),
-        ),
-        el('h1', embed ? { tabindex: '-1', class: 'visually-hidden' } : { tabindex: '-1' }, 'Graduate Degree Requirement Simulation Tool'),
-        // Embedded, the WordPress page carries its own introduction: none of
-        // the masthead text is shown (DGS 2026-09-16, "get rid of the texts at
-        // the top"). The storage warning below stays — it is a safety note.
-        ...(embed
-          ? []
-          : [
-              el(
-                'p',
-                { class: 'sub' },
-                // No "enter your coursework" above the card that imports it;
-                // four lines instead of six at 390 px (trim review 2026-09-18, P-25).
-                'See where you stand, requirement by requirement, against the ',
-                handbookLink(),
-                // Which document a section is from, once (DGS 2026-10-03); the
-                // embedded page carries the same key in the report's glossary.
-                '; every check cites its section (CSE § is that handbook; Academic Code § and DGS Handbook § are the Graduate School’s). The courses that count are on the ',
-                el('a', siblingAnchorAttrs('course-rules', window.location.search, isEmbedded()), 'course rules page'),
-                '.',
-              ),
-              el('p', { class: 'effective' }, rulesDateLine(rules, termLabel(termOfDate(realTodayIso)), realTodayIso)), // the rules' date is a fact about the sheet: real even in simulation mode (D5)
-              // The rules spreadsheet, linked with its faculty-only note (DGS, 2026-09-04).
-              sheetSourceLine(),
-            ]),
-        // Framed, this tool is saving into the FRAME's storage, which is not the
-        // same store as the tool opened on its own — and Safari blocks it for an
-        // embedded page outright. The work is never lost (the file save always
-        // works), but the student has to be told where it is going before they
-        // spend an hour on it (DGS 2026-09-16).
-        embed
-          ? el(
-              'p',
-              { class: 'banner embed-storage', role: 'note' },
-              // 55 words → 30 (embed review 2026-09-19): the fact, the risk,
-              // the two ways out — the first thing on the page has to be short.
-              el('strong', {}, 'This is the tool inside another page. '),
-              'Your entries may not be here when you come back (Safari saves nothing for an embedded page). Use ',
-              el('strong', {}, '“Save to a file”'), // the button's label since 2026-09-03 (trim review 2026-09-18, P-62)
-              ', or ',
-              openFullPageLink('open the full page'),
-              '.',
-            )
-          : null,
-      ),
-      // The Who-to-contact card's desk-width host (DGS 2026-09-30) — the
-      // masthead's right-hand column, as on the course rules page. Below
-      // 900 px and in the frame the card is at the end of the page instead
-      // (B1 of 2026-09-18 kept for those).
-      embed ? null : contactHost,
-      el(
-        'div',
-        { class: 'masthead-tools' },
-        el('span', { class: 'program-name-wrap' }, el('span', { class: 'program-name' }, student.program === 'mscse' ? 'M.S. in CSE (Handbook §3)' : 'Ph.D. (Handbook §4)'), simulationChip()),
-        el(
-          'div',
-          {},
-          // The storage card's three buttons, here too (DGS 2026-09-24), first
-          // in the row ("Load example" stood before them until 2026-10-17).
-          // "Load a file" opens the storage card's own file input, so there is
-          // one import path.
-          el('button', { class: 'btn', 'data-key': 'tools.save', onclick: saveActiveToFile }, 'Save to a file'),
-          el('button', { class: 'btn', 'data-key': 'tools.load', onclick: () => document.querySelector<HTMLInputElement>('[data-key="save.fileinput"]')?.click() }, 'Load a file'),
-          el('button', { class: 'btn', 'data-key': 'tools.print', onclick: () => window.print() }, 'Print'),
-          // Before Reset (DGS 2026-09-22); it was at the end of the report from
-          // the trim review (P-72) until then.
-          advisorSummaryButton(report),
-          // Simulation mode (DGS 2026-10-09): the way in, between the advisor
-          // summary and Reset; in the mode the same slot holds a second way out.
-          simulation ? exitSimulationButton('tools.simulate.exit') : simulateButton('tools.simulate'),
-          resetButton('tools.reset'),
-        ),
-      ),
-    );
+  // masthead, noticeStrip and snapshotBanner live in src/ui/page-frame.ts
+  // (blue-team review 2026-10-17, W11): they read only values and prebuilt
+  // nodes, all passed in from render(); the tools row's six controls are
+  // built here (mastheadTools), where their closures live.
+
+  /** The masthead's tools row (page-frame.ts masthead), in order. */
+  function mastheadTools(report: ReturnType<typeof audit>): HTMLElement[] {
+    return [
+      // The storage card's three buttons, here too (DGS 2026-09-24), first
+      // in the row ("Load example" stood before them until 2026-10-17).
+      // "Load a file" opens the storage card's own file input, so there is
+      // one import path.
+      el('button', { class: 'btn', 'data-key': 'tools.save', onclick: saveActiveToFile }, 'Save to a file'),
+      el('button', { class: 'btn', 'data-key': 'tools.load', onclick: () => document.querySelector<HTMLInputElement>('[data-key="save.fileinput"]')?.click() }, 'Load a file'),
+      el('button', { class: 'btn', 'data-key': 'tools.print', onclick: () => window.print() }, 'Print'),
+      // Before Reset (DGS 2026-09-22); it was at the end of the report from
+      // the trim review (P-72) until then.
+      advisorSummaryButton(report),
+      // Simulation mode (DGS 2026-10-09): the way in, between the advisor
+      // summary and Reset; in the mode the same slot holds a second way out.
+      simulation ? exitSimulationButton('tools.simulate.exit') : simulateButton('tools.simulate'),
+      resetButton('tools.reset'),
+    ];
   }
 
-  /** Two slim strips (DGS 2026-09-19): red for the alpha status, green for
-   * privacy — the alpha line and the privacy line, each ONE sentence above
-   * the fold (blue-team B1, 2026-09-18 — the first control must stay on the
-   * first screen), each with a "Details" expander that holds the full
-   * DGS-worded paragraph unchanged; both paragraphs are also in the footer
-   * and the copied summary. The privacy strip keeps its place right under
-   * the alpha text (DGS placement, 2026-09-03). They were one strip from the
-   * usability review (2026-09-05, item 8 — two stacked banners folded into
-   * one) until the split. */
-  function noticeStrip(): HTMLElement {
-    const alphaDetails = el(
-      'details',
-      { class: 'notice-details', 'data-key': 'notice.details' },
-      el('summary', {}, 'Details'),
-      el(
-        'p',
-        { class: 'notice-full beta' },
-        el('strong', {}, 'Alpha version under testing. '),
-        betaNotice(student.program),
-        ' ',
-        // The link parenthetical folds into the bold sentence here (trim
-        // review 2026-09-18, P-39); the constant keeps its period for the
-        // footer and the copied summary, which render in their own order.
-        el('strong', {}, RULES_ACCURACY_NOTICE.replace(/\.$/, '')),
-        ' (see the ',
-        el('a', siblingAnchorAttrs('course-rules', window.location.search, isEmbedded()), 'course rules page'),
-        '). ',
-        BETA_SCOPE_NOTICE,
-        ...reportToDgs(' Error reports, suggestions, and feedback are all welcome — please email'),
-      ),
-    );
-    const privacyDetails = el(
-      'details',
-      { class: 'notice-details', 'data-key': 'privacy.details' },
-      el('summary', {}, 'Details'),
-      el(
-        'p',
-        { class: 'notice-full privacy' },
-        el('strong', {}, 'Private by design. '),
-        // The DGS's 2026-09-03 sentences plus the OCR clause, closing with the
-        // approved W-P1 sentence (2026-09-18) that the save card and footer
-        // also use. The five-request tally that used to follow was the
-        // measurement behind W-P1 (see PRIVACY_LINE in handbook.ts), not the
-        // claim (trim review 2026-09-18, P-7).
-        'Everything you enter — and any transcript PDF you import, including the optional text recognition (OCR) of a scanned one — is processed and stored in this browser only. Nothing you enter is uploaded, transmitted, or stored anywhere else. The page itself loads from GitHub and reads the course rules from Google Sheets, so those two services see that someone opened the page; they never see what you enter.',
-      ),
-    );
-    return el(
-      'div',
-      { class: 'notice-strips' },
-      // The notice names the decider for THIS tab (ADGS on the MSCSE tab, DGS
-      // on the Ph.D. tab — DGS 2026-09-15) by the same rewrite as the rest of
-      // the page; the feedback address is the DGS's own and is kept as is.
-      el(
-        'div',
-        { class: 'banner beta notice-strip', role: 'note' },
-        // On the Ph.D. tab the one exception is named (DGS 2026-10-11, item 6;
-        // P3-cse-3-2): for the MSCSE along the way the check is the DGS's review.
-        el('p', { class: 'notice-line' }, el('strong', {}, 'Alpha — under testing. '), student.program === 'phd' ? 'Informational only, except the MSCSE along the way (§3.1); the DGS decides.' : 'Informational only; the DGS decides.'),
-        alphaDetails,
-      ),
-      el(
-        'div',
-        { class: 'banner privacy notice-strip', role: 'note' },
-        el('p', { class: 'notice-line' }, el('strong', {}, 'Private by design — FERPA. '), 'Your coursework never leaves this browser.'),
-        privacyDetails,
-      ),
-    );
-  }
-
-  function snapshotBanner(): HTMLElement {
-    const date = rules.syncedAt.slice(0, 10);
-    return el(
-      'div',
-      { class: 'banner' },
-      `You chose to continue with the copy of the rules saved on ${date} because the live spreadsheet could not be loaded — recent DGS edits may be missing. Reload the page to try the live spreadsheet again.`,
-    );
+  /** What the two request cards (request-cards.ts) read, built per call —
+   * the record and the rules as they are now, never captured. */
+  function requestCardArgs(): RequestCardArgs {
+    return { student, rules, toast, inSimulation: simulation !== undefined, stamp, simulationChip };
   }
 
   // ---------- standing ----------
@@ -2152,146 +2000,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
 
   // ---------- ask the DGS (ONE review request, 2026-09-03) ----------
 
-  // Everything that still needs a DGS decision, in one card with one copy
-  // button and one email: Notre Dame courses that are not in the rules sheet
-  // (typical for non-CSE), dgs_approval and not yet approved, or blank-verdict
-  // — plus external courses the ExternalCourses tab has not ruled on. The
-  // student MUST email the request to the DGS and the Graduate Program
-  // Administrator; the page itself sends nothing.
-  function askDgsCard(classified: readonly ClassifiedCourse[], report: AuditReport): HTMLElement {
-    // Which courses need a DGS decision, and why, is the engine's call
-    // (src/engine/review.ts, 2026-09-06 evening — with the test matrix that
-    // pins it); this card only lists them and builds the copy-ready request.
-    const pending = coursesNeedingDgsReviewFor(classified, student);
-    const n = pending.length;
-    // Notes that are not about one course: the audit's review flags (a 4+1
-    // with many undergraduate graduate-level courses counted, 2026-09-12; a
-    // full-time semester without three graduate-level credits, Academic Code
-    // §4.1, 2026-10-03 — whose warning says it is in this request) and the
-    // checks on a `yes` the DGS may not have meant (2026-10-04, P1-sheet-48 /
-    // -c2). Read from the report, so the page and the request say the same.
-    const notes = [...(report.reviewFlags ?? []), ...(report.staffChecks ?? [])];
-    // Shown all the time, its button inactive until a course needs a decision
-    // or a note needs the DGS (DGS 2026-10-16: "Apply it similarly to
-    // 'Initiate Review' for ADGS/DGS. Show it all the time, but the button is
-    // inactive until needed." — as the Grad Admin card, 2026-10-15).
-    const idle = n === 0 && notes.length === 0;
-    const what = idle ? '0 courses' : reviewRequestSummary(n, notes.length > 0);
-    const label = idle ? 'Initiate the review request' : `Initiate the review request for ${what}`;
-    const who = deciderTitle(student.program);
-    const decider = deciderContact(student.program);
-    // The two course lists — Courses-tab rows and ExternalCourses rows
-    // (transcript/external.ts reviewRequestCourses; P3-dh-10-2).
-    const slotOf = (p: PendingDgsReview): string | undefined =>
-      p.course.entry.degreeLevel ? (DEGREE_SLOTS.find((sl) => sl.level === p.course.entry.degreeLevel)?.label ?? p.course.entry.degreeLevel) : undefined;
-    const where = (p: PendingDgsReview): string =>
-      p.kind === 'nd' ? 'Notre Dame' : p.kind === 'priorNd' ? 'Notre Dame, before entry' : (p.course.entry.institution ?? 'other university');
-    const line = (courseId: string, where: string | undefined, reason: string) =>
-      el('div', { class: 'review-line', 'data-keep-dgs': '' }, el('span', { class: 'cid' }, courseId), `${where ? ` (${where})` : ''} — ${reason}`);
-    return el(
-      'div',
-      { class: `card dgs-review${idle ? ' is-idle' : ''}`, id: 'dgs-review' },
-      el('h2', {}, `Ask the ${deciderTitle(student.program)} to review `, el('span', { class: 'chip-note' }, what), simulationChip()), // the mode repeated on the card (D9; in every mode since the review fix of 2026-10-09)
-      // Earlier coursework waits on the earlier-degrees answer (UI review,
-      // 2026-10-08): said first; the request itself stays (DGS 2026-09-03).
-      student.background === undefined && pending.some((p) => p.kind !== 'nd')
-        ? el('p', { class: 'hint warn', 'data-key': 'review.answer-first' }, 'Answer the ', el('a', { href: '#earlier-degrees' }, 'earlier-degrees questions in the Transcripts card'), ' first — the answers can change which of these courses need review.')
-        : '',
-      // In simulation mode (D7) the two instruction paragraphs — the email
-      // app, the address, the attach reminder, the process — become one
-      // sentence: nothing is sent from a plan. The course list stays.
-      ...(simulation
-        ? [
-            el(
-              'p',
-              { class: 'hint simulation-hint' },
-              idle
-                ? `In simulation mode nothing is sent — and nothing in this plan needs the ${who}’s review yet.`
-                : `In simulation mode nothing is sent: these are the courses this plan would put before the ${deciderTitle(student.program)} — exit the simulation to send the review request from your record.`,
-            ),
-          ]
-        : idle
-          ? // Nothing to review: one line, as the Grad Admin card's (the two
-            // instruction paragraphs return with the first course).
-            [
-              el(
-                'p',
-                { class: 'hint' },
-                `Nothing to review yet — a request is needed only when a course needs the ${who}’s decision: one not in the course rules yet, one decided case by case, or one from another university not yet ruled on. The ${who} (`,
-                mailto(decider.email),
-                ') decides by email.',
-              ),
-            ]
-          : [
-            el(
-              'p',
-              { class: 'hint' },
-              // Shortened in place (UI review item 3; DGS 2026-10-09: option (b)).
-              el('strong', {}, 'Decisions are made only by email: '),
-              `the button below opens the review request in your own email app, for you to check and send to the ${deciderTitle(student.program)} (`,
-              mailto(decider.email),
-              // The DGS's own sentence (2026-09-15) and the attach reminder
-              // (2026-09-03); the email's format and the two-roles statement are
-              // said by the dialog and the Grad Admin card (trim review 2026-09-18, P-5).
-              '). Attach your transcript PDFs (whichever apply) to the same email.',
-            ),
-            // The process (DGS 2026-09-27): a course not in the course rules is
-            // entered by the DGS after this request — yes, no, or case by case —
-            // and the page reads the updated rules on its next visit; a
-            // case-by-case course needs the DGS's answer for this student,
-            // recorded by the tick on the course.
-            el(
-              'p',
-              { class: 'hint process-note' },
-              `A course not in the course rules yet reaches the ${deciderTitle(student.program)} through this request; the ${deciderTitle(student.program)} enters it — yes, no, or case by case — and this page reads the updated rules on your next visit. A case-by-case course needs the ${deciderTitle(student.program)}’s answer for you: once it is given, tick the box next to the course.`,
-            ),
-          ]),
-      ...pending.map((p) => line(p.course.entry.courseId, where(p), p.reason)),
-      ...notes.map((t) => el('div', { class: 'review-line review-note', 'data-keep-dgs': '' }, el('span', { class: 'cid' }, 'Note'), ` — ${t}`)),
-      el(
-        'div',
-        { class: 'save-buttons' },
-        // In the mode the button is inactive with its reason (D7): no request
-        // leaves a plan — `inactiveButton`, so the reason can be shown.
-        simulation
-          ? inactiveButton({ class: 'btn', 'data-key': 'review.copy' }, simulationSendNote('the review request'), toast, label)
-          : idle
-            ? inactiveButton(
-                { class: 'btn', 'data-key': 'review.copy' },
-                `Nothing for the ${who} to review yet. This becomes active when a course needs the ${who}’s decision — one not in the course rules yet, one decided case by case, or one from another university not yet ruled on — or something on your record needs the ${who} to check.`,
-                toast,
-                label,
-              )
-            : el(
-          'button',
-          {
-            class: 'btn',
-            'data-key': 'review.copy',
-            onclick: () => {
-              // Copy, then the check-before-you-send dialog (DGS request 2026-09-06 evening).
-              void import('../transcript/external.ts').then(({ buildCombinedReviewRequest, reviewRequestCourses }) => {
-                const { nd: ndReq, external: extReq } = reviewRequestCourses(pending, slotOf);
-                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses, 'review'), decider: deciderTitle(student.program), stamp: checkedWithLine(stamp), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
-                return copyDialog({
-                  what: 'Review request',
-                  recipient: { role: decider.role, name: decider.name, email: decider.email },
-                  subject: built.subject,
-                  text: built.text,
-                  html: built.html,
-                  steps: [
-                    { text: FILL_IN_STEP },
-                    { text: `Attach copies of your transcripts as PDFs (Bachelor’s / Master’s / Ph.D. — whichever apply) — the ${deciderTitle(student.program)} cannot review the courses without them. The official transcript must be sent directly to the Graduate School by each university’s registrar.`, emphasis: true },
-                  ],
-                  returnFocusKey: 'review.copy',
-                });
-              });
-            },
-          },
-          `Initiate the review request for ${what}`,
-        ),
-      ),
-    );
-  }
+  // askDgsCard lives in src/ui/request-cards.ts (blue-team review 2026-10-17,
+  // W11), called from render() with the pending list computed there (W6).
 
   function courseForm(): HTMLElement {
     // Visible labels instead of placeholders (usability review 2026-09-05,
@@ -2825,132 +2535,15 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
 
   // ---------- milestones + attestations ----------
 
-  // "Ask the Grad Admin to process" (DGS request 2026-09-06 evening): the
-  // other half of the two roles. The DGS decides eligibility (the review
-  // request above); the Grad Admin processes what has been decided and keeps
-  // the official record. Placed after the milestones, whose dates it reports.
-  function askGradAdminCard(built: ReturnType<typeof gradAdminRequest>): HTMLElement {
-    const n = built.items.count;
-    const decider = deciderContact(student.program);
-    // The Grad Admin needs the original transcripts only to process §5.2
-    // transfer credit; nothing else in the request is decided from a PDF, so
-    // the attach step, the email's "Attached:" line and the card's clause
-    // appear only when a transfer is in it (trim review 2026-09-18, P-45).
-    // …and only while that credit is still to submit: transfer credit the
-    // student ticked as recorded goes along for the record (DGS 2026-10-15).
-    const needsTranscripts = built.items.transfers.length > 0 && student.attestations.transferRecorded !== true;
-    // Transfer credit to submit from a transcript marked unofficial waits for
-    // the official one (DGS 2026-10-16: "an unofficial transcript will not be
-    // accepted for official processing").
-    const unofficialSlots = needsTranscripts
-      ? unofficialTranscriptSlots(student.courses.filter((c) => built.items.transfers.some((t) => t.unofficial === true && t.courseId === c.courseId && t.institution === c.institution)))
-      : undefined;
-    // The major events, the only things that make the button active (DGS
-    // 2026-10-15; grad-admin-request.ts ProcessingItems.count) — the MSCSE has
-    // no qualifier form and no MSCSE along the way.
-    const phd = student.program === 'phd';
-    const label = 'Initiate the request';
-    const attrs = { class: 'btn', 'data-key': 'gradadmin.copy' };
-    const button = simulation
-      ? // In the mode nothing is sent (D7): inactive with its reason, whatever the count.
-        inactiveButton(attrs, simulationSendNote('the processing request'), toast, label)
-      : n === 0
-        ? inactiveButton(
-            attrs,
-            phd
-              ? 'Nothing for the Grad Admin to process yet. This becomes active when there is something to process — transfer credit the DGS approved for you (§5.2), the qualifier completion form (§4.4), the MSCSE along the way (§4.5), or an application for doctoral or master’s candidacy. Milestone dates and requirements met need no request of their own; they go along with the next one.'
-              : 'Nothing for the Grad Admin to process yet. This becomes active when there is something to process — transfer credit the DGS approved for you (§5.2) or your application for master’s degree candidacy (Academic Code §6.1.6). Milestone dates and requirements met need no request of their own; they go along with the next one.',
-            toast,
-            label,
-          )
-        : el(
-            'button',
-            {
-              ...attrs,
-              onclick: () => {
-                void copyDialog({
-                  what: 'Processing request',
-                  recipient: { role: GRAD_ADMIN.role, name: GRAD_ADMIN.name, email: GRAD_ADMIN.email, cc: { role: decider.role, name: decider.name, email: decider.email } },
-                  subject: built.subject,
-                  text: built.text,
-                  html: built.html,
-                  steps: [{ text: FILL_IN_STEP }, ...(needsTranscripts ? [{ text: 'Attach copies of your transcripts as PDFs (Bachelor’s / Master’s / Ph.D. — whichever apply); the official transcript must be sent directly to the Graduate School by each university’s registrar.', emphasis: true }] : [])],
-                  returnFocusKey: 'gradadmin.copy',
-                });
-              },
-            },
-            label,
-          );
-    return el(
-      'section',
-      { class: 'card grad-admin-request', id: 'grad-admin' },
-      el('h2', {}, 'Ask the Grad Admin to process ', el('span', { class: 'chip-note' }, plural(n, 'item')), simulationChip()), // the mode repeated on the card (D9; in every mode since the review fix of 2026-10-09)
-      // Two people, two jobs (DGS 2026-09-06; the button sentence DGS
-      // 2026-09-15). While there is nothing to send, the paragraph told the
-      // student to click a button that does nothing, so the n = 0 state is
-      // one line and the full paragraph returns with the first item (trim
-      // review 2026-09-18, P-4). The full paragraph no longer points at "the
-      // review request above" (a card most students never see) or repeats
-      // "the page itself sends nothing" (step 3 of the dialog) — P-19.
-      // In simulation mode (D7) the paragraph is one sentence: nothing is
-      // sent from a plan; the item list below stays.
-      simulation
-        ? el(
-            'p',
-            { class: 'hint simulation-hint' },
-            n === 0
-              ? 'In simulation mode nothing is sent — and nothing in this plan is ready for the Grad Admin yet.'
-              : `In simulation mode nothing is sent: these are the ${plural(n, 'item')} this plan would put before the Grad Admin — exit the simulation to send the processing request from your record.`,
-          )
-        : n === 0
-        ? el(
-            'p',
-            { class: 'hint' },
-            phd
-              ? 'Nothing to process yet — a request is needed only for transfer credit, the qualifier completion form, the MSCSE along the way or a candidacy application; your milestone dates and standing go along with it. The Grad Admin ('
-              : 'Nothing to process yet — a request is needed only for transfer credit or your master’s candidacy application; your milestone dates and standing go along with it. The Grad Admin (',
-            `${GRAD_ADMIN.name}, `,
-            mailto(GRAD_ADMIN.email),
-            ') processes what the DGS has decided.',
-          )
-        : el(
-            'p',
-            { class: 'hint' },
-            // Shortened in place (UI review item 3; DGS 2026-10-09: option
-            // (b)): the bold sentence, every role and § kept.
-            el('strong', {}, 'Two people, two jobs. '),
-            'The DGS decides; the Grad Admin (',
-            `${GRAD_ADMIN.name}, `,
-            mailto(GRAD_ADMIN.email),
-            phd
-              ? ') processes it — transfer credit (§5.2), the qualifier completion form (§4.4), the MSCSE along the way (§4.5), the candidacy applications; your milestone dates and standing go along. '
-              : ') processes it — transfer credit (§5.2), the master’s candidacy application (Academic Code §6.1.6); your milestone dates and standing go along. ',
-            `The button opens the request in your email app, to the Grad Admin with the DGS in cc${needsTranscripts ? ' — attach your transcript PDFs' : ''}.`,
-          ),
-      ...built.items.lines.map((text) => el('div', { class: 'review-line', 'data-keep-dgs': '' }, text)),
-      ...(n > 0 && unofficialSlots !== undefined
-        ? [
-            el(
-              'p',
-              { class: 'hint warn', 'data-key': 'gradadmin.unofficial' },
-              unofficialSlots.one
-                ? `The ${unofficialSlots.list} transcript you imported is an unofficial copy: the Grad Admin can process its transfer credit only once the university’s registrar has sent the official transcript to the Graduate School.`
-                : `The ${unofficialSlots.list} transcripts you imported are unofficial copies: the Grad Admin can process their transfer credit only once each university’s registrar has sent the official transcript to the Graduate School.`,
-            ),
-          ]
-        : []),
-      // What goes along, never on its own (DGS 2026-10-15).
-      ...(n > 0 && built.items.forTheRecord !== undefined ? [el('p', { class: 'hint for-the-record' }, built.items.forTheRecord)] : []),
-      el('div', { class: 'save-buttons' }, button),
-    );
-  }
+  // askGradAdminCard lives in src/ui/request-cards.ts (blue-team review
+  // 2026-10-17, W11), called from render() with the request built there.
 
   /** An optional term as a semester and a year (2026-10-04: the semester of
    * graduation, the Graduate School's extension). The year box refuses an
    * out-of-range value like every other year box; empty clears the term. */
   function termPicker(key: string, label: string, current: Term | undefined, seasons: readonly Season[], set: (t: Term | undefined) => void): HTMLElement {
     const season = el('select', { 'aria-label': `${label} — semester`, 'data-key': `${key}.season` });
-    season.append(...seasons.map((se) => option(se, se[0]!.toUpperCase() + se.slice(1), (current?.season ?? seasons[0]) === se)));
+    season.append(...seasons.map((se) => option(se, seasonName(se), (current?.season ?? seasons[0]) === se)));
     const commit = (year: number | undefined): void => set(year === undefined ? undefined : { season: (season as HTMLSelectElement).value as Season, year });
     const { input: year, error } = rangedNumber(
       { key: `${key}.year`, range: TERM_YEAR_RANGE, value: current ? String(current.year) : '', allowEmpty: true, attrs: { 'aria-label': `${label} — year`, placeholder: 'year' }, commit },
@@ -3689,107 +3282,11 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     return el('div', { class: 'simulation-strip' }, el('span', {}, `Simulation — ${termLabel(simulation.term)}`), el('button', { class: 'btn tiny', 'data-key': 'simulation.strip.exit', onclick: () => void exitSimulation('simulation.strip.exit') }, 'Exit'));
   }
 
-  // ---------- diagnostics ----------
+  // ---------- diagnostics, footer ----------
 
-  function diagnosticsCard(): HTMLElement | null {
-    // Students see this only when the sheet has ERRORS (usability review
-    // 2026-09-05, item 19); warnings alone are the DGS's business and are
-    // printed by `npm run sync-sheet` — except those marked `onPage` (DGS
-    // 2026-10-12: a row listed twice), which the box shows on their own
-    // (src/ui/sheet-warnings.ts).
-    const content = diagnosticsContent(rules.issues);
-    if (!content) return null;
-    const details = el('details', { class: 'card diagnostics', 'data-key': 'diagnostics' });
-    // The sheet is the DGS's to fix on either tab: the heading keeps "DGS"
-    // through the MSCSE tab's rewrite; the messages below, some of which name
-    // the decider, do not (round 5, item 18; DGS 2026-10-14).
-    details.append(el('summary', { 'data-keep-dgs': '' }, content.summary));
-    for (const i of content.issues) {
-      details.append(el('div', { class: `issue ${i.severity}` }, `[${i.severity}] ${i.message}`));
-    }
-    return details;
-  }
-
-  // ---------- footer ----------
-
-  function footer(): HTMLElement {
-    return el(
-      'footer',
-      { class: 'legal' },
-      // The card's narrow-width and embed host (the desk host is in the
-      // masthead) — first in the footer, not after the license (UI review,
-      // 2026-10-08: on a phone the contacts were the last thing on the page).
-      mainContactHost,
-      // Five distinct things in one grey block of ~1,900 characters
-      // (blue-team B9, 2026-09-18): scope, the alpha warning, where the rules
-      // come from, privacy, and the licence. Each now has a heading, and the
-      // two longest are disclosures — closed, the footer is five short lines.
-      el(
-        'div',
-        { class: 'legal-scope' },
-        el('h2', { class: 'legal-head' }, 'This is a self-check, not an official audit'),
-        // Brought up to date on 2026-10-04 (DGS: "Not only CSE Grad Studies
-        // Handbook was used. For GS academic code and DGS handbook, links are
-        // not necessary"): the policy-compliance review added the Graduate
-        // School's rules, and the facts the page now routes to the DGS.
-        student.program === 'mscse' ? 'It applies Section 3 of the ' : 'It applies Section 4 of the ',
-        handbookLink(),
-        // Who decides and who processes is on the Grad Admin card, in the
-        // glossary and in the contact card right below; the footer keeps its
-        // one imperative (trim review 2026-09-18, P-21).
-        // Shortened 2026-10-07 (DGS: "see any texts can be shortened without
-        // losing its meaning"): the same four points — the sources, what is
-        // sent to the DGS, approximate deadlines, confirm before relying.
-        ' and the Graduate School’s Academic Code, DGS Handbook and 4+1 guidance. What this page cannot see — sign-offs, recommendations, Graduate School approvals and extensions, and facts you state yourself — goes to the DGS rather than being decided here. Deadlines are by semester and approximate; the Graduate School calendar sets the exact dates. ',
-        // The one exception on the Ph.D. tab (policy review round 4, P4-text-4;
-        // DGS 2026-10-11: option (a), and no copy to the DGS on along-the-way
-        // awards): the self-check IS §3.1's review of the MSCSE along the way
-        // (DGS 2026-10-07, P3-cse-3-2), as the strip, the notice, the advisor
-        // email and the processing request already say.
-        student.program === 'phd'
-          ? 'Confirm with the DGS before you rely on this self-check — except the MSCSE along the way, for which this self-check is the DGS’s own review (§3.1).'
-          : 'Confirm with the DGS before you rely on this self-check.',
-      ),
-      // No alpha paragraph in the footer (DGS 2026-09-19, trim proposal P-3):
-      // it was word for word the red strip's Details at the top of the page.
-      // What the rules spreadsheet is and who can open it (DGS, 2026-09-04).
-      el(
-        'details',
-        { class: 'legal-source', 'data-key': 'legal.source' },
-        el('summary', {}, el('h2', { class: 'legal-head' }, 'Where the rules come from')),
-        ...sheetSourceNote('app'),
-      ),
-      el(
-        'div',
-        { class: 'legal-privacy' },
-        // One word (trim review 2026-09-18, P-56): the heading is inline and
-        // ran straight into the sentence below, which says the claim itself.
-        el('h2', { class: 'legal-head' }, 'Privacy'),
-        // W-P1 (DGS 2026-09-18). The middle two sentences are his approved
-        // wording verbatim; the FERPA sentence stays, as he asked.
-        'Your coursework never leaves this browser: everything you enter — and any transcript PDF you import — is processed here and saved only on this computer. The page itself loads from GitHub and reads the course rules from Google Sheets, so those two services see that someone opened the page; they never see what you enter. Your FERPA-protected education records remain under your control.',
-      ),
-      el(
-        'div',
-        { class: 'legal-license' },
-        el('h2', { class: 'legal-head' }, 'License'),
-        '© 2026 University of Notre Dame du Lac. Free for non-commercial (academic and research) use; commercial use requires a license from Notre Dame\'s IDEA Center (',
-        mailto('softwarelicensing@nd.edu'),
-        '). Full terms: ',
-        el('a', { href: LICENSE_URL, target: '_blank', rel: 'noopener noreferrer' }, 'LICENSE.md'),
-        ' · source: ',
-        el('a', { href: REPO_URL, target: '_blank', rel: 'noopener noreferrer' }, 'GitHub'),
-        '.',
-      ),
-      // What this page's results were checked with (DGS 2026-10-11, item 8):
-      // the same line the print header, the emails and the saved file carry.
-      el('p', { class: 'legal-stamp' }, checkedWithLine(stamp)),
-      // Embedded, the way out of the frame — and, with the contact card moved
-      // off the top, the place the contacts now live (DGS 2026-09-16).
-      isEmbedded() ? el('div', { class: 'embed-exit-line' }, openFullPageLink('Open the full self-check page'), ' — the same tool in its own window.') : null,
-    );
-  }
-
+  // diagnosticsCard and footer live in src/ui/page-frame.ts (blue-team review
+  // 2026-10-17, W11): they read only the rules' issues, the program, the stamp
+  // and the contact host node, all passed in from render().
 
   // ---------- clear ----------
 
