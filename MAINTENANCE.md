@@ -218,7 +218,17 @@ last edit (see "Sync" below).
   `data/snapshot.json`, and the dev server serves the same two paths (2026-10-22).
 - **Size**: after a change that could move a lot of code (a new dependency, a moved module, a lazy
   chunk), run `npm run build && npm run bundle-report` and paste the two "first load" totals into the
-  commit message — 2026-10-22: self-check 709 KB / 212 KB gz, course-rules page 171 KB / 50 KB gz.
+  commit message — 2026-10-22, after the review's weight batches: self-check 709 KB / 213 KB gz,
+  course-rules page 131 KB / 44 KB gz.
+- **Styles are three sheets** since 2026-10-22: `src/style-base.css` (both pages), `src/style-app.css`
+  (the self-check), `src/style-courses.css` (the course rules). Put a new rule where its page is; when
+  unsure, in base. After moving a rule between sheets, run `npm run e2e` in all three engines and
+  compare the screenshots pixel for pixel with a run of the previous build — the one rule misplaced
+  during the split (`.pill.small`) showed only as a pill one size larger in the Next steps box.
+- **A stalled e2e run**: the Chrome driver's DevTools `send` has no timeout; once (2026-10-22) a run hung
+  at the plain-page reopen after the `?embed=1` check although the tab answered a second connection at
+  once. If a run stalls past ~3 minutes with its log stopped, kill `scripts/e2e/run.mjs`, the `vite
+  preview` and the headless Chrome on its ports, and rerun.
   **GitHub pauses scheduled workflows in a public repository after 60 days without repository
   activity** and emails the owner — re-enable from the Actions tab (Actions → sync-sheet →
   "Enable workflow"). If a run fails at `npm run sync-sheet` with a timeout: the very first run
