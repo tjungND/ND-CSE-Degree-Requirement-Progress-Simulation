@@ -768,11 +768,50 @@ export function heldByRecord(c: ClassifiedCourse): boolean {
   return c.dgsHoldTicked === true || c.beforeReadmission === true || c.interrupted === true || ((c.nonDegree === true || c.ndBeforeAdmission === true) && c.rule !== undefined);
 }
 
+/** Courses still graded IP in a semester that has ended, one group per
+ * semester, earliest first (blue-team review 2026-10-17, U21). */
+export interface StaleInProgress {
+  term: Term;
+  /** The course ids, in the course table's order (term, then id), each once. */
+  courseIds: string[];
+  /** At least one is a Notre Dame course, so "Import again" is a fix path. */
+  nd: boolean;
+}
+
+/** The IP courses of every semester before today's, grouped by semester.
+ * No `today` (a caller that audits nothing dated) → nothing. */
+export function staleInProgressTerms(courses: readonly CourseEntry[], today?: string): StaleInProgress[] {
+  if (today === undefined) return [];
+  const current = termOfDate(today);
+  const groups = new Map<number, StaleInProgress>();
+  const stale = courses.filter((c) => c.grade === 'IP' && compareTerm(c.term, current) < 0).sort((a, b) => compareTerm(a.term, b.term) || a.courseId.localeCompare(b.courseId));
+  for (const c of stale) {
+    const g = groups.get(termIndex(c.term)) ?? { term: c.term, courseIds: [], nd: false };
+    if (!g.courseIds.includes(c.courseId)) g.courseIds.push(c.courseId);
+    if (c.origin === 'nd') g.nd = true;
+    groups.set(termIndex(c.term), g);
+  }
+  return [...groups.values()];
+}
+
+/** The warning for one ended semester: "Fall 2026 has ended and CSE 60770,
+ * CSE 60876 still read In progress — import your updated Notre Dame
+ * transcript (Import again) or set each course’s grade." A group with no
+ * Notre Dame course has no transcript to import again, so it gets the grade
+ * path alone. */
+export function staleInProgressSentence(g: StaleInProgress): string {
+  const one = g.courseIds.length === 1;
+  const fix = `set ${one ? 'its' : 'each course’s'} grade`;
+  return `${termLabel(g.term)} has ended and ${g.courseIds.join(', ')} still ${one ? 'reads' : 'read'} In progress — ${g.nd ? `import your updated Notre Dame transcript (Import again) or ${fix}` : fix}.`;
+}
+
 /** Classify every course. Returns classified courses in a stable order
  * (term, then course id, then input order) — the allocator's fill order. */
 export function classify(student: Student, rules: Rules, today?: string): {
   classified: ClassifiedCourse[];
   warnings: string[];
+  /** Courses still "In progress" in a semester that has ended (U21). */
+  staleInProgress: StaleInProgress[];
 } {
   const warnings: string[] = [];
   const { program, attestations } = student;
@@ -811,6 +850,19 @@ export function classify(student: Student, rules: Rules, today?: string): {
       );
     }
   }
+  // The mirror of that check (blue-team review 2026-10-17, U21): a course
+  // still "In progress" in a semester that has ENDED. The record was imported
+  // or typed mid-semester and never updated, so the dial keeps counting the
+  // course as in progress and a deadline row it would satisfy can read
+  // Overdue for a course the student passed — the misread of DGS 2026-09-29,
+  // from the other side. Only a plain IP: an I (Incomplete) has its own lapse
+  // rule further down. ONE warning per ended semester, naming the courses and
+  // both fix paths — "Import again" replaces the Notre Dame import (DGS
+  // 2026-10-09, item 13); a course from another university can only be given
+  // its grade. The groups are also returned as data, so the Next steps list
+  // can carry the same step (next-steps.ts `grades.update`).
+  const staleInProgress = staleInProgressTerms(student.courses, today);
+  for (const g of staleInProgress) warnings.push(staleInProgressSentence(g));
   // The same course id twice in the SAME term from different origins (DGS
   // 2026-09-13: "yes, should get a warning"). Credit is NOT de-duplicated —
   // ids may legitimately collide across universities (2026-08-31) — but
@@ -1106,7 +1158,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // Dame program and a school elsewhere), every such course waits for the DGS
   // rather than one answer's cap being applied to both (never guess).
   const programs = earlierTransferPrograms(classified);
-  if (programs.length < 2) return { classified, warnings };
+  if (programs.length < 2) return { classified, warnings, staleInProgress };
   const list = programs.length === 2 ? `${programs[0]} and ${programs[1]}` : `${programs.slice(0, -1).join(', ')} and ${programs[programs.length - 1]}`;
   return {
     classified: classified.map((cc) => {
@@ -1123,6 +1175,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
       };
     }),
     warnings,
+    staleInProgress,
   };
 
   /** One course, before the Incomplete and readmission overlays above. */

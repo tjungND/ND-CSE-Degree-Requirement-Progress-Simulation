@@ -15,7 +15,7 @@ import { completeBackground } from './background.ts';
  * the next things to do"): a key that was on the list and is gone is a step
  * the student finished, and next-step.ts highlights the one after it. In the
  * order the steps are listed. */
-export const STEP_KEYS = ['standing.entry', 'standing.check', 'earlier-degrees', 'coursework.degrees', 'review.send', 'advisor.faculty', 'dual-plan', 'advisor.name', 'advisor.tenure', 'advisor.approved', 'thesis.topic', 'review.wait', 'processing.send', 'ms-candidacy', 'incomplete', 'graduation', 'advisor-summary', 'simulation'] as const;
+export const STEP_KEYS = ['standing.entry', 'standing.check', 'grades.update', 'earlier-degrees', 'coursework.degrees', 'review.send', 'advisor.faculty', 'dual-plan', 'advisor.name', 'advisor.tenure', 'advisor.approved', 'thesis.topic', 'review.wait', 'processing.send', 'ms-candidacy', 'incomplete', 'graduation', 'advisor-summary', 'simulation'] as const;
 export type StepKey = (typeof STEP_KEYS)[number];
 
 export interface NextStep {
@@ -167,6 +167,26 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   }
   if (student.bachelorsAwardedInferred && student.bachelorsAwarded && !student.bachelorsAwardedInferred.before) settings.push(`bachelor’s degree ${termLabel(student.bachelorsAwarded)}`);
   if (settings.length > 0) steps.push({ key: 'standing.check', text: `Check what your transcript set — ${settings.join(', ')} (Your standing)${entryWithheld ? ' — the entry term is checked after you answer the earlier-degrees questions' : ''}.`, href: '#standing' });
+  // Courses still "In progress" in a semester that has ended (blue-team
+  // review 2026-10-17, U21): the engine's warning (allocate.ts
+  // staleInProgressSentence), as ONE step with its place on the page — the
+  // Transcripts card's "Import again", which next-step.ts rings, or the
+  // course's own grade under Coursework. In simulation mode the imports are
+  // inert (DGS 2026-10-09), and a group with no Notre Dame course has no
+  // transcript to import again: the grade path alone, linked to Coursework.
+  const stale = report.staleInProgress ?? [];
+  if (stale.length > 0) {
+    const ids = stale.flatMap((g) => g.courseIds);
+    const terms = stale.map((g) => termLabel(g.term));
+    const one = ids.length === 1;
+    const importAgain = !input.simulation && stale.some((g) => g.nd);
+    const fix = `set ${one ? 'its' : 'each course’s'} grade under Coursework`;
+    steps.push({
+      key: 'grades.update',
+      text: `${terms.length === 1 ? terms[0] : `${terms.slice(0, -1).join(', ')} and ${terms[terms.length - 1]}`} ${terms.length === 1 ? 'has' : 'have'} ended and ${ids.join(', ')} still ${one ? 'reads' : 'read'} In progress — ${importAgain ? `import your updated Notre Dame transcript (Import again, in the Transcripts card) or ${fix}` : fix}.`,
+      href: importAgain ? '#transcripts' : '#coursework',
+    });
+  }
   // The earlier-degrees questions, asked on the page since 2026-10-08 (DGS,
   // Option 1: the opening dialog asks only the program).
   // Every question answered but not confirmed (the transcripts filled them):

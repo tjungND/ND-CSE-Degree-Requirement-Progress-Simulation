@@ -814,6 +814,11 @@ export interface AuditReport {
    * and both are inside `scored`. */
   summary: { met: number; conditional: number; scored: number };
   warnings: string[];
+  /** Courses still "In progress" in a semester that has ended, one group per
+   * semester (blue-team review 2026-10-17, U21): the warning that names them
+   * is in `warnings`; the Next steps list builds its `grades.update` step
+   * from this. Absent when there are none. */
+  staleInProgress?: { term: Term; courseIds: string[]; nd: boolean }[];
   /** Notes for the DGS that are not about one course (2026-09-12): copied
    * into the review request and shown in its card. */
   reviewFlags?: string[];

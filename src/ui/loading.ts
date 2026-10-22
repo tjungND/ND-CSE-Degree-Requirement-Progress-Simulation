@@ -69,13 +69,21 @@ export function loadRulesWithCard(root: HTMLElement, nowIso: string): Promise<Lo
       if (detail !== undefined) s.detail.textContent = detail;
     };
 
+    // The card is one polite live region, and a 100 ms timer rewrites the
+    // elapsed counter and the bar inside it (blue-team review 2026-10-17,
+    // U22): role="status" implies aria-atomic="true", so every tick
+    // re-announced the WHOLE card and drowned the step ticks the region is
+    // for. The counter and the bar are hidden from assistive technology (the
+    // visual tick stays) and the card announces only the line that changed.
+    // The card stays the region: one created or filled later is often not
+    // announced at all.
     const barFill = el('i');
-    const bar = el('div', { class: 'bar load-bar' }, barFill);
+    const bar = el('div', { class: 'bar load-bar', 'aria-hidden': 'true' }, barFill);
     const elapsedNum = el('span', {}, '0.0');
-    const elapsed = el('div', { class: 'elapsed' }, elapsedNum, ` s elapsed · up to about ${BUDGET_S} s`);
+    const elapsed = el('div', { class: 'elapsed', 'aria-hidden': 'true' }, elapsedNum, ` s elapsed · up to about ${BUDGET_S} s`);
     const card = el(
       'div',
-      { class: 'load-card', role: 'status', 'aria-live': 'polite' },
+      { class: 'load-card', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'false' },
       el('div', { class: 'load-head' }, headSpin, el('div', {}, title, subtitle)),
       el('ol', { class: 'steps' }, ...Object.values(steps).map((s) => s.li)),
       bar,

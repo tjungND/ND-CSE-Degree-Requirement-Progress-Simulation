@@ -326,16 +326,7 @@ function requirementCard(r: RequirementResult): HTMLElement {
   // copied messages (DGS 2026-09-08). A row with no parts is one fact.
   const parts: DetailPart[] = r.shortDetailParts ?? r.detailParts ?? (r.detail ? [r.detail] : []);
   const isNote = (p: DetailPart): p is { note: string } => typeof p === 'object' && 'note' in p;
-  // A fact that only repeats the pill — "Not started." under "Not started",
-  // an allowance's "0 of the 6 … used." beside its "0 of 6 used" meter — is
-  // not shown (DGS 2026-10-07: "see any texts can be shortened without losing
-  // its meaning"). The copied emails keep the engine's words; they have no
-  // pill beside them, and the advisor email already drops the meter sentence.
-  const pillWord = r.allowance ? undefined : statusWord(r).toLowerCase();
-  const repeatsPill = (p: DetailPart): boolean =>
-    typeof p === 'string' &&
-    ((pillWord !== undefined && p.trim().replace(/\.$/, '').toLowerCase() === pillWord) || (r.allowance === true && /^\d+(?:\.\d+)? of the \d+ [^.]*used\.?$/.test(p.trim())));
-  const facts = parts.filter((p) => !isNote(p) && !repeatsPill(p));
+  const facts = parts.filter((p) => !isNote(p) && !repeatsPill(r, p));
   const notes = parts.filter(isNote).map((p) => p.note);
   const sentence = (t: string): string => (/[.!?]$/.test(t) ? t : `${t}.`);
   const fact = (t: string): string => sentence(withoutCitations(t));
@@ -789,17 +780,6 @@ function attentionList(report: AuditReport, untouched = false): HTMLElement | nu
       el('p', { class: 'attention-empty' }, `Nothing to do right now${currentNext.nearest ? ` — your next deadline is ${currentNext.nearest}` : ''}.`),
     );
   }
-  // Cut at a sentence when there is one inside 110 characters; otherwise at a
-  // word, with an ellipsis (2026-09-08 — the qualifier row's only full stops
-  // are inside "§4.4.1", so it used to break mid-word with no sign of it).
-  const firstSentence = (text: string): string => {
-    const m = /^(.{1,110}?[.!?])(\s|$)/.exec(text);
-    if (m) return m[1]!.trim();
-    if (text.length <= 110) return text.trim();
-    const cut = text.slice(0, 110);
-    const space = cut.lastIndexOf(' ');
-    return `${(space > 40 ? cut.slice(0, space) : cut).trim()}…`;
-  };
   // Floating like the warnings box (DGS 2026-10-08: "Let the Next Steps
   // float around the screen just like warnings"): fixed in the window's
   // corner, above the warnings, open, foldable to its heading by its button —
@@ -844,7 +824,7 @@ function attentionList(report: AuditReport, untouched = false): HTMLElement | nu
       'div',
       { id: 'attention-body', class: 'attention-body' },
     steps.length > 0
-      ? el('ol', { class: 'next-steps' }, ...steps.map((s) => el('li', { 'data-step': s.key }, s.href ? el('a', { href: s.href }, s.text) : s.text)))
+      ? el('ol', { class: 'next-steps' }, ...steps.map((s) => el('li', { 'data-step': s.key, ...(s.waiting ? { class: 'waiting' } : {}) }, s.href ? el('a', { href: s.href }, s.text) : s.text))) // `waiting` is muted (style.css, U18)
       : null,
     el(
       'ul',
@@ -860,13 +840,54 @@ function attentionList(report: AuditReport, untouched = false): HTMLElement | nu
           ' ',
           el('span', { class: `pill s-${r.status} small${pillState(r)}` }, pillLabel(r)),
           r.deadline && r.deadline.state === 'overdue' ? el('span', { class: 'attention-overdue' }, ' — deadline passed') : null,
-          el('span', { class: 'attention-next', 'data-keep-dgs': '' }, ` ${firstSentence(r.detail)}`),
+          // The row's first sentence as the card shows it (blue-team review
+          // 2026-10-17, U19): without its citations, and not at all when it
+          // only repeats the pill beside it — the card under it applies both
+          // (DGS 2026-10-03, 2026-10-07), and the same column showed the same
+          // sentence two ways. The § stays behind the linked card's Relevant
+          // Policies.
+          attentionSentence(r),
         ),
       ),
     ),
     ),
   );
   return box;
+}
+
+/** A fact that only repeats the pill — "Not started." under "Not started",
+ * an allowance's "0 of the 6 … used." beside its "0 of 6 used" meter — is
+ * not shown (DGS 2026-10-07: "see any texts can be shortened without losing
+ * its meaning"). The copied emails keep the engine's words; they have no
+ * pill beside them, and the advisor email already drops the meter sentence.
+ * Module-level since U19, so the attention rows apply the same test. */
+function repeatsPill(r: RequirementResult, p: DetailPart): boolean {
+  const pillWord = r.allowance ? undefined : statusWord(r).toLowerCase();
+  return (
+    typeof p === 'string' &&
+    ((pillWord !== undefined && p.trim().replace(/\.$/, '').toLowerCase() === pillWord) || (r.allowance === true && /^\d+(?:\.\d+)? of the \d+ [^.]*used\.?$/.test(p.trim())))
+  );
+}
+
+/** Cut at a sentence when there is one inside 110 characters; otherwise at a
+ * word, with an ellipsis (2026-09-08 — the qualifier row's only full stops
+ * are inside "§4.4.1", so it used to break mid-word with no sign of it). */
+function firstSentence(text: string): string {
+  const m = /^(.{1,110}?[.!?])(\s|$)/.exec(text);
+  if (m) return m[1]!.trim();
+  if (text.length <= 110) return text.trim();
+  const cut = text.slice(0, 110);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > 40 ? cut.slice(0, space) : cut).trim()}…`;
+}
+
+/** An attention row's sentence after its pill, or nothing (U19). The
+ * citations go first: firstSentence cuts only at a stop followed by a
+ * space, so a "(CSE §4.4.2)" removed before the cut cannot move it. */
+function attentionSentence(r: RequirementResult): HTMLElement | null {
+  const sentence = firstSentence(withoutCitations(r.detail));
+  if (sentence === '' || repeatsPill(r, sentence)) return null;
+  return el('span', { class: 'attention-next', 'data-keep-dgs': '' }, ` ${sentence}`);
 }
 
 /** Handbook terms the report uses before it explains them (usability review
@@ -968,7 +989,10 @@ function glossary(program: 'mscse' | 'phd', summerFullTimeCredits?: number): HTM
     ),
     // The glossary's § chips are plain spans, not links; only the rows' §
     // buttons open the handbook text (trim review 2026-09-18, P-32).
-    el('p', { class: 'hint' }, 'Paraphrased; each requirement’s Details gives the rule in the document’s own words.'),
+    // "Relevant Policies" is the selector's name since 2026-10-04 (blue-team
+    // review 2026-10-17, U20: "Details" sent the student to the alpha and
+    // privacy strips, the page's two actual "Details" summaries).
+    el('p', { class: 'hint' }, 'Paraphrased; each requirement’s Relevant Policies gives the rule in the document’s own words.'),
   );
 }
 

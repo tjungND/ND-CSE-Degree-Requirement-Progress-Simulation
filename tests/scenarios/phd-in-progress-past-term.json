@@ -1,0 +1,28 @@
+{
+  "name": "phd-in-progress-past-term",
+  "description": "Blue-team review 2026-10-17, U21: a record imported mid-semester and never updated. Two Notre Dame courses still read In progress for Fall 2026, and the self-check runs one semester later (Spring 2027). The engine must warn ONCE for the ended semester, naming both courses and both fix paths (Import again, or each course's grade); the Spring 2027 courses are in progress as they should be and get no warning. The rows stay provisional on the IP credits (the record is taken at its word), so the dial still counts them in progress — which is exactly why the warning exists.",
+  "today": "2027-03-01",
+  "rules": { "base": "default" },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": { "season": "fall", "year": 2026 },
+    "priorMs": "none",
+    "background": { "bachelors": "elsewhere", "graduate": "none" },
+    "courses": [
+      { "courseId": "CSE 60641", "credits": 3, "term": { "season": "fall", "year": 2026 }, "grade": "A", "origin": "nd" },
+      { "courseId": "CSE 63801", "credits": 1, "term": { "season": "fall", "year": 2026 }, "grade": "S", "origin": "nd" },
+      { "courseId": "CSE 60770", "credits": 3, "term": { "season": "fall", "year": 2026 }, "grade": "IP", "origin": "nd" },
+      { "courseId": "CSE 60876", "credits": 3, "term": { "season": "fall", "year": 2026 }, "grade": "IP", "origin": "nd" },
+      { "courseId": "CSE 60111", "credits": 3, "term": { "season": "spring", "year": 2027 }, "grade": "IP", "origin": "nd" },
+      { "courseId": "CSE 63802", "credits": 1, "term": { "season": "spring", "year": 2027 }, "grade": "IP", "origin": "nd" }
+    ],
+    "milestones": { "advisorIdentified": "2026-09-10", "advisorName": "Prof. Example", "advisorTtt": "yes" },
+    "attestations": { "advisorApprovedPlan": true }
+  },
+  "expect": {
+    "phd.seminar": { "status": "in_progress" },
+    "phd.qualifier.core.os": { "status": "met" },
+    "phd.credits.total": { "status": "unmet", "detailIncludes": ["4 of 60 credits complete", "10 in progress"] }
+  }
+}

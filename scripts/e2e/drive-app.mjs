@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { STAMP_RE } from './session-common.mjs';
-import { exampleRecord, loadExampleRecord } from './example-record.mjs';
+import { exampleRecord, loadExampleRecord, localToday } from './example-record.mjs';
 
 /** The WordPress-side listener, read out of the file the DGS copies and pastes
  * (docs/wordpress-footer-snippet.html) so the tested text and the pasted text
@@ -58,6 +58,18 @@ export async function driveApp(s, baseUrl) {
   const firstLoad = JSON.parse(await s.evalJs(`JSON.stringify({ toasts: [...document.querySelectorAll('.toast')].map((t) => t.textContent), undo: !!document.querySelector('.toast .toast-action') })`));
   console.log('  first load:', JSON.stringify(firstLoad));
   if (firstLoad.undo || !firstLoad.toasts.some((t) => /^File loaded — saved [A-Z][a-z]+ \d{1,2}, \d{4} \(8 courses\)\.$/.test(t))) throw new Error('loading over an empty record must say when the file was saved, with no Undo: ' + JSON.stringify(firstLoad));
+  // Toasts keep clear of the floating boxes (blue-team review 2026-10-17,
+  // U16): at desk width the stack sits LEFT of the boxes — the load toast's
+  // right edge short of their left edge — while <html> carries `has-floats`.
+  const toastClear = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const t = document.querySelector('.toast');
+    const boxes = [...document.querySelectorAll('.attention.floating, .warnings.floating')].map((b) => b.getBoundingClientRect());
+    const r = t?.getBoundingClientRect();
+    return { width: window.innerWidth, hasFloats: document.documentElement.classList.contains('has-floats'), boxes: boxes.length, toastRight: r ? Math.round(r.right) : null, boxesLeft: boxes.length ? Math.round(Math.min(...boxes.map((b) => b.left))) : null };
+  })())`));
+  console.log('  toast vs floating boxes:', JSON.stringify(toastClear));
+  if (!toastClear.hasFloats || toastClear.boxes === 0 || toastClear.toastRight === null) throw new Error('expected the load toast and a floating box after the load: ' + JSON.stringify(toastClear));
+  if (toastClear.toastRight > toastClear.boxesLeft) throw new Error('at desk width the toast must sit left of the floating boxes: ' + JSON.stringify(toastClear));
   // Loading a record over one that holds entries carries Undo for 20 s (U23):
   // the M.S. example replaces the Ph.D. one, the toast says what went, and
   // Undo puts the Ph.D. record back — the same key, the same rows — with
@@ -486,15 +498,30 @@ export async function driveApp(s, baseUrl) {
   await s.settle(300);
   const floatCheck = await warnState();
   if (!floatCheck.floating || floatCheck.position !== 'fixed' || floatCheck.details || floatCheck.folded || !floatCheck.bodyShown || floatCheck.button !== 'Hide' || floatCheck.expanded !== 'true' || !floatCheck.inView) throw new Error('the warning must float in view when the page is scrolled, open, with a Hide button: ' + JSON.stringify(floatCheck));
+  // Both boxes open at once are capped as a pair (blue-team review
+  // 2026-10-17, U15): <html> carries `two-floats`, Next steps is at most
+  // 25vh and the warnings 20vh; a box folded to its bar lifts the pair cap.
+  const pairState = async () => JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const h = window.innerHeight;
+    const a = document.querySelector('.attention.floating')?.getBoundingClientRect().height ?? 0;
+    const w = document.querySelector('.warnings.floating')?.getBoundingClientRect().height ?? 0;
+    return { two: document.documentElement.classList.contains('two-floats'), steps: Math.round(a), stepsCap: Math.round(h * 0.25), warnings: Math.round(w), warningsCap: Math.round(h * 0.2) };
+  })())`));
+  const pair = await pairState();
+  if (!pair.two || pair.steps > pair.stepsCap + 1 || pair.warnings > pair.warningsCap + 1) throw new Error('both boxes open must be capped together (25vh + 20vh): ' + JSON.stringify(pair));
   await s.evalJs(`document.querySelector('[data-key="report.warnings.toggle"]').click()`);
   await s.evalJs(`(() => { const d = document.querySelector('[data-key="milestone.advisorName"]'); d.dispatchEvent(new Event('change')); })()`);
   await s.settle();
   const warnHidden = await warnState();
   if (!warnHidden.folded || warnHidden.bodyShown || warnHidden.button !== 'Show' || warnHidden.expanded !== 'false') throw new Error('a folded warning box must stay folded after a re-render, its button saying Show: ' + JSON.stringify(warnHidden));
+  const pairFolded = await pairState();
+  if (pairFolded.two) throw new Error('a folded box must lift the pair cap: ' + JSON.stringify(pairFolded));
   await s.evalJs(`document.querySelector('[data-key="report.warnings.toggle"]').click(); window.scrollTo(0, 0)`);
   await s.settle(300);
   const warnShown = await warnState();
   if (warnShown.folded || !warnShown.bodyShown || warnShown.button !== 'Hide') throw new Error('Show must open the warning box again: ' + JSON.stringify(warnShown));
+  if (!(await pairState()).two) throw new Error('both boxes open again must be capped as a pair again');
+  console.log(`  both boxes open are capped together: Next steps ${pair.steps}/${pair.stepsCap} px, warnings ${pair.warnings}/${pair.warningsCap} px; folding one lifts the cap`);
   console.log('  the warning floats in view when the page is scrolled down; its Hide button folds it (Show opens it), and folded stays folded');
   // Next steps floats like the warnings (DGS 2026-10-08): fixed in the corner
   // above the warnings box at any scroll position, foldable to its heading
@@ -792,6 +819,10 @@ export async function driveApp(s, baseUrl) {
   await s.shot('rule-quote');
   await s.evalJs(`document.querySelector('details.req-more[open] > summary').click()`); // close it again
 
+  // Courses still "In progress" after their semester ended (blue-team review
+  // 2026-10-17, U21). Reset follows, so the record this loads is not kept.
+  await checkStaleGrades(s);
+
   // The program is chosen in the opening dialog; Reset brings it back (DGS
   // 2026-09-22). Reset empties the record; the MSCSE record below is then
   // loaded from a file over the fresh MSCSE one.
@@ -964,6 +995,36 @@ export async function driveApp(s, baseUrl) {
 // stamp — the same fingerprint, the date checked and every row's verdict as
 // the page shows it — between savedAt and the record. The download is caught
 // in the page, as the simulation save's is.
+/** The example record with two of its in-progress courses moved to last
+ * year's fall (the example's own IP courses sit in the current semester):
+ * ONE warning names the ended semester, both courses and both fix paths,
+ * and the Next steps list carries the same as a step linked to the
+ * Transcripts card (blue-team review 2026-10-17, U21). */
+async function checkStaleGrades(s) {
+  const record = exampleRecord('phd');
+  const lastFall = { season: 'fall', year: Number(localToday().slice(0, 4)) - 1 };
+  for (const c of record.courses) if (c.courseId === 'CSE 60770' || c.courseId === 'CSE 60876') c.term = lastFall;
+  await loadExampleRecord(s, 'phd', record);
+  const want = `Fall ${lastFall.year} has ended and CSE 60770, CSE 60876 still read In progress — import your updated Notre Dame transcript (Import again) or set each course’s grade.`;
+  const stale = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const step = document.querySelector('[data-key="report.nextsteps"] li[data-step="grades.update"]');
+    return {
+      lines: [...document.querySelectorAll('.warnings .warning-line')].map((e) => e.textContent.replace(/^⚠ /, '')),
+      step: step?.textContent ?? '',
+      href: step?.querySelector('a')?.getAttribute('href') ?? '',
+      card: document.getElementById('transcripts')?.classList.contains('external-card') ?? false,
+      importButton: !!document.querySelector('#transcripts [data-key="import.nd"]'),
+    };
+  })())`));
+  if (!stale.lines.includes(want)) throw new Error('an ended semester with In progress courses must be warned about: ' + JSON.stringify(stale.lines));
+  if (stale.lines.filter((l) => /has ended and/.test(l)).length !== 1) throw new Error('one warning per ended semester: ' + JSON.stringify(stale.lines));
+  if (stale.href !== '#transcripts' || stale.step !== `Fall ${lastFall.year} has ended and CSE 60770, CSE 60876 still read In progress — import your updated Notre Dame transcript (Import again, in the Transcripts card) or set each course’s grade under Coursework.`) throw new Error('the Next steps list must carry the same step, linked to the Transcripts card: ' + JSON.stringify(stale));
+  if (!stale.card || !stale.importButton) throw new Error('the Transcripts card must carry the id the step links to, with the import button inside it: ' + JSON.stringify(stale));
+  await s.shotElement('stale-grades-warning', '.warnings');
+  await s.shotElement('stale-grades-step', '[data-key="report.nextsteps"]');
+  console.log('  courses still In progress after their semester ended: one warning, one step — ' + want);
+}
+
 async function checkStamps(s) {
   const lines = JSON.parse(await s.evalJs(`JSON.stringify({
     footer: document.querySelector('footer.legal .legal-stamp')?.textContent ?? '',

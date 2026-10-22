@@ -96,9 +96,15 @@ function firstUnanswered(root: Element | null): HTMLElement | null {
   return null;
 }
 
-/** Where each Next steps item is done, when the page has a control for it. */
-const CONTROL: Partial<Record<StepKey, (doc: Document) => Element | null | undefined>> = {
+/** Where each Next steps item is done, when the page has a control for it.
+ * `step` is the item as listed, for a key whose place depends on its text. */
+const CONTROL: Partial<Record<StepKey, (doc: Document, step: NextStep) => Element | null | undefined>> = {
   'standing.entry': (d) => d.querySelector('[data-key="standing.season"]'),
+  // Ended-semester courses still In progress (blue-team review 2026-10-17,
+  // U21): the Transcripts card's "Import again" when the step offers it (its
+  // link says so); otherwise the step's card. An inactive button (a preview
+  // open, simulation mode) is not usable, so the card is ringed instead.
+  'grades.update': (d, step) => (step.href === '#transcripts' ? d.querySelector('[data-key="import.nd"]') : null),
   // No fallback to "Set the exact semester" (blue-team review 2026-10-17, U4):
   // that button is optional, and the step never lists a "before" reading.
   'standing.check': (d) => d.querySelector('[data-key="standing.entry.confirm"]') ?? d.querySelector('[data-key="standing.bachelors.confirm"]'),
@@ -142,7 +148,7 @@ export function targetOf(doc: Document, id: PendingId, steps: readonly NextStep[
     text = words.textContent ?? step.text;
   }
   const message = `Next step: ${text}`;
-  const control = CONTROL[key]?.(doc);
+  const control = CONTROL[key]?.(doc, step);
   if (usable(control)) return { box: boxOf(control), focus: control, message };
   const card = doc.getElementById(step.href.slice(1));
   if (!card) return undefined;

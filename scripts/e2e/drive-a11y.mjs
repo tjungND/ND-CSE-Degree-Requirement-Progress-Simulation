@@ -441,6 +441,28 @@ async function checkPhone(s, page, readyExpr, width = 390) {
   );
   await s.shot(`${width < 600 ? 'phone' : 'tablet'}-${page}`);
   if (m.scrollW > m.clientW) throw new Error(`${page} at ${width} px scrolls sideways (${m.scrollW} > ${m.clientW}); widest: ${m.wide.join(', ')}`);
+  // Toasts sit above the floating boxes (blue-team review 2026-10-17, U16 and
+  // forms-5): below 1121 px the stack is lifted by the boxes' measured
+  // heights — on a phone that is the folded Next steps bar and the warnings
+  // box above the score bar. A toast is put in the stack for the measurement
+  // and taken out again: whether one of the page's own is still up depends
+  // on timing.
+  if (page === 'app') {
+    const lift = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+      const stack = document.querySelector('.toast-stack');
+      const t = document.createElement('div');
+      t.className = 'toast show';
+      t.textContent = 'Next step: a toast as long as the longest note the page shows on a phone, for the measurement.';
+      stack.append(t);
+      const r = t.getBoundingClientRect();
+      t.remove();
+      const tops = [...document.querySelectorAll('.attention.floating, .warnings.floating')].map((b) => Math.round(b.getBoundingClientRect().top));
+      return { bottom: Math.round(r.bottom), boxesTop: tops.length ? Math.min(...tops) : null, boxes: tops.length, hasFloats: document.documentElement.classList.contains('has-floats') };
+    })())`));
+    if (lift.boxes === 0 || !lift.hasFloats) throw new Error(`expected the floating boxes on the ${width} px page: ` + JSON.stringify(lift));
+    if (lift.bottom > lift.boxesTop) throw new Error(`at ${width} px a toast must sit above the floating boxes: ` + JSON.stringify(lift));
+    console.log(`  toasts clear of the floating boxes at ${width} px: toast bottom ${lift.bottom}, boxes from ${lift.boxesTop}`);
+  }
   // The schedule tables keep a course on one line at desk widths. On a phone
   // the same table is a stack of cards, and a title that cannot wrap runs past
   // the card and drags the page sideways (DGS 2026-09-09, iPhone 14 Pro).

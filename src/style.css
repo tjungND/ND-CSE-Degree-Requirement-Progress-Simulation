@@ -532,6 +532,19 @@ fieldset.ft-terms:not(.clock-fields):not(.nondegree) > details { grid-column: 1 
    to one line. On a phone it spans the width above the score bar. Printed, it
    is back in the page. */
 .warnings.floating { position: fixed; right: 18px; bottom: 18px; z-index: 950; width: min(440px, calc(100vw - 36px)); max-height: 45vh; overflow: auto; margin: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18); }
+/* Both boxes open at once take at most 45vh together (blue-team review
+   2026-10-17, U15): on their own they may take 35vh + 45vh, and a nine-step
+   list over a two-line warning covered ~63% of a laptop window — every card
+   between the report's start and its padded end passed under them. app.ts
+   layoutFloats puts `two-floats` on <html> while both exist and neither is
+   folded; each keeps its own scrollbar, sticky heading and Hide button, and a
+   box folded to its bar gives the other its full height back. Specificity
+   (0,3,0) outranks the ≤900 px rules below, so no second copy is needed
+   there; screen only, as the print rules put both boxes back in the page. */
+@media screen {
+  .two-floats .warnings.floating { max-height: 20vh; }
+  .two-floats .attention.floating { max-height: 25vh; }
+}
 /* The same heading-and-Hide-button shape as Next steps (DGS 2026-10-08). */
 .warnings.floating h3 { position: sticky; top: -8px; margin: -8px -12px 0; padding: 8px 12px; background: var(--warn-bg); }
 .warnings.floating h3 .warnings-toggle { display: inline-flex; }
@@ -577,7 +590,7 @@ table.courses .feeds-hidden .counts-toward.now { display: none; }
 .headline .s-needs_dgs_review .key-dot { background: var(--info); }
 .headline .s-in_progress .key-dot { background: var(--warn); }
 .headline .s-unmet .key-dot { background: var(--bad); }
-.headline .s-cannot_evaluate .key-dot { background: var(--muted); }
+.headline .s-cannot_evaluate .key-dot { background: transparent; box-shadow: inset 0 0 0 2px var(--muted); } /* hollow, as its pill (U17) */
 .headline .s-notstarted .key-dot { background: var(--line); }
 /* A detail line about something the student is LOSING (over-cap credits): not
    the grey prose the rest of the detail is in. */
@@ -690,6 +703,13 @@ details.rare[open] > summary { margin-bottom: 6px; }
 .attention ol.next-steps { margin: 0 0 6px; padding-left: 20px; }
 .attention ol.next-steps li { margin: 3px 0; font-size: 13px; }
 .attention ol.next-steps li a { color: var(--navy); font-weight: 600; }
+/* A step that waits on someone else (next-steps.ts `waiting`: the DGS's
+   answer, the Graduate School's approval, simulation's "nothing is sent") is
+   muted with a dotted link, so it is told apart from the steps the student
+   can take now (blue-team review 2026-10-17, U18). Its place, number and
+   link are unchanged; the words already open with the condition. */
+.attention ol.next-steps li.waiting { color: var(--muted); }
+.attention ol.next-steps li.waiting a { color: inherit; font-weight: 400; text-decoration-style: dotted; }
 .attention-empty { margin: 0; font-size: 13px; }
 .subline.coursework-line { margin-top: 4px; color: var(--ink); }
 .summary-mobile .next-first { margin: 6px 0 0; font-size: 13px; }
@@ -734,8 +754,14 @@ ul.req-detail.detail-list li.check > .mark { position: absolute; left: -1.3em; t
 .pill.s-notstarted { background: var(--neutral-bg-2); color: var(--muted); }
 .req.s-needs_dgs_review { border-left-color: var(--info); }
 .pill.s-needs_dgs_review { background: var(--info-bg); color: var(--info); }
-.req.s-cannot_evaluate { border-left-color: var(--grey); }
-.pill.s-cannot_evaluate { background: var(--neutral-bg-3); color: var(--muted); }
+/* "Cannot evaluate" — a missing input only the student can supply — is a
+   HOLLOW grey mark (blue-team review 2026-10-17, U17): its filled grey pill
+   was indistinguishable from "Not started" (nothing to do yet). A ring
+   instead of a fill, a dashed stripe instead of a solid one, in the same
+   grey, so no other status's colour is borrowed (navy would read as "waiting
+   for the DGS"); the emails' colour map (report.ts standingColor) is unchanged. */
+.req.s-cannot_evaluate { border-left-color: var(--grey); border-left-style: dashed; }
+.pill.s-cannot_evaluate { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--muted); }
 /* Not-applicable rows are toned down with colour, not opacity — the faded pill text measured 4.3:1 (usability review 2026-09-05). */
 .req.s-not_applicable { border-left-color: var(--line); background: var(--na-bg); }
 .req.s-not_applicable .req-title { color: var(--muted); }
@@ -761,6 +787,25 @@ ul.req-detail.detail-list li.check > .mark { position: absolute; left: -1.3em; t
 .toast.show { opacity: 1; }
 .toast.has-action { pointer-events: auto; }
 .toast-action { margin-left: 8px; border: 1px solid rgba(255, 255, 255, 0.7); background: transparent; color: var(--on-fill); border-radius: 6px; padding: 3px 10px; font: inherit; font-weight: 600; cursor: pointer; min-height: 24px; }
+/* Toasts never cover the floating boxes (blue-team review 2026-10-17, U16 and
+   forms-5): the stack sat centred at the bottom, z 1000, over the boxes at z
+   950 — a long notice hid the start of step 2, and since 2026-10-17 every
+   finished step's 12-second "Next step" note landed on the very list it
+   pointed at. From 1121 px the boxes float over the report column alone, so
+   the stack spans the window's left edge to 18 px short of the boxes' left
+   edge (their width is min(440px, 100vw - 36px) from the right), centred
+   over the form column the student just acted in; `has-floats` is on <html>
+   while a box is on the page (app.ts layoutFloats). Below 1121 px the boxes
+   reach into the form column, so the stack is lifted above them by the two
+   heights layoutFloats measures (and by the score bar's room in the ≤900 px
+   block). Embedded pages have no floating box, so neither rule applies. */
+@media screen and (min-width: 1121px) {
+  html.has-floats .toast-stack { left: 18px; right: calc(36px + min(440px, 100vw - 36px)); transform: none; max-width: none; }
+  html.has-floats .toast { max-width: 100%; }
+}
+@media screen and (max-width: 1120px) {
+  .toast-stack { bottom: calc(18px + var(--float-warnings, 0px) + var(--float-steps, 0px)); }
+}
 
 /* The self-check page on paper (the course-rules page and the contact card
    have their own print blocks further down, where source order matters). */
@@ -1168,7 +1213,7 @@ tr.ocr-low td { background: var(--note-bg); }
      frame sized to its content that blank is visible trailing white space
      (2026-09-16). */
   #app:not(.courses-page) { padding-bottom: 76px; }
-  .toast-stack { bottom: 62px; }
+  .toast-stack { bottom: calc(62px + var(--float-warnings, 0px) + var(--float-steps, 0px)); } /* above the bar AND the floating boxes (U16) */
   .masthead { grid-template-columns: minmax(0, 1fr); } /* minmax, so a long address cannot widen the page */
 }
 

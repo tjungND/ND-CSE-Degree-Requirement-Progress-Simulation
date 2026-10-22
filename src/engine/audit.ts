@@ -135,7 +135,7 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
   const params = rules.parameters;
   const { term: entry, normalized } = normalizeEntryTerm(student.entryTerm);
 
-  const { classified, warnings } = classify(student, rules, today);
+  const { classified, warnings, staleInProgress } = classify(student, rules, today);
 
   const num = (key: string) => params.number(key);
   // Academic Code §2.3's limit on coursework earned in non-degree status — a
@@ -939,6 +939,9 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     courseLines: courseLines.map((l) => ({ ...l, text: decisionWording(p, l.text), ...(l.qualifier ? { qualifier: { ...l.qualifier, text: decisionWording(p, l.qualifier.text) } } : {}) })),
     summary,
     warnings: warnings.map((w) => decisionWording(p, w)),
+    // The ended-semester IP groups behind one of those warnings, as data for
+    // the Next steps list (blue-team review 2026-10-17, U21).
+    ...(staleInProgress.length > 0 ? { staleInProgress } : {}),
     tracks: specialTracks(student, classified).map((t) => ({ ...t, text: decisionWording(p, t.text) })),
     // The MSCSE's summer-session sentence names the decider (2026-10-04).
     milestoneDeadlines: decisionWordingDeep(p, milestoneDeadlines),

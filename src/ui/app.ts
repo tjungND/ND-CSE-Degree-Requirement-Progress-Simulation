@@ -558,6 +558,14 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   function layoutFloats(): void {
     const warnings = root.querySelector<HTMLElement>('.warnings.floating');
     const steps = root.querySelector<HTMLElement>('.attention.floating');
+    // Two classes on <html> for style.css (blue-team review 2026-10-17):
+    // `has-floats` while either box is on the page, so the toast stack keeps
+    // clear of them (U16); `two-floats` while BOTH are open, so the pair is
+    // capped together and the report keeps most of the window (U15). Set
+    // before the heights are read — the cap changes them.
+    const open = (box: HTMLElement | null): boolean => box !== null && !box.classList.contains('folded');
+    document.documentElement.classList.toggle('has-floats', warnings !== null || steps !== null);
+    document.documentElement.classList.toggle('two-floats', open(warnings) && open(steps));
     document.documentElement.style.setProperty('--float-warnings', warnings ? `${warnings.offsetHeight + 8}px` : '0px');
     document.documentElement.style.setProperty('--float-steps', steps ? `${steps.offsetHeight + 8}px` : '0px');
   }
@@ -2156,7 +2164,10 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     const fresh = !student.courses.some((c) => c.fromNdTranscript === true || (c.origin === 'transfer' && c.degreeLevel !== undefined));
     return el(
       'div',
-      { class: 'card external-card' },
+      // The id is the "grades.update" step's link (blue-team review
+      // 2026-10-17, U21): the card next-step.ts rings when "Import again"
+      // itself cannot be.
+      { class: 'card external-card', id: 'transcripts' },
       el('h2', {}, el('span', { class: 'step-no' }, '1. '), 'Transcripts ', ...(fresh ? [el('span', { class: 'chip-start' }, 'Start here')] : [])),
       ...(fresh ? [el('p', { class: 'start-callout' }, 'Import your transcripts, and most of the page below fills itself in.')] : []), // the badge beside the title already says START HERE (DGS 2026-09-19, P-52)
       // Shorter sentences (usability review 2026-09-05, item 10): the same

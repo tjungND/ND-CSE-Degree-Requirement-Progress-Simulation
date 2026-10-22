@@ -79,7 +79,8 @@ function isSourceToken(token: string): boolean {
 
 /** A requirement card's visible statement without its citations (DGS
  * 2026-10-03: the card shows what is satisfied by what; "the explanation/
- * citation of the relevant policy documents" sits behind its Details). A
+ * citation of the relevant policy documents" sits behind its Relevant
+ * Policies selector — "Details" until 2026-10-04). A
  * bracket of sources only is dropped — "transfer credit (§5.2)" → "transfer
  * credit" — and a source tacked onto a bracket that says something else is
  * cut from it — "(9+ credits, §2.1.2)" → "(9+ credits)". */
@@ -96,7 +97,7 @@ export function withoutCitations(text: string): string {
 }
 
 /** The full name of the document a card's rule comes from, for the quote in
- * its Details: "§4.2" → "CSE Graduate Handbook §4.2"; "Academic Code §6.2.4" →
+ * its Relevant Policies: "§4.2" → "CSE Graduate Handbook §4.2"; "Academic Code §6.2.4" →
  * "Graduate School Academic Code §6.2.4"; "DGS Handbook §3.14" → "Graduate
  * School DGS Handbook §3.14". Anything else (a dated Graduate School answer)
  * is returned as written. */
