@@ -500,7 +500,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
    * The report's folds ("Relevant Policies", "Courses counted", the track
    * notes) print as the student left them on screen (DGS 2026-10-10: "Let
    * paper match the screen") — a closed one as its heading only, in every
-   * browser; style.css keeps Firefox, which printed them open, to that.
+   * browser; style-app.css keeps Firefox, which printed them open, to that.
    * Only the ones this handler opened are closed again; restoreFocus reads
    * the open state from the DOM, so a later re-render keeps the screen state. */
   window.addEventListener('beforeprint', () => {
@@ -519,7 +519,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   /** The sticky score bar (phones, ≤900 px) says what the score headline
    * says; while either headline — the phone summary's at the top or the
    * report's — is on screen, the bar is hidden (`.score-on-screen`,
-   * style.css) and it returns as soon as the score scrolls off (trim review
+   * style-app.css) and it returns as soon as the score scrolls off (trim review
    * 2026-09-18, P-66). The HEADLINES are watched, not the blocks: the summary
    * block's meters and jump link are often on screen after its score line
    * has gone. The previous render's observer is dropped with its nodes. */
@@ -550,7 +550,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   function layoutFloats(): void {
     const warnings = root.querySelector<HTMLElement>('.warnings.floating');
     const steps = root.querySelector<HTMLElement>('.attention.floating');
-    // Two classes on <html> for style.css (blue-team review 2026-10-17):
+    // Two classes on <html> for style-app.css (blue-team review 2026-10-17):
     // `has-floats` while either box is on the page, so the toast stack keeps
     // clear of them (U16); `two-floats` while BOTH are open, so the pair is
     // capped together and the report keeps most of the window (U15). Set
@@ -798,7 +798,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // The headline is report.ts's; the chip is added here, after the fact,
     // like the first-mention rule — on EVERY headline the bar watches
     // (watchScoreHeadlines' selector): on a phone the report's own scorehead
-    // is hidden (style.css) and the summary copy at the top of the page is the
+    // is hidden (style-app.css) and the summary copy at the top of the page is the
     // headline on screen, so the chip on the report's alone left the phone
     // without a marker (closing e2e, 2026-10-09).
     if (simulation) for (const h of root.querySelectorAll('.summary-mobile .headline, .audit .scorehead .headline')) h.append(' ', simulationChip()!);
@@ -1918,7 +1918,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         'p',
         { class: 'hint course-key' },
         'Key: ✓ counts · ◐ in progress · ● pending approval · ',
-        el('span', { class: 'x-glyph' }, '✕'), // the table's own ✕ (style.css)
+        el('span', { class: 'x-glyph' }, '✕'), // the table's own ✕ (style-app.css)
         // "toward the total only" was untrue of the project credits and the
         // first-year seminars, each required in its own right (policy review
         // round 4, P4-text-5; DGS 2026-10-12) — the 2026-09-18 wording again.
@@ -3240,7 +3240,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   // ---------- simulation mode (DGS 2026-10-09; src/ui/simulation.ts) ----------
 
   /** The mode on the document: `html.simulation` (the top rule, the strip,
-   * the print treatment — style.css) and the tab title naming the semester.
+   * the print treatment — style-app.css) and the tab title naming the semester.
    * Called by every render, so a semester change reaches the title too. */
   const baseTitle = document.title;
   function markSimulationMode(): void {
@@ -3421,7 +3421,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     );
   }
 
-  /** The sticky strip at desk width (≥ 901 px, style.css): one line, the
+  /** The sticky strip at desk width (≥ 901 px, style-app.css): one line, the
    * semester, Exit. On phones the sticky score bar carries the mode instead. */
   function simulationStrip(): HTMLElement | null {
     if (!simulation) return null;

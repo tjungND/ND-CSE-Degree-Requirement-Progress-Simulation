@@ -1,7 +1,8 @@
 // Entry point: load the rules (live sheet → snapshot fallback), then start the
 // app. All rule logic lives in src/engine/ (pure, tested); all sheet handling
 // in src/data/; this file only wires them to the page.
-import './style.css';
+import './style-base.css'; // the sheet both pages share (W4, 2026-10-22)
+import './style-app.css'; // this page's own rules — after the shared sheet, so its rules win ties
 import { loadRulesWithCard } from './ui/loading.ts';
 import { startApp } from './ui/app.ts';
 import { startTheme } from './ui/theme.ts';

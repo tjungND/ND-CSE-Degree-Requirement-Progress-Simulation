@@ -1,191 +1,11 @@
-/* ND-ish palette, system fonts only (no runtime font fetches — CLAUDE.md). */
-/* Breakpoints used in this file (max-width unless said otherwise):
-     600 px  phones — the phone block near the end (stacked course rows, touch targets)
-     860 px  courses.html cards instead of the table, "More filters", the 44 px Remove target
-     900 px  one column (report under the inputs), the sticky score bar, contact-card placement
-    1100 px  (min-width) the course-rules table header pins to the page
-    1120 px  tablets in landscape keep two columns, the report column narrower */
-:root {
-  --navy: #0c2340;
-  --gold: #ae9142; /* rules, borders, large accents only */
-  --gold-text: #7a6220; /* the gold for TEXT — 5.8:1 on white, 5.5:1 on the page background; #ae9142 measured 2.9:1 at 12 px (WCAG 1.4.3; usability review 2026-09-05, item 4) */
-  --ink: #1b1f26;
-  --muted: #5a6472;
-  --line: #d9dde3;
-  --bg: #f7f8fa;
-  --card: #ffffff;
-  --ok: #10693f;
-  --warn: #8e5108;
-  --bad: #a81e14;
-  --info: #1f4e8c;
-  --grey: #6b7280;
-  /* Night mode (DGS 2026-10-04): every colour below is a token, redefined for
-     dark under :root[data-theme="dark"] further down. --navy is TEXT and rules;
-     --navy-fill is a filled control with --on-fill text on it (the two are one
-     colour in light, two in dark). The rest are the light page's literal
-     colours, named by role. */
-  --navy-fill: #0c2340;
-  --on-fill: #ffffff;
-  --surface-soft: #fafbfc;
-  --note-bg: #fff7e0;
-  --note-bg-soft: #fffdf5;
-  --note-line: #e0c877;
-  --note-line-soft: #e8d48a;
-  --note-ink: #6b5510;
-  --note-ink-strong: #7a5b00;
-  --note-accent: #c99700;
-  --alert-bg: #fdecec;
-  --alert-line: #e3a3a3;
-  --alert-ink: #7a1f1f;
-  --bad-bg: #fbe9e7;
-  --bad-bg-soft: #fef7f6;
-  --official-bg: #e9eef7;
-  --official-line: #b9c7e0;
-  --official-ink: #1e2f4d;
-  --privacy-bg: #eef7ee;
-  --privacy-line: #b3d6b3;
-  --privacy-ink: #1d4d1d;
-  --navy-tint: #eef2f8;
-  --ok-tint: #eef7f1;
-  --ok-bg: #e4f2ea;
-  --warn-tint: #fbf3e6;
-  --warn-bg: #fbeedd;
-  --warn-line: #e5c391;
-  --warn-ink: #6b4d10;
-  --warn-ink-strong: #7a4a00;
-  --due-bg: #ffe3c9;
-  --due-ink: #8a3a00;
-  --due-line: #e0863a;
-  --info-bg: #e7eef9;
-  --combined-bg: #eef4fb;
-  --combined-line: #b9cfe8;
-  --adgs-bg: #efe8f8;
-  --adgs-ink: #5b2d8e;
-  --quote-ink: #55606e;
-  --neutral-bg: #f3f5f8;
-  --neutral-bg-2: #eef0f3;
-  --neutral-bg-3: #ededf0;
-  --neutral-bg-4: #f1f2f4;
-  --na-bg: #fbfbfc;
-  --locked-bg: #f1f3f5;
-  --spinner-track: #d6dbe3;
-  --done: #1a7f37;
-  --failed: #b45309;
-}
-html { color-scheme: light; }
-/* Night mode. Screen only: a printout is always the light page. Contrast was
-   checked against --card and --bg for every text token (WCAG 1.4.3, 4.5:1). */
-@media screen {
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --navy: #9dbcf0;
-    --navy-fill: #2b5391;
-    --on-fill: #ffffff;
-    --gold: #c4a553;
-    --gold-text: #d8bd6c;
-    --ink: #e4e7ec;
-    --muted: #a5aebb;
-    --line: #363c46;
-    --bg: #121418;
-    --card: #1b1e24;
-    --ok: #63cf92;
-    --warn: #f0a650;
-    --bad: #f28b80;
-    --info: #92b8ef;
-    --grey: #9ca3af;
-    --surface-soft: #1f232a;
-    --note-bg: #342a12;
-    --note-bg-soft: #26221a;
-    --note-line: #6e5a22;
-    --note-line-soft: #62521f;
-    --note-ink: #ead08a;
-    --note-ink-strong: #f0d47a;
-    --note-accent: #c99700;
-    --alert-bg: #3b1b1b;
-    --alert-line: #7c3b3b;
-    --alert-ink: #f4b0aa;
-    --bad-bg: #3a1c19;
-    --bad-bg-soft: #2c1a19;
-    --official-bg: #1b2536;
-    --official-line: #3a4a66;
-    --official-ink: #c8d5ee;
-    --privacy-bg: #172a19;
-    --privacy-line: #2f5a33;
-    --privacy-ink: #b6deb6;
-    --navy-tint: #1d2a40;
-    --ok-tint: #16291e;
-    --ok-bg: #173323;
-    --warn-tint: #30271a;
-    --warn-bg: #382912;
-    --warn-line: #6e5428;
-    --warn-ink: #ebca8a;
-    --warn-ink-strong: #f2c274;
-    --due-bg: #4a2b12;
-    --due-ink: #ffb27a;
-    --due-line: #e0863a;
-    --info-bg: #1c2a40;
-    --combined-bg: #1a2638;
-    --combined-line: #34486a;
-    --adgs-bg: #2c2240;
-    --adgs-ink: #d0b8f2;
-    --quote-ink: #a6b0bd;
-    --neutral-bg: #262b34;
-    --neutral-bg-2: #2a2f38;
-    --neutral-bg-3: #2c2f36;
-    --na-bg: #191c21;
-    --neutral-bg-4: #2a2d33;
-    --locked-bg: #2a2f36;
-    --spinner-track: #3a414c;
-    --done: #2f9e55;
-    --failed: #d0782e;
-  }
-}
-
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: var(--ink);
-  background: var(--bg);
-}
-#app { margin: 0 auto; padding: 20px 20px 60px; } /* fluid: the page fills the window at any width (DGS 2026-09-09), and so does every paragraph (DGS 2026-09-19) */
-
-/* masthead */
-.masthead {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 400px);
-  column-gap: 28px; row-gap: 8px; align-items: start;
-  padding: 8px 0 14px; border-bottom: 3px solid var(--navy); margin-bottom: 14px;
-}
-.masthead-main { min-width: 0; }
+/* The SELF-CHECK page's own rules (W4 of the blue-team review, 2026-10-22), loaded
+   after style-base.css by index.html only: the report column and its cards, the
+   dial, the transcripts, coursework and milestones cards, the previews, the
+   dialogs, the toasts, the floating boxes, the next-step ring, simulation mode.
+   A rule courses.html uses too belongs in style-base.css (its header has the
+   rule). Order and media blocks are as in the one style.css this came from. */
 .masthead-tools { grid-column: 1 / -1; }
-/* The second column holds the contacts card on BOTH pages from 900 px up (the
-   self-check page since 2026-09-30, DGS: "just like in the course rule page").
-   Below that the card is at the end of the page and the column would be empty,
-   so the masthead is one column — the intro must not wrap 400 px short of the
-   rule beneath it (DGS 2026-09-19). */
-@media (max-width: 900px) { .masthead { grid-template-columns: minmax(0, 1fr); } }
-/* The eyebrow's line, shared with the Auto · Light · Dark switch (night mode,
-   DGS 2026-10-04 — src/ui/theme.ts). */
-.masthead-top { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
-.theme-toggle { display: inline-flex; margin-left: auto; border: 1px solid var(--line); border-radius: 999px; padding: 2px; background: var(--card); }
-.theme-choice { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; line-height: 1; padding: 6px 11px; min-height: 26px; border-radius: 999px; cursor: pointer; }
-.theme-choice:hover { color: var(--ink); }
-.theme-choice[aria-checked="true"] { background: var(--navy-fill); color: var(--on-fill); font-weight: 600; }
-@media print { .theme-toggle { display: none; } }
-.eyebrow { color: var(--gold-text); font-weight: 600; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
-.masthead h1 { margin: 2px 0 6px; color: var(--navy); font-size: 28px; }
-.masthead .sub { margin: 0; color: var(--muted); }
-.masthead .effective { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
-.masthead .sub a, .legal a { color: inherit; text-decoration: underline; }
 .masthead-tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.tab { border: 0; background: var(--card); padding: 8px 16px; font: inherit; cursor: pointer; color: var(--muted); }
-.tab.active { background: var(--navy-fill); color: var(--on-fill); font-weight: 600; }
-
-.banner {
-  background: var(--note-bg); border: 1px solid var(--note-line); color: var(--note-ink);
-  border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;
-}
 .banner.beta { background: var(--alert-bg); border-color: var(--alert-line); color: var(--alert-ink); }
 .notice-strips > .banner { margin-bottom: 8px; }
 .notice-strips { margin-bottom: 14px; }
@@ -196,8 +16,6 @@ body {
 .notice-details { margin-top: 4px; font-size: 13px; }
 .notice-details summary { cursor: pointer; font-weight: 600; color: inherit; } /* red in the alpha strip, green in the privacy strip (2026-09-19) */
 .notice-details .notice-full { margin: 6px 0 0; }
-.banner.official { background: var(--official-bg); border-color: var(--official-line); color: var(--official-ink); }
-.banner.official a { color: inherit; }
 .banner.privacy { background: var(--privacy-bg); border-color: var(--privacy-line); color: var(--privacy-ink); } /* the green strip: privacy, split from the alpha strip (DGS 2026-09-19) */
 .card.dgs-review { border-left: 4px solid var(--note-accent); }
 /* Nothing to review (DGS 2026-10-16: the card is always shown): no attention colour. */
@@ -306,13 +124,6 @@ dialog.copy-check .consent-box { max-width: none; }
  * scrollbar — the whole column is visible by scrolling the page itself. */
 .layout > .audit-col { grid-row: 1 / span 2; }
 @media (max-width: 900px) { .layout > .legal, .layout > .audit-col { grid-column: auto; grid-row: auto; } .layout > .legal { margin-top: 26px; } }
-/* No reading measure on paragraphs (DGS, 2026-09-19): the 2026-09-09 100ch
-   and the 2026-09-18 70ch (trim review P-67) both left a card's text wrapping
-   short of its own right edge, which read as stray line breaks. The inputs
-   column is its own grid column, so a paragraph can never run under the report
-   cards; on a wide monitor it simply uses the card. The same for .masthead .sub
-   and .legal below. */
-.table-scroll.plain { overflow-x: auto; background: none; border: 0; border-radius: 0; }
 /* The group dropdown sits under the requirement list now, so it needs its own
    room: axe's target-size check failed in WebKit when they touched (2026-09-08). */
 table.courses .counts select { max-width: 100%; margin-top: 8px; min-height: 28px; }
@@ -338,38 +149,16 @@ table.courses .line-label { font-weight: 600; }
 /* The processing-request card (2026-09-06 evening) — the Grad Admin's half of the two roles. */
 .card.grad-admin-request { border-left: 4px solid var(--info); }
 .chip-note { font-size: 12px; color: var(--gold-text); font-weight: 600; }
-/* A section chip that shows the CSE handbook's text on hover, click or Enter
-   (DGS 2026-10-05; src/ui/section-ref.ts): the chip keeps its page's look, with
-   a dotted underline that says there is more. */
-button.sec-ref { font-family: inherit; line-height: inherit; background: none; border: 0; padding: 0 2px; margin: 0; cursor: help; text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 3px; border-radius: 3px; }
-button.sec-ref[aria-expanded="true"] { background: var(--note-bg); }
-.courses-page .cite.sec-ref { cursor: help; }
-.sec-pop { position: fixed; z-index: 1300; max-width: calc(100vw - 32px); overflow: auto; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); padding: 12px 16px; font-size: 13px; font-weight: 400; line-height: 1.5; text-align: left; letter-spacing: normal; text-transform: none; }
-.sec-pop p { margin: 4px 0; }
-.sec-pop .sec-pop-title { margin: 12px 0 4px; font-weight: 700; color: var(--navy); }
-.sec-pop .sec-pop-title:first-child { margin-top: 0; }
-.sec-pop .sec-pop-source { margin-top: 10px; color: var(--muted); font-size: 12px; }
-@media print { .sec-pop { display: none !important; } }
-.hint { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
-.hint.warn { color: var(--note-ink-strong); background: var(--note-bg); border: 1px solid var(--note-line-soft); padding: 6px 10px; border-radius: 6px; }
 
 .field { display: block; margin-bottom: 10px; }
 .field .label, .ft-terms .label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 3px; }
 .field.inline { margin: 0; }
-input, select, button { font: inherit; }
-input, select { border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; background: var(--card); color: var(--ink); max-width: 100%; }
-/* One visible focus style for every interactive element (WCAG 2.4.7; usability review 2026-09-05, item 18). */
-:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
-input:focus-visible, select:focus-visible { outline-offset: 0; }
 .toast-action:focus-visible { outline-color: var(--on-fill); outline-offset: 1px; } /* inside the navy toast */
 /* Several controls, one question: the fieldset carries the legend as its label. */
 fieldset.field, fieldset.ft-terms, fieldset.gpa-choice { border: 0; padding: 0; margin: 0 0 10px; min-width: 0; }
 fieldset.field legend, fieldset.ft-terms legend, fieldset.gpa-choice legend { padding: 0; }
 fieldset.field.inline { margin: 0; }
 .label-hint { font-weight: 400; color: var(--grey); }
-.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.skip-link { position: absolute; left: 8px; top: -100px; background: var(--navy-fill); color: var(--on-fill); padding: 8px 12px; border-radius: 0 0 8px 8px; z-index: 1100; text-decoration: none; font-weight: 600; }
-.skip-link:focus { top: 0; }
 /* Radio groups (item 12) and step numbers on the card titles (item 31). */
 .radios { display: flex; flex-direction: column; gap: 4px; }
 .background-questions fieldset[hidden] { display: none; }
@@ -391,27 +180,11 @@ fieldset.field.inline { margin: 0; }
 .select-links { margin: 8px 0 0; }
 .print-header { display: none; }
 .print-stamp { display: block; } /* shown on paper only — the print block below the toasts */
-.filters .view-filter { grid-column: 1 / -1; }
-.filters .view-filter select { max-width: 100%; }
-.col-hidden { display: none !important; }
 /* A persistent problem message next to its source (item 6). */
 .field-error, .import-error { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--alert-line); border-left: 4px solid var(--bad); border-radius: 6px; padding: 6px 10px; margin: 6px 0; font-size: 13px; }
 .import-error { flex-basis: 100%; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .import-warnings { background: var(--note-bg); border: 1px solid var(--note-line-soft); color: var(--note-ink); border-radius: 6px; padding: 6px 10px; margin: 6px 0 10px; font-size: 13px; }
 .import-warnings ul { margin: 4px 0 0; padding-left: 18px; }
-/* A refused value is visible without reading the message (interface review R1,
-   2026-09-18): a 1px border tint was the only mark a box had, and next to a
-   grey --line border it is barely a change. Two pixels of --bad (#a81e14 —
-   6.94:1 against the tinted field it encloses, 6.91:1 against the page, where
-   the ordinary --line border measures 1.36:1) plus that tint, and the message
-   below carries the same fact in words, so the state never rests on colour
-   alone. The .field-error text measures 6.26:1 on its own box; the page's
-   floor is 5.36:1. */
-input[aria-invalid="true"], select[aria-invalid="true"] {
-  border: 2px solid var(--bad);
-  background: var(--bad-bg-soft);
-  padding: 6px 8px; /* keep the box the same size as its neighbours */
-}
 .gpa-choice .hint { margin: 2px 0 6px; }
 .gpa-note { margin-top: -6px; }
 .ft-auto { color: var(--muted); }
@@ -422,16 +195,7 @@ input[aria-invalid="true"], select[aria-invalid="true"] {
 .pair input { width: 90px; }
 .pair.bachelors-before { align-items: center; gap: 10px; } /* "Before Fall 2019" + the button that reveals the season/year (DGS 2026-09-20) */
 .bachelors-before-text { font-weight: 600; color: var(--navy); }
-
-.btn { border: 1px solid var(--line); background: var(--card); border-radius: 7px; padding: 7px 13px; cursor: pointer; margin-left: 6px; }
-.btn:hover { border-color: var(--navy); }
-.btn.primary { background: var(--navy-fill); border-color: var(--navy-fill); color: var(--on-fill); font-weight: 600; }
-/* A link styled as a button (the copy dialog's mailto:, 2026-09-13). */
-a.btn { text-decoration: none; display: inline-block; color: inherit; }
-a.btn.primary { color: var(--on-fill); }
-.btn.tiny { padding: 3px 8px; margin: 0; min-height: 24px; } /* ≥24 px target (WCAG 2.5.8) */
 .btn.tiny.remove { min-width: 28px; }
-button[disabled], button.inactive[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
 /* On a phone the course rows stack into cards and Remove is the one
    destructive control among them — 28×32 px is under the 44×44 guideline
    (blue-team B8, 2026-09-18). Undo exists and is announced, so this is polish;
@@ -464,7 +228,6 @@ button[disabled], button.inactive[aria-disabled="true"] { opacity: 0.45; cursor:
    size (cross-browser review, 2026-10-10). Every drop-down of the
    add-a-course form, and the simulation banner's. */
 .course-form select, .simulation-banner select { height: calc(1.5em + 16px); }
-.hidden { display: none !important; }
 
 table.courses { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
 table.courses th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 2px solid var(--line); padding: 4px 6px; }
@@ -490,7 +253,6 @@ table.courses tr.dropped .cid { text-decoration: line-through; color: var(--grey
 /* Regular weight: Zapf Dingbats has one, and Safari and Firefox faux-bolded it
    inside the bold marks while Chrome did not. */
 .mark-excluded > [aria-hidden='true'], .btn.tiny.remove, .x-glyph { font-family: 'Zapf Dingbats', 'Segoe UI Symbol', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 400; }
-.empty { color: var(--muted); font-style: italic; }
 
 .attest { display: block; margin: 6px 0; font-size: 13px; }
 .ft-terms { margin-top: 8px; }
@@ -511,9 +273,6 @@ fieldset.ft-terms:not(.clock-fields):not(.nondegree) > details { grid-column: 1 
 .save-buttons .btn { margin-left: 0; }
 
 .diagnostics summary { cursor: pointer; font-weight: 600; color: var(--info); }
-.issue { font-size: 13px; padding: 3px 0; border-bottom: 1px dotted var(--line); }
-.issue.error { color: var(--bad); }
-.issue.warning { color: var(--warn); }
 
 /* audit panel */
 .warnings { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 8px 12px; margin: 10px 0; font-size: 13px; color: var(--warn-ink); }
@@ -604,19 +363,11 @@ table.courses .feeds-hidden .counts-toward.now { display: none; }
    the question the page used to answer silently with "Ph.D.". */
 .consent-program-group { margin: 14px 0 0; }
 .consent-box .btn.primary[disabled] { opacity: 0.55; cursor: not-allowed; }
-/* The footer's five things, each with a heading and two of them behind a
-   disclosure (blue-team B9, 2026-09-18) — it was ~1,900 characters of unbroken
-   grey prose. Closed, the footer is five short lines. */
-.legal > div, .legal > details { margin-bottom: 10px; }
 .legal-head { font-size: 13px; font-weight: 700; color: var(--ink); margin: 0 6px 2px 0; display: inline; } /* inline, so a gap before the text — "Privacy" used to run into "Your coursework…" (trim review 2026-09-18, P-56) */
-.legal > details > summary { cursor: pointer; list-style-position: inside; } /* inside the page gutter (UI review, 2026-10-08) */
 .legal > details > summary .legal-head { color: var(--navy); }
-.legal > details[open] > summary { margin-bottom: 4px; }
 .meters { margin: 6px 0 4px; }
 .meter { margin-bottom: 6px; }
 .meter-label { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
-.bar { height: 7px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--navy); }
 
 .group-head { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--gold-text); margin: 18px 0 6px; }
 .req { border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--card); }
@@ -626,8 +377,8 @@ table.courses .feeds-hidden .counts-toward.now { display: none; }
 h4.req-title { margin: 0; font-size: inherit; line-height: inherit; color: inherit; }
 /* The § chip sits inside the title span, after the last word, so a row with no
    deadline and no course link has no second line (trim review 2026-09-18, P-70).
-   The base .cite margin-left: -4px below is live on courses.html, whose § marks
-   follow a heading. */
+   The .cite margin-left: -4px (style-courses.css) is live on courses.html, whose
+   § marks follow a heading. */
 .req .contrib { margin: 6px 0 0; font-size: 13px; }
 /* The card shows what is satisfied by what; the rule, the reasons and the next
    steps sit behind one "Relevant Policies" selector per card (DGS 2026-10-03; renamed from "Details" 2026-10-04). */
@@ -660,18 +411,6 @@ details.rare[open] > summary { margin-bottom: 6px; }
 .req .contrib-list .cid { font-weight: 600; }
 .req-title .cite { margin-left: 6px; vertical-align: baseline; }
 .req-chips { margin: 3px 0; display: flex; gap: 8px; flex-wrap: wrap; }
-/* The § chip is a real disclosure, and looked exactly like the decorative gold
-   labels beside it (2026-09-08): a dashed underline and a caret say so. */
-.cite { color: var(--gold-text); font-weight: 700; font-size: 12px; cursor: pointer; border: 0; border-bottom: 1px dashed currentColor; background: none; padding: 2px 4px; margin-left: -4px; min-height: 24px; min-width: 24px; display: inline-flex; align-items: center; border-radius: 4px; font-family: inherit; } /* ≥24 px target (WCAG 2.5.8) */
-.cite::after { content: ' \2304'; }
-.cite[aria-expanded="true"]::after { content: ' \2303'; }
-.cite[aria-expanded="true"] { background: var(--note-bg); }
-/* On the course-rules page the § marks are labels, not disclosures: there is
-   no handbook quote to open. They carried the audit page's hand cursor, dashed
-   underline and ⌄ chevron, so readers clicked them and nothing happened
-   (review B-17, 2026-09-18). */
-.courses-page .cite { cursor: default; border-bottom: 0; }
-.courses-page .cite::after { content: none; }
 .rule-quote { margin-top: 6px; font-size: 12px; font-style: italic; color: var(--quote-ink); border-left: 3px solid var(--gold); padding-left: 8px; }
 /* Deadlines in body-size type, coloured by state (item 15). Item 15's lead
    word ("Deadline:" / "Deadline passed:") and its .deadline-word rules went in
@@ -714,7 +453,6 @@ details.rare[open] > summary { margin-bottom: 6px; }
 .glossary dt { font-weight: 700; margin-top: 8px; }
 .glossary dd { margin: 2px 0 0; color: var(--muted); }
 .glossary .hint { margin-top: 10px; }
-.bar i.done { background: var(--ok); }
 /* The detail sentence carries the fact the student came for, so it is set in
    ink, not the hint grey (trim review 2026-09-18, P-68); .detail-warn keeps its
    amber above. A "Does not apply" row stays quiet as a whole (its title is muted below). */
@@ -729,10 +467,6 @@ ul.req-detail.detail-list .detail-sublist { margin: 2px 0 0; padding-left: 16px;
    ✓ met, ◐ in progress, ● waiting for the DGS, ✕ not yet (marks.ts). */
 ul.req-detail.detail-list li.check { list-style: none; position: relative; }
 ul.req-detail.detail-list li.check > .mark { position: absolute; left: -1.3em; top: 0.05em; width: 1.1em; margin: 0; text-align: center; }
-
-/* Sentence case, no abbreviations (usability review 2026-09-05, item 16). */
-.pill { font-size: 12px; font-weight: 700; border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
-.pill.small { font-size: 11px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
 .req.s-met { border-left-color: var(--ok); }
 .pill.s-met { background: var(--ok-bg); color: var(--ok); }
 .req.s-in_progress { border-left-color: var(--warn); }
@@ -767,8 +501,6 @@ ul.req-detail.detail-list li.check > .mark { position: absolute; left: -1.3em; t
 .req.s-unmet.req-overdue { border-left-color: var(--bad); }
 .req.req-duesoon { border-left-color: var(--due-line); }
 .req.s-unmet.req-notstarted { border-left-color: var(--line); }
-
-.legal { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
 
 /* Toasts stack in one fixed live region outside the page root (2026-09-06 evening):
    a plain message (4 s) and up to three Undo toasts that survive re-renders. */
@@ -808,14 +540,8 @@ ul.req-detail.detail-list li.check > .mark { position: absolute; left: -1.3em; t
   .print-header { display: block; font-size: 12px; color: #333; border-bottom: 1px solid #bbb; padding-bottom: 4px; margin: 0 0 8px; }
   .notice-strip { display: none; }
   .glossary, .attention { display: none; }
-  /* On paper the finish card, the "See the courses" arrows and the self-check
-     intro cannot be acted on (trim review 2026-09-18, P-91); the intro selector is
-     scoped so courses.html keeps its own masthead intro when printed. */
-  .masthead-tools, .inputs, .toast-stack, .save-buttons, .skip-link, .course-link, #app:not(.courses-page) .masthead .sub { display: none !important; }
-  .summary-mobile, .sticky-score, .jump-link, .mobile-only { display: none !important; }
   .layout { display: block; }
   .audit-col { position: static; max-height: none; overflow: visible; }
-  body { background: #fff; }
   .audit, .req { border-color: #bbb; }
 }
 
@@ -829,273 +555,8 @@ ul.req-detail.detail-list li.check > .mark { position: absolute; left: -1.3em; t
 
 /* privacy notes (FERPA) */
 .legal-privacy strong { color: var(--ink); }
-.legal-privacy, .legal-license, .legal-source { margin-top: 10px; }
-.legal-license strong, .legal-source strong { color: var(--ink); }
-/* What the results were checked with (DGS 2026-10-11, item 8): one small line,
-   last in the footer; the fingerprint and commit wrap like words. */
-.legal-stamp { margin: 10px 0 0; font-size: 12px; overflow-wrap: anywhere; }
 /* Simulation mode: the course rules' word on a planned course (DGS 2026-10-11, item 19). */
 .plan-note { margin-top: 4px; color: var(--warn-ink); font-size: 13px; }
-/* the rules-spreadsheet line under the dated line (both mastheads) */
-.masthead .effective.sheet-source { margin-top: 4px; }
-
-/* ---------- courses.html: the public course-rules list ---------- */
-.courses-page h2 { color: var(--navy); font-size: 20px; margin: 26px 0 10px; }
-.courses-page h3 { margin: 0 0 6px; font-size: 15px; color: var(--navy); }
-.courses-page h3.ov-sub { font-size: 16.5px; margin: 20px 0 8px; }
-.courses-page .muted { color: var(--muted); }
-.courses-page .small { font-size: 12.5px; }
-.courses-page .sub a { color: inherit; text-decoration: underline; }
-/* No reading measure on this page's paragraphs either (DGS 2026-09-30, after
-   the same ruling for the self-check page on 2026-09-19): the 70ch cap of the
-   trim review (P-17, 2026-09-18) made the text stop two thirds of the way
-   across while the card grids beneath ran to the edge, which read as stray
-   line breaks — in the ND page's frame as much as on the full page. A
-   paragraph fills its column, at any width, in both modes. */
-.ov-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
-.ov-grid > .ov-card { flex: 0 1 auto; min-width: min(100%, 260px); max-width: 100%; } /* content width: a card left alone on a row must not stretch across it */
-/* The schedule cards hold a seven-column table, so they take the whole row
-   until the window can fit two of them side by side (2026-09-09). */
-.ov-grid.two > .ov-card { flex: 1 1 min(100%, 1100px); }
-/* The schedule tables fit their card at every width above the phone layout
-   (DGS 2026-09-29: "shows all the columns without horizontal scrolls, just
-   like All courses"): no 980 px floor — that is the sort-header table's — and
-   titles and column heads wrap when the card is narrow, as they do in All
-   courses. Until then a title could not wrap ("one course, one line", DGS
-   2026-09-09), so a 1,200 px table sat in a 1,030 px card and scrolled
-   sideways — in the ND page's column, and whenever two semester cards share
-   a row. */
-table.course-rules.schedule-table { font-size: 13px; min-width: 0; } /* the class alone loses to `table.course-rules` on specificity */
-/* Just above the card breakpoint (861–1000 px) the seven columns share under
-   800 px: tighter cell padding is what keeps a "Case by case" pill from being
-   the one thing that cannot shrink. */
-@media (max-width: 1000px) {
-  table.course-rules.schedule-table th, table.course-rules.schedule-table td { padding-left: 4px; padding-right: 4px; }
-}
-/* The schedule tables collapse only where they become a stack of cards taller
-   than the section that follows them (trim review P-20, 2026-09-18). Whether
-   each one is open is set in courses-page.ts by the window width, so at 861 px
-   and above — and on paper — they are open and the summary has nothing to say;
-   the desktop page and the print-out are unchanged. */
-.sched-details > summary { display: none; }
-@media (max-width: 860px) {
-  .sched-details > summary { display: list-item; cursor: pointer; font-weight: 600; color: var(--navy); padding: 4px 0; font-size: 14px; }
-}
-@media print { .sched-details > summary { display: none; } }
-.schedule-table th[scope='col'], .schedule-table td.cell-title { white-space: normal; }
-/* One course, one line in the OVERVIEW lists: the card grows to its longest
-   course instead of wrapping every title (DGS 2026-09-09; the schedule
-   tables left this rule on 2026-09-29, see above). Once the cards are full
-   width the text has to wrap again — see the 860 px block. */
-.ov-item { white-space: nowrap; }
-.ov-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
-.ov-list { display: flex; flex-direction: column; gap: 3px; }
-.ov-item { display: flex; gap: 8px; align-items: baseline; text-decoration: none; color: var(--ink); font-size: 13px; line-height: 1.35; padding: 2px 6px; border-radius: 6px; }
-.ov-item .cid { font-weight: 700; color: var(--navy); white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
-.ov-item .ctitle { color: var(--muted); }
-.ov-item.pending .cid { color: var(--note-ink); }
-.ov-item:hover { background: var(--navy-tint); }
-.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 12px; align-items: end; margin: 8px 0 10px; }
-.filters .filter { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.filters .filter .label { font-size: 11.5px; font-weight: 600; color: var(--grey); letter-spacing: 0.02em; }
-/* Every control the same box: the search input used to be taller than the
-   selects beside it, which is what made the row look thrown together. */
-.filters input[type=search], .filters select {
-  width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px;
-  border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--card);
-}
-.filters select { padding-right: 6px; }
-/* The switches sit together on a line of their own, under the pickers. */
-.filters .switches { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
-.filters .check { font-size: 13.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
-.filters .clear-filters { margin: 0 0 0 auto; }
-/* "Copy link to this list" (blue-team review 2026-10-17, U27) sits before Clear
-   on the switches line; the read-only address appears beside it only when
-   neither clipboard route worked. */
-.filters .copy-link-fallback { flex: 1 1 240px; min-width: 0; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 13px; background: var(--card); color: var(--ink); }
-.filters .copy-link-fallback[hidden] { display: none; }
-/* "Find a course ↓" on the masthead's top line (U25), beside the theme switch:
-   the search box is more than a screen down the page, and nothing visible
-   jumped to it. The link takes the free space the switch's own auto margin
-   took, so the two sit together at the right. */
-.courses-page .masthead-top .find-course { margin-left: auto; font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; padding: 4px 0; }
-.courses-page .masthead-top .find-course:hover, .courses-page .masthead-top .find-course:focus-visible { text-decoration: underline; }
-.courses-page .masthead-top .find-course + .theme-toggle { margin-left: 0; }
-@media print { .find-course { display: none; } }
-/* "More filters" (mobile review 2026-09-19): the fold courses-page.ts renders
-   below 861 px; above it the same controls sit directly in the grid. */
-.filters details.more-filters { grid-column: 1 / -1; }
-.filters details.more-filters > summary { cursor: pointer; font-weight: 600; color: var(--navy); padding: 6px 0; min-height: 40px; box-sizing: border-box; }
-.filters details.more-filters > .more-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 12px; margin-top: 4px; }
-/* Inside the fold the switches lose the grid row that spaced them; a 44 px
-   row keeps the checkbox a touch target (axe target-size, 2026-09-19). */
-@media (max-width: 860px) { .filters .check { min-height: 44px; } .filters .check input { width: 20px; height: 20px; } }
-@media (max-width: 600px) { .filters input[type=search] { min-width: 0; } }
-.legend-block { margin: 6px 0 8px; }
-.legend-key { margin: 6px 0; line-height: 2; }
-/* Each pill stays with the words it defines when the line wraps (trim review
-   P-24): at 390 px "With ADGS approval" ended one line and "counts once the
-   advisor…" started the next. */
-.legend-key .legend-entry { display: inline-block; }
-details.legend { margin: 4px 0 8px; }
-details.legend summary { cursor: pointer; font-weight: 600; color: var(--navy); }
-table.course-rules tbody th { text-align: left; font-size: inherit; text-transform: none; letter-spacing: 0; color: inherit; background: none; position: static; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; font-weight: 700; }
-.table-scroll:focus-visible { outline-offset: -3px; }
-/* `position: sticky; top: 0` on the headings never engaged: `overflow-x: auto`
-   on the wrapper computes `overflow-y: auto`, which makes the WRAPPER the
-   sticky scrollport, and it does not scroll (trim review P-31, 2026-09-18).
-   Measured 2,500 px into the 6,413 px table, the header sat at top −2,500 px.
-   Above 1100 px the table fits, so the wrapper does not need to scroll and the
-   heading can pin to the page; below it the wrapper keeps its sideways scroll
-   and its focusable region (WCAG 2.1.1), and below 860 px the table is cards.
-   The second rule is not optional: with the header pinned, a row reached by a
-   #CSE-60641 link would land underneath it. */
-@media (min-width: 1100px) {
-  .courses-page .all-courses .table-scroll { overflow: visible; }
-  .courses-page .all-courses table.course-rules tbody tr { scroll-margin-top: 96px; }
-}
-.count { margin: 6px 0; }
-.table-scroll { overflow-x: auto; position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 10px; } /* position: relative — so a visually-hidden (absolutely positioned) header label is clipped with the table instead of widening the page (2026-09-05) */
-table.course-rules { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 980px; }
-table.course-rules th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 2px solid var(--line); padding: 8px 8px; background: var(--surface-soft); position: sticky; top: 0; }
-table.course-rules th .sort { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; text-transform: inherit; letter-spacing: inherit; text-align: left; }
-table.course-rules th .sort.active { color: var(--navy); }
-table.course-rules th .th-sub { display: block; font-size: 11px; font-weight: 400; letter-spacing: 0.04em; color: var(--muted); margin-top: 1px; } /* was 9.5px/--grey, the smallest and faintest text on the page — trim review P-23 */
-table.course-rules td { border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
-/* Zebra rows and a blue-tinted hover on the desk-width table (blue-team review
-   2026-10-17, U30): a row was a 1 px rule with a ~34 px pitch, and reading
-   from "CSE 60641" to its Typically-offered cell crossed ~1,200 px with
-   nothing to hold the line; the old hover, --neutral-bg on --card, measured
-   1.09:1 in light mode and 1.17:1 in dark — invisible. The stripe is neutral
-   and the hover is the tint .ov-item:hover uses, so the two differ by hue and
-   both read in either theme. Below 861 px the rows are cards (the block at
-   the end of this file sets their hover to none) and print keeps its own
-   block, so both are untouched. Specificity (0,2,3), the same as the :target
-   and .deep-linked rules below, which come later and so keep winning. */
-@media screen and (min-width: 861px) {
-  table.course-rules tbody tr:nth-child(even) > * { background: var(--neutral-bg); }
-  table.course-rules tbody tr:hover > * { background: var(--navy-tint); }
-}
-table.course-rules tr:target td, table.course-rules tr:target th { background: var(--note-bg); } /* th too, as .deep-linked below: a striped course-id cell no longer breaks the highlight (U30) */
-/* Forced-colours mode (Windows high contrast) drops background colours, so the
-   jumped-to row lost its only marker (review R-27, 2026-09-18). An outline is
-   honoured there. */
-@media (forced-colors: active) {
-  table.course-rules tr:target td, table.course-rules tr:target th,
-  table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { outline: 2px solid Highlight; outline-offset: -2px; }
-}
-table.course-rules tr.retired td { color: var(--grey); }
-table.course-rules .course-id { font-weight: 700; white-space: nowrap; }
-table.course-rules .course-id .pill { margin-left: 6px; }
-.courses-page .pill.yes { background: var(--ok-bg); color: var(--ok); }
-.courses-page .pill.no { background: var(--bad-bg); color: var(--bad); }
-.courses-page .pill.approval { background: var(--info-bg); color: var(--info); } /* DGS: blue */
-.courses-page .pill.sched-now { background: var(--ok-bg); color: var(--ok); margin-left: 0; } /* offered this semester (2026-09-17) */
-.courses-page .pill.sched-next { background: var(--info-bg); color: var(--info); margin-left: 0; } /* offered next semester */
-.courses-page .sched-key { margin: -4px 0 10px; }
-/* A course line in a qualifier card is a row of parts that must be allowed to
-   wrap on a phone: with two semester tags and a title, `white-space: nowrap`
-   on the title squeezed it into a four-line sliver (review B-16, 2026-09-18).
-   The identifier stays on one line; everything after it flows. */
-.ov-item { flex-wrap: wrap; }
-/* A small flex basis, not `auto`: with wrapping allowed, a title whose natural
-   width does not fit is moved to a line of its own before the browser will
-   shrink it, so half the courses on a phone read as "CSE 50502" with the title
-   orphaned underneath. A 10ch basis keeps the title beside its course number
-   and lets it wrap inside its own box. */
-.ov-item .ctitle { flex: 1 1 10ch; min-width: 0; }
-.ov-item .pill.small { flex: 0 0 auto; font-size: 11px; padding: 1px 6px; }
-/* A row reached by a link someone was sent, highlighted like a clicked one —
-   `:target` cannot fire for a fragment the browser resolved before the page
-   existed (review B-7, 2026-09-18). */
-table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { background: var(--note-bg); }
-.courses-page .pill.approval-adgs { background: var(--adgs-bg); color: var(--adgs-ink); } /* ADGS: purple — var(--adgs-ink) measured 7.4:1 on var(--adgs-bg) (DGS 2026-09-16) */
-.courses-page .pill.undecided { background: var(--neutral-bg-3); color: var(--muted); } /* --grey measured 4.3:1 on this background (2026-09-05) */
-.courses-page .pill.pending { background: var(--note-bg); color: var(--note-ink); }
-.courses-page .pill.retired { background: var(--neutral-bg-4); color: var(--muted); }
-.legend ul { padding-left: 18px; margin: 6px 0 0; }
-.legend li { margin: 4px 0; font-size: 13.5px; }
-.legend-key .pill { vertical-align: middle; }
-@media print {
-  /* This block once also removed the Notes column — `.notes-cell` hid its cells
-     and `th:last-child` its header. The DGS's notes left this page on
-     2026-09-09, so `.notes-cell` matched nothing and `th:last-child` had moved
-     on to hiding the LAST header of every table here: "DGS reviewed" on the all
-     courses table, "Specialization" on each schedule card, both while the cells
-     under them still printed. Removed 2026-09-16; the e2e "course rules list"
-     driver now prints under emulated print media and checks that every column
-     keeps its heading. Do not reintroduce a bare `th:last-child`. */
-  /* The filters are controls and cannot be printed; the BANNERS are the page's
-     caveats — "Pending rows may change", "not every course listed is offered",
-     "where this page and the handbook disagree" — and the saved-copy notice
-     that dates what is on the paper. Hiding them printed the rules stripped of
-     everything that qualifies them (review R-11, 2026-09-18). */
-  .filters, .skip-link { display: none; }
-  .courses-page .banner { background: none; border: 0; border-left: 3px solid #999; padding: 4px 0 4px 10px; font-size: 10.5px; color: #333; }
-  .table-scroll { border: 0; overflow: visible; }
-  table.course-rules { min-width: 0; font-size: 11px; }
-  /* The sort buttons are controls; on paper their labels are plain header text.
-     As buttons, Chrome repeated the All courses header on every page after the
-     first few as an empty grey band on landscape paper (cross-browser review,
-     2026-10-10). */
-  table.course-rules th .sort { display: contents; }
-  /* Pills are colour on screen and grey boxes on paper: give the text its own
-     weight so "Yes" and "No" stay apart when the ink does not. */
-  .courses-page .pill { border: 1px solid #999; font-weight: 700; }
-  /* Portrait paper is a table too (DGS 2026-10-10, "Tables"), and it is
-     680–720 px wide: the All courses table needed 870 px and a schedule table
-     757, so their right-hand columns were cut off the sheet. The paper has its
-     own margins, a cell needs less air than on screen, and a pill may wrap
-     ("With DGS / approval") — then every column fits. */
-  #app.courses-page { padding-left: 0; padding-right: 0; }
-  /* `tbody th` and the schedule tables' cells too: their own rules outrank a bare `th`. */
-  table.course-rules th, table.course-rules td, table.course-rules tbody th, table.course-rules.schedule-table th, table.course-rules.schedule-table td { padding: 4px 5px; }
-  table.course-rules .pill { white-space: normal; display: inline-block; border-radius: 8px; }
-}
-
-/* who-to-contact card, at the end of every page (names live in src/ui/contacts.ts) */
-/* Scoped to the card, not to the masthead: it is rendered at the end of
-   <main> on a narrow screen and in the embed, where `.masthead .contact-card`
-   would style nothing and it rendered as bare 15 px text (trim review P-21,
-   2026-09-18, and the same trap the embed move hit on 2026-09-16). */
-.contact-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 12px; font-size: 13px; margin-top: 4px; }
-.contact-card h2 { margin: 0 0 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
-.contact-card ul { list-style: none; margin: 0; padding: 0; }
-.contact-card li { margin: 5px 0; line-height: 1.35; }
-.contact-card .role { font-weight: 700; color: var(--navy); }
-.contact-card .scope { display: block; color: var(--muted); font-size: 12px; }
-.contact-card a { color: inherit; }
-/* Printed, the card is text, not a boxed aside. */
-@media print { .contact-card { border: 0; padding: 0; break-inside: avoid; page-break-inside: avoid; } } /* never split across two sheets (2026-10-10) */
-
-/* loading card (src/ui/loading.ts) */
-.load-card { max-width: 560px; margin: 36px auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; }
-.load-head { display: flex; gap: 12px; align-items: flex-start; }
-.load-head strong { display: block; font-size: 16px; color: var(--navy); }
-.load-sub { color: var(--muted); font-size: 13px; }
-.spin { width: 18px; height: 18px; border: 2.5px solid var(--spinner-track); border-top-color: var(--navy); border-radius: 50%; display: inline-block; flex: none; animation: spin 0.9s linear infinite; }
-.spin.sm { width: 12px; height: 12px; border-width: 2px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.load-card ol.steps { list-style: none; margin: 14px 0 6px; padding: 0; }
-.load-card ol.steps li { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--muted); }
-.load-card ol.steps li.active, .load-card ol.steps li.done, .load-card ol.steps li.failed { color: var(--ink); }
-.load-card .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--spinner-track); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: none; }
-.load-card li.active .dot { border-color: transparent; }
-.load-card li.done .dot { background: var(--done); border-color: var(--done); color: var(--on-fill); }
-.load-card li.failed .dot { background: var(--failed); border-color: var(--failed); color: var(--on-fill); }
-.load-card .detail { color: var(--muted); font-size: 13px; }
-.load-card .load-bar { height: 6px; margin-top: 10px; border: 0; background: var(--neutral-bg-2); }
-.load-card .load-bar i { transition: width 0.12s linear; }
-.load-card .load-bar.warn i { background: var(--failed); }
-.load-card .elapsed { font-size: 13px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
-.load-fail { margin-top: 14px; background: var(--note-bg); border: 1px solid var(--note-line); color: var(--note-ink); border-radius: 8px; padding: 12px 14px; }
-.load-fail p { margin: 0 0 10px; }
-.load-fail p:last-child { margin-bottom: 0; }
-.load-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
-.load-actions .btn { margin-left: 0; }
-.load-actions .or { color: var(--muted); font-size: 13px; }
-.load-note { font-size: 13px; color: var(--muted); }
-.load-fail .load-note a { color: inherit; }
 /* The next step after the earlier-degrees "Done" (DGS 2026-10-16:
    "Highlight the next step on the page"), and after every step the student
    finishes since 2026-10-17: ringed, tagged, a pulse at first (next-step.ts
@@ -1108,7 +569,6 @@ table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { bac
 @media print { .next-step-ring { outline: none; background-color: transparent; animation: none; } .next-step-ring::after { content: none; } }
 @keyframes next-step-pulse { from { outline-color: transparent; outline-offset: 14px; } to { outline-color: var(--info); outline-offset: 4px; } }
 @media (prefers-reduced-motion: reduce) { .next-step-ring { animation: none; } }
-@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: var(--spinner-track); } .load-card .load-bar i { transition: none; } }
 
 /* external transcripts card (src/ui/external-upload.ts) */
 .external-slot { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
@@ -1150,7 +610,6 @@ table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { bac
    border. The one-line (compact) rows keep their small "Taken as" drop-down. */
 .external-card .transcript-preview select { height: calc(1.5em + 10px); }
 .external-card .transcript-preview tr.compact select { height: auto; }
-abbr.term { text-decoration: underline dotted; text-decoration-color: var(--line); cursor: help; } /* "FA26" in a table cell; the full name is the tooltip (DGS 2026-09-07) */
 .external-card .transcript-preview table.courses td, .external-card .transcript-preview table.courses th { padding: 6px 3px; }
 .transcript-preview tr.prior-row .cid, .transcript-preview tr.prior-row input.course-id, .transcript-preview tr.prior-row .course-id.locked { color: var(--muted); } /* rows filed as prior coursework / unticked as irrelevant */
 .transcript-preview tr.blocked-row .cell-check, .transcript-preview tr.blocked-row .course-title.locked { cursor: help; } /* the row explains itself on hover (2026-09-06) */
@@ -1178,10 +637,6 @@ tr.ocr-low td { background: var(--note-bg); }
 .transcript-preview .scan-strip { max-width: 100%; }
 .transcript-preview .scan-strip canvas { display: block; width: 100%; height: auto; margin-top: 4px; border: 1px solid var(--line); border-radius: 4px; }
 .transcript-preview details.scan-line > summary { font-size: 12px; color: var(--muted); cursor: pointer; width: max-content; }
-
-/* ---------- phones and tablets (2026-09-05, usability review items 2, 13, 30) ---------- */
-/* Wide screens: the report sits beside the inputs, so the mobile-only pieces stay hidden. */
-.summary-mobile, .sticky-score, .mobile-only, .filters .filter.mobile-only { display: none; }
 .jump-link { display: inline-block; margin-top: 8px; font-size: 13px; color: var(--navy); font-weight: 600; }
 .summary-mobile .jump-link { margin-top: 4px; }
 .jump-link.back-link { display: none; }
@@ -1207,20 +662,14 @@ tr.ocr-low td { background: var(--note-bg); }
      (2026-09-16). */
   #app:not(.courses-page) { padding-bottom: 76px; }
   .toast-stack { bottom: calc(62px + var(--float-warnings, 0px) + var(--float-steps, 0px)); } /* above the bar AND the floating boxes (U16) */
-  .masthead { grid-template-columns: minmax(0, 1fr); } /* minmax, so a long address cannot widen the page */
 }
 
 @media (max-width: 600px) {
-  /* Phones. */
-  #app { padding: 12px 12px 48px; }
   .card { padding: 12px; }
   /* One field per line in the add-a-course form: at 390 px the two-column grid
      left the Title box 114 px wide (2026-09-08). */
   .course-form .row1 { grid-template-columns: minmax(0, 1fr); }
   .external-slot .slot-label { min-width: 0; }
-  .masthead h1 { font-size: 22px; }
-  .contact-card { font-size: 12px; padding: 8px 10px 9px; }
-  .contact-card li { margin: 3px 0; }
   .masthead-tools { gap: 8px; }
   .masthead-tools .tabs { display: flex; width: 100%; }
   .masthead-tools .tab { flex: 1 1 0; text-align: center; padding: 10px 6px; }
@@ -1238,7 +687,6 @@ tr.ocr-low td { background: var(--note-bg); }
      of the last digit at 390 px (mobile review 2026-09-19): no spinner there. */
   .course-form .row2 input[type='number'][data-key='course.new.year'] { appearance: textfield; -moz-appearance: textfield; width: 64px; }
   .course-form .row2 input[type='number'][data-key='course.new.year']::-webkit-inner-spin-button, .course-form .row2 input[type='number'][data-key='course.new.year']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-  .btn { min-height: 40px; }
   /* The rare-input, Relevant Policies and "more" folds open from one 13-px
      line: 24 px tall beside 40–44 px controls, so a thumb opened the fold
      above (blue-team review 2026-10-17, U13). Padding, not display: flex —
@@ -1257,10 +705,11 @@ tr.ocr-low td { background: var(--note-bg); }
      boxes need the same touch target (axe target-size on the phone layout). */
   .ft-term { display: flex; align-items: flex-start; gap: 8px; min-height: 44px; padding: 4px 0; margin-right: 0; }
   .ft-term input[type='checkbox'] { width: 20px; height: 20px; margin-top: 2px; flex: none; }
-  .btn.tiny { min-height: 32px; }
   .save-buttons .btn { flex: 1 1 auto; }
-  /* iOS Safari zooms the page when a focused control's text is smaller than 16 px. */
-  input, select, textarea, .external-card .transcript-preview input, .external-card .transcript-preview select { font-size: 16px; }
+  /* iOS Safari's 16 px floor (the `input, select, textarea` rule of style-base.css) for
+     the external preview's own boxes, which set 13 px above — after them, as it was
+     before the split of 2026-10-22 (W4), so the floor still wins. */
+  .external-card .transcript-preview input, .external-card .transcript-preview select { font-size: 16px; }
   .pair input { width: 96px; }
   .external-slot { display: block; }
   .external-slot .slot-label { display: block; margin-bottom: 4px; }
@@ -1298,7 +747,6 @@ tr.ocr-low td { background: var(--note-bg); }
   table.courses.stack td.cell-note:empty { display: none; }
   table.courses.stack td.cell-scan { order: 5; flex: 0 0 100%; min-width: 0; }
   table.courses.stack .cid { white-space: normal; }
-  .table-scroll.plain { overflow: visible; }
   /* The editable preview (external transcripts): one small form per course. */
   table.courses.stack.edit tr { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin: 8px 0; background: var(--card); }
   table.courses.stack.edit tr.ocr-low { background: var(--note-bg); }
@@ -1396,111 +844,6 @@ tr.ocr-low td { background: var(--note-bg); }
   .transcript-preview table.courses.stack.edit:has(tr.compact) tr:first-child th { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
   .transcript-preview table.courses.stack.edit:has(tr.compact) tr:first-child th.level-head { position: static; width: 118px; height: auto; margin: 0; padding: 0 0 2px; overflow: visible; clip: auto; flex: 0 0 auto; box-sizing: border-box; text-align: center; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border: 0; }
 }
-
-/* ---------- courses.html on phones and tablets in portrait: cards instead of the 980 px table ---------- */
-/* On SCREEN only (DGS 2026-10-10, "Tables"): a browser lays a printout out at
-   the paper's width, under 861 px on portrait Letter or A4, and this block
-   printed the course list as 36 pages of phone cards; on paper the list is
-   the table at every size. Wrapping a long title is right at any narrow
-   width, so those two rules stay for print too. */
-@media (max-width: 860px) {
-  .schedule-table td.cell-title, .schedule-table th[scope='col'] { white-space: normal; }
-  .ov-item { white-space: normal; }
-}
-@media screen and (max-width: 860px) {
-  .mobile-only { display: flex; }
-  .filters .filter.mobile-only { display: flex; grid-column: 1 / -1; flex-direction: row; align-items: flex-end; gap: 12px; }
-  .courses-page .table-scroll { overflow: visible; border: 0; background: none; }
-  .courses-page .table-scroll:focus-visible { outline: none; }
-  table.course-rules { min-width: 0; display: block; }
-  /* The schedule tables keep every course on one line at desk widths; on a
-     phone the same table is a stack of cards, so a title that cannot wrap runs
-     past the card and drags the whole page sideways (DGS 2026-09-09, iPhone).
-     Wrapping is the right behaviour once there are no columns to line up. */
-  .schedule-table td.cell-title, .schedule-table th[scope='col'] { white-space: normal; }
-  /* The same bug in the overview cards, which had its wrap-back keyed to 600 px
-     while the card layout it pairs with starts here: between 601 and 860 px the
-     cards shrink (`min-width: min(100%, 260px)` overrides flex's automatic
-     minimum) while their one-line items do not, and the overflow drags the page
-     sideways. Found at the ~700 px of a WordPress content column, 2026-09-16. */
-  .ov-item { white-space: normal; }
-  table.course-rules thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
-  table.course-rules tbody { display: block; }
-  table.course-rules tbody tr { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 0 0 8px; }
-  table.course-rules tbody tr:hover td { background: none; }
-  table.course-rules tbody tr:target { background: var(--note-bg); }
-  table.course-rules tbody th, table.course-rules tbody td { display: block; border: 0; padding: 2px 0; font-size: 14px; }
-  table.course-rules tbody th.course-id { font-size: 16px; white-space: normal; }
-  table.course-rules tbody td.cell-title { color: var(--muted); margin-bottom: 4px; }
-  table.course-rules tbody td[data-label]::before { content: attr(data-label) ': '; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; }
-  /* A card does not print its empty fields (embed review 2026-09-19): "Core
-     knowledge: —", "Specialization: —", "Typically offered: —" were three of
-     the six lines on most cards, and the 321-course list measured 31,600 px in
-     a 360 px frame. The `muted` class is exactly "this cell is a dash"
-     (courses-page.ts); on the wide table the dash stays, because there a blank
-     cell reads as a missing value. */
-  table.course-rules tbody td.muted { display: none; }
-  .courses-page .count { margin: 10px 0 4px; }
-}
-/* Non-CSE courses the DGS has reviewed sit under the CSE list (DGS 2026-09-21). */
-.non-cse { margin-top: 22px; }
-.non-cse h3 { margin: 0 0 4px; font-size: 16px; color: var(--navy); }
-.non-cse .non-cse-note { margin: 0 0 8px; }
-
-/* The course card that follows the pointer on the course-rules page (DGS
-   2026-09-09). `position: fixed` so the schedule tables' scroll region cannot
-   clip it; it is placed by script, and hidden with [hidden]. */
-.course-pop {
-  position: fixed; top: -9999px; left: 0; z-index: 900; max-width: min(420px, calc(100vw - 24px));
-  background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
-  /* NOT pointer-events: none. WCAG 1.4.13 asks that content shown on hover be
-     hoverable, and courses-page.ts registers mouseenter/mouseleave on this card
-     with a 160 ms delayed close so a pointer can travel to it — listeners that
-     could never fire while this line was here (found in the trim review,
-     2026-09-18, the day the rest of that fix shipped). It also lets a reader
-     select the text in the card. */
-}
-.course-pop[hidden] { display: none; }
-.course-pop h4 { margin: 0; font-size: 17px; color: var(--ink); display: flex; gap: 8px; align-items: baseline; }
-.course-pop .pop-title { margin: 2px 0 8px; color: var(--muted); font-size: 14px; }
-.course-pop .pop-row { display: flex; gap: 8px; align-items: baseline; margin-top: 4px; font-size: 13px; }
-.course-pop .pop-label { color: var(--grey); font-weight: 700; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
-.course-pop .pop-value { color: var(--ink); }
-@media (max-width: 600px) { .course-pop { display: none; } } /* no pointer to hover with */
-
-/* ---------- embed mode: ?embed=1, the pages inside someone else's page ----------
-   Turned on by src/ui/embed.ts, which puts `embed` on <html> before anything
-   renders, so the loading card is already trimmed and the frame never flashes
-   the full-page chrome. The host page (sites.nd.edu today) supplies the ND
-   masthead, the page heading and the site footer; everything here either
-   removes our duplicate of one of those or gives a moved block its styling
-   back. See README.md § "Embedding these pages in a WordPress page". */
-/* The frame is transparent so the host's page colour shows through instead of
-   our grey — which works until the host is dark, where navy headings on a dark
-   ground became unreadable (review R-26, 2026-09-18). The page keeps its own
-   light ground in that case: in the frame, Auto stays light (night mode,
-   2026-10-04 — src/ui/theme.ts), so a dark host gets a light page on its own
-   ground, and only a reader who picks Dark gets the dark page. */
-html.embed, html.embed body { background: transparent; }
-@media (prefers-color-scheme: dark) {
-  html.embed, html.embed body { background: var(--bg); }
-}
-/* Night mode chosen in the frame (src/ui/theme.ts — Auto stays light there). */
-html.embed[data-theme="dark"], html.embed[data-theme="dark"] body { background: var(--bg); }
-/* No outer gutter: the frame already sits inside the host's content column, so
-   our 20 px would be the second helping. The bottom keeps a little air. */
-html.embed #app { padding: 0 0 10px; }
-@media (max-width: 600px) { html.embed #app { padding: 0 0 8px; } }
-/* The masthead is one column and loses its heavy navy rule — that rule reads as
-   the top of a page, and this is not the top of the page any more. */
-html.embed .masthead { display: block; padding: 0 0 10px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
-/* "Who to contact" moves to the end of the page (courses-page.ts / app.ts); the
-   `.contact-card` rules above style it there too, and only its gap differs. */
-html.embed .contact-card { margin: 20px 0 0; }
-/* The way out of the frame — the one link that must be easy to find. */
-html.embed .embed-exit-line { margin: 0 0 10px; }
-html.embed .embed-exit { font-weight: 700; color: var(--navy); text-decoration: underline; }
 /* A content-height frame has no viewport of its own (DGS 2026-09-16, the
    self-check tool resizes its frame too): dialogs sit at a document position
    (`placeInFrame` sets top), toasts below the student's last interaction, and
@@ -1511,12 +854,8 @@ html.embed .sticky-score { display: none; }
 /* `40vh` in a content-height frame is 40% of the whole document — a screenful of
    empty textarea under a short summary (DGS 2026-09-16). A fixed height instead. */
 html.embed .copy-check .copy-preview { height: 320px; }
-html.embed { scroll-padding-bottom: 0; }
 /* The self-check tool only: where its saved work is going (src/ui/app.ts). */
 html.embed .banner.embed-storage { margin: 12px 0 0; font-size: 13px; }
-/* The loading card is a centred 560 px box on a full page; in a frame that is
-   about to be sized to it, centring it leaves the frame's own margins doubled. */
-html.embed .load-card { margin: 12px auto; }
 
 /* A milestone date with its deadline beside it (DGS 2026-10-04). The note
    goes under the box when the card itself is narrow (a container query on
@@ -1560,9 +899,6 @@ table.courses tr[hidden] { display: none !important; }
    --float-warnings and --float-steps. Screen only: paper has no fixed boxes. */
 @media screen {
   #app:not(.courses-page) { padding-bottom: calc(60px + var(--float-warnings, 0px) + var(--float-steps, 0px)); }
-  /* …and a focused control never stops under them (WCAG 2.4.11): at 1024 px the
-     boxes reach into the page's left column. */
-  html { scroll-padding-bottom: calc(18px + var(--float-warnings, 0px) + var(--float-steps, 0px)); }
 }
 /* From 1121 px up the report column is at least 480 px wide, so the 440 px
    boxes float over it alone and never reach the footer's column: their room
@@ -1573,22 +909,16 @@ table.courses tr[hidden] { display: none !important; }
 }
 @media screen and (max-width: 900px) {
   #app:not(.courses-page) { padding-bottom: calc(76px + var(--float-warnings, 0px) + var(--float-steps, 0px)); }
-  /* WCAG 2.4.11, as the bar's own rule. 24 px more than the bar and boxes, and
-     24 px at the top: Firefox does not scroll a focused control whose top is
-     already inside the padded window, so with less it stopped a third under
-     the box (cross-browser review, 2026-10-10). Embedded pages have no bar. */
-  html:not(.embed) { scroll-padding-bottom: calc(88px + var(--float-warnings, 0px) + var(--float-steps, 0px)); scroll-padding-top: 24px; }
 }
 /* The report's folds print as the screen has them (DGS 2026-10-10, item 1:
    "Let paper match the screen"): a closed one is its heading. Chrome, Edge,
    Opera and Safari do that by themselves; Firefox printed every closed fold
    open, handbook quote and all. */
 @media print { #report details:not([open]) > :not(summary) { display: none !important; } }
-/* Paper ends where the content does: the room left above for the score bar and
-   the floating boxes (and #app's own 60 px) printed a blank last sheet when the
-   report ended near a page's foot (DGS 2026-10-10, item 1: with the folds as the
-   screen has them, Chrome's Letter portrait ran to an empty fifth page). */
-@media print { #app, #app:not(.courses-page), html.embed #app { padding-bottom: 0; } }
+/* Paper ends where the content does (DGS 2026-10-10, item 1): the ≤900 px rule above
+   also applies on portrait paper, so this must follow it; the rule's other two
+   selectors (`#app`, `html.embed #app`) are in style-base.css (W4, 2026-10-22). */
+@media print { #app:not(.courses-page) { padding-bottom: 0; } }
 @media print { .attention.floating { position: static; width: auto; max-height: none; overflow: visible; box-shadow: none; } .attention.floating h3 { position: static; margin: 0 0 4px; padding: 0; } .attention h3 .attention-toggle { display: none !important; } .attention.floating.folded .attention-body { display: block; } }
 
 /* ---------- simulation mode (DGS 2026-10-09; src/ui/simulation.ts, app.ts) ---------- */
@@ -1646,3 +976,4 @@ h2 .chip-simulation, .headline .chip-simulation { margin-left: 8px; }
   .simulation-banner .simulation-controls, .simulation-banner details.rare { display: none; }
   .chip-simulation { border-color: #000; color: #000; }
 }
+

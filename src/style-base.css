@@ -1,0 +1,436 @@
+/* The SHARED sheet (W4 of the blue-team review, 2026-10-22): everything BOTH pages
+   use — the theme tokens for light and dark, the reset and base, the masthead and
+   its theme switch, buttons, the notices, the loading card, the contact card, the
+   embed mode and the print rules both pages need. index.html loads this sheet and
+   then style-app.css; courses.html loads this sheet and then style-courses.css, so
+   a rule here always comes earlier in the cascade than a page sheet's. Where a new
+   rule goes: used by both pages, or unsure → here; the self-check page only →
+   style-app.css; the course-rules page only → style-courses.css. The rules keep
+   the order (and the media blocks) they had in the one style.css this replaced. */
+/* ND-ish palette, system fonts only (no runtime font fetches — CLAUDE.md). */
+/* Breakpoints used in this file (max-width unless said otherwise):
+     600 px  phones — the phone block near the end (stacked course rows, touch targets)
+     860 px  courses.html cards instead of the table, "More filters", the 44 px Remove target
+     900 px  one column (report under the inputs), the sticky score bar, contact-card placement
+    1100 px  (min-width) the course-rules table header pins to the page
+    1120 px  tablets in landscape keep two columns, the report column narrower */
+:root {
+  --navy: #0c2340;
+  --gold: #ae9142; /* rules, borders, large accents only */
+  --gold-text: #7a6220; /* the gold for TEXT — 5.8:1 on white, 5.5:1 on the page background; #ae9142 measured 2.9:1 at 12 px (WCAG 1.4.3; usability review 2026-09-05, item 4) */
+  --ink: #1b1f26;
+  --muted: #5a6472;
+  --line: #d9dde3;
+  --bg: #f7f8fa;
+  --card: #ffffff;
+  --ok: #10693f;
+  --warn: #8e5108;
+  --bad: #a81e14;
+  --info: #1f4e8c;
+  --grey: #6b7280;
+  /* Night mode (DGS 2026-10-04): every colour below is a token, redefined for
+     dark under :root[data-theme="dark"] further down. --navy is TEXT and rules;
+     --navy-fill is a filled control with --on-fill text on it (the two are one
+     colour in light, two in dark). The rest are the light page's literal
+     colours, named by role. */
+  --navy-fill: #0c2340;
+  --on-fill: #ffffff;
+  --surface-soft: #fafbfc;
+  --note-bg: #fff7e0;
+  --note-bg-soft: #fffdf5;
+  --note-line: #e0c877;
+  --note-line-soft: #e8d48a;
+  --note-ink: #6b5510;
+  --note-ink-strong: #7a5b00;
+  --note-accent: #c99700;
+  --alert-bg: #fdecec;
+  --alert-line: #e3a3a3;
+  --alert-ink: #7a1f1f;
+  --bad-bg: #fbe9e7;
+  --bad-bg-soft: #fef7f6;
+  --official-bg: #e9eef7;
+  --official-line: #b9c7e0;
+  --official-ink: #1e2f4d;
+  --privacy-bg: #eef7ee;
+  --privacy-line: #b3d6b3;
+  --privacy-ink: #1d4d1d;
+  --navy-tint: #eef2f8;
+  --ok-tint: #eef7f1;
+  --ok-bg: #e4f2ea;
+  --warn-tint: #fbf3e6;
+  --warn-bg: #fbeedd;
+  --warn-line: #e5c391;
+  --warn-ink: #6b4d10;
+  --warn-ink-strong: #7a4a00;
+  --due-bg: #ffe3c9;
+  --due-ink: #8a3a00;
+  --due-line: #e0863a;
+  --info-bg: #e7eef9;
+  --combined-bg: #eef4fb;
+  --combined-line: #b9cfe8;
+  --adgs-bg: #efe8f8;
+  --adgs-ink: #5b2d8e;
+  --quote-ink: #55606e;
+  --neutral-bg: #f3f5f8;
+  --neutral-bg-2: #eef0f3;
+  --neutral-bg-3: #ededf0;
+  --neutral-bg-4: #f1f2f4;
+  --na-bg: #fbfbfc;
+  --locked-bg: #f1f3f5;
+  --spinner-track: #d6dbe3;
+  --done: #1a7f37;
+  --failed: #b45309;
+}
+html { color-scheme: light; }
+/* Night mode. Screen only: a printout is always the light page. Contrast was
+   checked against --card and --bg for every text token (WCAG 1.4.3, 4.5:1). */
+@media screen {
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --navy: #9dbcf0;
+    --navy-fill: #2b5391;
+    --on-fill: #ffffff;
+    --gold: #c4a553;
+    --gold-text: #d8bd6c;
+    --ink: #e4e7ec;
+    --muted: #a5aebb;
+    --line: #363c46;
+    --bg: #121418;
+    --card: #1b1e24;
+    --ok: #63cf92;
+    --warn: #f0a650;
+    --bad: #f28b80;
+    --info: #92b8ef;
+    --grey: #9ca3af;
+    --surface-soft: #1f232a;
+    --note-bg: #342a12;
+    --note-bg-soft: #26221a;
+    --note-line: #6e5a22;
+    --note-line-soft: #62521f;
+    --note-ink: #ead08a;
+    --note-ink-strong: #f0d47a;
+    --note-accent: #c99700;
+    --alert-bg: #3b1b1b;
+    --alert-line: #7c3b3b;
+    --alert-ink: #f4b0aa;
+    --bad-bg: #3a1c19;
+    --bad-bg-soft: #2c1a19;
+    --official-bg: #1b2536;
+    --official-line: #3a4a66;
+    --official-ink: #c8d5ee;
+    --privacy-bg: #172a19;
+    --privacy-line: #2f5a33;
+    --privacy-ink: #b6deb6;
+    --navy-tint: #1d2a40;
+    --ok-tint: #16291e;
+    --ok-bg: #173323;
+    --warn-tint: #30271a;
+    --warn-bg: #382912;
+    --warn-line: #6e5428;
+    --warn-ink: #ebca8a;
+    --warn-ink-strong: #f2c274;
+    --due-bg: #4a2b12;
+    --due-ink: #ffb27a;
+    --due-line: #e0863a;
+    --info-bg: #1c2a40;
+    --combined-bg: #1a2638;
+    --combined-line: #34486a;
+    --adgs-bg: #2c2240;
+    --adgs-ink: #d0b8f2;
+    --quote-ink: #a6b0bd;
+    --neutral-bg: #262b34;
+    --neutral-bg-2: #2a2f38;
+    --neutral-bg-3: #2c2f36;
+    --na-bg: #191c21;
+    --neutral-bg-4: #2a2d33;
+    --locked-bg: #2a2f36;
+    --spinner-track: #3a414c;
+    --done: #2f9e55;
+    --failed: #d0782e;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+#app { margin: 0 auto; padding: 20px 20px 60px; } /* fluid: the page fills the window at any width (DGS 2026-09-09), and so does every paragraph (DGS 2026-09-19) */
+
+/* masthead */
+.masthead {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 400px);
+  column-gap: 28px; row-gap: 8px; align-items: start;
+  padding: 8px 0 14px; border-bottom: 3px solid var(--navy); margin-bottom: 14px;
+}
+.masthead-main { min-width: 0; }
+/* The second column holds the contacts card on BOTH pages from 900 px up (the
+   self-check page since 2026-09-30, DGS: "just like in the course rule page").
+   Below that the card is at the end of the page and the column would be empty,
+   so the masthead is one column — the intro must not wrap 400 px short of the
+   rule beneath it (DGS 2026-09-19). */
+@media (max-width: 900px) { .masthead { grid-template-columns: minmax(0, 1fr); } }
+/* The eyebrow's line, shared with the Auto · Light · Dark switch (night mode,
+   DGS 2026-10-04 — src/ui/theme.ts). */
+.masthead-top { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.theme-toggle { display: inline-flex; margin-left: auto; border: 1px solid var(--line); border-radius: 999px; padding: 2px; background: var(--card); }
+.theme-choice { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px; line-height: 1; padding: 6px 11px; min-height: 26px; border-radius: 999px; cursor: pointer; }
+.theme-choice:hover { color: var(--ink); }
+.theme-choice[aria-checked="true"] { background: var(--navy-fill); color: var(--on-fill); font-weight: 600; }
+@media print { .theme-toggle { display: none; } }
+.eyebrow { color: var(--gold-text); font-weight: 600; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+.masthead h1 { margin: 2px 0 6px; color: var(--navy); font-size: 28px; }
+.masthead .sub { margin: 0; color: var(--muted); }
+.masthead .effective { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.masthead .sub a, .legal a { color: inherit; text-decoration: underline; }
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.tab { border: 0; background: var(--card); padding: 8px 16px; font: inherit; cursor: pointer; color: var(--muted); }
+.tab.active { background: var(--navy-fill); color: var(--on-fill); font-weight: 600; }
+
+.banner {
+  background: var(--note-bg); border: 1px solid var(--note-line); color: var(--note-ink);
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;
+}
+/* No reading measure on paragraphs (DGS, 2026-09-19): the 2026-09-09 100ch
+   and the 2026-09-18 70ch (trim review P-67) both left a card's text wrapping
+   short of its own right edge, which read as stray line breaks. The inputs
+   column is its own grid column, so a paragraph can never run under the report
+   cards; on a wide monitor it simply uses the card. The same for .masthead .sub
+   and .legal below. */
+.table-scroll.plain { overflow-x: auto; background: none; border: 0; border-radius: 0; }
+/* A section chip that shows the CSE handbook's text on hover, click or Enter
+   (DGS 2026-10-05; src/ui/section-ref.ts): the chip keeps its page's look, with
+   a dotted underline that says there is more. */
+button.sec-ref { font-family: inherit; line-height: inherit; background: none; border: 0; padding: 0 2px; margin: 0; cursor: help; text-decoration: underline dotted; text-decoration-thickness: 1px; text-underline-offset: 3px; border-radius: 3px; }
+button.sec-ref[aria-expanded="true"] { background: var(--note-bg); }
+.sec-pop { position: fixed; z-index: 1300; max-width: calc(100vw - 32px); overflow: auto; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18); padding: 12px 16px; font-size: 13px; font-weight: 400; line-height: 1.5; text-align: left; letter-spacing: normal; text-transform: none; }
+.sec-pop p { margin: 4px 0; }
+.sec-pop .sec-pop-title { margin: 12px 0 4px; font-weight: 700; color: var(--navy); }
+.sec-pop .sec-pop-title:first-child { margin-top: 0; }
+.sec-pop .sec-pop-source { margin-top: 10px; color: var(--muted); font-size: 12px; }
+@media print { .sec-pop { display: none !important; } }
+.hint { color: var(--muted); font-size: 13px; margin: 4px 0 12px; }
+.hint.warn { color: var(--note-ink-strong); background: var(--note-bg); border: 1px solid var(--note-line-soft); padding: 6px 10px; border-radius: 6px; }
+input, select, button { font: inherit; }
+input, select { border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; background: var(--card); color: var(--ink); max-width: 100%; }
+/* One visible focus style for every interactive element (WCAG 2.4.7; usability review 2026-09-05, item 18). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+input:focus-visible, select:focus-visible { outline-offset: 0; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.skip-link { position: absolute; left: 8px; top: -100px; background: var(--navy-fill); color: var(--on-fill); padding: 8px 12px; border-radius: 0 0 8px 8px; z-index: 1100; text-decoration: none; font-weight: 600; }
+.skip-link:focus { top: 0; }
+/* A refused value is visible without reading the message (interface review R1,
+   2026-09-18): a 1px border tint was the only mark a box had, and next to a
+   grey --line border it is barely a change. Two pixels of --bad (#a81e14 —
+   6.94:1 against the tinted field it encloses, 6.91:1 against the page, where
+   the ordinary --line border measures 1.36:1) plus that tint, and the message
+   below carries the same fact in words, so the state never rests on colour
+   alone. The .field-error text measures 6.26:1 on its own box; the page's
+   floor is 5.36:1. */
+input[aria-invalid="true"], select[aria-invalid="true"] {
+  border: 2px solid var(--bad);
+  background: var(--bad-bg-soft);
+  padding: 6px 8px; /* keep the box the same size as its neighbours */
+}
+
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 7px; padding: 7px 13px; cursor: pointer; margin-left: 6px; }
+.btn:hover { border-color: var(--navy); }
+.btn.primary { background: var(--navy-fill); border-color: var(--navy-fill); color: var(--on-fill); font-weight: 600; }
+/* A link styled as a button (the copy dialog's mailto:, 2026-09-13). */
+a.btn { text-decoration: none; display: inline-block; color: inherit; }
+a.btn.primary { color: var(--on-fill); }
+.btn.tiny { padding: 3px 8px; margin: 0; min-height: 24px; } /* ≥24 px target (WCAG 2.5.8) */
+button[disabled], button.inactive[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+.hidden { display: none !important; }
+.empty { color: var(--muted); font-style: italic; }
+.issue { font-size: 13px; padding: 3px 0; border-bottom: 1px dotted var(--line); }
+.issue.error { color: var(--bad); }
+.issue.warning { color: var(--warn); }
+/* The footer's five things, each with a heading and two of them behind a
+   disclosure (blue-team B9, 2026-09-18) — it was ~1,900 characters of unbroken
+   grey prose. Closed, the footer is five short lines. */
+.legal > div, .legal > details { margin-bottom: 10px; }
+.legal > details > summary { cursor: pointer; list-style-position: inside; } /* inside the page gutter (UI review, 2026-10-08) */
+.legal > details[open] > summary { margin-bottom: 4px; }
+.bar { height: 7px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--navy); }
+.bar i.done { background: var(--ok); }
+
+/* Sentence case, no abbreviations (usability review 2026-09-05, item 16). */
+.pill { font-size: 12px; font-weight: 700; border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+.pill.small { font-size: 11px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
+
+.legal { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+
+/* The self-check page on paper (the course-rules page and the contact card
+   have their own print blocks further down, where source order matters). */
+@media print {
+  /* On paper the finish card, the "See the courses" arrows and the self-check
+     intro cannot be acted on (trim review 2026-09-18, P-91); the intro selector is
+     scoped so courses.html keeps its own masthead intro when printed. */
+  .masthead-tools, .inputs, .toast-stack, .save-buttons, .skip-link, .course-link, #app:not(.courses-page) .masthead .sub { display: none !important; }
+  .summary-mobile, .sticky-score, .jump-link, .mobile-only { display: none !important; }
+  body { background: #fff; }
+}
+.legal-privacy, .legal-license, .legal-source { margin-top: 10px; }
+.legal-license strong, .legal-source strong { color: var(--ink); }
+/* What the results were checked with (DGS 2026-10-11, item 8): one small line,
+   last in the footer; the fingerprint and commit wrap like words. */
+.legal-stamp { margin: 10px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+/* the rules-spreadsheet line under the dated line (both mastheads) */
+.masthead .effective.sheet-source { margin-top: 4px; }
+
+/* courses.html's section headings — in the SHARED sheet rather than style-courses.css
+   because `.contact-card h2` further down must keep winning over it at equal
+   specificity (the contact card's small uppercase heading sits inside
+   #app.courses-page), and a page sheet is loaded after this one (W4, 2026-10-22). */
+.courses-page h2 { color: var(--navy); font-size: 20px; margin: 26px 0 10px; }
+.table-scroll:focus-visible { outline-offset: -3px; }
+.table-scroll { overflow-x: auto; position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 10px; } /* position: relative — so a visually-hidden (absolutely positioned) header label is clipped with the table instead of widening the page (2026-09-05) */
+@media print {
+  /* This block once also removed the Notes column — `.notes-cell` hid its cells
+     and `th:last-child` its header. The DGS's notes left this page on
+     2026-09-09, so `.notes-cell` matched nothing and `th:last-child` had moved
+     on to hiding the LAST header of every table here: "DGS reviewed" on the all
+     courses table, "Specialization" on each schedule card, both while the cells
+     under them still printed. Removed 2026-09-16; the e2e "course rules list"
+     driver now prints under emulated print media and checks that every column
+     keeps its heading. Do not reintroduce a bare `th:last-child`. */
+  /* The filters are controls and cannot be printed; the BANNERS are the page's
+     caveats — "Pending rows may change", "not every course listed is offered",
+     "where this page and the handbook disagree" — and the saved-copy notice
+     that dates what is on the paper. Hiding them printed the rules stripped of
+     everything that qualifies them (review R-11, 2026-09-18). */
+  .filters, .skip-link { display: none; }
+  .table-scroll { border: 0; overflow: visible; }
+}
+
+/* who-to-contact card, at the end of every page (names live in src/ui/contacts.ts) */
+/* Scoped to the card, not to the masthead: it is rendered at the end of
+   <main> on a narrow screen and in the embed, where `.masthead .contact-card`
+   would style nothing and it rendered as bare 15 px text (trim review P-21,
+   2026-09-18, and the same trap the embed move hit on 2026-09-16). */
+.contact-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 12px; font-size: 13px; margin-top: 4px; }
+.contact-card h2 { margin: 0 0 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+.contact-card ul { list-style: none; margin: 0; padding: 0; }
+.contact-card li { margin: 5px 0; line-height: 1.35; }
+.contact-card .role { font-weight: 700; color: var(--navy); }
+.contact-card .scope { display: block; color: var(--muted); font-size: 12px; }
+.contact-card a { color: inherit; }
+/* Printed, the card is text, not a boxed aside. */
+@media print { .contact-card { border: 0; padding: 0; break-inside: avoid; page-break-inside: avoid; } } /* never split across two sheets (2026-10-10) */
+
+/* loading card (src/ui/loading.ts) */
+.load-card { max-width: 560px; margin: 36px auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; }
+.load-head { display: flex; gap: 12px; align-items: flex-start; }
+.load-head strong { display: block; font-size: 16px; color: var(--navy); }
+.load-sub { color: var(--muted); font-size: 13px; }
+.spin { width: 18px; height: 18px; border: 2.5px solid var(--spinner-track); border-top-color: var(--navy); border-radius: 50%; display: inline-block; flex: none; animation: spin 0.9s linear infinite; }
+.spin.sm { width: 12px; height: 12px; border-width: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-card ol.steps { list-style: none; margin: 14px 0 6px; padding: 0; }
+.load-card ol.steps li { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--muted); }
+.load-card ol.steps li.active, .load-card ol.steps li.done, .load-card ol.steps li.failed { color: var(--ink); }
+.load-card .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--spinner-track); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex: none; }
+.load-card li.active .dot { border-color: transparent; }
+.load-card li.done .dot { background: var(--done); border-color: var(--done); color: var(--on-fill); }
+.load-card li.failed .dot { background: var(--failed); border-color: var(--failed); color: var(--on-fill); }
+.load-card .detail { color: var(--muted); font-size: 13px; }
+.load-card .load-bar { height: 6px; margin-top: 10px; border: 0; background: var(--neutral-bg-2); }
+.load-card .load-bar i { transition: width 0.12s linear; }
+.load-card .load-bar.warn i { background: var(--failed); }
+.load-card .elapsed { font-size: 13px; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.load-fail { margin-top: 14px; background: var(--note-bg); border: 1px solid var(--note-line); color: var(--note-ink); border-radius: 8px; padding: 12px 14px; }
+.load-fail p { margin: 0 0 10px; }
+.load-fail p:last-child { margin-bottom: 0; }
+.load-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.load-actions .btn { margin-left: 0; }
+.load-actions .or { color: var(--muted); font-size: 13px; }
+.load-note { font-size: 13px; color: var(--muted); }
+.load-fail .load-note a { color: inherit; }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: var(--spinner-track); } .load-card .load-bar i { transition: none; } }
+abbr.term { text-decoration: underline dotted; text-decoration-color: var(--line); cursor: help; } /* "FA26" in a table cell; the full name is the tooltip (DGS 2026-09-07) */
+
+/* ---------- phones and tablets (2026-09-05, usability review items 2, 13, 30) ---------- */
+/* Wide screens: the report sits beside the inputs, so the mobile-only pieces stay hidden. */
+.summary-mobile, .sticky-score, .mobile-only, .filters .filter.mobile-only { display: none; }
+
+@media (max-width: 900px) {
+  .masthead { grid-template-columns: minmax(0, 1fr); } /* minmax, so a long address cannot widen the page */
+}
+
+@media (max-width: 600px) {
+  /* Phones. */
+  #app { padding: 12px 12px 48px; }
+  .masthead h1 { font-size: 22px; }
+  .contact-card { font-size: 12px; padding: 8px 10px 9px; }
+  .contact-card li { margin: 3px 0; }
+  .btn { min-height: 40px; }
+  .btn.tiny { min-height: 32px; }
+  /* iOS Safari zooms the page when a focused control's text is smaller than 16 px.
+     (The external preview's own boxes are in style-app.css, where this floor must
+     follow their 13 px — the one rule the split of 2026-10-22 (W4) divided.) */
+  input, select, textarea { font-size: 16px; }
+  .table-scroll.plain { overflow: visible; }
+}
+
+/* ---------- embed mode: ?embed=1, the pages inside someone else's page ----------
+   Turned on by src/ui/embed.ts, which puts `embed` on <html> before anything
+   renders, so the loading card is already trimmed and the frame never flashes
+   the full-page chrome. The host page (sites.nd.edu today) supplies the ND
+   masthead, the page heading and the site footer; everything here either
+   removes our duplicate of one of those or gives a moved block its styling
+   back. See README.md § "Embedding these pages in a WordPress page". */
+/* The frame is transparent so the host's page colour shows through instead of
+   our grey — which works until the host is dark, where navy headings on a dark
+   ground became unreadable (review R-26, 2026-09-18). The page keeps its own
+   light ground in that case: in the frame, Auto stays light (night mode,
+   2026-10-04 — src/ui/theme.ts), so a dark host gets a light page on its own
+   ground, and only a reader who picks Dark gets the dark page. */
+html.embed, html.embed body { background: transparent; }
+@media (prefers-color-scheme: dark) {
+  html.embed, html.embed body { background: var(--bg); }
+}
+/* Night mode chosen in the frame (src/ui/theme.ts — Auto stays light there). */
+html.embed[data-theme="dark"], html.embed[data-theme="dark"] body { background: var(--bg); }
+/* No outer gutter: the frame already sits inside the host's content column, so
+   our 20 px would be the second helping. The bottom keeps a little air. */
+html.embed #app { padding: 0 0 10px; }
+@media (max-width: 600px) { html.embed #app { padding: 0 0 8px; } }
+/* The masthead is one column and loses its heavy navy rule — that rule reads as
+   the top of a page, and this is not the top of the page any more. */
+html.embed .masthead { display: block; padding: 0 0 10px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+/* "Who to contact" moves to the end of the page (courses-page.ts / app.ts); the
+   `.contact-card` rules above style it there too, and only its gap differs. */
+html.embed .contact-card { margin: 20px 0 0; }
+/* The way out of the frame — the one link that must be easy to find. */
+html.embed .embed-exit-line { margin: 0 0 10px; }
+html.embed .embed-exit { font-weight: 700; color: var(--navy); text-decoration: underline; }
+html.embed { scroll-padding-bottom: 0; }
+/* The loading card is a centred 560 px box on a full page; in a frame that is
+   about to be sized to it, centring it leaves the frame's own margins doubled. */
+html.embed .load-card { margin: 12px auto; }
+/* Room for the floating boxes at the end of the page, as well as for the
+   score bar (cross-browser review, 2026-10-10): the folded Next steps bar sat
+   over the footer's last lines and links on every phone and tablet, with
+   nowhere left to scroll. app.ts layoutFloats measures each box into
+   --float-warnings and --float-steps. Screen only: paper has no fixed boxes. */
+@media screen {
+  /* …and a focused control never stops under them (WCAG 2.4.11): at 1024 px the
+     boxes reach into the page's left column. */
+  html { scroll-padding-bottom: calc(18px + var(--float-warnings, 0px) + var(--float-steps, 0px)); }
+}
+@media screen and (max-width: 900px) {
+  /* WCAG 2.4.11, as the bar's own rule. 24 px more than the bar and boxes, and
+     24 px at the top: Firefox does not scroll a focused control whose top is
+     already inside the padded window, so with less it stopped a third under
+     the box (cross-browser review, 2026-10-10). Embedded pages have no bar. */
+  html:not(.embed) { scroll-padding-bottom: calc(88px + var(--float-warnings, 0px) + var(--float-steps, 0px)); scroll-padding-top: 24px; }
+}
+/* Paper ends where the content does: the room left above for the score bar and
+   the floating boxes (and #app's own 60 px) printed a blank last sheet when the
+   report ended near a page's foot (DGS 2026-10-10, item 1: with the folds as the
+   screen has them, Chrome's Letter portrait ran to an empty fifth page). */
+@media print { #app, html.embed #app { padding-bottom: 0; } } /* `#app:not(.courses-page)` is in style-app.css, after the ≤900 px rule it must beat (W4, 2026-10-22) */

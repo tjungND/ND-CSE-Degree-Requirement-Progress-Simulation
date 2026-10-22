@@ -1,7 +1,8 @@
 // Entry point for courses.html — the public "which courses count" list. Same
 // rules loader as the audit page (live sheet → snapshot fallback); no student
 // data is involved on this page at all.
-import './style.css';
+import './style-base.css'; // the sheet both pages share (W4, 2026-10-22)
+import './style-courses.css'; // this page's own rules — after the shared sheet, so its rules win ties
 import { loadRulesWithCard } from './ui/loading.ts';
 import { renderCoursesPage } from './ui/courses-page.ts';
 import { startTheme } from './ui/theme.ts';

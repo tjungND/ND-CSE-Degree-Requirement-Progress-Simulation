@@ -1,0 +1,290 @@
+/* ---------- courses.html: the public course-rules list ---------- */
+/* The COURSE-RULES page's own rules (W4 of the blue-team review, 2026-10-22), loaded
+   after style-base.css by courses.html only: the filters, the overview cards, the
+   schedule and All-courses tables, the hover card, the legend, the find-course
+   link. A rule the self-check page uses too belongs in style-base.css (its header
+   has the rule). Order and media blocks are as in the one style.css this came from. */
+.banner.official { background: var(--official-bg); border-color: var(--official-line); color: var(--official-ink); }
+.banner.official a { color: inherit; }
+.courses-page .cite.sec-ref { cursor: help; }
+.filters .view-filter { grid-column: 1 / -1; }
+.filters .view-filter select { max-width: 100%; }
+.col-hidden { display: none !important; }
+/* The § chip is a real disclosure, and looked exactly like the decorative gold
+   labels beside it (2026-09-08): a dashed underline and a caret say so. */
+.cite { color: var(--gold-text); font-weight: 700; font-size: 12px; cursor: pointer; border: 0; border-bottom: 1px dashed currentColor; background: none; padding: 2px 4px; margin-left: -4px; min-height: 24px; min-width: 24px; display: inline-flex; align-items: center; border-radius: 4px; font-family: inherit; } /* ≥24 px target (WCAG 2.5.8) */
+.cite::after { content: ' \2304'; }
+.cite[aria-expanded="true"]::after { content: ' \2303'; }
+.cite[aria-expanded="true"] { background: var(--note-bg); }
+/* On the course-rules page the § marks are labels, not disclosures: there is
+   no handbook quote to open. They carried the audit page's hand cursor, dashed
+   underline and ⌄ chevron, so readers clicked them and nothing happened
+   (review B-17, 2026-09-18). */
+.courses-page .cite { cursor: default; border-bottom: 0; }
+.courses-page .cite::after { content: none; }
+.courses-page h3 { margin: 0 0 6px; font-size: 15px; color: var(--navy); }
+.courses-page h3.ov-sub { font-size: 16.5px; margin: 20px 0 8px; }
+.courses-page .muted { color: var(--muted); }
+.courses-page .small { font-size: 12.5px; }
+.courses-page .sub a { color: inherit; text-decoration: underline; }
+/* No reading measure on this page's paragraphs either (DGS 2026-09-30, after
+   the same ruling for the self-check page on 2026-09-19): the 70ch cap of the
+   trim review (P-17, 2026-09-18) made the text stop two thirds of the way
+   across while the card grids beneath ran to the edge, which read as stray
+   line breaks — in the ND page's frame as much as on the full page. A
+   paragraph fills its column, at any width, in both modes. */
+.ov-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
+.ov-grid > .ov-card { flex: 0 1 auto; min-width: min(100%, 260px); max-width: 100%; } /* content width: a card left alone on a row must not stretch across it */
+/* The schedule cards hold a seven-column table, so they take the whole row
+   until the window can fit two of them side by side (2026-09-09). */
+.ov-grid.two > .ov-card { flex: 1 1 min(100%, 1100px); }
+/* The schedule tables fit their card at every width above the phone layout
+   (DGS 2026-09-29: "shows all the columns without horizontal scrolls, just
+   like All courses"): no 980 px floor — that is the sort-header table's — and
+   titles and column heads wrap when the card is narrow, as they do in All
+   courses. Until then a title could not wrap ("one course, one line", DGS
+   2026-09-09), so a 1,200 px table sat in a 1,030 px card and scrolled
+   sideways — in the ND page's column, and whenever two semester cards share
+   a row. */
+table.course-rules.schedule-table { font-size: 13px; min-width: 0; } /* the class alone loses to `table.course-rules` on specificity */
+/* Just above the card breakpoint (861–1000 px) the seven columns share under
+   800 px: tighter cell padding is what keeps a "Case by case" pill from being
+   the one thing that cannot shrink. */
+@media (max-width: 1000px) {
+  table.course-rules.schedule-table th, table.course-rules.schedule-table td { padding-left: 4px; padding-right: 4px; }
+}
+/* The schedule tables collapse only where they become a stack of cards taller
+   than the section that follows them (trim review P-20, 2026-09-18). Whether
+   each one is open is set in courses-page.ts by the window width, so at 861 px
+   and above — and on paper — they are open and the summary has nothing to say;
+   the desktop page and the print-out are unchanged. */
+.sched-details > summary { display: none; }
+@media (max-width: 860px) {
+  .sched-details > summary { display: list-item; cursor: pointer; font-weight: 600; color: var(--navy); padding: 4px 0; font-size: 14px; }
+}
+@media print { .sched-details > summary { display: none; } }
+.schedule-table th[scope='col'], .schedule-table td.cell-title { white-space: normal; }
+/* One course, one line in the OVERVIEW lists: the card grows to its longest
+   course instead of wrapping every title (DGS 2026-09-09; the schedule
+   tables left this rule on 2026-09-29, see above). Once the cards are full
+   width the text has to wrap again — see the 860 px block. */
+.ov-item { white-space: nowrap; }
+.ov-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.ov-list { display: flex; flex-direction: column; gap: 3px; }
+.ov-item { display: flex; gap: 8px; align-items: baseline; text-decoration: none; color: var(--ink); font-size: 13px; line-height: 1.35; padding: 2px 6px; border-radius: 6px; }
+.ov-item .cid { font-weight: 700; color: var(--navy); white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+.ov-item .ctitle { color: var(--muted); }
+.ov-item.pending .cid { color: var(--note-ink); }
+.ov-item:hover { background: var(--navy-tint); }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 12px; align-items: end; margin: 8px 0 10px; }
+.filters .filter { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.filters .filter .label { font-size: 11.5px; font-weight: 600; color: var(--grey); letter-spacing: 0.02em; }
+/* Every control the same box: the search input used to be taller than the
+   selects beside it, which is what made the row look thrown together. */
+.filters input[type=search], .filters select {
+  width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 8px; font: inherit; background: var(--card);
+}
+.filters select { padding-right: 6px; }
+/* The switches sit together on a line of their own, under the pickers. */
+.filters .switches { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.filters .check { font-size: 13.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.filters .clear-filters { margin: 0 0 0 auto; }
+/* "Copy link to this list" (blue-team review 2026-10-17, U27) sits before Clear
+   on the switches line; the read-only address appears beside it only when
+   neither clipboard route worked. */
+.filters .copy-link-fallback { flex: 1 1 240px; min-width: 0; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 13px; background: var(--card); color: var(--ink); }
+.filters .copy-link-fallback[hidden] { display: none; }
+/* "Find a course ↓" on the masthead's top line (U25), beside the theme switch:
+   the search box is more than a screen down the page, and nothing visible
+   jumped to it. The link takes the free space the switch's own auto margin
+   took, so the two sit together at the right. */
+.courses-page .masthead-top .find-course { margin-left: auto; font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; padding: 4px 0; }
+.courses-page .masthead-top .find-course:hover, .courses-page .masthead-top .find-course:focus-visible { text-decoration: underline; }
+.courses-page .masthead-top .find-course + .theme-toggle { margin-left: 0; }
+@media print { .find-course { display: none; } }
+/* "More filters" (mobile review 2026-09-19): the fold courses-page.ts renders
+   below 861 px; above it the same controls sit directly in the grid. */
+.filters details.more-filters { grid-column: 1 / -1; }
+.filters details.more-filters > summary { cursor: pointer; font-weight: 600; color: var(--navy); padding: 6px 0; min-height: 40px; box-sizing: border-box; }
+.filters details.more-filters > .more-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 12px; margin-top: 4px; }
+/* Inside the fold the switches lose the grid row that spaced them; a 44 px
+   row keeps the checkbox a touch target (axe target-size, 2026-09-19). */
+@media (max-width: 860px) { .filters .check { min-height: 44px; } .filters .check input { width: 20px; height: 20px; } }
+@media (max-width: 600px) { .filters input[type=search] { min-width: 0; } }
+.legend-block { margin: 6px 0 8px; }
+.legend-key { margin: 6px 0; line-height: 2; }
+/* Each pill stays with the words it defines when the line wraps (trim review
+   P-24): at 390 px "With ADGS approval" ended one line and "counts once the
+   advisor…" started the next. */
+.legend-key .legend-entry { display: inline-block; }
+details.legend { margin: 4px 0 8px; }
+details.legend summary { cursor: pointer; font-weight: 600; color: var(--navy); }
+table.course-rules tbody th { text-align: left; font-size: inherit; text-transform: none; letter-spacing: 0; color: inherit; background: none; position: static; border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; font-weight: 700; }
+/* `position: sticky; top: 0` on the headings never engaged: `overflow-x: auto`
+   on the wrapper computes `overflow-y: auto`, which makes the WRAPPER the
+   sticky scrollport, and it does not scroll (trim review P-31, 2026-09-18).
+   Measured 2,500 px into the 6,413 px table, the header sat at top −2,500 px.
+   Above 1100 px the table fits, so the wrapper does not need to scroll and the
+   heading can pin to the page; below it the wrapper keeps its sideways scroll
+   and its focusable region (WCAG 2.1.1), and below 860 px the table is cards.
+   The second rule is not optional: with the header pinned, a row reached by a
+   #CSE-60641 link would land underneath it. */
+@media (min-width: 1100px) {
+  .courses-page .all-courses .table-scroll { overflow: visible; }
+  .courses-page .all-courses table.course-rules tbody tr { scroll-margin-top: 96px; }
+}
+.count { margin: 6px 0; }
+table.course-rules { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 980px; }
+table.course-rules th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 2px solid var(--line); padding: 8px 8px; background: var(--surface-soft); position: sticky; top: 0; }
+table.course-rules th .sort { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; text-transform: inherit; letter-spacing: inherit; text-align: left; }
+table.course-rules th .sort.active { color: var(--navy); }
+table.course-rules th .th-sub { display: block; font-size: 11px; font-weight: 400; letter-spacing: 0.04em; color: var(--muted); margin-top: 1px; } /* was 9.5px/--grey, the smallest and faintest text on the page — trim review P-23 */
+table.course-rules td { border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
+/* Zebra rows and a blue-tinted hover on the desk-width table (blue-team review
+   2026-10-17, U30): a row was a 1 px rule with a ~34 px pitch, and reading
+   from "CSE 60641" to its Typically-offered cell crossed ~1,200 px with
+   nothing to hold the line; the old hover, --neutral-bg on --card, measured
+   1.09:1 in light mode and 1.17:1 in dark — invisible. The stripe is neutral
+   and the hover is the tint .ov-item:hover uses, so the two differ by hue and
+   both read in either theme. Below 861 px the rows are cards (the block at
+   the end of this file sets their hover to none) and print keeps its own
+   block, so both are untouched. Specificity (0,2,3), the same as the :target
+   and .deep-linked rules below, which come later and so keep winning. */
+@media screen and (min-width: 861px) {
+  table.course-rules tbody tr:nth-child(even) > * { background: var(--neutral-bg); }
+  table.course-rules tbody tr:hover > * { background: var(--navy-tint); }
+}
+table.course-rules tr:target td, table.course-rules tr:target th { background: var(--note-bg); } /* th too, as .deep-linked below: a striped course-id cell no longer breaks the highlight (U30) */
+/* Forced-colours mode (Windows high contrast) drops background colours, so the
+   jumped-to row lost its only marker (review R-27, 2026-09-18). An outline is
+   honoured there. */
+@media (forced-colors: active) {
+  table.course-rules tr:target td, table.course-rules tr:target th,
+  table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { outline: 2px solid Highlight; outline-offset: -2px; }
+}
+table.course-rules tr.retired td { color: var(--grey); }
+table.course-rules .course-id { font-weight: 700; white-space: nowrap; }
+table.course-rules .course-id .pill { margin-left: 6px; }
+.courses-page .pill.yes { background: var(--ok-bg); color: var(--ok); }
+.courses-page .pill.no { background: var(--bad-bg); color: var(--bad); }
+.courses-page .pill.approval { background: var(--info-bg); color: var(--info); } /* DGS: blue */
+.courses-page .pill.sched-now { background: var(--ok-bg); color: var(--ok); margin-left: 0; } /* offered this semester (2026-09-17) */
+.courses-page .pill.sched-next { background: var(--info-bg); color: var(--info); margin-left: 0; } /* offered next semester */
+.courses-page .sched-key { margin: -4px 0 10px; }
+/* A course line in a qualifier card is a row of parts that must be allowed to
+   wrap on a phone: with two semester tags and a title, `white-space: nowrap`
+   on the title squeezed it into a four-line sliver (review B-16, 2026-09-18).
+   The identifier stays on one line; everything after it flows. */
+.ov-item { flex-wrap: wrap; }
+/* A small flex basis, not `auto`: with wrapping allowed, a title whose natural
+   width does not fit is moved to a line of its own before the browser will
+   shrink it, so half the courses on a phone read as "CSE 50502" with the title
+   orphaned underneath. A 10ch basis keeps the title beside its course number
+   and lets it wrap inside its own box. */
+.ov-item .ctitle { flex: 1 1 10ch; min-width: 0; }
+.ov-item .pill.small { flex: 0 0 auto; font-size: 11px; padding: 1px 6px; }
+/* A row reached by a link someone was sent, highlighted like a clicked one —
+   `:target` cannot fire for a fragment the browser resolved before the page
+   existed (review B-7, 2026-09-18). */
+table.course-rules tr.deep-linked td, table.course-rules tr.deep-linked th { background: var(--note-bg); }
+.courses-page .pill.approval-adgs { background: var(--adgs-bg); color: var(--adgs-ink); } /* ADGS: purple — var(--adgs-ink) measured 7.4:1 on var(--adgs-bg) (DGS 2026-09-16) */
+.courses-page .pill.undecided { background: var(--neutral-bg-3); color: var(--muted); } /* --grey measured 4.3:1 on this background (2026-09-05) */
+.courses-page .pill.pending { background: var(--note-bg); color: var(--note-ink); }
+.courses-page .pill.retired { background: var(--neutral-bg-4); color: var(--muted); }
+.legend ul { padding-left: 18px; margin: 6px 0 0; }
+.legend li { margin: 4px 0; font-size: 13.5px; }
+.legend-key .pill { vertical-align: middle; }
+@media print {
+  .courses-page .banner { background: none; border: 0; border-left: 3px solid #999; padding: 4px 0 4px 10px; font-size: 10.5px; color: #333; }
+  table.course-rules { min-width: 0; font-size: 11px; }
+  /* The sort buttons are controls; on paper their labels are plain header text.
+     As buttons, Chrome repeated the All courses header on every page after the
+     first few as an empty grey band on landscape paper (cross-browser review,
+     2026-10-10). */
+  table.course-rules th .sort { display: contents; }
+  /* Pills are colour on screen and grey boxes on paper: give the text its own
+     weight so "Yes" and "No" stay apart when the ink does not. */
+  .courses-page .pill { border: 1px solid #999; font-weight: 700; }
+  /* Portrait paper is a table too (DGS 2026-10-10, "Tables"), and it is
+     680–720 px wide: the All courses table needed 870 px and a schedule table
+     757, so their right-hand columns were cut off the sheet. The paper has its
+     own margins, a cell needs less air than on screen, and a pill may wrap
+     ("With DGS / approval") — then every column fits. */
+  #app.courses-page { padding-left: 0; padding-right: 0; }
+  /* `tbody th` and the schedule tables' cells too: their own rules outrank a bare `th`. */
+  table.course-rules th, table.course-rules td, table.course-rules tbody th, table.course-rules.schedule-table th, table.course-rules.schedule-table td { padding: 4px 5px; }
+  table.course-rules .pill { white-space: normal; display: inline-block; border-radius: 8px; }
+}
+
+/* ---------- courses.html on phones and tablets in portrait: cards instead of the 980 px table ---------- */
+/* On SCREEN only (DGS 2026-10-10, "Tables"): a browser lays a printout out at
+   the paper's width, under 861 px on portrait Letter or A4, and this block
+   printed the course list as 36 pages of phone cards; on paper the list is
+   the table at every size. Wrapping a long title is right at any narrow
+   width, so those two rules stay for print too. */
+@media (max-width: 860px) {
+  .schedule-table td.cell-title, .schedule-table th[scope='col'] { white-space: normal; }
+  .ov-item { white-space: normal; }
+}
+@media screen and (max-width: 860px) {
+  .mobile-only { display: flex; }
+  .filters .filter.mobile-only { display: flex; grid-column: 1 / -1; flex-direction: row; align-items: flex-end; gap: 12px; }
+  .courses-page .table-scroll { overflow: visible; border: 0; background: none; }
+  .courses-page .table-scroll:focus-visible { outline: none; }
+  table.course-rules { min-width: 0; display: block; }
+  /* The schedule tables keep every course on one line at desk widths; on a
+     phone the same table is a stack of cards, so a title that cannot wrap runs
+     past the card and drags the whole page sideways (DGS 2026-09-09, iPhone).
+     Wrapping is the right behaviour once there are no columns to line up. */
+  .schedule-table td.cell-title, .schedule-table th[scope='col'] { white-space: normal; }
+  /* The same bug in the overview cards, which had its wrap-back keyed to 600 px
+     while the card layout it pairs with starts here: between 601 and 860 px the
+     cards shrink (`min-width: min(100%, 260px)` overrides flex's automatic
+     minimum) while their one-line items do not, and the overflow drags the page
+     sideways. Found at the ~700 px of a WordPress content column, 2026-09-16. */
+  .ov-item { white-space: normal; }
+  table.course-rules thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+  table.course-rules tbody { display: block; }
+  table.course-rules tbody tr { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 0 0 8px; }
+  table.course-rules tbody tr:hover td { background: none; }
+  table.course-rules tbody tr:target { background: var(--note-bg); }
+  table.course-rules tbody th, table.course-rules tbody td { display: block; border: 0; padding: 2px 0; font-size: 14px; }
+  table.course-rules tbody th.course-id { font-size: 16px; white-space: normal; }
+  table.course-rules tbody td.cell-title { color: var(--muted); margin-bottom: 4px; }
+  table.course-rules tbody td[data-label]::before { content: attr(data-label) ': '; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 700; }
+  /* A card does not print its empty fields (embed review 2026-09-19): "Core
+     knowledge: —", "Specialization: —", "Typically offered: —" were three of
+     the six lines on most cards, and the 321-course list measured 31,600 px in
+     a 360 px frame. The `muted` class is exactly "this cell is a dash"
+     (courses-page.ts); on the wide table the dash stays, because there a blank
+     cell reads as a missing value. */
+  table.course-rules tbody td.muted { display: none; }
+  .courses-page .count { margin: 10px 0 4px; }
+}
+/* Non-CSE courses the DGS has reviewed sit under the CSE list (DGS 2026-09-21). */
+.non-cse { margin-top: 22px; }
+.non-cse h3 { margin: 0 0 4px; font-size: 16px; color: var(--navy); }
+.non-cse .non-cse-note { margin: 0 0 8px; }
+
+/* The course card that follows the pointer on the course-rules page (DGS
+   2026-09-09). `position: fixed` so the schedule tables' scroll region cannot
+   clip it; it is placed by script, and hidden with [hidden]. */
+.course-pop {
+  position: fixed; top: -9999px; left: 0; z-index: 900; max-width: min(420px, calc(100vw - 24px));
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+  /* NOT pointer-events: none. WCAG 1.4.13 asks that content shown on hover be
+     hoverable, and courses-page.ts registers mouseenter/mouseleave on this card
+     with a 160 ms delayed close so a pointer can travel to it — listeners that
+     could never fire while this line was here (found in the trim review,
+     2026-09-18, the day the rest of that fix shipped). It also lets a reader
+     select the text in the card. */
+}
+.course-pop[hidden] { display: none; }
+.course-pop h4 { margin: 0; font-size: 17px; color: var(--ink); display: flex; gap: 8px; align-items: baseline; }
+.course-pop .pop-title { margin: 2px 0 8px; color: var(--muted); font-size: 14px; }
+.course-pop .pop-row { display: flex; gap: 8px; align-items: baseline; margin-top: 4px; font-size: 13px; }
+.course-pop .pop-label { color: var(--grey); font-weight: 700; font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.course-pop .pop-value { color: var(--ink); }
+@media (max-width: 600px) { .course-pop { display: none; } } /* no pointer to hover with */

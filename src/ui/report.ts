@@ -78,7 +78,7 @@ export function pillLabel(r: RequirementResult): string {
 export function statusWord(r: RequirementResult): string {
   return r.statusLabel ?? (isOverdue(r) ? 'Overdue' : isNotStarted(r) ? 'Not started' : STATUS_LABEL[r.status]);
 }
-/** The pill's colour, named, for the copied messages (style.css is the
+/** The pill's colour, named, for the copied messages (style-app.css is the
  * source: overdue red, met green, conditional blue, not started and cannot
  * evaluate grey, everything open amber). */
 export function standingColor(r: RequirementResult): StandingColor {

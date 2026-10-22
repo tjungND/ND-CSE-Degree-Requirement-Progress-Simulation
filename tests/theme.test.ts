@@ -43,11 +43,14 @@ describe('night mode (src/ui/theme.ts)', () => {
     }
   });
 
-  it('every colour in the stylesheet outside :root and print is a token', () => {
-    const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
-    // Strip the token definitions and the @media print blocks (paper stays light).
-    let rest = css.replace(/:root\s*\{[^}]*\}/, '').replace(/:root\[data-theme="dark"\]\s*\{[^}]*\}/, '');
-    rest = rest.replace(/@media print\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    assert.deepEqual(rest.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [], []);
+  it('every colour in the stylesheets outside :root and print is a token', () => {
+    // Three sheets since 2026-10-22 (W4): the shared base and one per page.
+    for (const file of ['style-base.css', 'style-app.css', 'style-courses.css']) {
+      const css = readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8');
+      // Strip the token definitions and the @media print blocks (paper stays light).
+      let rest = css.replace(/:root\s*\{[^}]*\}/, '').replace(/:root\[data-theme="dark"\]\s*\{[^}]*\}/, '');
+      rest = rest.replace(/@media print\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      assert.deepEqual(rest.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [], [], file);
+    }
   });
 });

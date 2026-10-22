@@ -937,7 +937,7 @@ export async function driveApp(s, baseUrl) {
   // heading with nothing under it. The report's folds print as the screen has
   // them (DGS 2026-10-10, item 1: "Let paper match the screen"): printing
   // leaves them alone, and under print media a closed one shows its heading
-  // only — Firefox printed every closed fold open until style.css said so. The
+  // only — Firefox printed every closed fold open until style-app.css said so. The
   // handler listens for beforeprint / afterprint, so dispatching the events
   // stands in for the print dialog headless Chrome cannot show. One report
   // fold is left open beforehand, as a student would leave it.

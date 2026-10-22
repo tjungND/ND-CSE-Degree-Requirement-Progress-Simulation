@@ -95,7 +95,7 @@ export const MARKER_DIVIDER = '-'.repeat(64);
 export type StandingColor = 'green' | 'amber' | 'grey' | 'red' | 'blue';
 
 /** Inline styles — mail clients keep no stylesheet. The values are the
- * page's pills (style.css). */
+ * page's pills (style-app.css). */
 export const BADGE_STYLE: Record<StandingColor, string> = {
   green: 'background:#e4f2ea;color:#10693f',
   amber: 'background:#fbeedd;color:#8e5108',
@@ -130,7 +130,7 @@ export function htmlDeadline(text: string, alert: DeadlineAlert, block = true): 
 }
 
 /** The colour of a block's left rule — the badge's own text colour, as the
- * page's cards carry their status colour on the left edge (style.css .req). */
+ * page's cards carry their status colour on the left edge (style-app.css .req). */
 const RULE_COLOR: Record<StandingColor, string> = { green: '#10693f', amber: '#8e5108', grey: '#5a6472', red: '#a81e14', blue: '#1f4e8c' };
 
 /** One requirement as a BLOCK (DGS 2026-09-28, evening: "it's hard to see
