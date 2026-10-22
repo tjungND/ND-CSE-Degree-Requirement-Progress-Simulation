@@ -239,12 +239,55 @@ describe('entry term after an unfinished program in another Notre Dame departmen
     assert.ok(steps.some((t) => t === 'Set the semester you entered your earlier Notre Dame program (Your standing) — Fall 2022, read from your transcript, is your first CSE semester; a move from an unfinished program keeps that program’s clock, and your transcript shows Fall 2021 (DGS Handbook §3.15).'), steps.join(' | '));
     assert.ok(!steps.some((t) => /Check what your transcript set — first semester/.test(t)), 'not the generic check as well');
   });
-  it('"finished", or no answer yet: the first CSE term stands, with the generic check', () => {
-    for (const background of [{ bachelors: 'elsewhere' as const, graduate: 'nd-other' as const, finished: true }, undefined]) {
-      const s = { ...base(), background };
-      const steps = stepsOf(s);
-      assert.ok(!steps.some((t) => /earlier Notre Dame program/.test(t)), steps.join(' | '));
-      assert.ok(steps.some((t) => /Check what your transcript set — first semester Fall 2022/.test(t)), steps.join(' | '));
-    }
+  it('"finished": the first CSE term stands, with the generic check', () => {
+    const s = { ...base(), background: { bachelors: 'elsewhere' as const, graduate: 'nd-other' as const, finished: true } };
+    const steps = stepsOf(s);
+    assert.ok(!steps.some((t) => /earlier Notre Dame program/.test(t)), steps.join(' | '));
+    assert.ok(steps.some((t) => /Check what your transcript set — first semester Fall 2022/.test(t)), steps.join(' | '));
+  });
+  // Blue-team review 2026-10-17 (U4): with no answer yet the Ph.D. reading's
+  // "Looks right" is withheld (app.ts), so the step cannot name it — the
+  // earlier-degrees step comes first, and the check follows the answer.
+  it('no answer yet: no "Check what your transcript set" for the withheld Ph.D. reading; the earlier-degrees step leads', () => {
+    const steps = stepsOf({ ...base(), background: undefined });
+    assert.ok(!steps.some((t) => /earlier Notre Dame program|Check what your transcript set/.test(t)), steps.join(' | '));
+    assert.ok(steps[0]?.startsWith('Answer the questions about your earlier degrees'), steps.join(' | '));
+  });
+});
+
+// Blue-team review 2026-10-17 (U4): the check step names only readings the
+// page can confirm. A fresh record's entry term is ASSUMED (state.ts), not
+// read — it was said as "what your transcript set" with nothing to click; a
+// bachelor's known only to be BEFORE a term (the standalone master's,
+// 2026-09-20) has nothing to confirm; a Ph.D. reading whose "Looks right"
+// waits for the earlier-degrees answer is said to wait.
+describe('the check step names only what the page can confirm (U4, 2026-10-17)', () => {
+  const run = (s: Student) => nextSteps({ report: report([row('shared.advisor', 'met')]), student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: 0 });
+  it('an assumed entry term is its own "set it" step, never "what your transcript set"', () => {
+    const s: Student = { ...phdStudent(), background: ANSWERED, entryTerm: { season: 'fall', year: 2026 }, entryTermInferred: { how: 'assumed' }, courses: [{ courseId: 'CSE 60641', credits: 3, term: { season: 'fall', year: 2026 }, grade: 'A', origin: 'nd' }] };
+    const steps = run(s);
+    assert.deepEqual(steps[0], { key: 'standing.entry', text: 'Set the semester you entered the program under Your standing — Fall 2026 is only assumed.', href: '#standing' });
+    assert.ok(!steps.some((x) => /Check what your transcript set/.test(x.text)), steps.map((x) => x.text).join(' | '));
+  });
+  it('a "before" bachelor’s reading is left out of the check step; an exact one is in it', () => {
+    const s: Student = { ...phdStudent(), background: ANSWERED, entryTermInferred: { how: 'the admit-term line on your transcript' }, bachelorsAwarded: { season: 'summer', year: 2023 }, bachelorsAwardedInferred: { how: 'the first semester on your Purdue University master’s transcript', before: { season: 'fall', year: 2023 } } };
+    assert.equal(run(s)[0]?.text, 'Check what your transcript set — first semester Fall 2026 (Your standing).');
+    // The "before" reading alone: no check step at all.
+    const beforeOnly: Student = { ...s, entryTermInferred: undefined };
+    assert.ok(!run(beforeOnly).some((x) => x.key === 'standing.check'), 'nothing to confirm');
+    const exact: Student = { ...s, bachelorsAwardedInferred: { how: 'the Bachelor of Science awarded 2023-05-16' }, bachelorsAwarded: { season: 'spring', year: 2023 } };
+    assert.equal(run(exact)[0]?.text, 'Check what your transcript set — first semester Fall 2026, bachelor’s degree Spring 2023 (Your standing).');
+  });
+  it('a Ph.D. reading whose "Looks right" waits for the earlier-degrees answer: the bachelor’s half only, and said to wait', () => {
+    const s: Student = { ...phdStudent(), entryTerm: { season: 'fall', year: 2025 }, entryTermInferred: { how: 'the first graduate-level term on your transcript' }, bachelorsAwarded: { season: 'spring', year: 2025 }, bachelorsAwardedInferred: { how: 'the Bachelor of Science awarded 2025-05-18' } };
+    const steps = run(s);
+    assert.equal(steps.find((x) => x.key === 'standing.check')?.text, 'Check what your transcript set — bachelor’s degree Spring 2025 (Your standing) — the entry term is checked after you answer the earlier-degrees questions.');
+    // An admit-term reading is confirmable before the answer, as on the card.
+    const admit: Student = { ...s, entryTermInferred: { how: 'the admit-term line on your transcript' } };
+    assert.equal(run(admit).find((x) => x.key === 'standing.check')?.text, 'Check what your transcript set — first semester Fall 2025, bachelor’s degree Spring 2025 (Your standing).');
+    // Answered: the plain check.
+    assert.equal(run({ ...s, background: ANSWERED }).find((x) => x.key === 'standing.check')?.text, 'Check what your transcript set — first semester Fall 2025, bachelor’s degree Spring 2025 (Your standing).');
+    // The MSCSE never withholds it.
+    assert.equal(run({ ...s, program: 'mscse' }).find((x) => x.key === 'standing.check')?.text, 'Check what your transcript set — first semester Fall 2025, bachelor’s degree Spring 2025 (Your standing).');
   });
 });

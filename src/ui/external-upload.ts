@@ -176,9 +176,19 @@ interface ExternalPreview {
   /** The transcript carries a graduate-degree conferral line (2026-09-03) —
    * used to set "Prior graduate study" when the student has not chosen. */
   conferred?: boolean;
-  /** Undergraduate imports only (2026-09-04): parsed rows left out because
-   * neither the core-title keywords nor a DGS ruling made them relevant. */
-  omitted?: number;
+  /** A single-level undergraduate transcript (2026-09-04): the rows that
+   * neither the core-title keywords nor a DGS ruling made relevant are kept
+   * — unticked, locked, greyed, the reason on hover, as the mixed case's —
+   * behind a "Show the N courses that were left out" toggle (blue-team review
+   * 2026-10-17, U3; they were dropped with only a count, so a core course
+   * under another title vanished unseen). Unset on a mixed-level transcript,
+   * whose locked rows stay in view (2026-09-05). */
+  tuckIrrelevant?: true;
+  /** The toggle's state: the left-out rows shown. */
+  showOmitted?: boolean;
+  /** Add was refused for ticked rows missing a grade, credits or a year
+   * (U1): their empty boxes are marked until filled. */
+  markIncomplete?: true;
   /** Rows under Banner's "Transfer credit accepted by the institution" block —
    * courses from a THIRD school — left out by the parser (2026-09-05). */
   transferSkipped?: number;
@@ -299,9 +309,10 @@ let previewError: string | undefined;
 function ndInPreviousRow(student: Student): string {
   return `This is a Notre Dame transcript. It belongs in the “${ndRowLabel(student)}” row above, once: insideND prints one transcript for every degree you took here, and that row reads your earlier Notre Dame degrees, their courses and your entry term from it. Adding it here too would list every earlier course twice.`;
 }
-function failSlot(slot: DegreeLevel, message: string, render: () => void): void {
+function failSlot(slot: DegreeLevel, message: string, args: Pick<ExternalCardArgs, 'render' | 'dismissToast'>): void {
   importError = { slot, message };
-  render();
+  args.dismissToast?.(); // "Reading the transcript…" ends with the refusal (U8)
+  args.render();
   document.querySelector<HTMLElement>(`[data-key="ext.error.${slot}"]`)?.focus();
 }
 /** A scan was uploaded and awaits the student's explicit OCR opt-in
@@ -328,6 +339,10 @@ export interface ExternalCardArgs {
   /** `quiet`: a change that finishes no step of the student's — a removal (next-step.ts). */
   update: (fn: (s: Student) => void, opts?: { quiet?: boolean }) => void;
   toast: (msg: string) => void;
+  /** Takes the plain toast down (toasts.ts `dismiss`): the "Reading the
+   * transcript…" message ends with the preview, the OCR offer or the refusal
+   * (blue-team review 2026-10-17, U8). */
+  dismissToast?: () => void;
   /** A toast with one action button (Undo) — app.ts supplies it; `ttlMs`
    * lengthens the window (20 s for a transcript-wide removal), `focusKey`
    * names the control to focus after the Undo's render. */
@@ -485,10 +500,14 @@ function blockedRowNote(program: Program): string {
  * transfer (§5.2), so only rows that can matter are offered in the preview —
  * a title matching the §4.4.1 core keywords (algorithms, operating systems,
  * architecture), a course the DGS has already ruled on for this university,
- * or (Notre Dame) a course the Courses tab tags with a core area. On a
- * single-level undergraduate transcript everything else is left out (and
- * counted, for the note); on a MIXED-level transcript (2026-09-05) such rows
- * stay visible but unticked, since the student may need to change a level. */
+ * or (Notre Dame) a course the Courses tab tags with a core area. Every row
+ * is kept: on a MIXED-level transcript (2026-09-05) the others stay visible
+ * but unticked, since the student may need to change a level; on a
+ * single-level undergraduate transcript they used to be dropped with only a
+ * count, and since the blue-team review (2026-10-17, U3) they are kept the
+ * same way and tucked behind a toggle in the preview (`tuckIrrelevant`), so
+ * a core course under an unusual title can be found — `omitted` counts them
+ * for the "all of them were left out" message. */
 function keepRelevantRows(
   university: string,
   rules: Rules,
@@ -497,17 +516,15 @@ function keepRelevantRows(
   program: Program,
 ): { rows: PreviewRow[]; omitted: number } {
   const relevant = (r: PreviewRow) => isRelevantRow(university, rules, r, program);
-  if (mixed) {
-    for (const r of rows) {
-      if (!relevant(r)) {
-        r.include = false;
-        r.irrelevant = true;
-      }
+  let omitted = 0;
+  for (const r of rows) {
+    if (!relevant(r)) {
+      r.include = false;
+      r.irrelevant = true;
+      if (!mixed) omitted += 1;
     }
-    return { rows, omitted: 0 };
   }
-  const kept = rows.filter(relevant);
-  return { rows: kept, omitted: rows.length - kept.length };
+  return { rows, omitted };
 }
 
 /** The prior-university slot rows, previews and per-course verdicts. Since
@@ -562,7 +579,10 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
           },
           'Answer here',
         ),
-        '.',
+        // Why the three Import buttons below are grey (blue-team review
+        // 2026-10-17, U7): the rows wait for Done (DGS 2026-10-14), and the
+        // reason was a toast on hover or click only.
+        '. The Previous-transcript rows below open once these are answered and saved with Done.',
       )
     : background && !answeringEarlier
     ? el(
@@ -582,10 +602,13 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
           // Saved (complete, still open); what was read; else, with the Notre
           // Dame transcript already in (nothing it could tell, or imported
           // before 2026-10-08), just ask.
+          // Both say what Done does (blue-team review 2026-10-17, U7): a
+          // student who read "saved" had no reason to click it, yet the
+          // Previous-transcript rows wait for it (DGS 2026-10-14).
           background
-            ? 'Your answers are saved. Change any of them here, then click Done.'
+            ? 'Your answers are saved. Change any of them here, then click Done. The Previous-transcript rows below open once these are answered and saved with Done.'
             : draftComplete
-              ? 'Every question below is answered — check the answers, then click Done to use them.'
+              ? 'Every question below is answered — check the answers, then click Done to use them. The Previous-transcript rows below open once these are answered and saved with Done.'
               : args.student.backgroundRead
               ? 'What your transcripts show is filled in below — check it, and answer the rest. These answers decide which earlier transcripts to add here and how CSE §5.2 applies to them.'
               : args.student.courses.some((c) => c.fromNdTranscript)
@@ -918,7 +941,8 @@ function previewFromParsed(
     bachelorsConferredOn: parsed.bachelorsConferredOn,
     ...bachelors,
     rows: kept.rows,
-    omitted: kept.omitted,
+    // A single-level transcript's locked rows go behind the toggle (U3).
+    ...(mixed ? {} : { tuckIrrelevant: true as const }),
     transferSkipped: parsed.transferRowsSkipped,
     ...(parsed.nonLatinScript ? { nonLatinScript: true as const } : {}),
     mixedLevels: mixed || undefined,
@@ -953,7 +977,14 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
   const { student, update, toast, render } = args;
   const have = coursesInSlot(student, slot.level);
   const fileInput = el('input', { type: 'file', accept: '.pdf,application/pdf', class: `hidden external-file-${slot.level}`, 'aria-label': `${slot.label} PDF` });
-  const fail = (message: string): void => failSlot(slot.level, message, render);
+  const fail = (message: string): void => failSlot(slot.level, message, args);
+  // The read's outcome on screen — the preview or the OCR offer — takes the
+  // "Reading the transcript…" toast down with it (blue-team review 2026-10-17,
+  // U8); a refusal does the same through failSlot.
+  const show = (): void => {
+    args.dismissToast?.();
+    render();
+  };
   fileInput.addEventListener('change', async () => {
     const file = (fileInput as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -989,7 +1020,7 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
       if (!parsed.hasTextLayer) {
         // A scan or photo: never OCR silently — offer it (DGS decision 2026-09-02).
         pendingScan = { slot: slot.level, buffer, filename: file.name };
-        render();
+        show();
         return;
       }
       const made = previewFromParsed(parsed, slot.level, args, { unofficial, fromOcr: scannedTextLayer, ...(scannedTextLayer ? { scannerLayer: true } : {}) });
@@ -1007,18 +1038,19 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
         releaseScanStrips();
         if (noRowsRoute(parsed, scannedTextLayer) === 'cyrillic-codes') return fail(nonLatinNoRowsMessage(file.name));
         pendingScan = { slot: slot.level, buffer, filename: file.name, reason: scannedTextLayer ? 'scan' : 'no-lines' };
-        render();
+        show();
         return;
       }
       // The scanner's reading is previewed, and OCR offered beside it.
       if (scannedTextLayer) pendingScan = { slot: slot.level, buffer, filename: file.name, reason: 'scanner-layer' };
-      if (kept.rows.length === 0) {
+      // Every row left out (the rows themselves stay, behind the toggle — U3).
+      if (kept.omitted > 0 && kept.omitted === kept.rows.length) {
         previewError =
           args.student.program === 'phd'
             ? `All ${mapped.length} courses read from this transcript were left out — none matched the Alg / OS / Comp Arch core keywords, and none are in the DGS’s course rules. Courses taken as an undergraduate student do not transfer, whether or not the course itself is a graduate course (§5.2); if a course belongs to a core area under a different title, add it by hand below.`
             : `All ${mapped.length} courses read from this transcript were left out: every one of them was taken as an undergraduate student, and undergraduate credits do not transfer (§5.2), whether or not the course itself is a graduate course. If you took any of them after your bachelor’s degree was awarded, add it by hand below and set “Taken as” to Grad student.`;
       }
-      render();
+      show();
     } catch {
       fail(browserTooOldForPdfs() ? BROWSER_TOO_OLD_FOR_PDFS : 'That PDF could not be read (is it a PDF?). Only system-generated PDFs are accepted.');
     } finally {
@@ -1204,13 +1236,13 @@ function scanOptInBlock(args: ExternalCardArgs): HTMLElement {
                 const dropPages = () => emptyPageImages(pageImages);
                 if (parsed.looksLikeNotreDame) {
                   dropPages();
-                  failSlot(slot, `${ndInPreviousRow(student)} Use the digital PDF from insideND there, not a scan.`, render);
+                  failSlot(slot, `${ndInPreviousRow(student)} Use the digital PDF from insideND there, not a scan.`, args);
                   return;
                 }
                 const made = previewFromParsed(parsed, slot, args, { unofficial, fromOcr: true, ocrReducedPages: reducedPages, ocrTurned: turned });
                 if (!made || !preview) {
                   dropPages();
-                  failSlot(slot, BACHELORS_IN_PROGRESS, render);
+                  failSlot(slot, BACHELORS_IN_PROGRESS, args);
                   return;
                 }
                 // The scanned line of each row (Batch C answer (5), DGS
@@ -1232,12 +1264,13 @@ function scanOptInBlock(args: ExternalCardArgs): HTMLElement {
                 } else if (pagesTotal > pagesRead) {
                   previewError = `Read the first ${pagesRead} of ${pagesTotal} pages (the reader stops at ${pagesRead}) — later pages must be added by hand.`;
                 }
+                args.dismissToast?.(); // a plain toast still up ends with the OCR preview (U8)
                 render();
               } catch (e) {
                 // Leave a breadcrumb for debugging without surfacing internals.
                 console.error('OCR failed:', e);
                 ocrBusy = undefined;
-                failSlot(slot, 'The text reader could not run in this browser — please use a system-generated PDF instead.', render);
+                failSlot(slot, 'The text reader could not run in this browser — please use a system-generated PDF instead.', args);
               }
             })();
           },
@@ -1314,6 +1347,11 @@ function previewRow(
   // typed — the same lock, with its own reason.
   const idMissing = idStillMissing(r);
   if (idMissing) r.include = false;
+  // A single-level undergraduate transcript's locked row is behind the
+  // "Show the N courses that were left out" toggle (U3).
+  const tucked = p.tuckIrrelevant === true && blocked && !p.showOmitted;
+  // After a refused Add (U1), a ticked row's empty box is marked until filled.
+  const mark = p.markIncomplete === true && r.include;
   const noteId = `ext-row-${i}-note`;
   const idNoteId = `ext-row-${i}-idnote`;
   const cb = el('input', {
@@ -1343,6 +1381,7 @@ function previewRow(
         'aria-label': `Course id, ${who()}`,
         'data-key': `ext.row.${i}.id`,
         ...(r.codeMissing ? { required: 'required', 'aria-required': 'true', placeholder: CODE_MISSING_PLACEHOLDER, title: CODE_MISSING_NOTE, 'aria-describedby': idNoteId, ...(idMissing ? { 'aria-invalid': 'true' } : {}) } : {}),
+        ...(mark && !r.codeMissing && r.courseId.trim() === '' ? { 'aria-invalid': 'true' } : {}), // a hand-typed row ticked without an id (U1)
       });
   if (idOpen) {
     idIn.addEventListener('change', () => {
@@ -1350,7 +1389,10 @@ function previewRow(
       if (r.codeMissing) {
         r.include = !idStillMissing(r) && !isBlockedRow(p, rules, r, student.program);
         render(); // the tick box and the Add button's count follow
+        return;
       }
+      if (r.courseId.trim() !== '') idIn.removeAttribute('aria-invalid');
+      refreshAddLabels(p);
     });
   }
   // The scan may have printed a letter for a digit in the course number
@@ -1400,6 +1442,7 @@ function previewRow(
       'aria-label': `Credits for ${who()}`,
       'data-key': `ext.row.${i}.credits`,
       value: r.credits !== undefined ? String(r.credits) : '',
+      ...(mark && r.credits === undefined ? { 'aria-invalid': 'true' } : {}),
     });
     crIn.addEventListener('change', () => {
       const text = (crIn as HTMLInputElement).value;
@@ -1414,15 +1457,20 @@ function previewRow(
       } else {
         crIn.removeAttribute('aria-invalid');
       }
+      refreshAddLabels(p); // the Add buttons count complete rows (U1)
     });
   }
   let gradeSel: HTMLElement;
   if (locked && r.grade !== '') gradeSel = lockedText('course-grade', 'grade', r.grade === 'IP' ? 'In progress' : r.grade);
   else {
-    gradeSel = el('select', { 'aria-label': `Grade for ${who()}`, 'data-key': `ext.row.${i}.grade` });
+    gradeSel = el('select', { 'aria-label': `Grade for ${who()}`, 'data-key': `ext.row.${i}.grade`, ...(mark && r.grade === '' ? { 'aria-invalid': 'true' } : {}) });
     gradeSel.append(option('', r.rawGrade ? `choose… (transcript says “${r.rawGrade}”)` : 'choose…', r.grade === ''));
     for (const g of GRADES) gradeSel.append(option(g, g === 'IP' ? 'In progress' : g, r.grade === g));
-    gradeSel.addEventListener('change', () => (r.grade = (gradeSel as HTMLSelectElement).value as Grade | ''));
+    gradeSel.addEventListener('change', () => {
+      r.grade = (gradeSel as HTMLSelectElement).value as Grade | '';
+      if (r.grade !== '') gradeSel.removeAttribute('aria-invalid');
+      refreshAddLabels(p);
+    });
   }
   // What the scan showed in a credits or grade cell the OCR numeric
   // correction filled (Batch C answer (4), DGS 2026-10-09): beside the value,
@@ -1460,6 +1508,7 @@ function previewRow(
       'aria-label': `Year for ${who()}`,
       'data-key': `ext.row.${i}.year`,
       value: r.year !== undefined ? String(r.year) : '',
+      ...(mark && r.year === undefined ? { 'aria-invalid': 'true' } : {}),
     });
     yearIn.addEventListener('change', () => {
       const text = (yearIn as HTMLInputElement).value;
@@ -1472,6 +1521,7 @@ function previewRow(
       } else {
         yearIn!.removeAttribute('aria-invalid');
       }
+      refreshAddLabels(p);
     });
   }
   // Taken as (2026-09-05): the level decides Bachelor's vs graduate coursework on add.
@@ -1503,6 +1553,7 @@ function previewRow(
     {
       class: [r.lowConfidence ? 'ocr-low' : '', blocked ? 'prior-row blocked-row' : '', compactRow ? 'compact' : 'editable'].join(' ').trim(),
       ...(blocked ? { title: blockedNote } : {}),
+      ...(tucked ? { hidden: '' } : {}),
     },
     el(
       'td',
@@ -1533,11 +1584,40 @@ function previewRow(
   return tr;
 }
 
+/** "Add N selected courses" counts the rows Add will file (blue-team review
+ * 2026-10-17, U1): ticked AND complete. A ticked row still missing a grade,
+ * credits or a year is said beside the count, and Add waits for it instead
+ * of dropping it with a four-second toast — the common OCR case, where a
+ * number the reader missed left the row out of the record unseen. */
+function addLabelOf(p: ExternalPreview): string {
+  const ready = p.rows.filter(readyToAdd).length;
+  const incomplete = p.rows.filter((r) => r.include && !readyToAdd(r)).length;
+  // 'selected' — the word Select all / Select none and the ND preview use (trim review 2026-09-18, P-58).
+  return `Add ${ready} selected course${ready === 1 ? '' : 's'}${incomplete > 0 ? ` — ${incomplete} ticked row${incomplete === 1 ? '' : 's'} still need${incomplete === 1 ? 's' : ''} a grade, credits or a year` : ''}`;
+}
+/** A field change does not re-render the preview, so the two Add buttons'
+ * label is refreshed by hand. */
+function refreshAddLabels(p: ExternalPreview): void {
+  const label = addLabelOf(p);
+  for (const key of ['ext.preview.add', 'ext.preview.add.top']) {
+    const b = document.querySelector<HTMLElement>(`[data-key="${key}"]`);
+    if (b) b.textContent = label;
+  }
+}
+/** What a ticked row still lacks, for the message that refuses Add (U1). */
+function missingOf(r: PreviewRow): string[] {
+  return [...(r.courseId.trim() === '' ? ['a course id'] : []), ...(r.credits === undefined ? ['credits'] : []), ...(r.grade === '' ? ['a grade'] : []), ...(r.year === undefined ? ['a year'] : [])];
+}
+
 function previewBlock(args: ExternalCardArgs): HTMLElement {
   const { rules, update, toast, render, student } = args;
   const p = preview!;
   const slotLabel = DEGREE_SLOTS.find((s) => s.level === p.slot)!.label;
   const box = el('div', { class: 'transcript-preview' });
+  // The rows a single-level undergraduate transcript leaves out (U3): locked
+  // rows, kept behind the toggle below the table; the count is live, so a
+  // row flipped to "Grad student" leaves it.
+  const leftOut = p.tuckIrrelevant ? p.rows.filter((r) => isBlockedRow(p, rules, r, student.program)).length : 0;
   // The university name is locked when the transcript supplied it (DGS
   // request 2026-09-06): the DGS's rules key on the name as printed. Only a
   // name the parser could not find (or an OCR guess) is typed by the student.
@@ -1640,7 +1720,7 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
                 student.program === 'phd'
                   ? 'only courses relevant to the Alg, OS, and Comp Arch core-knowledge areas (§4.4.1) — or already reviewed by the DGS — are shown and added'
                   : 'only Notre Dame coursework that can still count toward the MSCSE is shown and added'
-              }${p.omitted ? ` (${p.omitted} other course${p.omitted === 1 ? ' was' : 's were'} read and left out)` : ''}.`,
+              }${leftOut ? ` (${leftOut} other course${leftOut === 1 ? ' was' : 's were'} read and left out)` : ''}.`,
             ),
           ]
         : // The preview's own heading already says "check every line" (trim review 2026-09-18, P-93).
@@ -1686,13 +1766,15 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       { class: 'hint', id: 'ext-university-hint' },
       uniLocked
         ? // Shortened (trim review 2026-09-18, P-88): the locked values show in the rows themselves.
-          'The university name and each course are shown as your transcript prints them and cannot be edited here; only “Taken as” can be changed. Fill in anything the parser could not read (a grade, credits or a year) — rows without a grade are not added.'
+          // "rows missing … cannot be added until you fill them in" (U1): Add
+          // waits for a ticked row instead of dropping it.
+          'The university name and each course are shown as your transcript prints them and cannot be edited here; only “Taken as” can be changed. Fill in anything the parser could not read (a grade, credits or a year) — rows missing a grade, credits or a year cannot be added until you fill them in.'
         : p.universityGuessed
           ? // The name is nowhere in this transcript's text — it was worked out
             // from an abbreviation (2026-09-08). Say so, since the student is
             // the only one who can tell whether it is right.
-            'This transcript does not print its university’s name as text, so the name above was worked out from an abbreviation in it — check it, and correct it if it is wrong. Grades the parser could not read must be chosen by hand (rows without a grade are not added).'
-          : 'The university name is how the DGS’s rules find your courses — use the name as your transcript prints it (pick it from the list if it is there). Grades the parser could not read must be chosen by hand (rows without a grade are not added).',
+            'This transcript does not print its university’s name as text, so the name above was worked out from an abbreviation in it — check it, and correct it if it is wrong. Grades the parser could not read must be chosen by hand (rows missing a grade, credits or a year cannot be added until you fill them in).'
+          : 'The university name is how the DGS’s rules find your courses — use the name as your transcript prints it (pick it from the list if it is there). Grades the parser could not read must be chosen by hand (rows missing a grade, credits or a year cannot be added until you fill them in).',
     ),
     el('label', { class: 'field' }, el('span', { class: 'label' }, 'University'), uniInput),
     // A multi-campus system (DGS 2026-09-12): "University of California" is
@@ -1746,7 +1828,7 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
         ]
       : []),
   );
-  const table = el('table', { class: 'courses stack edit' });
+  const table = el('table', { class: 'courses stack edit', id: 'ext-preview-rows' });
   table.append(
     el(
       'tr',
@@ -1780,7 +1862,243 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
     for (const r of p.rows) r.include = on && !isBlockedRow(p, rules, r, student.program) && !idStillMissing(r);
     render();
   };
+  const addLabel = addLabelOf(p);
+  // One handler for the two Add buttons (U2: Add / Cancel at the top of the
+  // preview too, as the Notre Dame preview has had since 2026-10-08 — an OCR
+  // preview's rows are ~170 px each, and the only buttons sat under them
+  // all). `fromKey` is the button clicked, where the 0-credit dialog returns
+  // focus.
+  const addSelected = async (fromKey: 'ext.preview.add' | 'ext.preview.add.top'): Promise<void> => {
+    const university = p.university.trim();
+    // Problems stay on screen, next to what needs fixing (item 6).
+    const problem = (message: string, focusKey: string): void => {
+      previewError = message;
+      render();
+      document.querySelector<HTMLElement>(`[data-key="${focusKey}"]`)?.focus();
+    };
+    if (university === '') {
+      problem('Enter the university name — the DGS’s rules match courses by university + course id.', 'ext.preview.university');
+      return;
+    }
+    if (p.campusSystem !== undefined && p.campus === undefined) {
+      problem(`Choose the ${p.campusSystem} campus — the course rules are keyed on it, and “${p.campusSystem}” alone names several schools.`, 'ext.preview.campus');
+      return;
+    }
+    // A combined bachelor's + master's record needs the award term (DGS 2026-09-06 evening).
+    if (p.bachelorsRequired && p.bachelorsAwarded === undefined) {
+      problem('Enter the semester your bachelor’s degree was awarded — required for a combined bachelor’s + master’s transcript: courses dated in or before it count as undergraduate coursework (§5.2).', 'ext.preview.bachelors.year');
+      return;
+    }
+    // A ticked row that is not complete holds Add up (blue-team review
+    // 2026-10-17, U1) — it used to be skipped, said only in the
+    // four-second toast after the preview had closed, so a student who
+    // ticked it and read "Add 2" lost it unseen. Its empty boxes are
+    // marked, the first is focused, and the rows are named. (A row
+    // the student unticks is still simply not added — 2026-09-06.)
+    const incomplete = p.rows.map((r, i) => ({ r, i })).filter(({ r }) => r.include && !readyToAdd(r));
+    if (incomplete.length > 0) {
+      p.markIncomplete = true;
+      const name = ({ r, i }: { r: PreviewRow; i: number }) => r.courseId.trim() || (r.title.trim() ? `“${r.title.trim()}”` : `row ${i + 1}`);
+      const list = (items: string[]) => (items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`);
+      const details = incomplete.map((x) => `${name(x)} needs ${list(missingOf(x.r))}`).join('; ');
+      const first = incomplete[0]!;
+      const firstBox = first.r.courseId.trim() === '' ? 'id' : first.r.credits === undefined ? 'credits' : first.r.grade === '' ? 'grade' : 'year';
+      problem(`Fill in what is missing before adding — ${details} — or untick ${incomplete.length === 1 ? 'the row' : 'those rows'}.`, `ext.row.${first.i}.${firstBox}`);
+      return;
+    }
+    const ready = p.rows.filter(readyToAdd);
+    if (ready.length === 0) {
+      problem('No rows are complete yet — every added row needs a course id, credits, a grade and a year.', 'ext.preview.error');
+      return;
+    }
+    previewError = undefined;
+    // A row whose credit-hours column came through blank is saved as 0
+    // and counts toward nothing. The student is asked before it is
+    // added, naming the rows (DGS 2026-09-11) — allowed, never silent.
+    const zeroRows = ready.filter((r) => r.credits === 0);
+    if (zeroRows.length > 0) {
+      const which = zeroRows.map((r) => r.courseId.trim()).join(', ');
+      const yes = await confirmDialog({
+        title: `${zeroRows.length === 1 ? 'One course has' : `${zeroRows.length} courses have`} 0 credits`,
+        body: [
+          `${which} ${zeroRows.length === 1 ? 'is' : 'are'} about to be added with 0 credits, which counts toward nothing — not the total credits, not the regular-course credits, not any cap.`,
+          'That usually means the credit-hours column could not be read. Cancel, type the credits from your transcript into those rows, and add them again.',
+        ],
+        confirmLabel: 'Add them anyway',
+        cancelLabel: 'Go back and fix the credits',
+        returnFocusKey: fromKey,
+      });
+      if (!yes) return;
+    }
+    // (initializer cast: the assignment happens inside the update()
+    // closure, which TS's flow analysis can't see from the use below)
+    let priorAutoSet = false as 'completed' | 'unfinished' | false;
+    let unfinishedLabel = '';
+    let merged = 0;
+    let refiledToProgram = 0;
+    let graduateRows = 0;
+    let bachelorsSet: Term | undefined;
+    let bachelorsFromTranscript = false;
+    let bachelorsBefore: Term | undefined;
+    let earlierRead = false as ReadingResult;
+    update((s) => {
+      // The bachelor's university, for "same university?" (Option 1):
+      // only a university with undergraduate rows and no graduate rows
+      // on file from before this import — a master's transcript's own
+      // undergraduate rows are no bachelor's transcript, and neither
+      // is transfer credit on the Notre Dame record — and only one
+      // (review of Option 1, 2026-10-08).
+      const earlier = s.courses.filter((c) => c.origin === 'transfer' && !c.fromNdTranscript && !isNotreDameInstitution(c.institution) && c.institution);
+      const bachelorsCandidates = [...new Set(earlier.filter((c) => c.degreeLevel === 'bachelors').map((c) => c.institution!))].filter((u) => !earlier.some((c) => c.institution === u && c.degreeLevel !== 'bachelors'));
+      const bachelorsAt = s.backgroundDraft?.bachelors === 'elsewhere' && bachelorsCandidates.length === 1 ? bachelorsCandidates[0] : undefined;
+      // …and the one graduate university on file, for a bachelor's
+      // transcript added after the master's.
+      const graduateCandidates = [...new Set(earlier.filter((c) => c.degreeLevel === 'masters' || c.degreeLevel === 'phd').map((c) => c.institution!))];
+      const graduateAt = graduateCandidates.length === 1 ? graduateCandidates[0] : undefined;
+      for (const r of ready) {
+        const row = courseEntryOf(r, p, university, args.todayIso ? { on: args.todayIso, app: APP_BUILD.commit } : undefined);
+        if (row.degreeLevel !== 'bachelors') graduateRows += 1;
+        s.courses.push(row);
+        // The same course already on the record as the Notre Dame
+        // transcript's accepted transfer credit: one course, this row,
+        // carrying that acceptance (P3-import-1 (c), 2026-10-05).
+        if (absorbBlockRow(s, row)) merged += 1;
+      }
+      // What this transcript settles of the earlier-degrees answer
+      // (DGS 2026-10-08, Option 1): a bachelor's there, or a graduate
+      // degree there — finished when it says it was conferred, at the
+      // bachelor's university when that is known (a bachelor's at Notre
+      // Dame, one bachelor's transcript on file, or this transcript's
+      // own undergraduate record with its bachelor's conferral).
+      if (!isNotreDameInstitution(university)) {
+        if (p.slot === 'bachelors') earlierRead = mergeReading(s, readBackgroundFromPriorBachelors(university, graduateAt));
+        else {
+          const ndBachelors = s.backgroundDraft?.bachelors === 'nd-cse' || s.backgroundDraft?.bachelors === 'nd-other';
+          earlierRead = mergeReading(
+            s,
+            readBackgroundFromPriorGraduate({
+              slot: p.slot,
+              university,
+              ...(p.conferred !== undefined ? { conferred: p.conferred } : {}),
+              ...(bachelorsAt ? { bachelorsUniversity: bachelorsAt } : {}),
+              ...(ndBachelors ? { bachelorsAtNotreDame: true } : {}),
+              ...(p.bachelorsConferredOn !== undefined && p.mixedLevels ? { bachelorsOnThisTranscript: true } : {}),
+            }),
+          );
+        }
+      }
+      // "Prior graduate study" from the transcript (2026-09-03): a
+      // graduate-degree conferral line → completed; a graduate
+      // transcript WITHOUT one → "Prior M.S., not completed" plus the
+      // standing card's warning (the transcript alone cannot prove
+      // completion). Only the untouched default is upgraded — never a
+      // student's own choice; touching the dropdown clears the flag.
+      // Since 2026-09-05 any GRADUATE row triggers this, whatever the
+      // slot (a 4+1's fifth year on an undergraduate transcript).
+      if (graduateRows > 0 && s.priorMs === 'none' && s.background === undefined) {
+        s.priorMs = p.conferred === true ? 'completed' : 'unfinished';
+        s.priorMsInferred = true;
+        priorAutoSet = s.priorMs;
+      }
+      // The bachelor's award term: a value the student gave — here or
+      // under Your standing — always applies; one read from this
+      // transcript fills the field only while the student has not set
+      // it by hand (2026-09-06). Since 2026-09-07 the preview is itself
+      // pre-filled from a hand-set term, so this usually writes back
+      // the same value: only a REAL change is announced, and only a
+      // term that truly came from the transcript is described that way.
+      if (p.bachelorsAwarded !== undefined && (p.bachelorsSource === 'student' || s.bachelorsAwarded === undefined || s.bachelorsAwardedInferred !== undefined)) {
+        const changed = s.bachelorsAwarded === undefined || termIndex(s.bachelorsAwarded) !== termIndex(p.bachelorsAwarded);
+        s.bachelorsAwarded = { ...p.bachelorsAwarded };
+        s.bachelorsAwardedInferred = p.bachelorsSource === 'student' ? undefined : { how: `the bachelor’s degree conferred ${p.bachelorsConferredOn} on your ${university} transcript` };
+        if (changed) {
+          bachelorsSet = s.bachelorsAwarded;
+          bachelorsFromTranscript = p.bachelorsSource === 'transcript';
+        }
+      }
+      // A standalone master's transcript says nothing about the
+      // bachelor's degree, and the student is not asked (DGS
+      // 2026-09-20): it was awarded BEFORE the master's first
+      // semester, which is all §5.2 needs — every course on the
+      // transcript is dated after it. The record holds the term just
+      // before that semester; the page shows "Before <semester>".
+      // A term the student set by hand is left alone, and so is one
+      // read from a conferral date — a bachelor's transcript's, or the
+      // Notre Dame record's: only an earlier "before" estimate gives
+      // way (blue/red-team review of Option 1, 2026-10-08).
+      // A standalone Ph.D. transcript says the same (coverage review,
+      // 2026-10-08: the Ph.D. row left the field empty and "required").
+      if (p.slot !== 'bachelors' && !p.bachelorsRequired && p.bachelorsAwarded === undefined && (s.bachelorsAwarded === undefined || s.bachelorsAwardedInferred?.before !== undefined)) {
+        const dated = ready.filter((r) => r.year !== undefined).map((r) => ({ season: r.season, year: r.year! }));
+        const first = dated.sort(compareTermIndex)[0];
+        if (first !== undefined) {
+          const wasBefore = s.bachelorsAwardedInferred?.before;
+          s.bachelorsAwarded = termBefore(first);
+          s.bachelorsAwardedInferred = { how: `the first semester on your ${university} ${p.slot === 'phd' ? 'Ph.D.' : 'master’s'} transcript`, before: { ...first } };
+          if (wasBefore === undefined || termIndex(wasBefore) !== termIndex(first)) bachelorsBefore = first;
+        }
+      }
+      // A Notre Dame transcript can land in one of these slots as the
+      // record of an EARLIER Notre Dame degree (2026-09-05), and such a
+      // transcript often carries the current program too. The entry
+      // term is what separates the two, so re-file by it here as the
+      // Notre Dame slot does — otherwise the student's in-program
+      // courses sit as §5.2 transfer candidates until they happen to
+      // touch a term field (2026-09-09).
+      if (isNotreDameInstitution(university)) {
+        refiledToProgram = reclassifyNotreDameCourses(s).toProgram;
+      }
+      // Read from the record once every row is filed, as the emails
+      // read it (verification, transfer-3).
+      unfinishedLabel = unfinishedPriorLabel(s);
+    });
+    const matched = ready.filter((r) => findExternalRule(rules.external, university, r.courseId)).length;
+    const undergraduateRows = ready.length - graduateRows;
+    preview = undefined;
+    releaseScanStrips();
+    withdrawScannerLayerOffer();
+    previewError = undefined;
+    render();
+    toast(
+      `Added ${ready.length} course${ready.length === 1 ? '' : 's'} from ${university}` +
+        (p.mixedLevels ? ` (${undergraduateRows} undergraduate, ${graduateRows} graduate${p.termPrefill ? ', by the two-year rule where the transcript did not say' : ''})` : '') +
+        (matched > 0 ? ` — ${matched} already in the DGS’s course rules` : '') +
+        (refiledToProgram > 0
+          ? `; ${refiledToProgram} of them are dated from your entry term on, so they are filed as this program's coursework, not as transfer credit`
+          : '') +
+        (merged > 0 ? `; ${merged === 1 ? '1 of them was' : `${merged} of them were`} already on your Notre Dame transcript as accepted transfer credit, so each is kept as one course` : '') +
+        '.' +
+        (priorAutoSet === 'completed'
+          ? ' Prior graduate study was set to “Completed prior M.S. or Ph.D.” from the conferral line on your transcript — if that’s wrong, change it in the earlier-degrees questions in the Transcripts card.'
+          : priorAutoSet === 'unfinished'
+            ? // The label the emails print (program-history.ts): a Ph.D. transcript
+              // is an unfinished Ph.D., not "Prior M.S." (round 5, item 13).
+              ` Prior graduate study was set to “${unfinishedLabel}” — no degree-conferral line was found on your transcript; if you did earn the degree, say so in the earlier-degrees questions in the Transcripts card.`
+            : '') +
+        (bachelorsSet
+          ? ` “Bachelor’s degree awarded” was set to ${termLabel(bachelorsSet)}${bachelorsFromTranscript ? ' from the conferral date on your transcript' : ''} — check it under Your standing.`
+          : bachelorsBefore
+            ? ` “Bachelor’s degree awarded” reads “Before ${termLabel(bachelorsBefore)}”, the first semester on this transcript — set the exact semester under Your standing if you know it.`
+            : '') +
+        // Option 1 (DGS 2026-10-08): the earlier-degrees answers it filled in.
+        (earlierRead === 'disagree' ? ' Your transcripts disagree about your earlier degrees — answer those questions in the Transcripts card.' : earlierRead ? ' Your earlier degrees were partly filled in from it — check them in the Transcripts card.' : ''),
+    );
+  };
+  const cancel = (): void => {
+    preview = undefined;
+    releaseScanStrips();
+    withdrawScannerLayerOffer();
+    previewError = undefined;
+    render();
+  };
   box.append(
+    // Add / Cancel at the top too (U2) — the same actions as at the foot.
+    el(
+      'div',
+      { class: 'save-buttons preview-top-actions' },
+      el('button', { class: 'btn primary', 'data-key': 'ext.preview.add.top', onclick: () => void addSelected('ext.preview.add.top') }, addLabel),
+      el('button', { class: 'btn', 'data-key': 'ext.preview.cancel.top', onclick: cancel }, 'Cancel'),
+    ),
     el(
       'p',
       { class: 'select-links' },
@@ -1789,6 +2107,30 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       el('button', { class: 'btn tiny', 'data-key': 'ext.preview.none', onclick: () => selectAll(false) }, 'Select none'),
     ),
     table,
+    // The rows a single-level undergraduate transcript left out (U3), behind
+    // the toggle the Notre Dame preview uses for its unticked rows.
+    leftOut > 0
+      ? el(
+          'p',
+          { class: 'select-links' },
+          el(
+            'button',
+            {
+              class: 'btn tiny',
+              'data-key': 'ext.preview.omitted.toggle',
+              'data-own-expanded': '',
+              'aria-expanded': p.showOmitted ? 'true' : 'false',
+              'aria-controls': 'ext-preview-rows',
+              onclick: () => {
+                p.showOmitted = !p.showOmitted;
+                args.setFocusAfterRender?.('ext.preview.omitted.toggle');
+                render();
+              },
+            },
+            `${p.showOmitted ? 'Hide' : 'Show'} the ${leftOut === 1 ? '1 course' : `${leftOut} courses`} that ${leftOut === 1 ? 'was' : 'were'} left out`,
+          ),
+        )
+      : '',
   );
   box.append(
     el('button', {
@@ -1801,222 +2143,12 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       },
     }, '+ Add a row by hand'),
   );
-  const selected = p.rows.filter((r) => r.include).length;
   box.append(
     el(
       'div',
       { class: 'save-buttons' },
-      el(
-        'button',
-        {
-          class: 'btn primary',
-          'data-key': 'ext.preview.add',
-          onclick: async () => {
-            const university = p.university.trim();
-            // Problems stay on screen, next to what needs fixing (item 6).
-            const problem = (message: string, focusKey: string): void => {
-              previewError = message;
-              render();
-              document.querySelector<HTMLElement>(`[data-key="${focusKey}"]`)?.focus();
-            };
-            if (university === '') {
-              problem('Enter the university name — the DGS’s rules match courses by university + course id.', 'ext.preview.university');
-              return;
-            }
-            if (p.campusSystem !== undefined && p.campus === undefined) {
-              problem(`Choose the ${p.campusSystem} campus — the course rules are keyed on it, and “${p.campusSystem}” alone names several schools.`, 'ext.preview.campus');
-              return;
-            }
-            // A combined bachelor's + master's record needs the award term (DGS 2026-09-06 evening).
-            if (p.bachelorsRequired && p.bachelorsAwarded === undefined) {
-              problem('Enter the semester your bachelor’s degree was awarded — required for a combined bachelor’s + master’s transcript: courses dated in or before it count as undergraduate coursework (§5.2).', 'ext.preview.bachelors.year');
-              return;
-            }
-            const ready = p.rows.filter(readyToAdd);
-            const skipped = p.rows.filter((r) => r.include).length - ready.length;
-            if (ready.length === 0) {
-              problem('No rows are complete yet — every added row needs a course id, credits, a grade and a year.', 'ext.preview.error');
-              return;
-            }
-            previewError = undefined;
-            // A row whose credit-hours column came through blank is saved as 0
-            // and counts toward nothing. The student is asked before it is
-            // added, naming the rows (DGS 2026-09-11) — allowed, never silent.
-            const zeroRows = ready.filter((r) => r.credits === 0);
-            if (zeroRows.length > 0) {
-              const which = zeroRows.map((r) => r.courseId.trim()).join(', ');
-              const yes = await confirmDialog({
-                title: `${zeroRows.length === 1 ? 'One course has' : `${zeroRows.length} courses have`} 0 credits`,
-                body: [
-                  `${which} ${zeroRows.length === 1 ? 'is' : 'are'} about to be added with 0 credits, which counts toward nothing — not the total credits, not the regular-course credits, not any cap.`,
-                  'That usually means the credit-hours column could not be read. Cancel, type the credits from your transcript into those rows, and add them again.',
-                ],
-                confirmLabel: 'Add them anyway',
-                cancelLabel: 'Go back and fix the credits',
-                returnFocusKey: 'ext.preview.add',
-              });
-              if (!yes) return;
-            }
-            // (initializer cast: the assignment happens inside the update()
-            // closure, which TS's flow analysis can't see from the use below)
-            let priorAutoSet = false as 'completed' | 'unfinished' | false;
-            let unfinishedLabel = '';
-            let merged = 0;
-            let refiledToProgram = 0;
-            let graduateRows = 0;
-            let bachelorsSet: Term | undefined;
-            let bachelorsFromTranscript = false;
-            let bachelorsBefore: Term | undefined;
-            let earlierRead = false as ReadingResult;
-            update((s) => {
-              // The bachelor's university, for "same university?" (Option 1):
-              // only a university with undergraduate rows and no graduate rows
-              // on file from before this import — a master's transcript's own
-              // undergraduate rows are no bachelor's transcript, and neither
-              // is transfer credit on the Notre Dame record — and only one
-              // (review of Option 1, 2026-10-08).
-              const earlier = s.courses.filter((c) => c.origin === 'transfer' && !c.fromNdTranscript && !isNotreDameInstitution(c.institution) && c.institution);
-              const bachelorsCandidates = [...new Set(earlier.filter((c) => c.degreeLevel === 'bachelors').map((c) => c.institution!))].filter((u) => !earlier.some((c) => c.institution === u && c.degreeLevel !== 'bachelors'));
-              const bachelorsAt = s.backgroundDraft?.bachelors === 'elsewhere' && bachelorsCandidates.length === 1 ? bachelorsCandidates[0] : undefined;
-              // …and the one graduate university on file, for a bachelor's
-              // transcript added after the master's.
-              const graduateCandidates = [...new Set(earlier.filter((c) => c.degreeLevel === 'masters' || c.degreeLevel === 'phd').map((c) => c.institution!))];
-              const graduateAt = graduateCandidates.length === 1 ? graduateCandidates[0] : undefined;
-              for (const r of ready) {
-                const row = courseEntryOf(r, p, university, args.todayIso ? { on: args.todayIso, app: APP_BUILD.commit } : undefined);
-                if (row.degreeLevel !== 'bachelors') graduateRows += 1;
-                s.courses.push(row);
-                // The same course already on the record as the Notre Dame
-                // transcript's accepted transfer credit: one course, this row,
-                // carrying that acceptance (P3-import-1 (c), 2026-10-05).
-                if (absorbBlockRow(s, row)) merged += 1;
-              }
-              // What this transcript settles of the earlier-degrees answer
-              // (DGS 2026-10-08, Option 1): a bachelor's there, or a graduate
-              // degree there — finished when it says it was conferred, at the
-              // bachelor's university when that is known (a bachelor's at Notre
-              // Dame, one bachelor's transcript on file, or this transcript's
-              // own undergraduate record with its bachelor's conferral).
-              if (!isNotreDameInstitution(university)) {
-                if (p.slot === 'bachelors') earlierRead = mergeReading(s, readBackgroundFromPriorBachelors(university, graduateAt));
-                else {
-                  const ndBachelors = s.backgroundDraft?.bachelors === 'nd-cse' || s.backgroundDraft?.bachelors === 'nd-other';
-                  earlierRead = mergeReading(
-                    s,
-                    readBackgroundFromPriorGraduate({
-                      slot: p.slot,
-                      university,
-                      ...(p.conferred !== undefined ? { conferred: p.conferred } : {}),
-                      ...(bachelorsAt ? { bachelorsUniversity: bachelorsAt } : {}),
-                      ...(ndBachelors ? { bachelorsAtNotreDame: true } : {}),
-                      ...(p.bachelorsConferredOn !== undefined && p.mixedLevels ? { bachelorsOnThisTranscript: true } : {}),
-                    }),
-                  );
-                }
-              }
-              // "Prior graduate study" from the transcript (2026-09-03): a
-              // graduate-degree conferral line → completed; a graduate
-              // transcript WITHOUT one → "Prior M.S., not completed" plus the
-              // standing card's warning (the transcript alone cannot prove
-              // completion). Only the untouched default is upgraded — never a
-              // student's own choice; touching the dropdown clears the flag.
-              // Since 2026-09-05 any GRADUATE row triggers this, whatever the
-              // slot (a 4+1's fifth year on an undergraduate transcript).
-              if (graduateRows > 0 && s.priorMs === 'none' && s.background === undefined) {
-                s.priorMs = p.conferred === true ? 'completed' : 'unfinished';
-                s.priorMsInferred = true;
-                priorAutoSet = s.priorMs;
-              }
-              // The bachelor's award term: a value the student gave — here or
-              // under Your standing — always applies; one read from this
-              // transcript fills the field only while the student has not set
-              // it by hand (2026-09-06). Since 2026-09-07 the preview is itself
-              // pre-filled from a hand-set term, so this usually writes back
-              // the same value: only a REAL change is announced, and only a
-              // term that truly came from the transcript is described that way.
-              if (p.bachelorsAwarded !== undefined && (p.bachelorsSource === 'student' || s.bachelorsAwarded === undefined || s.bachelorsAwardedInferred !== undefined)) {
-                const changed = s.bachelorsAwarded === undefined || termIndex(s.bachelorsAwarded) !== termIndex(p.bachelorsAwarded);
-                s.bachelorsAwarded = { ...p.bachelorsAwarded };
-                s.bachelorsAwardedInferred = p.bachelorsSource === 'student' ? undefined : { how: `the bachelor’s degree conferred ${p.bachelorsConferredOn} on your ${university} transcript` };
-                if (changed) {
-                  bachelorsSet = s.bachelorsAwarded;
-                  bachelorsFromTranscript = p.bachelorsSource === 'transcript';
-                }
-              }
-              // A standalone master's transcript says nothing about the
-              // bachelor's degree, and the student is not asked (DGS
-              // 2026-09-20): it was awarded BEFORE the master's first
-              // semester, which is all §5.2 needs — every course on the
-              // transcript is dated after it. The record holds the term just
-              // before that semester; the page shows "Before <semester>".
-              // A term the student set by hand is left alone, and so is one
-              // read from a conferral date — a bachelor's transcript's, or the
-              // Notre Dame record's: only an earlier "before" estimate gives
-              // way (blue/red-team review of Option 1, 2026-10-08).
-              // A standalone Ph.D. transcript says the same (coverage review,
-              // 2026-10-08: the Ph.D. row left the field empty and "required").
-              if (p.slot !== 'bachelors' && !p.bachelorsRequired && p.bachelorsAwarded === undefined && (s.bachelorsAwarded === undefined || s.bachelorsAwardedInferred?.before !== undefined)) {
-                const dated = ready.filter((r) => r.year !== undefined).map((r) => ({ season: r.season, year: r.year! }));
-                const first = dated.sort(compareTermIndex)[0];
-                if (first !== undefined) {
-                  const wasBefore = s.bachelorsAwardedInferred?.before;
-                  s.bachelorsAwarded = termBefore(first);
-                  s.bachelorsAwardedInferred = { how: `the first semester on your ${university} ${p.slot === 'phd' ? 'Ph.D.' : 'master’s'} transcript`, before: { ...first } };
-                  if (wasBefore === undefined || termIndex(wasBefore) !== termIndex(first)) bachelorsBefore = first;
-                }
-              }
-              // A Notre Dame transcript can land in one of these slots as the
-              // record of an EARLIER Notre Dame degree (2026-09-05), and such a
-              // transcript often carries the current program too. The entry
-              // term is what separates the two, so re-file by it here as the
-              // Notre Dame slot does — otherwise the student's in-program
-              // courses sit as §5.2 transfer candidates until they happen to
-              // touch a term field (2026-09-09).
-              if (isNotreDameInstitution(university)) {
-                refiledToProgram = reclassifyNotreDameCourses(s).toProgram;
-              }
-              // Read from the record once every row is filed, as the emails
-              // read it (verification, transfer-3).
-              unfinishedLabel = unfinishedPriorLabel(s);
-            });
-            const matched = ready.filter((r) => findExternalRule(rules.external, university, r.courseId)).length;
-            const undergraduateRows = ready.length - graduateRows;
-            preview = undefined;
-            releaseScanStrips();
-            withdrawScannerLayerOffer();
-            previewError = undefined;
-            render();
-            toast(
-              `Added ${ready.length} course${ready.length === 1 ? '' : 's'} from ${university}` +
-                (p.mixedLevels ? ` (${undergraduateRows} undergraduate, ${graduateRows} graduate${p.termPrefill ? ', by the two-year rule where the transcript did not say' : ''})` : '') +
-                (matched > 0 ? ` — ${matched} already in the DGS’s course rules` : '') +
-                (skipped > 0 ? `; ${skipped} skipped (incomplete — missing a grade, credits or year)` : '') +
-                (refiledToProgram > 0
-                  ? `; ${refiledToProgram} of them are dated from your entry term on, so they are filed as this program's coursework, not as transfer credit`
-                  : '') +
-                (merged > 0 ? `; ${merged === 1 ? '1 of them was' : `${merged} of them were`} already on your Notre Dame transcript as accepted transfer credit, so each is kept as one course` : '') +
-                '.' +
-                (priorAutoSet === 'completed'
-                  ? ' Prior graduate study was set to “Completed prior M.S. or Ph.D.” from the conferral line on your transcript — if that’s wrong, change it in the earlier-degrees questions in the Transcripts card.'
-                  : priorAutoSet === 'unfinished'
-                    ? // The label the emails print (program-history.ts): a Ph.D. transcript
-                      // is an unfinished Ph.D., not "Prior M.S." (round 5, item 13).
-                      ` Prior graduate study was set to “${unfinishedLabel}” — no degree-conferral line was found on your transcript; if you did earn the degree, say so in the earlier-degrees questions in the Transcripts card.`
-                    : '') +
-                (bachelorsSet
-                  ? ` “Bachelor’s degree awarded” was set to ${termLabel(bachelorsSet)}${bachelorsFromTranscript ? ' from the conferral date on your transcript' : ''} — check it under Your standing.`
-                  : bachelorsBefore
-                    ? ` “Bachelor’s degree awarded” reads “Before ${termLabel(bachelorsBefore)}”, the first semester on this transcript — set the exact semester under Your standing if you know it.`
-                    : '') +
-                // Option 1 (DGS 2026-10-08): the earlier-degrees answers it filled in.
-                (earlierRead === 'disagree' ? ' Your transcripts disagree about your earlier degrees — answer those questions in the Transcripts card.' : earlierRead ? ' Your earlier degrees were partly filled in from it — check them in the Transcripts card.' : ''),
-            );
-          },
-        },
-        // 'selected' — the word Select all / Select none and the ND preview use (trim review 2026-09-18, P-58).
-        `Add ${selected} selected course${selected === 1 ? '' : 's'}`,
-      ),
-      el('button', { class: 'btn', 'data-key': 'ext.preview.cancel', onclick: () => { preview = undefined; releaseScanStrips(); withdrawScannerLayerOffer(); previewError = undefined; render(); } }, 'Cancel'),
+      el('button', { class: 'btn primary', 'data-key': 'ext.preview.add', onclick: () => void addSelected('ext.preview.add') }, addLabel),
+      el('button', { class: 'btn', 'data-key': 'ext.preview.cancel', onclick: cancel }, 'Cancel'),
     ),
     // "Does this look wrong?" for the reader (DGS 2026-10-11, item 18): the
     // message is built when clicked, so it carries the edits made so far.

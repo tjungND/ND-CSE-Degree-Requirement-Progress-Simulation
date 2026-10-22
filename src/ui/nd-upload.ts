@@ -40,6 +40,9 @@ export interface NdUploadArgs {
   /** `quiet`: a change that finishes no step of the student's — a removal (next-step.ts). */
   update: (fn: (s: Student) => void, opts?: { quiet?: boolean }) => void;
   toast: (msg: string) => void;
+  /** Takes the plain toast down (toasts.ts `dismiss`): the "Reading the
+   * transcript…" message ends with the preview or the refusal (U8). */
+  dismissToast?: () => void;
   toastWithAction: (msg: string, actionLabel: string, action: () => void, opts?: { ttlMs?: number; focusKey?: string }) => void;
   render: () => void;
   /** One transcript at a time (2026-09-03): true while ANY preview is open. */
@@ -200,6 +203,7 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
   const fail = (message: string): void => {
     transcriptPreview = undefined;
     ndImportError = message;
+    args.dismissToast?.(); // "Reading the transcript…" ends with the refusal (U8)
     args.setFocusAfterRender('import.nd.error');
     args.render();
   };
@@ -317,6 +321,10 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
         warnings: [...parsed.warnings, ...gpaWarning],
         totalsCheck: totalsMismatchesOf(parsed),
       };
+      // The preview is the read's outcome: the "Reading the transcript…"
+      // toast goes with it, not four seconds later (blue-team review
+      // 2026-10-17, U8).
+      args.dismissToast?.();
       args.render();
     } catch {
       fail(browserTooOldForPdfs() ? BROWSER_TOO_OLD_FOR_PDFS : 'That PDF could not be read (a scanned image, or not a PDF?). Add your courses manually.');

@@ -99,7 +99,9 @@ function firstUnanswered(root: Element | null): HTMLElement | null {
 /** Where each Next steps item is done, when the page has a control for it. */
 const CONTROL: Partial<Record<StepKey, (doc: Document) => Element | null | undefined>> = {
   'standing.entry': (d) => d.querySelector('[data-key="standing.season"]'),
-  'standing.check': (d) => d.querySelector('[data-key="standing.entry.confirm"]') ?? d.querySelector('[data-key="standing.bachelors.confirm"]') ?? d.querySelector('[data-key="standing.bachelors.exact"]'),
+  // No fallback to "Set the exact semester" (blue-team review 2026-10-17, U4):
+  // that button is optional, and the step never lists a "before" reading.
+  'standing.check': (d) => d.querySelector('[data-key="standing.entry.confirm"]') ?? d.querySelector('[data-key="standing.bachelors.confirm"]'),
   'earlier-degrees': (d) => d.querySelector('[data-key="earlier.answer"]') ?? firstUnanswered(d.getElementById('earlier-degrees')),
   'coursework.degrees': (d) => [...d.querySelectorAll<HTMLSelectElement>('select[data-key$=".countedToward"]')].find((s) => s.value === ''),
   'review.send': (d) => d.querySelector('[data-key="review.copy"]'),

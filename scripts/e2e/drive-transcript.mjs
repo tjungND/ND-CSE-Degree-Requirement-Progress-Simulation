@@ -42,6 +42,9 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   //    undergraduate course that cannot matter (Calculus) → add.
   await s.setFileInput('.transcript-upload input[type=file]', ndPdf);
   await s.waitFor(`document.querySelector('.transcript-preview')`);
+  // The "Reading the transcript…" toast ends with the preview (blue-team
+  // review 2026-10-17, U8): it used to stay its four seconds beside it.
+  await checkNoReadingToast(s, 'the Notre Dame preview');
   const rows = await s.evalJs(
     `document.querySelectorAll('.transcript-preview table tr').length - 1`,
   );
@@ -298,6 +301,23 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   await s.evalJs(`(() => { const y = document.querySelector('[data-key="ext.preview.bachelors.year"]'); y.value = '2021'; y.dispatchEvent(new Event('change')); })()`);
   await s.waitFor(`document.querySelector('[data-key="standing.bachelors.year"]')?.value === '2021'`);
   console.log('  preview award term → Your standing in real time (2020, then back to 2021)');
+  await checkNoReadingToast(s, 'an earlier-transcript preview');
+  // Add / Cancel at the top of the preview too (blue-team review 2026-10-17,
+  // U2), as the Notre Dame preview has had since 2026-10-08 — before the
+  // rows, the same label as the foot's.
+  const topActions = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const top = document.querySelector('.external-card .transcript-preview .preview-top-actions');
+    const table = document.querySelector('.external-card .transcript-preview table');
+    const foot = document.querySelector('[data-key="ext.preview.add"]');
+    return {
+      has: !!top && !!top.querySelector('[data-key="ext.preview.add.top"]') && !!top.querySelector('[data-key="ext.preview.cancel.top"]'),
+      beforeRows: !!top && !!table && !!(top.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING),
+      topLabel: top?.querySelector('[data-key="ext.preview.add.top"]')?.textContent ?? '',
+      footLabel: foot?.textContent ?? '',
+    };
+  })())`));
+  if (!topActions.has || !topActions.beforeRows || topActions.topLabel !== topActions.footLabel || !/^Add \d+ selected course/.test(topActions.topLabel)) throw new Error('the earlier-transcript preview must have Add / Cancel above its rows, labelled as at the foot: ' + JSON.stringify(topActions));
+  console.log('  earlier-transcript preview: Add / Cancel at the top too —', topActions.topLabel);
   // A text-layer import is COMPACT and locked (2026-09-06, second pass):
   // number, title, credits, grade and term as printed — only "Taken as" is a
   // control; and while the preview is open every transcript-row button is
@@ -517,8 +537,8 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   const ocrBanner = await s.evalJs(`document.querySelector('.ocr-banner')?.textContent ?? ''`);
   if (!ocrBanner.includes('English transcripts only')) throw new Error('OCR preview banner missing');
   const ocrUni = await s.evalJs(`[...document.querySelectorAll('.external-card .field input')].map(i => i.value)[0]`);
-  const ocrRows = await s.evalJs(`document.querySelectorAll('.external-card .transcript-preview table tr').length - 1`);
-  console.log('  OCR university:', ocrUni, '| rows:', ocrRows);
+  const ocrRows = await s.evalJs(`document.querySelectorAll('.external-card .transcript-preview table tr:not([hidden])').length - 1`);
+  console.log('  OCR university:', ocrUni, '| rows shown:', ocrRows);
   if (ocrUni !== 'Purdue University') throw new Error(`OCR university guess wrong: '${ocrUni}'`);
   // Undergrad relevance filter (2026-09-04): OCR reads 3 courses, but only
   // the two whose titles match the core keywords are offered — 'Special
@@ -528,6 +548,36 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   if (!bachNote.includes('do not transfer') || !bachNote.includes('1 other course was read and left out')) {
     throw new Error('bachelors preview note missing/wrong: ' + bachNote.slice(0, 160));
   }
+  // The left-out row is kept, not dropped (blue-team review 2026-10-17, U3):
+  // hidden behind "Show the 1 course that was left out", and once shown it is
+  // the locked, greyed row of the mixed case — unticked, its reason on hover —
+  // so a core course under an unusual title can be found and its "Taken as"
+  // changed. Hidden again, the shown count is back to 2.
+  const omittedRows = () => s.evalJs(`JSON.stringify((() => {
+    const rows = [...document.querySelectorAll('.external-card .transcript-preview table tr')].slice(1);
+    const toggle = document.querySelector('[data-key="ext.preview.omitted.toggle"]');
+    return {
+      all: rows.length,
+      shown: rows.filter((tr) => !tr.hidden).length,
+      toggle: toggle?.textContent ?? null,
+      expanded: toggle?.getAttribute('aria-expanded') ?? null,
+      hidden: rows.filter((tr) => tr.hidden).map((tr) => ({ id: tr.querySelector('input[data-key$=".id"]')?.value ?? '', blocked: tr.classList.contains('blocked-row') })),
+      leftOut: rows.filter((tr) => tr.classList.contains('blocked-row')).map((tr) => ({ id: tr.querySelector('input[data-key$=".id"]')?.value ?? '', hidden: tr.hidden, ticked: tr.querySelector('.cell-check input')?.checked, locked: tr.querySelector('.cell-check input')?.disabled, why: (tr.getAttribute('title') ?? '').slice(0, 60) })),
+    };
+  })())`).then(JSON.parse);
+  const tucked = await omittedRows();
+  console.log('  OCR left-out row:', JSON.stringify(tucked));
+  if (tucked.all !== 3 || tucked.shown !== 2 || tucked.toggle !== 'Show the 1 course that was left out' || tucked.expanded !== 'false' || tucked.hidden.length !== 1 || !tucked.hidden[0].blocked) throw new Error('the left-out undergraduate row must be kept behind the toggle: ' + JSON.stringify(tucked));
+  await s.evalJs(`document.querySelector('[data-key="ext.preview.omitted.toggle"]').click()`);
+  await s.settle();
+  const shownAll = await omittedRows();
+  if (shownAll.shown !== 3 || shownAll.toggle !== 'Hide the 1 course that was left out' || shownAll.expanded !== 'true' || shownAll.leftOut.length !== 1 || shownAll.leftOut[0].hidden || shownAll.leftOut[0].ticked !== false || shownAll.leftOut[0].locked !== true || !shownAll.leftOut[0].why.startsWith('Not selectable')) throw new Error('shown, the left-out row must be the locked greyed row with its reason: ' + JSON.stringify(shownAll));
+  if ((await s.evalJs(`document.activeElement?.dataset?.key`)) !== 'ext.preview.omitted.toggle') throw new Error('the toggle must keep focus through the re-render');
+  await s.shotElement('external-ocr-left-out', '.external-card .transcript-preview');
+  await s.evalJs(`document.querySelector('[data-key="ext.preview.omitted.toggle"]').click()`);
+  await s.settle();
+  if ((await omittedRows()).shown !== 2) throw new Error('hidden again, the shown rows are the two relevant ones');
+  console.log('  left-out row: behind the toggle, shown locked on request, hidden again');
   // The scanned line beside each OCR row (Batch C answer (5), DGS 2026-10-09;
   // the e2e leg 2026-10-10): a flagged row (⚠, under the confidence floor)
   // shows its strip at once — a canvas drawn from the page copy, with ink on
@@ -536,7 +586,7 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     const ink = (c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let k = 0; k < d.length; k += 4) if (d[k] < 128) n++; return n; };
     return {
       head: !!document.querySelector('.external-card .transcript-preview th.scan-head'),
-      rows: [...document.querySelectorAll('.external-card .transcript-preview table tr')].slice(1).map((tr) => {
+      rows: [...document.querySelectorAll('.external-card .transcript-preview table tr:not([hidden])')].slice(1).map((tr) => {
         const cell = tr.querySelector('td.cell-scan');
         const canvas = cell?.querySelector('.scan-strip > canvas');
         const box = canvas?.getBoundingClientRect();
@@ -564,7 +614,7 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   // page (DGS 2026-10-10: "yes, shrink").
   await s.setViewport({ width: 390, height: 1900, mobile: true, settleMs: 300 });
   const phoneStrip = JSON.parse(await s.evalJs(`JSON.stringify((() => {
-    const c = document.querySelector('.external-card .transcript-preview tr.ocr-low .scan-strip > canvas');
+    const c = document.querySelector('.external-card .transcript-preview tr.ocr-low:not([hidden]) .scan-strip > canvas');
     const r = c?.getBoundingClientRect();
     const box = c?.parentElement;
     return { pageSideways: document.documentElement.scrollWidth - window.innerWidth, stripSideways: box ? box.scrollWidth - box.clientWidth : -1, overBox: r && box ? Math.round(r.right - box.getBoundingClientRect().right) : -1, shownW: r ? Math.round(r.width) : 0, shownH: r ? Math.round(r.height) : 0, left: r ? Math.round(r.left) : -1 };
@@ -581,6 +631,52 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   // The whole frame from the preview's top (the crops above leave the page scrolled).
   await s.evalJs(`document.querySelector('.external-card .transcript-preview').scrollIntoView({ block: 'start' })`);
   await s.shot('external-ocr-preview');
+  // A ticked row with an empty Credits box holds Add up (blue-team review
+  // 2026-10-17, U1): it used to be dropped, said only in the four-second
+  // toast after the preview had closed. The button counts the complete rows
+  // and says how many ticked rows still need something; Add refuses, names
+  // the row, marks its empty box and focuses it. OCR usually leaves one
+  // credits box empty on this scan; if it read them all, one is blanked by
+  // hand so the leg always runs.
+  const blank = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const rows = [...document.querySelectorAll('.external-card .transcript-preview table tr:not([hidden])')].slice(1).filter((tr) => tr.querySelector('.cell-check input')?.checked);
+    let tr = rows.find((t) => t.querySelector('input[data-key$=".credits"]')?.value === '');
+    let blankedByHand = false;
+    if (!tr) {
+      tr = rows[0];
+      const c = tr.querySelector('input[data-key$=".credits"]');
+      c.value = '';
+      c.dispatchEvent(new Event('change'));
+      blankedByHand = true;
+    }
+    const incomplete = rows.filter((t) => ['.credits', '.year'].some((f) => t.querySelector('input[data-key$="' + f + '"]')?.value === '') || t.querySelector('select[data-key$=".grade"]')?.value === '').length;
+    return {
+      id: tr.querySelector('input[data-key$=".id"]').value,
+      key: tr.querySelector('input[data-key$=".credits"]').dataset.key,
+      blankedByHand,
+      ticked: rows.length,
+      incomplete,
+      labels: [...document.querySelectorAll('.external-card .transcript-preview button')].filter((b) => /^Add \\d+ selected course/.test(b.textContent)).map((b) => b.textContent),
+    };
+  })())`));
+  console.log('  OCR row with an empty credits box:', JSON.stringify(blank));
+  const expectedLabel = `Add ${blank.ticked - blank.incomplete} selected course${blank.ticked - blank.incomplete === 1 ? '' : 's'} — ${blank.incomplete} ticked row${blank.incomplete === 1 ? '' : 's'} still need${blank.incomplete === 1 ? 's' : ''} a grade, credits or a year`;
+  if (blank.labels.length !== 2 || blank.labels.some((l) => l !== expectedLabel)) throw new Error(`both Add buttons must count the complete rows and say what is missing — expected “${expectedLabel}”: ` + JSON.stringify(blank.labels));
+  await s.evalJs(`document.querySelector('[data-key="ext.preview.add.top"]').click()`);
+  await s.settle();
+  const refused = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const box = document.querySelector('[data-key="${blank.key}"]');
+    return {
+      previewOpen: !!document.querySelector('.external-card .transcript-preview'),
+      error: document.querySelector('.external-card .transcript-preview .import-error')?.textContent ?? '',
+      invalid: box?.getAttribute('aria-invalid') ?? null,
+      focused: document.activeElement?.dataset?.key ?? document.activeElement?.tagName ?? '',
+      rowsOnPage: document.querySelectorAll('table.courses .cid').length,
+    };
+  })())`));
+  console.log('  Add refused:', JSON.stringify(refused));
+  if (!refused.previewOpen || !refused.error.startsWith('Fill in what is missing before adding — ') || !refused.error.includes(`${blank.id} needs credits`) || refused.invalid !== 'true' || refused.focused !== blank.key) throw new Error('Add must wait for the ticked row, name it, mark and focus its empty box: ' + JSON.stringify(refused));
+  await s.shotElement('external-ocr-incomplete', '.external-card .transcript-preview');
   // Do what the preview tells every student to do: check the fields and fix
   // what OCR got wrong (an empty credits box blocks that row from being added).
   const fixed = await s.evalJs(`(() => {
@@ -596,6 +692,10 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     return n;
   })()`);
   console.log('  OCR fields fixed by hand in the preview:', fixed);
+  // Filled in, the mark goes and both labels count the row (no re-render).
+  const filled = JSON.parse(await s.evalJs(`JSON.stringify({ invalid: document.querySelector('[data-key="${blank.key}"]')?.getAttribute('aria-invalid') ?? null, labels: [...document.querySelectorAll('.external-card .transcript-preview button')].filter((b) => /^Add \\d+ selected course/.test(b.textContent)).map((b) => b.textContent) })`));
+  if (filled.invalid !== null || filled.labels.some((l) => l !== `Add ${blank.ticked} selected courses`)) throw new Error('filling the box must clear the mark and the label must count the row: ' + JSON.stringify(filled));
+  console.log('  filled in: mark gone, both Add buttons read', filled.labels[0]);
   await s.evalJs(
     `[...document.querySelectorAll('.external-card button')].find(b => /^Add \\d+ selected course/.test(b.textContent)).click()`,
   );
@@ -1413,6 +1513,15 @@ async function checkPreviewSelects(s) {
 //     Firefox 93), W-CL425 instead, so a student is not sent to fetch another
 //     PDF for nothing. That browser is stood in for by making the probe's
 //     class-static-block compile throw a SyntaxError, as such an engine would.
+// The "Reading the transcript… (it never leaves this browser)" toast goes up
+// before the read and, until the blue-team review (2026-10-17, U8), stayed
+// its four seconds beside the preview, the OCR offer or the refusal that
+// ended the read. Now the outcome takes it down (toasts.ts `dismiss`).
+async function checkNoReadingToast(s, where) {
+  const toasts = JSON.parse(await s.evalJs(`JSON.stringify([...document.querySelectorAll('.toast')].map((t) => t.textContent))`));
+  if (toasts.some((t) => t.startsWith('Reading the transcript'))) throw new Error(`the "Reading the transcript…" toast must be gone once ${where} is on screen: ` + JSON.stringify(toasts));
+}
+
 async function checkUnreadablePdf(s) {
   const file = join(tmpdir(), 'cse-audit-e2e-not-a-pdf.pdf');
   writeFileSync(file, 'This is plain text, not a PDF.\n');

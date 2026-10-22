@@ -482,7 +482,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   // it remembers which control had focus before and restores it after.
   const { remember: rememberFocus, restore: restoreFocus, setFocusAfterRender } = createFocusKeeper(root);
   // The toast stack (toasts.ts), created once outside the root.
-  const { toast, notice, nextStepNote, cancelUndo, toastWithAction } = createToasts(setFocusAfterRender);
+  const { toast, dismiss: dismissToast, notice, nextStepNote, cancelUndo, toastWithAction } = createToasts(setFocusAfterRender);
   let lastHeadline = '';
   /** Watches the two score headlines for the sticky bar (P-66); one per render. */
   let scoreObserver: IntersectionObserver | undefined;
@@ -1191,22 +1191,11 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             : heldMscseReading
               ? `${termLabel(student.entryTerm)} was read from your transcript (${inferred.how}). That is your MSCSE’s first semester: your earlier degrees say you finished the Notre Dame MSCSE before the Ph.D., so set the semester you entered the Ph.D. here — your transcript does not show it. `
               : `${termLabel(student.entryTerm)} was read from your transcript (${inferred.how}). Check it. `,
-          student.program === 'phd'
-            // The four deadlines are each a report row with a Deadline chip;
-            // the §s stay (trim review 2026-09-18, P-11); the approved wording
-            // (W-CL103) — "a transfer" is a move before finishing, which keeps
-            // the clock.
-            ? `The residency count (§4.3) and every deadline (§4.2’s first-year seminars, §4.3, §4.4, §4.4.3, §4.5 and admission to candidacy) are counted from this term — your matriculation at the Graduate School, which a transfer from another Notre Dame program does not reset.${heldMscseReading ? '' : mscseClockSentence()}`
-            : 'The residency count and the five-year limit on completing the degree (§3.3) are counted from this term.',
-          inferred.alternative && !unfinishedOtherReading ? ` Note: ${inferred.alternative.why}.` : '',
-          // A non-degree semester read as the program's start (policy review
-          // round 3, P3-dh-front-1-2-3, part (1)): said where the import picked
-          // an earlier admission or the first graduate-level term. The import
-          // keeps the earlier term as its default, and this sentence is how a
-          // non-degree student corrects it (DGS 2026-10-07, option (a)).
-          inferred.how !== 'assumed' && (inferred.alternative !== undefined || /first graduate-level term|earlier of the admit-term lines/.test(inferred.how))
-            ? ` If you were a non-degree (unclassified or departmental non-degree) student at Notre Dame before your degree admission, set the entry term to that admission; up to ${NON_DEGREE_CREDITS_MAX} non-degree credits may count (Academic Code §2.3).`
-            : '',
+          // "Looks right" sits right after the fact it confirms (blue-team
+          // review 2026-10-17, U5): it was the last token of a six-line box,
+          // after the W-CL103 sentence, the Note and the non-degree sentence,
+          // and the next-step ring circled the whole box. Every sentence
+          // stays as approved; the explanation follows on a second line.
           // Confirming the reading as it is (UI review, 2026-10-08) — the same
           // as re-picking the term; not offered where the term read is known
           // to be the MSCSE's.
@@ -1227,6 +1216,23 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
                 },
                 'Looks right',
               )
+            : '',
+          el('br'),
+          student.program === 'phd'
+            // The four deadlines are each a report row with a Deadline chip;
+            // the §s stay (trim review 2026-09-18, P-11); the approved wording
+            // (W-CL103) — "a transfer" is a move before finishing, which keeps
+            // the clock.
+            ? `The residency count (§4.3) and every deadline (§4.2’s first-year seminars, §4.3, §4.4, §4.4.3, §4.5 and admission to candidacy) are counted from this term — your matriculation at the Graduate School, which a transfer from another Notre Dame program does not reset.${heldMscseReading ? '' : mscseClockSentence()}`
+            : 'The residency count and the five-year limit on completing the degree (§3.3) are counted from this term.',
+          inferred.alternative && !unfinishedOtherReading ? ` Note: ${inferred.alternative.why}.` : '',
+          // A non-degree semester read as the program's start (policy review
+          // round 3, P3-dh-front-1-2-3, part (1)): said where the import picked
+          // an earlier admission or the first graduate-level term. The import
+          // keeps the earlier term as its default, and this sentence is how a
+          // non-degree student corrects it (DGS 2026-10-07, option (a)).
+          inferred.how !== 'assumed' && (inferred.alternative !== undefined || /first graduate-level term|earlier of the admit-term lines/.test(inferred.how))
+            ? ` If you were a non-degree (unclassified or departmental non-degree) student at Notre Dame before your degree admission, set the entry term to that admission; up to ${NON_DEGREE_CREDITS_MAX} non-degree credits may count (Academic Code §2.3).`
             : '',
         )
       : null;
@@ -1329,7 +1335,10 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       awarded && bsBefore
         ? `Your master’s transcript starts in ${termLabel(bsBefore)}, so your bachelor’s degree counts as awarded before then — which is all §5.2 needs for the courses on it. Set the exact semester only if you also have coursework from before your master’s.`
         : awarded && bsInferred
-        ? `${termLabel(awarded)} was read from your transcript (${bsInferred.how}). Check it — courses taken in or before this term, even graduate-level ones, are not counted as transfer credit (§5.2: graduate student status). `
+        ? // The fact and "Looks right" on the first line, the rule on the
+          // second (blue-team review 2026-10-17, U5) — the one approved
+          // sentence split at "Check it".
+          `${termLabel(awarded)} was read from your transcript (${bsInferred.how}). Check it. `
         : awarded
           ? 'Courses taken in or before this term, even graduate-level ones, are not counted as transfer credit (§5.2: graduate student status).'
           : hasGraduateTransfers
@@ -1338,21 +1347,25 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             : '§5.2 counts a course as transfer credit only if it was taken after the bachelor’s degree.',
       // Confirming the reading as it is (UI review, 2026-10-08), as touching
       // the field does.
-      awarded && bsInferred && !bsBefore
-        ? el(
-            'button',
-            {
-              class: 'btn tiny confirm-reading',
-              'data-key': 'standing.bachelors.confirm',
-              'aria-label': `${termLabel(awarded)} is right`,
-              onclick: () => {
-                setFocusAfterRender(student.background ? 'standing.background.change' : 'standing.background.goto');
-                update((s) => void (s.bachelorsAwardedInferred = undefined));
+      ...(awarded && bsInferred && !bsBefore
+        ? [
+            el(
+              'button',
+              {
+                class: 'btn tiny confirm-reading',
+                'data-key': 'standing.bachelors.confirm',
+                'aria-label': `${termLabel(awarded)} is right`,
+                onclick: () => {
+                  setFocusAfterRender(student.background ? 'standing.background.change' : 'standing.background.goto');
+                  update((s) => void (s.bachelorsAwardedInferred = undefined));
+                },
               },
-            },
-            'Looks right',
-          )
-        : '',
+              'Looks right',
+            ),
+            el('br'),
+            'Courses taken in or before this term, even graduate-level ones, are not counted as transfer credit (§5.2: graduate student status).',
+          ]
+        : []),
     );
     const card = el(
       'section',
@@ -1761,6 +1774,17 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       'fieldset',
       { class: 'ft-terms' },
       el('legend', { class: 'label' }, `Full-time terms (for residency, ${student.program === 'mscse' ? '§3.3' : '§4.3'})`),
+      // What a tick means stays in view (blue-team review 2026-10-17, U6): the
+      // fold opens itself with ⚠ boxes for a part-time semester, and the one
+      // sentence that says what the box does was the last line inside the
+      // closed policy fold. The control's own instruction is not a policy
+      // detail (DGS 2026-10-05: "The questions, the inputs and the semester
+      // list stay in view"); the rule itself stays behind the selector.
+      el(
+        'p',
+        { class: 'hint ft-instruction' },
+        fullTimeFloor === undefined ? 'Tick each semester you were registered full-time.' : 'Tick a semester you were registered full-time on research or in courses not entered here.',
+      ),
       // The rule behind a selector (DGS 2026-10-04); the semesters stay in view.
       policyFold(
         'fulltime',
@@ -1768,8 +1792,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         'p',
         { class: 'hint' },
         fullTimeFloor === undefined
-          ? 'The course rules do not give the full-time credit floor (fulltime_credits_min), so no semester is counted from your courses until the DGS adds it. Tick each semester you were registered full-time.'
-          : `A semester counts automatically once the courses entered for it add up to ${fullTimeFloor} registered credits (§2.1.2; withdrawn and incomplete courses are registrations too)${summerFloor !== undefined ? `; a summer session at ${summerFloor} (DGS Handbook §10.3.2)` : ''}. Tick a semester you were registered full-time on research or in courses not entered here.`,
+          ? 'The course rules do not give the full-time credit floor (fulltime_credits_min), so no semester is counted from your courses until the DGS adds it.'
+          : `A semester counts automatically once the courses entered for it add up to ${fullTimeFloor} registered credits (§2.1.2; withdrawn and incomplete courses are registrations too)${summerFloor !== undefined ? `; a summer session at ${summerFloor} (DGS Handbook §10.3.2)` : ''}.`,
         ),
       ),
     );
@@ -2111,7 +2135,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // In simulation mode every import is inactive with its reason (D6): a
     // transcript is real data; the mode holds a plan.
     const inSimulation = simulation !== undefined;
-    const ndArgs: NdUploadArgs = { student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, refusedValues, todayIso: realTodayIso, checkedWith: checkedWithLine(stamp) };
+    const ndArgs: NdUploadArgs = { student, rules, update, toast, dismissToast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, refusedValues, todayIso: realTodayIso, checkedWith: checkedWithLine(stamp) };
     // "Start here" made prominent (DGS 2026-09-15): a filled badge in the
     // heading and a bold callout line above the hint — until a transcript is
     // on the record (UI review item 4; DGS 2026-10-08: option (b)): a prompt
@@ -2147,7 +2171,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       inSimulation ? el('p', { class: 'hint simulation-hint' }, 'In simulation mode the imports are off — a transcript is real data; exit the simulation to import it into your record.') : null,
       ndTranscriptUpload(ndArgs),
       ndPreviewOpen() ? ndTranscriptPreviewBlock(ndArgs) : null,
-      ...priorTranscriptSection({ student, rules, update, toast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, todayIso: realTodayIso, checkedWith: checkedWithLine(stamp) }),
+      ...priorTranscriptSection({ student, rules, update, toast, dismissToast, toastWithAction, render, blocked: busy, simulation: inSimulation, setFocusAfterRender, todayIso: realTodayIso, checkedWith: checkedWithLine(stamp) }),
     );
   }
 
