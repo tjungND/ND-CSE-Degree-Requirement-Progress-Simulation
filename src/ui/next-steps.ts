@@ -149,11 +149,24 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // the step names its first term, read from the transcript.
   const earlierBackground = student.background ?? student.backgroundDraft;
   const unfinishedOther = inferred?.alternative?.otherProgram === true && earlierBackground?.graduate === 'nd-other' && earlierBackground.finished === false;
+  // Only readings the page can confirm go in the check step (blue-team review
+  // 2026-10-17, U4): a fresh record's entry term is ASSUMED (state.ts), not
+  // read, and the card offers no "Looks right" for it — so it is its own
+  // "set it" step; a bachelor's known only to be BEFORE a term (the standalone
+  // master's, DGS 2026-09-20) has nothing to confirm, and its "Set the exact
+  // semester" is optional; a Ph.D. reading whose "Looks right" waits for the
+  // earlier-degrees answer (app.ts, UI review 2026-10-08) is said to wait.
+  let entryWithheld = false;
   if (heldMscseReading) steps.push({ key: 'standing.entry', text: `Set the semester you entered the Ph.D. (Your standing) — ${termLabel(student.entryTerm)}, read from your transcript, is your MSCSE’s first semester.`, href: '#standing' });
   else if (unfinishedOther && inferred?.alternative) steps.push({ key: 'standing.entry', text: `Set the semester you entered your earlier Notre Dame program (Your standing) — ${termLabel(student.entryTerm)}, read from your transcript, is your first CSE semester; a move from an unfinished program keeps that program’s clock, and your transcript shows ${termLabel(inferred.alternative.term)} (DGS Handbook §3.15).`, href: '#standing' });
-  else if (student.entryTermInferred) settings.push(`first semester ${termLabel(student.entryTerm)}`);
-  if (student.bachelorsAwardedInferred && student.bachelorsAwarded) settings.push(`bachelor’s degree ${termLabel(student.bachelorsAwarded)}`);
-  if (settings.length > 0) steps.push({ key: 'standing.check', text: `Check what your transcript set — ${settings.join(', ')} (Your standing).`, href: '#standing' });
+  else if (inferred?.how === 'assumed') steps.push({ key: 'standing.entry', text: `Set the semester you entered the program under Your standing — ${termLabel(student.entryTerm)} is only assumed.`, href: '#standing' });
+  else if (inferred) {
+    // The same condition app.ts puts on the entry term's "Looks right".
+    if (student.program === 'phd' && student.background === undefined && !/admit-term|admission/.test(inferred.how)) entryWithheld = true;
+    else settings.push(`first semester ${termLabel(student.entryTerm)}`);
+  }
+  if (student.bachelorsAwardedInferred && student.bachelorsAwarded && !student.bachelorsAwardedInferred.before) settings.push(`bachelor’s degree ${termLabel(student.bachelorsAwarded)}`);
+  if (settings.length > 0) steps.push({ key: 'standing.check', text: `Check what your transcript set — ${settings.join(', ')} (Your standing)${entryWithheld ? ' — the entry term is checked after you answer the earlier-degrees questions' : ''}.`, href: '#standing' });
   // The earlier-degrees questions, asked on the page since 2026-10-08 (DGS,
   // Option 1: the opening dialog asks only the program).
   // Every question answered but not confirmed (the transcripts filled them):

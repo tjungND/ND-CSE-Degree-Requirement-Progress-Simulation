@@ -17,6 +17,11 @@ import { isEmbedded, lastInteractionTop } from './embed.ts';
 export interface Toasts {
   /** A plain message: one slot, 4 s. */
   toast: (msg: string) => void;
+  /** Take the plain message down now (blue-team review 2026-10-17, U8): the
+   * import's "Reading the transcript…" went up before the read and stayed its
+   * four seconds beside the preview, the OCR offer or the refusal that ended
+   * it. The other slots are untouched. */
+  dismiss: () => void;
   /** A notice that a choice was made for the student: its own slot, 12 s. */
   notice: (msg: string) => void;
   /** The next step after a finished one (next-step.ts): its own slot, 12 s. */
@@ -53,6 +58,11 @@ export function createToasts(setFocusAfterRender: (key: string) => void): Toasts
       t.remove();
       if (plainToast === t) plainToast = undefined;
     }, 4000);
+  };
+  const dismiss = (): void => {
+    window.clearTimeout(plainToastTimer);
+    plainToast?.remove();
+    plainToast = undefined;
   };
   /** A notice that a choice was made for the student (2026-09-12): its own
    * slot, so the plain toast that follows the same action ("… added to your
@@ -131,5 +141,5 @@ export function createToasts(setFocusAfterRender: (key: string) => void): Toasts
     toastStack.prepend(t);
     undoToasts.set(t, window.setTimeout(dismiss, opts.ttlMs ?? 12000));
   };
-  return { toast, notice, nextStepNote, cancelUndo, toastWithAction };
+  return { toast, dismiss, notice, nextStepNote, cancelUndo, toastWithAction };
 }
