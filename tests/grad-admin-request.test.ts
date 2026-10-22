@@ -196,7 +196,7 @@ describe('gradAdminRequest', () => {
     assert.match(built.html, /<tr><th>Course<\/th><th>Title<\/th><th>Credits<\/th><th>Grade<\/th><th>Term<\/th><th>Where<\/th><th>Counts toward<\/th><th>Source<\/th><\/tr>/);
     assert.match(built.html, /<span style="[^"]*background:#fbe9e7;color:#a81e14">Overdue<\/span> <strong>Qualifying examination[^<]*<\/strong> \(§4\.4\)<\/p><p style="[^"]*background:#fbe9e7[^"]*"><strong>Deadline passed:<\/strong> Overdue — was due by the end of Spring 2028 \(approximate\)<\/p>/);
     assert.match(built.html, /<span style="[^"]*background:#fbeedd;color:#8e5108">In progress<\/span>/);
-    assert.equal(selfCheckFileName('mscse'), 'cse-degree-audit-mscse.json');
+    assert.equal(selfCheckFileName('mscse', '2026-10-21'), 'cse-degree-audit-mscse-2026-10-21.json'); // the day checked in the name (U24)
   });
 
   it('omits empty sections; a met requirement alone no longer makes the request worth sending (DGS 2026-10-15, superseding 2026-09-06)', () => {

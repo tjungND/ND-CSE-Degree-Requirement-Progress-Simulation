@@ -294,7 +294,7 @@ date it was checked and how every row read). With a working copy of the reposito
 re-run it:
 
 ```
-npm run reproduce -- ~/Downloads/cse-degree-audit-phd.json
+npm run reproduce -- ~/Downloads/cse-degree-audit-phd-2026-10-12.json
 ```
 
 It finds the saved copy of the sheet with that fingerprint, re-runs the check on the date the

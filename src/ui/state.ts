@@ -2,15 +2,23 @@
 // (DGS-requested, 2026-08-31) so a student can move between devices/browsers.
 // Nothing ever leaves the browser (CLAUDE.md).
 import type { SavedStamp } from './stamp.ts';
+import { formatDateLong } from '../data/rules-date.ts';
 import { COURSE_CREDITS_RANGE, GPA_RANGE, inRange, rangeRefusal } from '../engine/ranges.ts';
 import { IMPORTED_FIELDS, type CourseEntry, type Season, type Student, type Term } from '../engine/types.ts';
+import { plural } from './email-html.ts';
 import { asksAlsoElsewhere, refileEarlyStartCourses, settleAnsweredPriorMs } from './prior-nd.ts';
 
 const LS_KEY = 'cse-degree-audit/v1/student';
 
-/** The name of the file "Save to a file" writes (exportFile below). */
-export function selfCheckFileName(program: Student['program']): string {
-  return `cse-degree-audit-${program}.json`;
+/** The name of the file "Save to a file" writes (exportFile below):
+ * cse-degree-audit-phd-2026-10-21.json — the day the check was made
+ * (`auditDate`, YYYY-MM-DD, the one the stamp carries) in the name, so a
+ * student who saves once a semester can tell the copies apart without
+ * opening them (blue-team review 2026-10-17, U24; every save was the same
+ * name before). Loading accepts any name — it reads `student` alone — and
+ * the simulation's file names its semester instead (DGS 2026-10-09). */
+export function selfCheckFileName(program: Student['program'], auditDate: string): string {
+  return `cse-degree-audit-${program}-${auditDate}.json`;
 }
 
 export function emptyStudent(): Student {
@@ -565,9 +573,40 @@ export function clearLocal(): void {
 
 /** The record's file: when it was saved, what it was checked with and how
  * every row read then (the stamp — DGS 2026-10-11, item 8; `npm run
- * reproduce` re-runs it), and the record. Loading reads `student` alone. */
-export function exportFile(student: Student, stamp?: SavedStamp): void {
-  downloadJson(selfCheckFileName(student.program), { savedAt: new Date().toISOString(), ...(stamp ? { stamp } : {}), student });
+ * reproduce` re-runs it), and the record. Loading reads `student` alone.
+ * `auditDate` (YYYY-MM-DD, the stamp's) names the file (U24). */
+export function exportFile(student: Student, auditDate: string, stamp?: SavedStamp): void {
+  downloadJson(selfCheckFileName(student.program, auditDate), { savedAt: new Date().toISOString(), ...(stamp ? { stamp } : {}), student });
+}
+
+/** Does a record hold anything the student entered — a course, or a
+ * milestone answer (a date, a name, a yes/no)? What "Load a file" would
+ * replace, and so what gets an Undo (blue-team review 2026-10-17, U23). */
+export function recordHoldsEntries(s: Student): boolean {
+  return s.courses.length > 0 || Object.values(s.milestones).some((v) => v !== undefined && v !== '');
+}
+
+/** The toast after a record file replaced the record on this device
+ * (blue-team review 2026-10-17, U24 + U23): what the file says about itself
+ * — the day it was saved, at Notre Dame like every date on the page, and
+ * its course count — and what it replaced, when the record held entries:
+ *   File loaded.
+ *   File loaded — saved October 3, 2026 (3 courses).
+ *   File loaded — it replaced the 8 courses that were on this device.
+ *   File loaded — saved October 3, 2026 (3 courses). It replaced the 8 courses that were on this device.
+ * `raw` is the file as parsed (`savedAt` read here, nothing else); `loaded`
+ * the record it held; `replaced` the record that was on the device, when it
+ * held entries (recordHoldsEntries) — else undefined and nothing is said. */
+export function loadedRecordToast(raw: unknown, loaded: Student, replaced: Student | undefined): string {
+  const savedAt = (raw as { savedAt?: unknown } | null)?.savedAt;
+  const savedOn = formatDateLong(typeof savedAt === 'string' ? savedAt : undefined);
+  const fileSays = savedOn ? `saved ${savedOn} (${plural(loaded.courses.length, 'course')})` : undefined;
+  const n = replaced?.courses.length ?? 0;
+  const went = replaced ? (n > 0 ? `the ${plural(n, 'course')} that ${n === 1 ? 'was' : 'were'} on this device` : 'the record that was on this device') : undefined;
+  if (fileSays && went) return `File loaded — ${fileSays}. It replaced ${went}.`;
+  if (fileSays) return `File loaded — ${fileSays}.`;
+  if (went) return `File loaded — it replaced ${went}.`;
+  return 'File loaded.';
 }
 
 /** Hand the browser a JSON file to save — the record's (exportFile) or, in
