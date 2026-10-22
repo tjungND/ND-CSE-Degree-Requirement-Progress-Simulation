@@ -152,7 +152,7 @@ describe('the scanned-line images are never saved, exported or put in localStora
     assert.equal(stored.size, 1);
     for (const v of stored.values()) assertClean('the localStorage save', v);
     // …and the exported file.
-    exportFile(student);
+    exportFile(student, '2026-10-21');
     assert.ok(exported, 'exportFile handed the browser a file');
     assertClean('the JSON export', await exported.text());
   });

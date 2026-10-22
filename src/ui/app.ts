@@ -95,6 +95,8 @@ import {
   exampleRowsRemovedNote,
   exportFile,
   loadLocal,
+  loadedRecordToast,
+  recordHoldsEntries,
   saveLocal,
 } from './state.ts';
 
@@ -3440,6 +3442,15 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // A simulation file loaded inside the mode brings its semester: the
         // toast names it when it differs from the one the page was in.
         const movedTo = simulation && previousSimulation && compareTerm(previousSimulation.term, simulation.term) !== 0 ? simulation.term : undefined;
+        // A record file replaces the record on this device at once. When that
+        // record held entries, the toast says what went and carries Undo for
+        // 20 s — the one action that can drop a semester's entries asked
+        // nothing before, while removing one course had an Undo (blue-team
+        // review 2026-10-17, U23; Undo in the toast rather than a confirm
+        // dialog, DGS 2026-09-05). `previous` is the whole triple, so Undo
+        // puts back exactly what was on the page. A file loaded over an empty
+        // record, or into the simulation, replaces nothing worth undoing.
+        const replaced = route.outcome === 'record' && recordHoldsEntries(previous.student) ? previous : undefined;
         const loaded =
           route.outcome === 'entered' && simulation
             ? `Simulation file loaded — simulation mode is on for ${termLabel(simulation.term)}; your record is untouched.`
@@ -3447,8 +3458,21 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
               ? movedTo
                 ? `Simulation file loaded into the simulation — now pretending it is ${termLabel(movedTo)}; your record is untouched.`
                 : `File loaded into the simulation — your record is untouched.`
-              : 'File loaded.';
-        toast(refusals.length > 0 ? `${loaded} ${refusals.map((r) => r.message).join(' ')}` : loaded);
+              : loadedRecordToast(raw, student, replaced?.student); // the day the file was saved and its courses (U24), what it replaced (U23)
+        const message = refusals.length > 0 ? `${loaded} ${refusals.map((r) => r.message).join(' ')}` : loaded;
+        if (replaced) {
+          toastWithAction(
+            message,
+            'Undo',
+            () => {
+              ({ student, simulation, realStudent } = replaced);
+              refusedValues.clear(); // the file's refused numbers go with the file
+              persist();
+              render(); // not update(): putting a record back finishes no step (next-step.ts)
+            },
+            { ttlMs: 20000, focusKey: 'tools.load' },
+          );
+        } else toast(message);
         if (cleanup.exampleRowsRemoved) notice(exampleRowsRemovedNote(cleanup.exampleRowsRemoved));
         if (route.outcome === 'entered' && simulation) {
           setFocusAfterRender('simulation.term');
@@ -3526,7 +3550,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     const auditDate = todayIso();
     const saved = savedStamp(stamp, auditDate, audit(student, rules, auditDate).requirements);
     if (simulation) downloadJson(simulationFileName(student.program, simulation.term), simulationFilePayload(student, simulation.term, new Date().toISOString(), saved));
-    else exportFile(student, saved);
+    else exportFile(student, auditDate, saved); // the file is named for the day (U24)
   }
 
   /** The way in. Inactive while a transcript preview is open: the preview's

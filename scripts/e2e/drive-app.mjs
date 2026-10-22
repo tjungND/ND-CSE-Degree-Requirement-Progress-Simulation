@@ -52,6 +52,29 @@ export async function driveApp(s, baseUrl) {
   // old "Load example" student, loaded as a saved file since the button went
   // (DGS 2026-10-17; scripts/e2e/example-record.mjs).
   await loadExampleRecord(s, 'phd');
+  // The load toast says what the file says about itself — the day it was
+  // saved and its course count (blue-team review 2026-10-17, U24) — and, the
+  // device's record having held nothing, carries no Undo (U23).
+  const firstLoad = JSON.parse(await s.evalJs(`JSON.stringify({ toasts: [...document.querySelectorAll('.toast')].map((t) => t.textContent), undo: !!document.querySelector('.toast .toast-action') })`));
+  console.log('  first load:', JSON.stringify(firstLoad));
+  if (firstLoad.undo || !firstLoad.toasts.some((t) => /^File loaded — saved [A-Z][a-z]+ \d{1,2}, \d{4} \(8 courses\)\.$/.test(t))) throw new Error('loading over an empty record must say when the file was saved, with no Undo: ' + JSON.stringify(firstLoad));
+  // Loading a record over one that holds entries carries Undo for 20 s (U23):
+  // the M.S. example replaces the Ph.D. one, the toast says what went, and
+  // Undo puts the Ph.D. record back — the same key, the same rows — with
+  // focus on "Load a file". The drive then goes on with the Ph.D. record.
+  const phdKey = await s.evalJs(`localStorage.getItem('cse-degree-audit/v1/student')`);
+  const phdIds = await s.evalJs(`JSON.stringify([...document.querySelectorAll('table.courses .cid')].map((e) => e.textContent))`);
+  await loadExampleRecord(s, 'mscse');
+  const overwrote = JSON.parse(await s.evalJs(`JSON.stringify((() => { const t = document.querySelector('.toast.has-action'); return { text: t?.textContent ?? '', program: JSON.parse(localStorage.getItem('cse-degree-audit/v1/student') ?? '{}').program ?? '' }; })())`));
+  console.log('  load over a record:', JSON.stringify(overwrote));
+  if (overwrote.program !== 'mscse' || !/^File loaded — saved [A-Z][a-z]+ \d{1,2}, \d{4} \(8 courses\)\. It replaced the 8 courses that were on this device\. Undo$/.test(overwrote.text)) throw new Error('loading over a record must say what it replaced and offer Undo: ' + JSON.stringify(overwrote));
+  await s.shotElement('load-undo-toast', '.toast.has-action');
+  await s.evalJs(`document.querySelector('.toast.has-action .toast-action').click()`);
+  await s.waitFor(`document.querySelector('.program-name')?.textContent.includes('Ph.D.') && !document.querySelector('.toast.has-action')`);
+  await s.settle(200);
+  const undone = JSON.parse(await s.evalJs(`JSON.stringify({ key: localStorage.getItem('cse-degree-audit/v1/student'), ids: [...document.querySelectorAll('table.courses .cid')].map((e) => e.textContent), focus: document.activeElement?.dataset?.key ?? '', rings: document.querySelectorAll('.next-step-ring').length })`));
+  if (undone.key !== phdKey || JSON.stringify(undone.ids) !== phdIds || undone.focus !== 'tools.load' || undone.rings > 0) throw new Error('Undo must put the replaced record back exactly, focus "Load a file" and highlight nothing: ' + JSON.stringify({ ...undone, key: undone.key === phdKey ? 'same' : 'DIFFERENT' }));
+  console.log('  Undo put the Ph.D. record back (same key, same rows), focus on Load a file');
   if ((await s.evalJs(`document.querySelector('.dial .dial-arc:not(.dial-arc-conditional)')?.getAttribute('stroke')`)) === 'var(--bad)') {
     throw new Error('a student who is simply not finished must not see a red dial');
   }
@@ -884,6 +907,11 @@ async function checkStamps(s) {
   console.log('  saved file:', JSON.stringify({ files: saved.files, keys, fingerprint: st?.rules?.fingerprint, app: st?.app?.commit, auditDate: st?.auditDate, verdicts: st ? Object.keys(st.verdicts).length : 0 }));
   if (keys.join() !== 'savedAt,stamp,student') throw new Error('the saved file must hold savedAt, the stamp and the record, in that order: ' + keys.join());
   if (st.rules.fingerprint !== m[1] || !/^\d{4}-\d{2}-\d{2}$/.test(st.auditDate) || !/^[0-9a-f]{7}$/.test(st.app.commit) || st.handbook.edition === '' || Object.keys(st.verdicts).length < 10 || !Object.values(st.verdicts).every((v) => /^(met|unmet|in_progress|needs_dgs_review|cannot_evaluate|not_applicable)\b/.test(v))) throw new Error('the saved stamp must carry the footer’s fingerprint, the date, the build, the handbook and every row’s verdict: ' + JSON.stringify(st).slice(0, 400));
+  // The file is named for the program and the day the check was made — the
+  // stamp's auditDate — so copies saved on different days are told apart
+  // (blue-team review 2026-10-17, U24): cse-degree-audit-phd-2026-10-21.json.
+  const expectedName = `cse-degree-audit-${payload.student.program}-${st.auditDate}.json`;
+  if (saved.files.length !== 1 || saved.files[0] !== expectedName) throw new Error(`the record file must be named for the program and the day checked (${expectedName}): ` + JSON.stringify(saved.files));
 }
 
 // E2E: simulation mode (DGS 2026-10-09; driven end to end since the review
