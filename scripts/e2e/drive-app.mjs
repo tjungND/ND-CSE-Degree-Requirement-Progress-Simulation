@@ -301,6 +301,14 @@ export async function driveApp(s, baseUrl) {
   console.log('  a hand-typed course from another university lands under its Title-Cased heading');
   await s.evalJs(`(() => { const c = [...document.querySelectorAll('.card')].find(c => c.querySelector('h2')?.textContent.includes('Coursework')); c.id = 'shot-coursework'; })()`);
   await s.shotElement('manual-transfer-course', '#shot-coursework');
+  // The next course form starts from the last entry (blue-team review
+  // 2026-10-17, U11): Where, University and Taken as stay as they were, so a
+  // batch from one university is not re-picked row by row; number and title
+  // are empty and the grade is In progress again, so nothing is added by
+  // accident.
+  const seeded = JSON.parse(await s.evalJs(`JSON.stringify((() => { const v = (k) => document.querySelector('[data-key="course.new.' + k + '"]'); const shown = (k) => v(k).getClientRects().length > 0; return { origin: v('origin').value, institution: v('institution').value, institutionShown: shown('institution'), level: v('level').value, levelShown: shown('level'), id: v('id').value, title: v('title').value, grade: v('grade').value }; })())`));
+  console.log('  the form after Add:', JSON.stringify(seeded));
+  if (seeded.origin !== 'transfer' || seeded.institution !== 'Example Institute of Technology' || !seeded.institutionShown || !seeded.levelShown || seeded.level !== '' || seeded.id !== '' || seeded.title !== '' || seeded.grade !== 'IP') throw new Error('after Add the form must start from the last entry’s Where, University and Taken as, the rest empty: ' + JSON.stringify(seeded));
   await s.evalJs(`[...document.querySelectorAll('table.courses tr')].find(tr => tr.querySelector('.cid')?.textContent === 'CS 53000').querySelector('button.remove').click()`);
   await s.waitFor(`![...document.querySelectorAll('table.courses .cid')].some(e => e.textContent === 'CS 53000')`);
 
@@ -346,6 +354,63 @@ export async function driveApp(s, baseUrl) {
   console.log('  “cse60641” typed →', canon);
   if (!/^CSE 60641 \| .+/.test(canon)) throw new Error('a lower-case, unspaced id must resolve to the sheet row: ' + canon);
   await s.evalJs(`(() => { const id = document.querySelector('[data-key="course.new.id"]'); id.value = ''; id.dispatchEvent(new Event('change')); })()`);
+
+  // Enter adds the course (blue-team review 2026-10-17, U9): the add-course
+  // form is a <form>, so the keyboard's return key submits it — once, after
+  // the number box's change handler has filled the title. Typed as a student
+  // types: the browser fires change on Enter only for a user edit, not for a
+  // value set by script. The keyDown carries text '\r' so Chrome raises the
+  // keypress that submits (the WebKit and Firefox wrappers press Enter).
+  const ENTER_ID = 'CSE 60772'; // listed, not in the example record
+  const rowsWith = (id) => `[...document.querySelectorAll('table.courses .cid')].filter((e) => e.textContent === ${JSON.stringify(id)}).length`;
+  const enterBefore = Number(await s.evalJs(rowsWith(ENTER_ID)));
+  await s.evalJs(`document.querySelector('[data-key="course.new.id"]').focus()`);
+  for (const ch of ENTER_ID) await s.send('Input.dispatchKeyEvent', { type: 'char', text: ch, key: ch, unmodifiedText: ch });
+  // WebKit shows the datalist's suggestions as the number is typed and, while
+  // they show, its picker swallows Enter (TextFieldInputType::handleKeydownEvent
+  // — no keypress, so no implicit submission): in Safari the student's first
+  // Enter closes the list and the second adds the course. Headless WebKit has
+  // no picker UI to close, so the list is closed the other way Safari closes
+  // it — leaving the box — and the box is focused again. Chrome and Firefox
+  // pass Enter through when no suggestion is highlighted, and here prove that
+  // Enter alone fires the change (the title) before the submit.
+  if (process.env.E2E_BROWSER === 'webkit' || process.env.E2E_BROWSER === 'safari') await s.evalJs(`(() => { const i = document.querySelector('[data-key="course.new.id"]'); i.blur(); i.focus(); })()`);
+  await s.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r', unmodifiedText: '\r' });
+  await s.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+  await s.waitFor(`${rowsWith(ENTER_ID)} === ${enterBefore + 1}`);
+  await s.settle(300); // long enough for a second submit to have shown up
+  const entered = JSON.parse(await s.evalJs(`JSON.stringify({ rows: ${rowsWith(ENTER_ID)}, title: (JSON.parse(localStorage.getItem('cse-degree-audit/v1/student') || '{}').courses || []).filter((c) => c.courseId === ${JSON.stringify(ENTER_ID)}).map((c) => c.title ?? '').pop() ?? '', formId: document.querySelector('[data-key="course.new.id"]').value, formTag: document.querySelector('.course-form').tagName, addType: document.querySelector('[data-key="course.new.add"]').type })`));
+  console.log('  Enter in the number box:', JSON.stringify(entered));
+  if (entered.rows !== enterBefore + 1) throw new Error(`Enter must add the course exactly once: ${enterBefore} → ${entered.rows}`);
+  if (!entered.title) throw new Error('Enter must run the number box’s change handler first, so the listed course carries its title');
+  if (entered.formId !== '' || entered.formTag !== 'FORM' || entered.addType !== 'submit') throw new Error('the add-course form is a <form> whose Add button submits it, empty after Add: ' + JSON.stringify(entered));
+  await s.evalJs(`[...document.querySelectorAll('table.courses tr')].filter((tr) => tr.querySelector('.cid')?.textContent === ${JSON.stringify(ENTER_ID)}).pop().querySelector('button.remove').click()`);
+  await s.waitFor(`${rowsWith(ENTER_ID)} === ${enterBefore}`);
+
+  // Before Add, an unlisted Notre Dame number is said under its box (U10) and
+  // the Title box asks for a title (U14); a title typed clears the Title hint;
+  // a listed number clears both and fills the title; a course from another
+  // university gets neither line — it is matched after Add.
+  const hints = () => s.evalJs(`JSON.stringify((() => { const n = document.getElementById('new-course-id-note'); const h = document.getElementById('new-course-title-hint'); return { note: n && !n.classList.contains('hidden') ? n.textContent : '', hint: h && !h.classList.contains('hidden') ? h.textContent : '', title: document.querySelector('[data-key="course.new.title"]').value, label: document.getElementById('new-course-id-hint')?.textContent ?? '' }; })())`);
+  const setId = (id) => s.evalJs(`(() => { const i = document.querySelector('[data-key="course.new.id"]'); i.value = ${JSON.stringify(id)}; i.dispatchEvent(new Event('input')); i.dispatchEvent(new Event('change')); })()`);
+  await setId('MATH 60610');
+  const unlisted = JSON.parse(await hints());
+  console.log('  an unlisted number, before Add:', JSON.stringify(unlisted));
+  if (unlisted.note !== 'MATH 60610 is not in the course rules yet — add it anyway; it goes to the DGS in the review request below.' || unlisted.hint !== 'Not in the course rules yet — enter its title so the DGS can identify it in your review request' || unlisted.title !== '') throw new Error('an unlisted Notre Dame number must be said at once, its Title box asking for a title: ' + JSON.stringify(unlisted));
+  if (unlisted.label !== '(e.g. CSE 60641 — start typing to pick from the course rules)') throw new Error('the number box’s hint must name the course rules’ list: ' + unlisted.label);
+  await s.evalJs(`(() => { const t = document.querySelector('[data-key="course.new.title"]'); t.value = 'Topics in Mathematics'; t.dispatchEvent(new Event('input')); })()`);
+  const titled = JSON.parse(await hints());
+  if (titled.hint !== '' || titled.note === '') throw new Error('a title typed clears the Title hint and keeps the number’s note: ' + JSON.stringify(titled));
+  await setId(ENTER_ID);
+  const listed = JSON.parse(await hints());
+  if (listed.note !== '' || listed.hint !== '' || listed.title === '') throw new Error('a listed number clears both lines and fills the title: ' + JSON.stringify(listed));
+  await s.evalJs(`(() => { const o = document.querySelector('[data-key="course.new.origin"]'); o.value = 'transfer'; o.dispatchEvent(new Event('change')); })()`);
+  await setId('MATH 60610');
+  const transfer = JSON.parse(await hints());
+  if (transfer.note !== '' || transfer.hint !== '') throw new Error('a course from another university gets neither line: ' + JSON.stringify(transfer));
+  console.log('  unlisted-number lines: shown for Notre Dame, cleared by a title / a listed number, never for another university');
+  await s.evalJs(`(() => { const o = document.querySelector('[data-key="course.new.origin"]'); o.value = 'nd'; o.dispatchEvent(new Event('change')); const t = document.querySelector('[data-key="course.new.title"]'); t.value = ''; t.dispatchEvent(new Event('input')); })()`);
+  await setId('');
 
   // A course entered with 0 credits (DGS 2026-09-11): allowed, because a
   // transcript's credit-hours column can come through blank and refusing the
@@ -429,6 +494,29 @@ export async function driveApp(s, baseUrl) {
   const back = await floatNext();
   if (!back.floating || back.folded) throw new Error('unfolded again, Next steps shows its list: ' + JSON.stringify(back));
   console.log('  Next steps floats above the warnings at any scroll position; folded, it stays folded through a re-render');
+
+  // A milestone date after today (blue-team review 2026-10-17, U12): outside
+  // simulation mode the box stops at today (`max`), and a stored later date —
+  // loaded from a file, or typed past the picker — gets an error-style line
+  // under the box, the date kept (DGS 2026-09-13: the student's word, with a
+  // warning). Checked on the advisor date, the one box every record shows.
+  const DATE = '[data-key="milestone.advisorIdentified"]';
+  const dateBefore = await s.evalJs(`document.querySelector('${DATE}').value`);
+  const futureDate = `${new Date().getFullYear() + 2}-01-15`;
+  const dateState = () => s.evalJs(`JSON.stringify((() => { const d = document.querySelector('${DATE}'); const line = document.getElementById('after-today-advisorIdentified'); return { max: d.getAttribute('max') ?? '', value: d.value, invalid: d.getAttribute('aria-invalid'), described: d.getAttribute('aria-describedby') ?? '', line: line ? line.textContent : null, stored: JSON.parse(localStorage.getItem('cse-degree-audit/v1/student') || '{}').milestones?.advisorIdentified ?? null }; })())`);
+  await s.evalJs(`(() => { const d = document.querySelector('${DATE}'); d.value = '${futureDate}'; d.dispatchEvent(new Event('change')); })()`);
+  await s.settle();
+  const future = JSON.parse(await dateState());
+  console.log('  advisor date after today:', JSON.stringify(future));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(future.max) || future.max >= futureDate) throw new Error('outside simulation mode a milestone date box must stop at today: ' + JSON.stringify(future));
+  if (future.value !== futureDate || future.stored !== futureDate) throw new Error('a date after today is still kept (DGS 2026-09-13): ' + JSON.stringify(future));
+  if (future.invalid !== 'true' || !future.described.split(' ').includes('after-today-advisorIdentified') || !/^Advisor identified on \((?:CSE )?§2\.3\) is dated after today — the page counts it as done\. Enter it once it has happened, or use Simulate a future semester to plan it\.$/.test(future.line ?? '')) throw new Error('a date after today must get its line, tied to the box: ' + JSON.stringify(future));
+  await s.shotElement('milestone-after-today', '#milestones');
+  await s.evalJs(`(() => { const d = document.querySelector('${DATE}'); d.value = ${JSON.stringify(dateBefore)}; d.dispatchEvent(new Event('change')); })()`);
+  await s.settle();
+  const dated = JSON.parse(await dateState());
+  if (dated.value !== dateBefore || dated.invalid !== null || dated.line !== null) throw new Error('the line goes with the date: ' + JSON.stringify(dated));
+  console.log('  a milestone date after today: the box stops at today, the date is kept under an error-style line, gone once the date is back');
   await s.evalJs(`[...document.querySelectorAll('table.courses tr')].find(tr => tr.querySelector('.cid')?.textContent === 'CSE 60567').querySelector('button.remove').click()`);
   await s.waitFor(`![...document.querySelectorAll('table.courses .cid')].some(e => e.textContent === 'CSE 60567')`);
   await s.evalJs(`(() => { const cr = document.querySelector('[data-key="course.new.credits"]'); cr.value = '3'; cr.dispatchEvent(new Event('change')); })()`);
@@ -958,6 +1046,8 @@ async function driveSimulation(s, baseUrl) {
   if (entered.standing !== 'simulated current semester: ' + entered.picked) throw new Error('the Your standing chip must name the simulated semester: ' + JSON.stringify([entered.standing, entered.picked]));
   if (entered.focused !== 'simulation.term') throw new Error('entering must focus the semester picker, not ' + entered.focused);
   if (!/^Simulation mode on: this page is pretending it is /.test(entered.status)) throw new Error('entering must be announced: ' + entered.status);
+  // In the mode a milestone date box has no `max` (U12): a plan is forward-looking (2026-10-09).
+  if (await s.evalJs(`document.querySelector('[data-key="milestone.advisorIdentified"]').hasAttribute('max')`)) throw new Error('in simulation mode a milestone date box must not stop at today');
   if (!entered.term || entered.simCourses !== outside.courses) throw new Error('the simulation key must hold the semester and a copy of the record: ' + JSON.stringify(entered));
   for (const [k, v] of Object.entries(entered.inert)) {
     if (v === 'absent' || v.disabled !== 'true' || !/simulation mode/.test(v.reason)) throw new Error(`${k} must be inactive in the mode (aria-disabled="true") with a reason that names the mode, got ${JSON.stringify(v)}`);
