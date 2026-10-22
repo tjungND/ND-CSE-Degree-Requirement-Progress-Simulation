@@ -22,9 +22,16 @@ export function compareTerm(a: Term, b: Term): number {
   return termIndex(a) - termIndex(b);
 }
 
+/** A season's label — "Fall", "Spring", "Summer" — as termLabel and every
+ * season dropdown print it. One home since 2026-10-22 (blue-team review
+ * 2026-10-17, W9): app.ts, background.ts and external-upload.ts each
+ * capitalised it themselves. */
+export function seasonName(se: Season): string {
+  return se.charAt(0).toUpperCase() + se.slice(1);
+}
+
 export function termLabel(t: Term): string {
-  const season = t.season.charAt(0).toUpperCase() + t.season.slice(1);
-  return `${season} ${t.year}`;
+  return `${seasonName(t.season)} ${t.year}`;
 }
 
 /** The short form for TABLE CELLS (DGS 2026-09-07): "FA26", "SP25", "SU25" —

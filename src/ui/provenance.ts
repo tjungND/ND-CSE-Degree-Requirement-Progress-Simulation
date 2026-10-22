@@ -11,7 +11,10 @@
 import type { CourseEntry, ImportedField, Student } from '../engine/types.ts';
 
 const SLOT_WORD = { bachelors: 'bachelor’s', masters: 'master’s', phd: 'Ph.D.' } as const;
-const FIELD_WORD: Record<ImportedField, string> = { course: 'course number', title: 'title', credits: 'credits', term: 'term', grade: 'grade', level: 'level' };
+/** Each imported field in words, for "changed by me (grade)" here and the
+ * preview's "what you changed" list (external-upload.ts) — the one map
+ * since 2026-10-22 (blue-team review 2026-10-17, W9). */
+export const FIELD_WORD: Record<ImportedField, string> = { course: 'course number', title: 'title', credits: 'credits', term: 'term', grade: 'grade', level: 'level' };
 
 export type SourceKind = 'nd' | 'transcript' | 'changed' | 'typed' | 'unrecorded';
 
@@ -31,15 +34,6 @@ export function sourceOf(c: CourseEntry): { kind: SourceKind; text: string } {
     return { kind: c.fromNdTranscript || c.imported?.transcript === 'nd' ? 'nd' : 'transcript', text: from };
   }
   return { kind: 'unrecorded', text: 'source not recorded (entered before October 11, 2026)' };
-}
-
-/** The course in the student's record with this id (and, for a transfer,
- * this university and term when given) — the row a request line names. */
-export function sourceFor(student: Student, courseId: string, where?: { institution?: string; term?: { season: string; year: number } }): string {
-  const c =
-    student.courses.find((x) => x.courseId === courseId && (where?.institution === undefined || x.institution === where.institution) && (where?.term === undefined || (x.term.season === where.term.season && x.term.year === where.term.year))) ??
-    student.courses.find((x) => x.courseId === courseId);
-  return c ? sourceOf(c).text : '';
 }
 
 /** The emails' one-line account of the whole record: "My courses: 14

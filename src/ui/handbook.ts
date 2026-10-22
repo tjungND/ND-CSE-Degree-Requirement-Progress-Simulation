@@ -65,8 +65,14 @@ export const RULES_ACCURACY_NOTICE =
 // Google and GitHub each receive an IP, a user agent and a referrer, so "no
 // third party" was not accurate and "the page's only network request" was
 // singular for five. Wording approved by the DGS as W-P1.
-export const PRIVACY_LINE =
-  'Your coursework never leaves this browser. The page itself loads from GitHub and reads the course rules from Google Sheets, so those two services see that someone opened the page; they never see what you enter.';
+//
+// PRIVACY_LINE, the approved sentence — a comment since 2026-10-22 (blue-team
+// review 2026-10-17, W10: no file imported the constant; page-frame.ts's
+// notice strip and footer carry the sentence in their own text and cite this
+// record):
+//   'Your coursework never leaves this browser. The page itself loads from
+//   GitHub and reads the course rules from Google Sheets, so those two services
+//   see that someone opened the page; they never see what you enter.'
 
 /** The sentences that follow RULES_ACCURACY_NOTICE — what the alpha label
  * covers (PDF-parsing caveat added at the DGS's request, 2026-09-04; the

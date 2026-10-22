@@ -25,8 +25,9 @@ import { priorNdUndergraduateCanCount } from '../engine/allocate.ts';
 import type { Rules } from '../data/types.ts';
 import { GRADES } from '../engine/grades.ts';
 import { BACHELORS_YEAR_RANGE, COURSE_CREDITS_RANGE, TERM_YEAR_RANGE, inRange, inputRefusal } from '../engine/ranges.ts';
-import { termBefore, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
+import { compareTerm, seasonName, termBefore, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts'; // seasonName and compareTerm: the engine's own, since W9 (2026-10-22) — this file had copies
 import { SEASONS } from './state.ts';
+import { FIELD_WORD } from './provenance.ts'; // the one field-word map (W9)
 import type { CourseEntry, Grade, ImportedField, Program, Season, Student, Term } from '../engine/types.ts';
 import type { ExternalCourseCandidate, ExternalParseResult } from '../transcript/external.ts';
 import { prefillLevelsByTerm } from '../transcript/level-prefill.ts';
@@ -59,11 +60,6 @@ export const DEGREE_SLOTS: { level: DegreeLevel; label: string }[] = [
   { level: 'masters', label: 'Previous Master’s Transcript' },
   { level: 'phd', label: 'Previous Ph.D. Transcript' },
 ];
-
-/** The three seasons, as the term controls list them, and each one's label
- * ("Fall"). (A shared SEASONS in engine/term.ts and a seasonSelect in dom.ts
- * would also serve app.ts and state.ts — left for a cross-file change.) */
-const seasonName = (se: Season): string => se[0]!.toUpperCase() + se.slice(1);
 
 interface PreviewRow {
   include: boolean;
@@ -279,8 +275,6 @@ function relevelByAward(p: ExternalPreview, rules: Rules, program: Program): voi
   }
   p.mixedLevels = new Set(p.rows.map((r) => r.level)).size > 1 || undefined;
 }
-
-const compareTermIndex = (a: Term, b: Term): number => termIndex(a) - termIndex(b);
 
 /** The level a slot's rows take when the transcript does not say: undergraduate in the bachelor's row, graduate elsewhere. */
 function slotDefaultLevel(slot: DegreeLevel): PreviewRow['level'] {
@@ -1139,7 +1133,13 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
           class: 'btn',
           'data-key': `ext.import.${slot.level}`,
           'aria-label': `Import ${slot.label.toLowerCase()} from PDF`,
-          onclick: () => (fileInput as HTMLInputElement).click(),
+          onclick: () => {
+            // The pdfjs chunk and its worker download while the picker is open
+            // (W8, 2026-10-22); pdf-warm.ts is loaded here, not at the top — see
+            // the Notre Dame row's button (nd-upload.ts).
+            void import('./pdf-warm.ts').then((m) => m.warmTranscriptReader()).catch(() => undefined); // a failure is the change handler's to report
+            (fileInput as HTMLInputElement).click();
+          },
         },
         'Import from PDF',
       ),
@@ -2031,7 +2031,7 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       // 2026-10-08: the Ph.D. row left the field empty and "required").
       if (p.slot !== 'bachelors' && !p.bachelorsRequired && p.bachelorsAwarded === undefined && (s.bachelorsAwarded === undefined || s.bachelorsAwardedInferred?.before !== undefined)) {
         const dated = ready.filter((r) => r.year !== undefined).map((r) => ({ season: r.season, year: r.year! }));
-        const first = dated.sort(compareTermIndex)[0];
+        const first = dated.sort(compareTerm)[0];
         if (first !== undefined) {
           const wasBefore = s.bachelorsAwardedInferred?.before;
           s.bachelorsAwarded = termBefore(first);
@@ -2162,7 +2162,7 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       rowsTyped: p.rows.filter((r) => r.manual).length,
       changed: p.rows
         .filter((r) => !r.manual && changedFields(r).length > 0)
-        .map((r) => ({ read: [r.read!.course, r.read!.title, String(r.read!.credits ?? ''), `${seasonName(r.read!.season)} ${r.read!.year ?? ''}`, r.read!.grade || '(none)'], fields: changedFields(r).map((f) => FIELD_WORDS[f]) })),
+        .map((r) => ({ read: [r.read!.course, r.read!.title, String(r.read!.credits ?? ''), `${seasonName(r.read!.season)} ${r.read!.year ?? ''}`, r.read!.grade || '(none)'], fields: changedFields(r).map((f) => FIELD_WORD[f]) })),
     }), args.checkedWith, deciderContact(student.program)),
   );
   return box;
@@ -2189,8 +2189,6 @@ const OCR_FLAG_TITLE: Record<'confidence' | 'credits' | 'mark' | 'totals' | 'cod
   totals: 'This term’s rows do not add up to the transcript’s own totals — check it against the scan',
   code: 'The course number may have a letter where the scan meant a digit — check it against the scan',
 };
-
-const FIELD_WORDS: Record<ImportedField, string> = { course: 'course number', title: 'title', credits: 'credits', term: 'term', grade: 'grade', level: 'level' };
 
 /** The preview's "Did the reader get this transcript wrong?" link — a mailto
  * to the DGS (src/ui/report-problem.ts), its message built at the click.

@@ -361,4 +361,11 @@ describe('app.ts invariants the mode rests on (read from the source — the page
     assert.match(src, /root\.querySelectorAll<HTMLElement>\('\.summary-mobile \.headline, \.audit \.scorehead \.headline'\)/); // the observer's own list, which the chip must follow
     assert.doesNotMatch(src, /isEmbedded\(\) \? simulationChip\(\)/);
   });
+  it('…and the two request cards, in request-cards.ts since W11 (2026-10-22), each put the chip in their heading, ungated', () => {
+    const cards = readFileSync(new URL('../src/ui/request-cards.ts', import.meta.url), 'utf8');
+    assert.equal((cards.match(/simulationChip\(\)\)/g) ?? []).length, 2, 'one chip per card heading (the review card, the Grad Admin card)');
+    assert.doesNotMatch(cards, /isEmbedded\(\)/);
+    assert.match(src, /askDgsCard\(requestCardArgs\(\), pending, report\)/);
+    assert.match(src, /askGradAdminCard\(requestCardArgs\(\), gaRequest\)/);
+  });
 });

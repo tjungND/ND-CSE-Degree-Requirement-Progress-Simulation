@@ -140,13 +140,6 @@ export function markEmbedMode(): void {
   if (isEmbedded()) document.documentElement.classList.add('embed');
 }
 
-/** `{ target: '_top' }` while embedded, nothing otherwise — spread into an
- * `el()` attribute object for any link that would otherwise load a whole page
- * INSIDE the frame. */
-export function embedTargetAttrs(): Record<string, string> {
-  return isEmbedded() ? { target: '_top', rel: 'noopener' } : {};
-}
-
 /** "Open the full page ↗" — the way out of the frame.
  *
  * The href is re-read on every interaction because the filters live in the URL
