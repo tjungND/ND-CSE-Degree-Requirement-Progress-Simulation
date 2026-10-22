@@ -6,6 +6,8 @@
 // a DGS handoff is a sheet edit, not a code change. The values below are the
 // FALLBACK for keys that are missing or blank; refresh them occasionally so an
 // offline snapshot without the keys still shows someone real.
+// Also refresh the DGS address in index.html and courses.html <noscript> (two
+// lines; HTML cannot read the sheet) — blue-team review 2026-10-17, U32.
 import type { Parameters } from '../data/types.ts';
 import { el } from './dom.ts';
 

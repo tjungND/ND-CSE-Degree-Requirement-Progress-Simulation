@@ -18,7 +18,7 @@ import { rowSchedule, scheduleTerms, type RowFreshness, type RowSchedule } from 
 import { LICENSE_URL, REPO_URL, applyContactOverrides, contactCard, mailto, reportToDgs } from './contacts.ts';
 import { clear, el, option } from './dom.ts';
 import { SIBLING_PARAM, allowedHostPage, siblingAnchorAttrs } from './sibling-links.ts';
-import { isEmbedded, notifyEmbedHeight, openFullPageLink, postScrollTo, startAnchorScrollRelay } from './embed.ts';
+import { fullPageHref, isEmbedded, notifyEmbedHeight, openFullPageLink, postScrollTo, startAnchorScrollRelay } from './embed.ts';
 import { sectionRef } from './section-ref.ts';
 import { themeToggle } from './theme.ts';
 import { formatYmdLong, handbookLink, rulesDateLine } from './handbook.ts';
@@ -152,7 +152,43 @@ function filtersFromUrl(defaults: Filters, validCores: Set<string>, validCategor
   return f;
 }
 
-function filtersToUrl(f: Filters, defaults: Filters): void {
+const COPY_LINK_LABEL = 'Copy link to this list';
+
+/** Put `text` on the clipboard, by the same chain the self-check's copy
+ * dialog uses (copy-dialog.ts, 2026-09-16): the async API first; where a
+ * cross-origin frame without allow="clipboard-write" refuses it, the legacy
+ * command, which still works inside the click; true when either copied. The
+ * caller shows the address for a hand copy when both fail. */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    /* fall through to the legacy command */
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '-9999px';
+  document.body.append(ta);
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } catch {
+    ok = false;
+  }
+  ta.remove();
+  return ok;
+}
+
+/** The query string that describes these filters — what the address bar is
+ * rewritten to, and what "Copy link to this list" copies (blue-team review
+ * 2026-10-17, U27: the button reads the CURRENT filters from here rather than
+ * from the address, which follows them on a 250 ms timer). */
+function filterParams(f: Filters, defaults: Filters): URLSearchParams {
   const params = new URLSearchParams();
   if (f.query !== defaults.query) params.set('q', f.query);
   if (f.program !== defaults.program) params.set('program', f.program);
@@ -175,7 +211,11 @@ function filtersToUrl(f: Filters, defaults: Filters): void {
   // carried around the session in the address bar (review R-2, 2026-09-18).
   const host = new URLSearchParams(window.location.search).get(SIBLING_PARAM['self-check'])?.trim();
   if (host && allowedHostPage(host)) params.set(SIBLING_PARAM['self-check'], host);
-  const qs = params.toString();
+  return params;
+}
+
+function filtersToUrl(f: Filters, defaults: Filters): void {
+  const qs = filterParams(f, defaults).toString();
   // Safari's engine throttles history writes to about 100 in 10 seconds and
   // then throws for the rest of the window: a reader typing steadily into the
   // search box ran out, the address bar silently stopped following the page,
@@ -340,6 +380,13 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
    * page for every course, in the hover card, so the 2026-09-01 decision that
    * it be shown survives. */
   const someRowPending = rows.some((r) => !r.dgsReviewed);
+  /** Is any loaded row's credit verdict still blank? The same rule, for the
+   * key's "Not yet decided — ask first" entry (blue-team review 2026-10-17,
+   * U31): every row on today's sheet has a verdict in both columns, so the
+   * entry explained a pill that appeared nowhere. `rows` includes the retired
+   * ones, so "Include retired courses" is covered; the column guide's longer
+   * entry stays unconditional — it also covers courses not on the page at all. */
+  const someUndecided = rows.some((r) => r.countsTowardMscse === undefined || r.countsTowardPhd === undefined);
   // A shared link saved last semester may still carry ?offered=now. Whether
   // that means anything depends on today and on the sheet, so it is dropped
   // here rather than silently filtering the table to nothing while the control
@@ -411,14 +458,34 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
   };
 
   // Spacing-insensitive search (usability review 2026-09-05, item 26):
-  // "CSE20110", "cse 20110" and "20110" all find CSE 20110.
-  const squash = (text: string): string => text.toLowerCase().replace(/\s+/g, '');
-  /** Each row's search text, lowered and squashed once rather than per keystroke. */
-  const searchable = new Map(rows.map((r) => [r, { id: squash(r.courseId), title: r.title.toLowerCase() }] as const));
+  // "CSE20110", "cse 20110" and "20110" all find CSE 20110 — and so does
+  // "CSE-20110", the spelling in every shared #CSE-20110 link (blue-team
+  // review 2026-10-17, U26: the punctuation goes the way the spaces do).
+  const squash = (text: string): string => text.toLowerCase().replace(/[\s\-_./]+/g, '');
+  /** Each row's search text, lowered once rather than per keystroke: the
+   * squashed course number, and one haystack of the title, the core-knowledge
+   * area (its name and its code, so "os" finds Operating Systems) and the
+   * specialization groups' names (U26 — the search used to look at the
+   * number and the title only, so "operating" found nothing for a course
+   * whose title has no such word but whose core area is Operating Systems). */
+  const searchable = new Map(
+    rows.map(
+      (r) =>
+        [
+          r,
+          {
+            id: squash(r.courseId),
+            text: [r.title, r.coreArea ? coreLabel(r) : '', r.coreArea ?? '', ...groupsOf(r).map((g) => groupName.get(g) ?? g)].join(' ').toLowerCase(),
+          },
+        ] as const,
+    ),
+  );
 
   function visibleRows(): RuleCourse[] {
-    const q = filters.query.trim().toLowerCase();
-    const qs = squash(q);
+    // Every word of the query must be found somewhere in the row — "60641
+    // operating", "operating graduate" (U26); the whole query used to have to
+    // be one contiguous substring of the number or of the title.
+    const words = filters.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const list = rows.filter((r) => {
       if (!filters.includeRetired && !r.active) return false;
       if (filters.confirmedOnly && !r.dgsReviewed) return false;
@@ -436,9 +503,9 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
       // read as a promise either way.
       if (filters.offered === 'now' && offeredIn('this')(r) !== true) return false;
       if (filters.offered === 'next' && offeredIn('next')(r) !== true) return false;
-      if (q) {
+      if (words.length > 0) {
         const text = searchable.get(r)!;
-        if (!text.id.includes(qs) && !text.title.includes(q)) return false;
+        if (!words.every((w) => text.id.includes(squash(w)) || text.text.includes(w))) return false;
       }
       return true;
     });
@@ -509,6 +576,25 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
           'div',
           { class: 'masthead-top' },
           embed ? null : el('div', { class: 'eyebrow' }, 'University of Notre Dame · Computer Science and Engineering'),
+          // "Find a course ↓" (blue-team review 2026-10-17, U25): the search
+          // box sits past the qualifier cards and the schedule tables — about
+          // 3,200 px down at 1400×1900 — and the only jump to it was the skip
+          // link, invisible until a keyboard reader tabs to it. Standalone
+          // only: the embedded top stays text-free (DGS 2026-09-16). Fragment
+          // navigation alone does not focus an input, so the click focuses it
+          // too (the box gets its id from `labelled()` in the filter bar).
+          embed
+            ? null
+            : el(
+                'a',
+                {
+                  href: '#filter-search',
+                  class: 'find-course',
+                  'data-key': 'masthead.find-course',
+                  onclick: () => document.getElementById('filter-search')?.focus(),
+                },
+                'Find a course ↓',
+              ),
           themeToggle(),
         ),
         el('h1', embed ? { tabindex: '-1', class: 'visually-hidden' } : { tabindex: '-1' }, 'Graduate Course Rules'),
@@ -994,6 +1080,15 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
     },
     { passive: true },
   );
+  /** Whether the device can hover at all. On an iPad (768–1024 px, above the
+   * 600 px cut-off that hides the card by CSS) Safari sends mouseenter on a
+   * tap and, when the handler changes the page — showing the card is such a
+   * change — withholds the click: the first tap opened the card and only a
+   * second followed the link (blue-team review 2026-10-17, U28). Touch readers
+   * now just follow the link; the same facts are in the row they land on.
+   * `hover` alone, not `pointer: fine`: an iPad with a trackpad reports hover
+   * and keeps the card. Tests run without matchMedia and get the pointer path. */
+  const canHover = typeof window.matchMedia === 'function' ? window.matchMedia('(hover: hover)').matches : true;
   /** Wire one course link to the card. Pointer AND keyboard, so tabbing
    * through the cards shows the same thing a mouse does.
    *
@@ -1024,13 +1119,16 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
     };
     // A pointer that leaves the link may be on its way to the card (1.4.13),
     // so the close waits a moment; the card's own listeners — registered once,
-    // below — cancel it.
-    anchor.addEventListener('mouseenter', () => {
-      cancelHide();
-      show();
-    });
+    // below — cancel it. The pointer pair only where a pointer can hover
+    // (U28); focus, blur and Escape stay for the keyboard on every device.
+    if (canHover) {
+      anchor.addEventListener('mouseenter', () => {
+        cancelHide();
+        show();
+      });
+      anchor.addEventListener('mouseleave', () => hideSoon(hide));
+    }
     anchor.addEventListener('focus', show);
-    anchor.addEventListener('mouseleave', () => hideSoon(hide));
     anchor.addEventListener('blur', hide);
     return anchor;
   };
@@ -1089,10 +1187,19 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
       type: 'search',
       'data-key': 'filter.search',
       value: filters.query,
+      // Every keystroke used to rebuild the whole table — 125 to 330 rows of
+      // 13 elements each, then the citation-label walk and the height
+      // message to the embedding frame — so a fast typist saw the field lag
+      // (blue-team review 2026-10-17, W7). The value is kept at once; the
+      // rebuild waits for a 120 ms pause, the pattern the address rewrite
+      // already uses (B-33). `change` — Enter or leaving the box, in all three
+      // engines — rebuilds at once, so a pasted or finished query never waits.
       oninput: (e) => {
         filters.query = (e.target as HTMLInputElement).value;
-        refreshTable();
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(refreshTable, 120);
       },
+      onchange: () => refreshTable(),
     });
     const program = el('select', {
       'data-key': 'filter.program',
@@ -1233,12 +1340,61 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
       'Clear filters',
     );
     clearButton.classList.toggle('hidden', !filtersActive());
-    return { view, search, program, qualifierArea, type, offered, retired, confirmed, sortSel, descBox, clearButton };
+    // "Copy link to this list" (blue-team review 2026-10-17, U27). The filters
+    // live in the address so an advisor can send a student "the algorithms
+    // courses" (item 29, 2026-09-05) — but the page never said so, and on the
+    // ND site the list sits in an iframe whose address nobody sees. The copied
+    // link is the FULL page's address (a WordPress page cannot take a query,
+    // DGS 2026-09-30), built from the current filters, never from the address
+    // bar, which follows them a quarter-second late. Always on the line — not
+    // tied to Clear filters, which is hidden while nothing is set.
+    const copyLink = el('button', { type: 'button', class: 'btn tiny copy-link', 'data-key': 'filter.copy-link' }, COPY_LINK_LABEL);
+    // Where neither clipboard route works (a frame without allow="clipboard-write"
+    // whose legacy command is refused too), the address is put on the page
+    // for the reader to copy by hand, as the self-check's copy dialog does.
+    const copyFallback = el('input', { type: 'text', class: 'copy-link-fallback', readonly: true, 'aria-label': 'Link to this list', hidden: true });
+    copyLink.addEventListener('click', () => {
+      const href = listHref();
+      void copyText(href).then((ok) => {
+        if (ok) {
+          copyFallback.hidden = true;
+          copyLink.textContent = 'Copied';
+          // The live count line says it too, for a screen reader; the count
+          // comes back with the label (the words are the same on both).
+          const count = countLine.textContent;
+          countLine.textContent = 'Link copied.';
+          clearTimeout(copiedTimer);
+          copiedTimer = setTimeout(() => {
+            copyLink.textContent = COPY_LINK_LABEL;
+            if (countLine.textContent === 'Link copied.') countLine.textContent = count;
+          }, 2000);
+        } else {
+          (copyFallback as HTMLInputElement).value = href;
+          copyFallback.hidden = false;
+          copyFallback.focus();
+          (copyFallback as HTMLInputElement).select();
+        }
+      });
+    });
+    return { view, search, program, qualifierArea, type, offered, retired, confirmed, sortSel, descBox, clearButton, copyLink, copyFallback };
   }
+  /** The standalone address of the list as it is filtered now (U27): the
+   * current filters, `embed` stripped as "Open the full page" strips it, no
+   * fragment — the link is to the list, not to a row. */
+  const listHref = (): string => {
+    const qs = filterParams(filters, DEFAULTS).toString();
+    const page = fullPageHref(window.location.pathname, qs ? `?${qs}` : '', '');
+    try {
+      return new URL(page, window.location.href).href;
+    } catch {
+      return page;
+    }
+  };
+  let copiedTimer: ReturnType<typeof setTimeout> | undefined;
   /** The bar's shape: the view and the search box always in sight, the rest
    * in the grid on a desk and behind "More filters" on a phone. */
   function layoutFilterBar(c: ReturnType<typeof buildFilterControls>): HTMLElement {
-    const { view, search, program, qualifierArea, type, offered, retired, confirmed, sortSel, descBox, clearButton } = c;
+    const { view, search, program, qualifierArea, type, offered, retired, confirmed, sortSel, descBox, clearButton, copyLink, copyFallback } = c;
     // On a phone the bar was eight stacked controls — a full screen before
     // the first course (mobile review 2026-09-19). The view and the search box
     // stay in sight; the rest folds behind "More filters", open by itself
@@ -1268,6 +1424,8 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
           { class: 'switches' },
           el('label', { class: 'check' }, retired, ' Include retired courses'),
           ...(someRowPending ? [el('label', { class: 'check' }, confirmed, ' Only DGS-confirmed rows')] : []),
+          copyLink,
+          copyFallback,
           clearButton,
         ),
         el('div', { class: 'filter mobile-only' }, labelled('Sort by', sortSel, 'filter-sort'), el('label', { class: 'check' }, descBox, ' Descending')),
@@ -1300,7 +1458,12 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
    * each filter change (WCAG 4.1.3; usability review 2026-09-05, item 26). */
   const countLine = el('p', { class: 'muted small count', role: 'status', 'aria-live': 'polite' });
 
+  /** The search box's pending rebuild (W7) — see the input's handlers. */
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
   function refreshTable(): void {
+    // A select change, a sort click or Clear filters rebuilds now; a rebuild
+    // the search box queued 120 ms ago must not follow it with stale filters.
+    clearTimeout(searchTimer);
     // Keep keyboard focus on the sort button that was pressed (the table is
     // rebuilt on every sort and filter change).
     const focused = (document.activeElement as HTMLElement | null)?.dataset['key'];
@@ -1368,7 +1531,9 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
         'td',
         { colspan: someRowPending ? '9' : '8' },
         el('strong', {}, 'No course here matches these filters. '),
-        ...(filters.query.trim() ? ['Check the spelling of “', filters.query.trim(), '” first — the search matches a course number or a word in the title. '] : []),
+        // What the search looks at, kept true to the code (U26): the number,
+        // the title's words, the core-knowledge area and the specialization.
+        ...(filters.query.trim() ? ['Check the spelling of “', filters.query.trim(), '” first — the search matches a course number, a word in the title, or a qualifier area. '] : []),
         ...(!filters.includeRetired ? ['Retired courses are hidden until “Include retired courses” is ticked. '] : []),
         'If the course is not on this page at all, the DGS has not ruled on it yet; that is not the same as “does not count”, and the degree self-check tool prepares the review request that asks for a ruling.',
       ),
@@ -1519,8 +1684,11 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
         el('span', { class: `pill ${COUNTS_CLASS.adgs_approval}` }, COUNTS_LABEL.adgs_approval),
         ' counts once the advisor and the named reviewer approve it · ',
       ),
-      entry(el('span', { class: 'pill no' }, 'No'), ' does not count · '),
-      entry(el('span', { class: 'pill undecided' }, 'Not yet decided'), ' ask first'),
+      entry(el('span', { class: 'pill no' }, 'No'), ' does not count'),
+      // "Not yet decided" only while some row carries a blank verdict (U31),
+      // as the Pending half below has been gated since P-18: the key is the
+      // first thing above the table, and it promised a grey pill no row had.
+      ...(someUndecided ? [entry(' · ', el('span', { class: 'pill undecided' }, 'Not yet decided'), ' ask first')] : []),
       // The Pending half appears only while some row is unconfirmed, with the
       // column and the switch it explains (trim review P-18).
       ...(someRowPending ? [entry(' · ', el('span', { class: 'pill pending' }, 'Pending'), ' row not yet confirmed by the DGS')] : []),

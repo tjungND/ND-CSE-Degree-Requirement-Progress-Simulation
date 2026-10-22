@@ -48,6 +48,7 @@ export async function driveA11y(s, baseUrl) {
   await checkPhone(s, 'courses', `document.querySelectorAll('.all-courses table.course-rules tbody tr').length > 10`, 390);
   await checkPhone(s, 'courses', `document.querySelectorAll('.all-courses table.course-rules tbody tr').length > 10`, 820);
   await checkWide(s, 'courses', `document.querySelectorAll('.all-courses table.course-rules tbody tr').length > 10`);
+  await checkTabletTap(s, baseUrl);
   // Embed mode (?embed=1, DGS 2026-09-16) at the three widths a WordPress
   // content column actually takes: a phone, a laptop, and the widest the
   // sites.nd.edu theme gives us (measured 1082 px on a 1568 px viewport).
@@ -488,6 +489,51 @@ async function checkPhone(s, page, readyExpr, width = 390) {
   }
   console.log(`  ${width < 600 ? 'phone' : 'tablet'} width (${width} px), ${page} page: no horizontal scrolling`);
   await s.setViewport({ width: 1400, height: 1900 });
+}
+
+// 3b'. A tap on a tablet (blue-team review 2026-10-17, U28). An iPad is wider
+// than the 600 px that hides the hover card by CSS, and Safari sends
+// mouseenter on a tap — then withholds the click when the handler changed the
+// page, so the first tap opened the card and only a second followed the link.
+// The page registers the pointer pair only where `(hover: hover)` matches.
+// Chrome's touch emulation turns that query off, as an iPad reports it; the
+// WebKit and Firefox wrappers have no translation for it and say so, and the
+// check is skipped there (the guard is one media query, the same in every
+// engine). The page is loaded UNDER the emulation, as an iPad loads it.
+async function checkTabletTap(s, baseUrl) {
+  try {
+    await s.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  } catch (e) {
+    if (!/no translation/.test(String(e?.message ?? e))) throw e;
+    console.log('  tablet tap (U28): skipped — this harness engine has no touch emulation; the Chrome run drives it');
+    return;
+  }
+  try {
+    await s.setViewport({ width: 820, height: 1180, mobile: true });
+    await s.open(new URL('courses.html', baseUrl).href, '.all-courses table.course-rules');
+    const hover = await s.evalJs(`matchMedia('(hover: hover)').matches`);
+    if (hover) throw new Error('touch emulation left (hover: hover) on — the tap check cannot tell a finger from a pointer');
+    // The hover event a tap sends first: on a touch device it must not open the card.
+    const link = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+      const a = document.querySelector('.overview:not(.schedule-overview) a.ov-item');
+      a.scrollIntoView({ block: 'center' });
+      a.dispatchEvent(new MouseEvent('mouseenter'));
+      const b = a.getBoundingClientRect();
+      return { href: a.getAttribute('href'), x: Math.round(b.left + 10), y: Math.round(b.top + b.height / 2), popHidden: document.getElementById('course-pop').hidden };
+    })())`));
+    if (!link.popHidden) throw new Error('on a touch device mouseenter opened the hover card — the first tap would open the card instead of following the link');
+    await s.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: link.x, y: link.y }] });
+    await s.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await s.settle(300);
+    const after = JSON.parse(await s.evalJs(`JSON.stringify({ hash: decodeURIComponent(location.hash), popHidden: document.getElementById('course-pop').hidden, focusedLink: document.activeElement?.classList.contains('ov-item') ?? false })`));
+    if (after.hash !== link.href) throw new Error(`the FIRST tap must follow the link: landed on ${JSON.stringify(after.hash)}, link ${link.href}`);
+    await s.shot('tablet-courses-tap');
+    console.log(`  tablet tap (U28): (hover: hover) off → mouseenter opens no card; one tap follows ${link.href}${after.popHidden ? '' : ' (the card then shows for the focused link — the keyboard path, kept)'}`);
+  } finally {
+    await s.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+    await s.setViewport({ width: 1400, height: 1900 });
+    await s.open(new URL('courses.html', baseUrl).href, '.all-courses table.course-rules');
+  }
 }
 
 // 3c. The narrowest phone, 320 px — also a 1280 px window at 400 % zoom (WCAG

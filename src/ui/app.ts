@@ -853,7 +853,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
                 // Which document a section is from, once (DGS 2026-10-03); the
                 // embedded page carries the same key in the report's glossary.
                 '; every check cites its section (CSE § is that handbook; Academic Code § and DGS Handbook § are the Graduate School’s). The courses that count are on the ',
-                el('a', siblingAnchorAttrs('course-rules', window.location.search, isEmbedded()), 'course rules page'),
+                // The link opens the list on this student's degree view (blue-team review 2026-10-17, U29).
+                el('a', siblingAnchorAttrs('course-rules', window.location.search, isEmbedded(), { view: student.program }), 'course rules page'),
                 '.',
               ),
               el('p', { class: 'effective' }, rulesDateLine(rules, termLabel(termOfDate(realTodayIso)), realTodayIso)), // the rules' date is a fact about the sheet: real even in simulation mode (D5)
@@ -936,7 +937,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         // footer and the copied summary, which render in their own order.
         el('strong', {}, RULES_ACCURACY_NOTICE.replace(/\.$/, '')),
         ' (see the ',
-        el('a', siblingAnchorAttrs('course-rules', window.location.search, isEmbedded()), 'course rules page'),
+        el('a', siblingAnchorAttrs('course-rules', window.location.search, isEmbedded(), { view: student.program }), 'course rules page'), // the student's degree view (U29)
         '). ',
         BETA_SCOPE_NOTICE,
         ...reportToDgs(' Error reports, suggestions, and feedback are all welcome — please email'),

@@ -869,6 +869,19 @@ table.course-rules.schedule-table { font-size: 13px; min-width: 0; } /* the clas
 .filters .switches { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 .filters .check { font-size: 13.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
 .filters .clear-filters { margin: 0 0 0 auto; }
+/* "Copy link to this list" (blue-team review 2026-10-17, U27) sits before Clear
+   on the switches line; the read-only address appears beside it only when
+   neither clipboard route worked. */
+.filters .copy-link-fallback { flex: 1 1 240px; min-width: 0; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: 13px; background: var(--card); color: var(--ink); }
+.filters .copy-link-fallback[hidden] { display: none; }
+/* "Find a course ↓" on the masthead's top line (U25), beside the theme switch:
+   the search box is more than a screen down the page, and nothing visible
+   jumped to it. The link takes the free space the switch's own auto margin
+   took, so the two sit together at the right. */
+.courses-page .masthead-top .find-course { margin-left: auto; font-size: 13.5px; font-weight: 600; color: var(--navy); text-decoration: none; padding: 4px 0; }
+.courses-page .masthead-top .find-course:hover, .courses-page .masthead-top .find-course:focus-visible { text-decoration: underline; }
+.courses-page .masthead-top .find-course + .theme-toggle { margin-left: 0; }
+@media print { .find-course { display: none; } }
 /* "More filters" (mobile review 2026-09-19): the fold courses-page.ts renders
    below 861 px; above it the same controls sit directly in the grid. */
 .filters details.more-filters { grid-column: 1 / -1; }
@@ -909,8 +922,21 @@ table.course-rules th .sort { border: 0; background: none; font: inherit; color:
 table.course-rules th .sort.active { color: var(--navy); }
 table.course-rules th .th-sub { display: block; font-size: 11px; font-weight: 400; letter-spacing: 0.04em; color: var(--muted); margin-top: 1px; } /* was 9.5px/--grey, the smallest and faintest text on the page — trim review P-23 */
 table.course-rules td { border-bottom: 1px solid var(--line); padding: 7px 8px; vertical-align: top; }
-table.course-rules tr:hover td { background: var(--neutral-bg); }
-table.course-rules tr:target td { background: var(--note-bg); }
+/* Zebra rows and a blue-tinted hover on the desk-width table (blue-team review
+   2026-10-17, U30): a row was a 1 px rule with a ~34 px pitch, and reading
+   from "CSE 60641" to its Typically-offered cell crossed ~1,200 px with
+   nothing to hold the line; the old hover, --neutral-bg on --card, measured
+   1.09:1 in light mode and 1.17:1 in dark — invisible. The stripe is neutral
+   and the hover is the tint .ov-item:hover uses, so the two differ by hue and
+   both read in either theme. Below 861 px the rows are cards (the block at
+   the end of this file sets their hover to none) and print keeps its own
+   block, so both are untouched. Specificity (0,2,3), the same as the :target
+   and .deep-linked rules below, which come later and so keep winning. */
+@media screen and (min-width: 861px) {
+  table.course-rules tbody tr:nth-child(even) > * { background: var(--neutral-bg); }
+  table.course-rules tbody tr:hover > * { background: var(--navy-tint); }
+}
+table.course-rules tr:target td, table.course-rules tr:target th { background: var(--note-bg); } /* th too, as .deep-linked below: a striped course-id cell no longer breaks the highlight (U30) */
 /* Forced-colours mode (Windows high contrast) drops background colours, so the
    jumped-to row lost its only marker (review R-27, 2026-09-18). An outline is
    honoured there. */

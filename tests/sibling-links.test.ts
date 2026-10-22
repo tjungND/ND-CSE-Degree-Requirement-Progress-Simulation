@@ -51,4 +51,17 @@ describe('links between the two pages', () => {
     assert.deepEqual(siblingAnchorAttrs('course-rules', '?embed=1&course_rules_url=https://cse.nd.edu/rules/', true), { href: 'https://cse.nd.edu/rules/', target: '_top', rel: 'noopener' });
     assert.deepEqual(siblingAnchorAttrs('self-check', '?self_check_url=https://cse.nd.edu/self-check/', false), { href: 'https://cse.nd.edu/self-check/', target: '_top', rel: 'noopener' }, 'a named host page is honoured standalone too, as before');
   });
+
+  // Blue-team review 2026-10-17, U29: the self-check's "course rules page"
+  // links pass the student's program as the view, so the list opens on that
+  // degree's columns — on the relative sibling only. A host page is a
+  // WordPress page, which cannot take a query (DGS 2026-09-30).
+  it('a query goes on the relative sibling only (U29)', () => {
+    assert.deepEqual(siblingLink('course-rules', '', false, { view: 'phd' }), { href: './courses.html?view=phd' });
+    assert.deepEqual(siblingAnchorAttrs('course-rules', '', false, { view: 'mscse' }), { href: './courses.html?view=mscse' });
+    assert.deepEqual(siblingAnchorAttrs('course-rules', '?embed=1', true, { view: 'phd' }), { href: 'https://sites.nd.edu/csedept/courses-and-rules/', target: '_top', rel: 'noopener' }, 'the embedded default host page takes no query');
+    assert.deepEqual(siblingAnchorAttrs('course-rules', '?course_rules_url=https://cse.nd.edu/rules/', false, { view: 'phd' }), { href: 'https://cse.nd.edu/rules/', target: '_top', rel: 'noopener' }, 'a named host page takes no query');
+    assert.deepEqual(siblingLink('course-rules', '', false, {}), { href: './courses.html' }, 'an empty query adds nothing');
+    assert.deepEqual(siblingLink('course-rules', '', false), { href: './courses.html' }, 'no query: as before');
+  });
 });

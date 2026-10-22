@@ -55,18 +55,25 @@ export function allowedHostPage(raw: string): boolean {
 /** The link for `page`, given this page's query string (`location.search`)
  * and whether this page is embedded: a host page named in the query string;
  * else, embedded, the ND page that frames the sibling (DEFAULT_HOST_PAGES);
- * else the sibling file next to this one. */
-export function siblingLink(page: SiblingPage, search: string, embedded = false): SiblingLink {
+ * else the sibling file next to this one.
+ *
+ * `query` is appended to the RELATIVE sibling only (blue-team review
+ * 2026-10-17, U29: the self-check sends `{ view: program }`, so a Ph.D.
+ * student opens the Ph.D. degree-credit view of the course rules — the view
+ * picks columns, never rows, P-19). A host page is a WordPress page, which
+ * cannot take a query (DGS 2026-09-30), so it never gets one. */
+export function siblingLink(page: SiblingPage, search: string, embedded = false, query?: Record<string, string>): SiblingLink {
   const raw = new URLSearchParams(search).get(SIBLING_PARAM[page])?.trim() ?? '';
   if (allowedHostPage(raw)) return { href: raw, target: '_top' };
   if (embedded) return { href: DEFAULT_HOST_PAGES[page], target: '_top' };
-  return { href: RELATIVE[page] };
+  const qs = query ? new URLSearchParams(query).toString() : '';
+  return { href: qs ? `${RELATIVE[page]}?${qs}` : RELATIVE[page] };
 }
 
 /** Anchor attributes for the sibling link: a host page — named in the query
  * string, or the ND page by default when embedded (2026-09-30) — opens in the
- * top window; standalone, the relative sibling file. */
-export function siblingAnchorAttrs(page: SiblingPage, search: string, embedded: boolean): Record<string, string> {
-  const link = siblingLink(page, search, embedded);
+ * top window; standalone, the relative sibling file (with `query`, U29). */
+export function siblingAnchorAttrs(page: SiblingPage, search: string, embedded: boolean, query?: Record<string, string>): Record<string, string> {
+  const link = siblingLink(page, search, embedded, query);
   return link.target ? { href: link.href, target: '_top', rel: 'noopener' } : { href: link.href };
 }
