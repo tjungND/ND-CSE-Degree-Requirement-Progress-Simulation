@@ -16,7 +16,7 @@ import { advisorSummary } from '../src/ui/advisor-summary.ts';
 import { gradAdminRequest } from '../src/ui/grad-admin-request.ts';
 import { checkedWithLine, resultStamp, savedStamp, stampLine } from '../src/ui/stamp.ts';
 import { validateStudent } from '../src/ui/state.ts';
-import { buildCombinedReviewRequest } from '../src/transcript/external.ts';
+import { buildCombinedReviewRequest } from '../src/ui/review-request.ts';
 import { allScenarios, buildRules } from './helpers.ts';
 
 const snapshot = JSON.parse(readFileSync(new URL('../data/snapshot.json', import.meta.url), 'utf8')) as { syncedAt: string; csv: CsvTexts };

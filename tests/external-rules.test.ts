@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { QUARTER_CREDIT_FACTOR, TRIMESTER_CREDIT_FACTOR, findExternalRule, normalizeCourseId, normalizeUniversity, universityCreditSystem } from '../src/data/external.ts';
 import { knownUniversities } from '../src/ui/university-name.ts';
-import { buildCombinedReviewRequest } from '../src/transcript/external.ts';
+import { buildCombinedReviewRequest } from '../src/ui/review-request.ts';
 import { parseExternalTab, parseUniversitiesTab } from '../src/data/parse.ts';
 import type { SheetIssue } from '../src/data/types.ts';
 import { audit } from '../src/engine/audit.ts';

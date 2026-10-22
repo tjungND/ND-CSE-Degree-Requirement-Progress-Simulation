@@ -7,11 +7,12 @@
 //   snapshot's `syncedAt` is the moment the CURRENT rules were first seen —
 //   normally the day of the DGS's edit, never earlier than the real edit — and
 //   each snapshot commit reads as "what the DGS changed".
-// Pure (no fetch, no DOM) so the browser loader, the sync script and the tests
-// share one definition of "same content".
+// Pure (no fetch, no DOM) so the sync script and the tests share one
+// definition of "same content" — and the browser's, which compares per-tab
+// fingerprints over the same normalized text (src/data/snapshot-meta.ts,
+// since W1 2026-10-22: the saved copy's text no longer ships in the page).
 import type { CsvTexts } from './assemble.ts';
 import { ND_TIME_ZONE, notreDameDate } from './clock.ts';
-import type { RulesDate } from './types.ts';
 
 /** Same sheet content? Line endings and trailing whitespace are ignored so a
  * cosmetic difference in how the text was captured never looks like an edit. */
@@ -39,11 +40,8 @@ export function normalizeCsvText(text: string): string {
   return text.replace(/\r\n?/g, '\n').trimEnd();
 }
 
-/** Date the live rules against the bundled snapshot: identical content → they
- * last changed when the snapshot captured them; different → some time after. */
-export function dateLiveRules(live: CsvTexts, snapshot: { syncedAt: string; csv: CsvTexts }): RulesDate {
-  return { kind: sameCsvContent(live, snapshot.csv) ? 'known' : 'after', at: snapshot.syncedAt };
-}
+// (`dateLiveRules` — the live sheet against the saved copy — is in
+// src/data/snapshot-meta.ts since W1: it compares fingerprints now.)
 
 // Made on first use and kept (efficiency, 2026-10-07): toLocaleDateString
 // with options builds a new formatter on every call. Its constructor is what

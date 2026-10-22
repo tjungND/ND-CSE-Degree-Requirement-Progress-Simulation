@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { CsvTexts } from '../src/data/assemble.ts';
 import { makeParameters } from '../src/data/params.ts';
-import { changedTabs, dateLiveRules, formatDateLong, sameCsvContent } from '../src/data/rules-date.ts';
+import { changedTabs, formatDateLong, sameCsvContent } from '../src/data/rules-date.ts';
+import { dateLiveRules, snapshotMetaOf } from '../src/data/snapshot-meta.ts';
 import type { RulesDate, SheetIssue } from '../src/data/types.ts';
 import { KNOWN_PARAMETER_KEYS } from '../src/data/types.ts';
 import { rulesDateLine } from '../src/ui/handbook.ts';
@@ -100,9 +101,24 @@ describe('the dated line under the title', () => {
 
 describe('dating the live rules against the committed snapshot', () => {
   const snapshot = { syncedAt: '2026-09-01T09:17:00Z', csv: csv('course_id,title\r\nCSE 60001,Alpha\r\n') };
+  // The page compares the saved copy's per-tab fingerprints (W1, 2026-10-22),
+  // not its text — the same answers, over the same normalized text.
+  const meta = snapshotMetaOf(snapshot);
 
   it('identical content → the rules last changed when the snapshot captured them', () => {
-    assert.deepEqual(dateLiveRules(csv('course_id,title\r\nCSE 60001,Alpha\r\n'), snapshot), { kind: 'known', at: snapshot.syncedAt });
+    assert.deepEqual(dateLiveRules(csv('course_id,title\r\nCSE 60001,Alpha\r\n'), meta), { kind: 'known', at: snapshot.syncedAt });
+    // Line endings are not content, for the fingerprints as for the text.
+    assert.deepEqual(dateLiveRules(csv('course_id,title\nCSE 60001,Alpha\n\n'), meta), { kind: 'known', at: snapshot.syncedAt });
+  });
+
+  it('an optional tab that failed to load counts as matching; one that appeared or vanished does not', () => {
+    const withExternal = snapshotMetaOf({ ...snapshot, csv: { ...snapshot.csv, external: 'university,course_id\r\nX,Y\r\n' } });
+    // Live has no `external` (it failed) — named as such, it matches.
+    assert.deepEqual(dateLiveRules(csv('course_id,title\r\nCSE 60001,Alpha\r\n'), withExternal, ['external']), { kind: 'known', at: snapshot.syncedAt });
+    // Not named — it vanished, which is a change.
+    assert.equal(dateLiveRules(csv('course_id,title\r\nCSE 60001,Alpha\r\n'), withExternal).kind, 'after');
+    // The snapshot has none and the live sheet has one — a change too.
+    assert.equal(dateLiveRules({ ...csv('course_id,title\r\nCSE 60001,Alpha\r\n'), external: 'university,course_id\r\nX,Y\r\n' }, meta).kind, 'after');
   });
 
   it('ignores line-ending and trailing-whitespace differences (never a real edit)', () => {
@@ -111,7 +127,7 @@ describe('dating the live rules against the committed snapshot', () => {
   });
 
   it('a real edit in any tab → "after", naming the tab', () => {
-    assert.deepEqual(dateLiveRules(csv('course_id,title\r\nCSE 60001,Alpha\r\nCSE 60002,Beta\r\n'), snapshot), {
+    assert.deepEqual(dateLiveRules(csv('course_id,title\r\nCSE 60001,Alpha\r\nCSE 60002,Beta\r\n'), meta), {
       kind: 'after',
       at: snapshot.syncedAt,
     });

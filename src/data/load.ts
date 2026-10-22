@@ -6,10 +6,18 @@
 // the saved copy as a second choice (rulesFromSnapshot) so the tool still works
 // if the sheet is ever unpublished. Either way the rules are dated against that
 // snapshot (src/data/rules-date.ts explains how).
+//
+// The saved copy is NOT compiled into the page since W1 (blue-team review
+// 2026-10-17, done 2026-10-22; src/data/snapshot-meta.ts explains): the build
+// puts data/snapshot.json and its ~300-byte data/snapshot-meta.json beside the
+// pages, a load fetches the meta alongside the five tabs to date them, and the
+// snapshot itself is fetched only when the student presses "Continue with the
+// copy saved on …". One consequence the DGS accepted: the saved copy now needs
+// one request to this site (a page opened from file:// cannot make it).
 import sheetUrls from '../../data/sheet-urls.json' with { type: 'json' }; // the attribute lets node's test runner import this file too
-import snapshot from '../../data/snapshot.json' with { type: 'json' };
 import { rulesFromCsvTexts, type CsvTexts } from './assemble.ts';
-import { dateLiveRules, ndDateOnly } from './rules-date.ts';
+import { ndDateOnly } from './rules-date.ts';
+import { dateLiveRules, readRulesSnapshot, readSnapshotMeta, type SnapshotMeta, type SnapshotTab } from './snapshot-meta.ts';
 import type { Rules } from './types.ts';
 
 /** Google's publish-to-web endpoint answers a tab in well under a second most
@@ -96,11 +104,60 @@ export class RulesLoadError extends Error {
   }
 }
 
-/** The day the bundled copy was saved (YYYY-MM-DD) as the calendar reads at
+/** Where the build (vite.config.ts) puts the two snapshot files, relative to
+ * the page: fixed names outside the hashed chunk graph. */
+export const SNAPSHOT_META_PATH = 'data/snapshot-meta.json';
+export const SNAPSHOT_PATH = 'data/snapshot.json';
+
+/** A path beside the page, resolved against the page's own address — right
+ * under a GitHub Pages project path, on a plain host and inside an iframe
+ * (the same way src/data/clock.ts asks this site's server for the time). In
+ * node (the tests stub `fetch`) the bare path. */
+function sameOriginUrl(path: string): string {
+  return typeof document !== 'undefined' ? new URL(path, document.baseURI).href : path;
+}
+
+/** One same-origin JSON file; rejects on any failure. `cache: 'no-cache'`
+ * revalidates, so a redeploy's newer file is seen. An AbortController rather
+ * than AbortSignal.timeout — Safari 14, the floor, has no such thing. */
+async function fetchSameOriginJson(path: string, timeoutMs: number): Promise<unknown> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(sameOriginUrl(path), { credentials: 'omit', cache: 'no-cache', signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+let metaPromise: Promise<SnapshotMeta | undefined> | undefined;
+
+/** The saved copy's date and per-tab fingerprints (data/snapshot-meta.json),
+ * fetched once per page — started by loadLiveRules beside the tabs, shared by
+ * the loading card's button. Undefined when it cannot be read: the pages then
+ * cannot say when the rules last changed (the masthead's "those in effect for
+ * <term>" line) and the diagnostics panel says why; nothing else is lost. */
+export function snapshotMeta(): Promise<SnapshotMeta | undefined> {
+  metaPromise ??= fetchSameOriginJson(SNAPSHOT_META_PATH, 8_000).then(readSnapshotMeta, () => undefined);
+  return metaPromise;
+}
+/** For the tests only, which load the rules several times in one process: a
+ * page asks once. */
+export function forgetSnapshotMeta(): void {
+  metaPromise = undefined;
+}
+
+/** The day the saved copy was made (YYYY-MM-DD) as the calendar reads at
  * Notre Dame, for the page's messages — the same day the masthead's "last
  * updated on …" names, which it was not while this took the UTC slice of the
- * timestamp (review R-22, 2026-09-18). */
-export const SNAPSHOT_SAVED_ON = ndDateOnly(snapshot.syncedAt);
+ * timestamp (review R-22, 2026-09-18). Undefined while or if the meta cannot
+ * be read. */
+export async function snapshotSavedOn(): Promise<string | undefined> {
+  const meta = await snapshotMeta();
+  return meta ? ndDateOnly(meta.syncedAt) : undefined;
+}
 
 /** Data rows in a CSV text: non-empty lines (a line of only commas is a blank
  * sheet row) minus the header. Good enough for "371 rows" on the loading card. */
@@ -261,11 +318,16 @@ export async function fetchCsv(
   }
 }
 
-/** The copy of the rules saved in the app (data/snapshot.json) — shown only
- * when the student chooses it after a failed live load. Its syncedAt is when
- * these rules were first seen by the sync, so they are dated `known`. */
-export function rulesFromSnapshot(): Rules {
-  return rulesFromCsvTexts(snapshot.csv as CsvTexts, {
+/** The copy of the rules saved in the app (data/snapshot.json) — fetched from
+ * this site, and shown, only when the student chooses it after a failed live
+ * load (never automatically, DGS 2026-09-01). Rejects when the file cannot be
+ * fetched or is not a snapshot; the loading card then says so and keeps the
+ * button, so a second press simply asks again. Its syncedAt is when these
+ * rules were first seen by the sync, so they are dated `known`. */
+export async function rulesFromSnapshot(): Promise<Rules> {
+  const snapshot = readRulesSnapshot(await fetchSameOriginJson(SNAPSHOT_PATH, 20_000));
+  if (!snapshot) throw new Error(`${SNAPSHOT_PATH} is not a rules snapshot`);
+  return rulesFromCsvTexts(snapshot.csv, {
     source: 'snapshot',
     syncedAt: snapshot.syncedAt,
     rulesDate: { kind: 'known', at: snapshot.syncedAt },
@@ -294,6 +356,9 @@ function noteNewerSheet(rules: Rules): Rules {
  * diagnostics panel says why (never a dead page over the optional tab). */
 export async function loadLiveRules(nowIso: string, onProgress: (p: LoadProgress) => void = () => {}): Promise<Rules> {
   onProgress({ step: 'connect' });
+  // The saved copy's date and fingerprints, asked for alongside the tabs
+  // (W1): a tiny same-origin file, awaited only once the tabs are in.
+  const meta = snapshotMeta();
   const urls = SHEET_URLS;
   // All tabs at once, each hedged and retried (2026-09-06; the history: a
   // plain Promise.all with one 15 s request per tab, then one tab after
@@ -333,12 +398,18 @@ export async function loadLiveRules(nowIso: string, onProgress: (p: LoadProgress
   // An optional tab that failed to load is not evidence that the rules changed:
   // it is dated against the saved copy as if it matched (review 2026-10-10 —
   // otherwise the page said the rules were updated after the saved copy).
-  const forDating: CsvTexts = { ...live };
-  for (const tab of OPTIONAL_TABS) {
-    const saved = (snapshot.csv as CsvTexts)[tab];
-    if (optionalIssues[tab] !== undefined && saved !== undefined) forDating[tab] = saved;
+  const asSaved = OPTIONAL_TABS.filter((tab): tab is SnapshotTab => optionalIssues[tab] !== undefined);
+  const savedMeta = await meta;
+  const rules = rulesFromCsvTexts(live, { source: 'live', syncedAt: nowIso, ...(savedMeta ? { rulesDate: dateLiveRules(live, savedMeta, asSaved) } : {}) });
+  if (!savedMeta) {
+    // The page works without it; the date line is what is lost. Said in the
+    // diagnostics so the DGS can tell a deploy that went wrong from a blip.
+    rules.issues.push({
+      severity: 'warning',
+      tab: 'Courses',
+      message: `The date of the copy saved in the app could not be read (${SNAPSHOT_META_PATH} did not load), so the pages cannot say when the course rules last changed. A reload usually fixes it; if it persists, check that the deploy wrote that file (MAINTENANCE.md, 'Sync, deploy, test').`,
+    });
   }
-  const rules = rulesFromCsvTexts(live, { source: 'live', syncedAt: nowIso, rulesDate: dateLiveRules(forDating, snapshot) });
   // A tab that answered but holds no data (cleared by accident, or unpublished
   // on its own) is a failure to report, not "there are no courses".
   // The Categories tab is two lists side by side and BOTH are load-bearing:

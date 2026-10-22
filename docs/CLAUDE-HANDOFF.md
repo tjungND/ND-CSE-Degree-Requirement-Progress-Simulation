@@ -1163,7 +1163,7 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   attempt is the last PASSING final, else a live IP retake, else the last failed one (which
   earns nothing — F/U earn zero credit by DGS decision).
 - **Transcript upload** (`src/transcript/`): pdfjs-dist is one of the two lazily-loaded runtime
-  dependencies (the other is tesseract.js, the opt-in OCR), loaded as its own chunk so the main bundle stays ~170KB. The parser handles Banner 8
+  dependencies (the other is tesseract.js, the opt-in OCR), loaded as its own chunk (pdf-*.js, 416 KB / 126 KB gz, plus the 1.4 MB worker) so the main bundle does not carry it. Measured 2026-10-22 with `npm run bundle-report` (blue-team review 2026-10-17, W5 — the "~170 KB" this line claimed dated from the first weeks): before batch A the self-check's first load was 925 KB raw / 265 KB gz (index 663 KB + shared chunk 219 KB + CSS 66 KB) and the course-rules page's 309 KB / 75 KB gz; after W1–W3 the self-check loads 709 KB / 212 KB gz (index 584 KB; shared chunk 76 KB) and the course-rules page 171 KB / 50 KB gz, with the previous-university parser (external-*.js, 77 KB / 29 KB gz), the saved rules copy (data/snapshot.json, 97 KB) and the handbook's text (handbook-text.json, 51 KB) fetched only when used. The parser handles Banner 8
   ("INSTITUTION CREDIT") and Banner 9 ("Institutional Credit") wording, ND's official-PDF
   layout (credits BEFORE grade: `BIOS 60574 Title 3.000 B+ 9.999`), Banner term codes
   (YYYY00=Summer, YYYY10=Fall, YYYY20=Spring of YYYY+1), and ND markers that may exist only

@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { audit } from '../src/engine/audit.ts';
 import type { CourseEntry, Student } from '../src/engine/types.ts';
-import { buildCombinedReviewRequest } from '../src/transcript/external.ts';
+import { buildCombinedReviewRequest } from '../src/ui/review-request.ts';
 import { advisorSummary } from '../src/ui/advisor-summary.ts';
 import { unofficialTranscriptNote, unofficialTranscriptSlots } from '../src/ui/email-html.ts';
 import { unofficialSlotNote, unofficialWarning } from '../src/ui/external-upload.ts';

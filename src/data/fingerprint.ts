@@ -25,21 +25,34 @@ import { normalizeCsvText } from './rules-date.ts';
 /** The tabs in a fixed order, so the fingerprint never depends on key order. */
 const TABS = ['courses', 'parameters', 'categories', 'external', 'universities'] as const;
 
+const FNV_OFFSET = 0x811c9dc5;
+/** Feed `s` into a running FNV-1a hash `h` (the 32-bit step, in every browser). */
+function fnv1a(h: number, s: string): number {
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h;
+}
+const hex8 = (h: number): string => (h >>> 0).toString(16).padStart(8, '0');
+
 export function rulesFingerprint(texts: CsvTexts): string {
-  let h = 0x811c9dc5;
-  const feed = (s: string): void => {
-    for (let i = 0; i < s.length; i++) {
-      h ^= s.charCodeAt(i);
-      h = Math.imul(h, 0x01000193);
-    }
-  };
+  let h = FNV_OFFSET;
   for (const tab of TABS) {
     const text = texts[tab];
     if (text === undefined) continue;
     // The tab's name and a separator no CSV contains, so moving text from one
     // tab to the next changes the fingerprint.
-    feed(`\u0001${tab}\u0002`);
-    feed(normalizeCsvText(text));
+    h = fnv1a(h, `\u0001${tab}\u0002`);
+    h = fnv1a(h, normalizeCsvText(text));
   }
-  return (h >>> 0).toString(16).padStart(8, '0');
+  return hex8(h);
+}
+
+/** ONE tab's fingerprint, the same hash over the same normalized text — what
+ * the pages compare the live sheet against, tab by tab, to date the rules
+ * (src/data/snapshot-meta.ts; W1, 2026-10-22: the saved copy itself no longer
+ * ships in the page's JavaScript, only these eight characters per tab). */
+export function tabFingerprint(text: string): string {
+  return hex8(fnv1a(FNV_OFFSET, normalizeCsvText(text)));
 }

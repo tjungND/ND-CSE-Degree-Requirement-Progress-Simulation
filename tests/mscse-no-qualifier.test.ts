@@ -13,7 +13,7 @@ import { audit } from '../src/engine/audit.ts';
 import { coursesNeedingDgsReview } from '../src/engine/review.ts';
 import { advisorSummary } from '../src/ui/advisor-summary.ts';
 import { gradAdminRequest } from '../src/ui/grad-admin-request.ts';
-import { buildCombinedReviewRequest, reviewRequestCourses } from '../src/transcript/external.ts';
+import { buildCombinedReviewRequest, reviewRequestCourses } from '../src/ui/review-request.ts';
 import type { CourseEntry, Student } from '../src/engine/types.ts';
 import { DECIDER_DGS } from '../src/engine/decider.ts';
 import { buildRules } from './helpers.ts';

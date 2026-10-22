@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { coursesNeedingDgsReview } from '../src/engine/review.ts';
 import type { Student, Term } from '../src/engine/types.ts';
-import { buildCombinedReviewRequest, reviewRequestCourses } from '../src/transcript/external.ts';
+import { buildCombinedReviewRequest, reviewRequestCourses } from '../src/ui/review-request.ts';
 import { buildRules } from './helpers.ts';
 import { ndCourse, phdStudent, transferCourse } from './helpers/student.ts';
 

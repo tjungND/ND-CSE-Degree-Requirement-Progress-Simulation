@@ -4,7 +4,7 @@
 //   node --experimental-strip-types scripts/dev/ga-sample.mts [tests/scenarios/<name>.json] [YYYY-MM-DD]
 // The day defaults to the scenario's own `today`.
 import { readFileSync } from 'node:fs';
-import { rulesFromSnapshot } from '../../src/data/load.ts';
+import { rulesFromCsvTexts, type CsvTexts } from '../../src/data/assemble.ts';
 import { audit } from '../../src/engine/audit.ts';
 import { termLabel } from '../../src/engine/term.ts';
 import { advisorSummary } from '../../src/ui/advisor-summary.ts';
@@ -14,7 +14,10 @@ import { validateStudent } from '../../src/ui/state.ts';
 const file = process.argv[2] ?? 'tests/scenarios/clock-phd-qualifier-4-semesters-before.json';
 const scenario = JSON.parse(readFileSync(file, 'utf8')) as { today?: string; student: unknown };
 const today = process.argv[3] ?? scenario.today ?? '2026-09-28';
-const rules = rulesFromSnapshot();
+// The saved copy, read from disk as audit-impact.mts does (the browser fetches
+// it since W1, 2026-10-22, so the loader no longer imports the file).
+const snapshot = JSON.parse(readFileSync(new URL('../../data/snapshot.json', import.meta.url), 'utf8')) as { syncedAt: string; csv: CsvTexts };
+const rules = rulesFromCsvTexts(snapshot.csv, { source: 'snapshot', syncedAt: snapshot.syncedAt, rulesDate: { kind: 'known', at: snapshot.syncedAt } });
 const s = validateStudent(scenario.student);
 const r = audit(s, rules, today);
 const context = { todayIso: today, entryTerm: termLabel(s.entryTerm), priorStudy: 'No prior graduate study', gpa: s.gpa };

@@ -6,8 +6,6 @@
 // use for a requirement's standing: a coloured badge (HTML) or a [WORD] tag
 // (text), and a deadline line highlighted when it is this semester, next
 // semester or past.
-// (transcript/external.ts keeps its own `esc` — it is the other side of the
-// engine/ui line.)
 import type { CourseEntry, Program } from '../engine/types.ts';
 
 /** Which imported external transcripts were marked UNOFFICIAL — bachelor's,
@@ -79,6 +77,17 @@ export const FILL_IN_STEP = 'Fill in your name, netID and NDID on the "Student:"
 /** The heading of the numbered list of what THIS reader must do — the same
  * skeleton in all three emails (DGS 2026-09-28). */
 export const ACTION_HEADING = 'Action requested';
+
+/** The markers every copied request carries (DGS wording 2026-09-03 / 2026-09-06):
+ * students reword only their own half; the tables below stay machine-readable.
+ * Shared by the DGS review request (review-request.ts) and the Grad Admin's
+ * processing request (grad-admin-request.ts). Here, not beside the review
+ * builder, since W3 (2026-10-22): when they sat in src/transcript/external.ts
+ * the Grad Admin request's static import of them dragged the whole
+ * transcript parser into every first load. */
+export const EDITABLE_MARKER = '(You may edit anything above this line)';
+export const DO_NOT_MODIFY_MARKER = '(DO NOT MODIFY ANYTHING BELOW THIS LINE)';
+export const MARKER_DIVIDER = '-'.repeat(64);
 
 /** The page's pill colours, named (DGS 2026-09-28: "green, amber, and gray";
  * red for a passed deadline and blue for a conditional row are the page's

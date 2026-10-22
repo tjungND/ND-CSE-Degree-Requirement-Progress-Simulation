@@ -24,6 +24,7 @@
     "audit-impact": "node --experimental-strip-types scripts/dev/audit-impact.mts",
     "sanitize": "node scripts/sanitize-transcript.mjs",
     "handbook-text": "node scripts/handbook-text.mjs",
+    "bundle-report": "node --experimental-strip-types scripts/dev/bundle-report.mts",
     "ocr-bench": "node --experimental-strip-types scripts/dev/ocr-bench/bench.mjs"
   },
   "//scripts-note": "Tests run on node's built-in runner (node --test; Node >= 24 runs the TypeScript directly) — no test-framework dependency. The test script must name the files with a quoted glob: giving node --test a directory (tests/) fails on Node 24 with 'Cannot find module', which is what broke CI on Aug 31–Sep 1, 2026. Vite does the dev server and the production build. Never put a ':' in any parent folder name — it corrupts npm's PATH and breaks vite's module loader.",

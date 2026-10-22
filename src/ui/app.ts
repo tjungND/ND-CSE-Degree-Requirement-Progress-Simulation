@@ -75,6 +75,7 @@ import { createFocusKeeper } from './focus-keeper.ts';
 import { type RefusedValues, applyRefusals, rangedNumber } from './refusals.ts';
 import { createToasts } from './toasts.ts';
 import { gradAdminRequest, processingItems } from './grad-admin-request.ts';
+import { buildCombinedReviewRequest, reviewRequestCourses } from './review-request.ts'; // the DGS review request's builder — its own small module since W3 (2026-10-22), no longer the transcript parser's tail
 import { priorStudyLabel, programHistory } from './program-history.ts';
 import { ndUndergraduateClause, notFinishedSentence, totalCreditsWord, transferRuleText } from './coursework-text.ts';
 import { alongTheWayBox, applyCourseTick, examsTickOffered } from './page-decisions.ts';
@@ -2269,21 +2270,22 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             'data-key': 'review.copy',
             onclick: () => {
               // Copy, then the check-before-you-send dialog (DGS request 2026-09-06 evening).
-              void import('../transcript/external.ts').then(({ buildCombinedReviewRequest, reviewRequestCourses }) => {
-                const { nd: ndReq, external: extReq } = reviewRequestCourses(pending, slotOf);
-                const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses, 'review'), decider: deciderTitle(student.program), stamp: checkedWithLine(stamp), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
-                return copyDialog({
-                  what: 'Review request',
-                  recipient: { role: decider.role, name: decider.name, email: decider.email },
-                  subject: built.subject,
-                  text: built.text,
-                  html: built.html,
-                  steps: [
-                    { text: FILL_IN_STEP },
-                    { text: `Attach copies of your transcripts as PDFs (Bachelor’s / Master’s / Ph.D. — whichever apply) — the ${deciderTitle(student.program)} cannot review the courses without them. The official transcript must be sent directly to the Graduate School by each university’s registrar.`, emphasis: true },
-                  ],
-                  returnFocusKey: 'review.copy',
-                });
+              // (A plain call since W3, 2026-10-22: the builder is src/ui/review-request.ts,
+              // in the first load; the `import()` this replaced had resolved to code that
+              // was already loaded, because the parser it named was in the first load too.)
+              const { nd: ndReq, external: extReq } = reviewRequestCourses(pending, slotOf);
+              const built = buildCombinedReviewRequest({ priorStudy: priorStudyLabel(student), nd: ndReq, external: extReq, notes, history: programHistory(student), unofficial: unofficialTranscriptNote(student.courses, 'review'), decider: deciderTitle(student.program), stamp: checkedWithLine(stamp), universityRow: (u) => (universityCreditSystem(rules.universityCreditSystems, u) !== undefined ? 'set' : rules.universities.some((r) => r.universityKey === normalizeUniversity(u)) ? 'blank' : 'absent') });
+              void copyDialog({
+                what: 'Review request',
+                recipient: { role: decider.role, name: decider.name, email: decider.email },
+                subject: built.subject,
+                text: built.text,
+                html: built.html,
+                steps: [
+                  { text: FILL_IN_STEP },
+                  { text: `Attach copies of your transcripts as PDFs (Bachelor’s / Master’s / Ph.D. — whichever apply) — the ${deciderTitle(student.program)} cannot review the courses without them. The official transcript must be sent directly to the Graduate School by each university’s registrar.`, emphasis: true },
+                ],
+                returnFocusKey: 'review.copy',
               });
             },
           },

@@ -1349,11 +1349,16 @@ async function checkSectionChip(s, selector, expected, label) {
   const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   await s.evalJs(`document.querySelector(${JSON.stringify(selector)}).dispatchEvent(new MouseEvent('mouseenter'))`);
   await pause(300);
-  const shown = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+  const read = async () => JSON.parse(await s.evalJs(`JSON.stringify((() => {
     const chip = document.querySelector(${JSON.stringify(selector)});
     const pop = document.getElementById(chip.getAttribute('aria-controls'));
     return { expanded: chip.getAttribute('aria-expanded'), visible: !!pop && !pop.hidden, text: pop ? pop.textContent : '', inView: pop ? pop.getBoundingClientRect().right <= document.documentElement.clientWidth : false };
   })())`));
+  // The words arrive by a same-origin fetch on the first hover (W2, 2026-10-22):
+  // the panel says "Loading the handbook’s text…" until then — wait for them.
+  let shown = await read();
+  for (const t0 = Date.now(); Date.now() - t0 < 5000 && !(shown.visible && new RegExp(expected).test(shown.text)); shown = await read()) await pause(100);
+  if (/Loading the handbook|Could not load the handbook/.test(shown.text)) throw new Error(`${label}: the handbook's text did not arrive: ` + shown.text.slice(0, 300));
   if (shown.expanded !== 'true' || !shown.visible || !new RegExp(expected).test(shown.text) || !shown.inView) throw new Error(`${label}: hovering the section chip must show the handbook's text: ` + JSON.stringify({ ...shown, text: shown.text.slice(0, 300) }));
   await s.evalJs(`document.querySelector(${JSON.stringify(selector)}).dispatchEvent(new MouseEvent('mouseleave'))`);
   await pause(450);

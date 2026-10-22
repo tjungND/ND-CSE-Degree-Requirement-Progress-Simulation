@@ -9,9 +9,9 @@ import {
   EXTERNAL_TAB_CONFIGURED, UNIVERSITIES_TAB_CONFIGURED,
   LOAD_BUDGET_MS,
   RulesLoadError,
-  SNAPSHOT_SAVED_ON,
   loadLiveRules,
   rulesFromSnapshot,
+  snapshotSavedOn,
   type LoadProgress,
   type TabName,
 } from '../data/load.ts';
@@ -163,12 +163,39 @@ export function loadRulesWithCard(root: HTMLElement, nowIso: string): Promise<Lo
       // blocked host, not a broken connection (review R-29).
       const blockedNotUnreachable = (e.kind === 'unreachable' || e.kind === 'timeout') && today.source === 'server';
       const reload = el('button', { class: 'btn primary', type: 'button', onclick: () => location.reload() }, 'Reload the page');
+      // The saved copy is fetched from this site on the press (W1, 2026-10-22
+      // — it is no longer compiled into the page). While it comes the button
+      // is held; if it cannot come, one line says so and the button is live
+      // again, so a second press asks again.
+      let savedProblem: HTMLElement | undefined;
       const useSaved = el(
         'button',
-        { class: 'btn use-saved', type: 'button', onclick: () => finish(rulesFromSnapshot()) },
-        `Continue with the copy saved on ${SNAPSHOT_SAVED_ON}`,
+        {
+          class: 'btn use-saved',
+          type: 'button',
+          onclick: () => {
+            useSaved.disabled = true;
+            savedProblem?.remove();
+            rulesFromSnapshot().then(finish, () => {
+              useSaved.disabled = false;
+              savedProblem = el('p', { class: 'load-note', role: 'alert' }, el('strong', {}, 'Could not load the saved copy — reload the page.'));
+              actions.after(savedProblem);
+            });
+          },
+        },
+        'Continue with the copy saved in the app',
       );
+      // The day the copy was made comes from a tiny file fetched beside the
+      // rules; it is normally here long before the live load gives up, and
+      // the label names it as soon as it is.
+      void snapshotSavedOn().then((day) => {
+        if (day) useSaved.textContent = `Continue with the copy saved on ${day}`;
+      });
       const savedNote = ' — it may be missing recent DGS edits.';
+      const actions =
+        e.retryable && !blockedNotUnreachable
+          ? el('div', { class: 'load-actions' }, reload, el('span', { class: 'or' }, 'or'), useSaved, el('span', { class: 'load-note' }, savedNote))
+          : el('div', { class: 'load-actions' }, useSaved, el('span', { class: 'load-note' }, savedNote), el('span', { class: 'or' }, 'or'), reload);
       card.append(
         el(
           'div',
@@ -191,9 +218,7 @@ export function loadRulesWithCard(root: HTMLElement, nowIso: string): Promise<Lo
                   : 'Please reload the page to try again.'
                 : 'Please let the DGS know.',
           ),
-          e.retryable && !blockedNotUnreachable
-            ? el('div', { class: 'load-actions' }, reload, el('span', { class: 'or' }, 'or'), useSaved, el('span', { class: 'load-note' }, savedNote))
-            : el('div', { class: 'load-actions' }, useSaved, el('span', { class: 'load-note' }, savedNote), el('span', { class: 'or' }, 'or'), reload),
+          actions,
           el(
             'p',
             { class: 'load-note' },

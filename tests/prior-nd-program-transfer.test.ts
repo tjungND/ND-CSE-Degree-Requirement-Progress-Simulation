@@ -15,7 +15,7 @@ import { decidedCaseByCase } from '../src/engine/allocate.ts';
 import { audit } from '../src/engine/audit.ts';
 import { coursesNeedingDgsReview } from '../src/engine/review.ts';
 import type { Student } from '../src/engine/types.ts';
-import { buildCombinedReviewRequest, reviewRequestCourses } from '../src/transcript/external.ts';
+import { buildCombinedReviewRequest, reviewRequestCourses } from '../src/ui/review-request.ts';
 import { processingItems } from '../src/ui/grad-admin-request.ts';
 import { buildRules } from './helpers.ts';
 import { phdStudent } from './helpers/student.ts';

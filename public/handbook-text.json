@@ -1,0 +1,363 @@
+{
+  "file": "policy-sources/CSE-Graduate-Handbook-live.pdf",
+  "sha256": "31d3de7547e6e37fb9163f53b3d8f3b158ebdf03ec66aab0b0389da059552077",
+  "edition": "Updated September 2026",
+  "sections": [
+    {
+      "id": "1",
+      "title": "Introduction",
+      "paragraphs": [
+        "This document provides a guide to the policies and procedures for graduate studies in the Department of Computer Science and Engineering at the University of Notre Dame (herein after Department). It serves both to elaborate items such as examination procedures, thesis and dissertation requirements, and to summarize certain information of frequent interest to students. It supplements two University of Notre Dame Graduate School policy documents: 1) the Academic Code of the Graduate School and 2) the Bulletin of Information (Graduate Programs and Policies), both accessible at: Policy & Procedure Library | The Graduate School.",
+        "Nothing herein is to be interpreted as contrary to the regulations of the Graduate School. Circumstances will arise that either have not been included or will require a decision on the part of the Department. The advisor is always the first person to contact if a question arises. If a problem cannot be resolved, then the ADGS, DGS, or the Department Chair should be approached.",
+        "Modifications to the department graduate program regulations are approved from time to time by the CSE Graduate Studies Committee and are made known by publishing a new version of the Graduate Studies Handbook."
+      ]
+    },
+    {
+      "id": "2",
+      "title": "Basic Requirements",
+      "paragraphs": [
+        "The following requirements apply to every graduate student in the department regardless of the specific degree program in which the student is studying."
+      ]
+    },
+    {
+      "id": "2.1",
+      "title": "Enrollment Status",
+      "paragraphs": []
+    },
+    {
+      "id": "2.1.1",
+      "title": "Continuous Enrollment",
+      "paragraphs": [
+        "Once admitted, all students must enroll each semester in the academic year (i.e., fall and spring semesters) to maintain student status. Continuous enrollment is normally met by registration in courses relevant to the student’s program. Any admitted student who fails to enroll for one semester or more must apply for readmission upon return. The Graduate School must approve any exception to this rule, including a leave of absence. Enrollment dates are published in the Graduate School Calendar. Late charges are assessed to any student enrolling after the date set forth on the Graduate School Calendar.",
+        "Continuing degree-seeking students (i.e., degree students who are eligible to continue their studies in the fall semester) may have access to University facilities and services from May through August without registering and enrolling for academic credit in the Summer Session. However, students who will remain on campus, conduct research and will be paid a stipend must register and enroll for the zero-credit hour \"Independent Summer Research\" course to remain eligible for the FICA tax exemption for any and/or all pays received during the summer session. (May 15th - Aug 15th)"
+      ]
+    },
+    {
+      "id": "2.1.2",
+      "title": "Full-time and Part-time students",
+      "paragraphs": [
+        "A full-time student is one who registers for at least nine (9) credit hours per semester. These credits may consist of both regular course credits and research credits. A student who registers for fewer than nine (9) credit hours per semester will be considered part-time. All degree-seeking students are expected to maintain full-time status and to devote full-time effort to graduate study unless approved otherwise. No degree-seeking student may hold a job, on or off campus, without the expressed permission of their advisor, the DGS, and the Graduate School. All degree-seeking students must maintain their full-time status, whether or not they are in residence, unless approved otherwise."
+      ]
+    },
+    {
+      "id": "2.2",
+      "title": "Grade Point Average",
+      "paragraphs": [
+        "Continuation in a CSE graduate degree program, admission to degree candidacy, and graduation require maintenance of at least a 3.0 (B) cumulative GPA. A degree candidate whose cumulative grade point average (GPA) is below 3.0 cannot receive a degree as set forth by the Graduate School. A student whose cumulative GPA is below 3.0 may not defend their thesis or dissertation. All course grades of “Incomplete” must be removed within 30 calendar days from when grades were due (for the semester in which the I was given). See Section 5.1 for more details.",
+        "A student may lose funding or be dismissed from the university if their GPA is below 3.0 for two consecutive semesters."
+      ]
+    },
+    {
+      "id": "2.3",
+      "title": "Advisor",
+      "paragraphs": [
+        "Ph.D. students are typically admitted directly into a research group under the supervision of a specific faculty advisor, who serves as both the academic and research advisor. Continuous advisor supervision is required throughout the duration of the Ph.D. program. Any disruption to this relationship must be reported immediately to the DGS. Students who are not under the supervision of a faculty advisor may be subject to dismissal from the program.",
+        "M.S. students, with assistance from the ADGS, are expected to identify a thesis or project advisor by the end of their first semester, unless an exception is granted by the ADGS.",
+        "A student who wishes to change advisors must first secure agreement from a new faculty advisor and submit a request to the DGS for approval. Students may not discontinue working with their current advisor without first confirming a new advisor. In general, transitions between advisors must be planned in coordination with all parties to ensure continuity of supervision and funding.",
+        "Faculty advisors who intend to discontinue advising a student must provide the student and the DGS with written notice at least one-half semester in advance, except in cases involving violations of academic integrity or professional conduct. This policy is designed to give students adequate time to find a new advisor and to maintain academic progress. Advisors are responsible for helping students develop a plan of study, ensuring compliance with departmental and Graduate School requirements, and supporting the student's academic and professional development.",
+        "A research advisor must be a Tenure and Tenure Track (TTT) faculty member of the department. Exceptions to this policy require approval of the DGS. A student may elect to have two or more faculty members share the advisor responsibility. They shall be known as Co-Advisors, and each shall sign the final thesis/dissertation document. A co-advisor can be selected from non-TTT faculty members of the department or from faculty members outside the department. Such an arrangement must be initiated by the student’s research advisor through submitting to the DGS a written request. The request must be approved by the DGS."
+      ]
+    },
+    {
+      "id": "2.4",
+      "title": "Teaching Assistant (TA) Service",
+      "paragraphs": [
+        "Ph.D. students may serve as a teaching assistant (TA) at some point in the program at the discretion of their advisor and the DGS. M.S. students may serve as a TA at the discretion of the ADGS and DGS. Work as a TA provides an opportunity to develop teaching skills through a variety of tasks, which may include developing and grading assignments, working with students in office hours or lab sessions, or, in limited circumstances, giving lectures.",
+        "TA service should occupy about 12 hours per week on average throughout the semester. Some weeks may require more or less effort, as assignments, exams, and other duties are scheduled. TAs are expected to assist with the grading of final exams or other materials during finals week and may not depart campus until those duties are complete.",
+        "The instructor of each course evaluates teaching assistants at the end of each semester. The evaluation (see Appendix B) is a component of the student’s overall performance evaluation. Poor TA performance can contribute to a decision to dismiss a student from the program. TA evaluations are one element in determining whether a student will receive future support as a TA. A student who receives an “unsatisfactory” evaluation will not be permitted to serve as a TA again."
+      ]
+    },
+    {
+      "id": "2.5",
+      "title": "Progress Evaluation",
+      "paragraphs": []
+    },
+    {
+      "id": "2.5.1",
+      "title": "Evaluation by Advisor",
+      "paragraphs": [
+        "Graduate students are to maintain a close working relationship with their research advisors. Advisors will generally inform students of their performance and expectations orally during routine meetings. In addition, a written evaluation (see Appendix A) will be performed at the end of each year. It must be emphasized that different advisors will have varying expectations with regard to research productivity. It is the responsibility of the student to find an advisor with expectations compatible with the student’s ability."
+      ]
+    },
+    {
+      "id": "2.5.2",
+      "title": "Evaluation by the Department",
+      "paragraphs": [
+        "For Ph.D. students, the department considers the following aspects in judging a student’s proper progress:",
+        "● Maintaining 3.0 or above cumulative GPA",
+        "● Retaining a research advisor.",
+        "● Successful passage of the Ph.D. Qualifying Exam within the required time frame",
+        "● Successful passage of the Comprehensive Exam (also called the Ph.D. proposal exam) within eight semesters from the start of the program.",
+        "● Receiving “Satisfactory” or better evaluations in the end-of-year review by the research advisor",
+        "● Receiving “Satisfactory” or better evaluations in the end-of-year review by the instructor of a course in which the student served as a TA",
+        "For M.S. degree-seeking students the department considers the following aspects in judging a student’s proper progress:",
+        "● Maintaining 3.0 or higher cumulative GPA",
+        "● Obtaining a thesis/project advisor by the end of the first semester of the program",
+        "● Maintaining timely progress on course requirements and on the thesis/project",
+        "If a student is not making proper progress, the DGS will send a warning letter to the student. The letter will specify the necessary improvements in performance, as well as a time frame within which the improvement must be demonstrated. Upon receipt of such a letter, the student will be put on probationary status. Students who fail to meet the expectations within that time frame will be dismissed from the program."
+      ]
+    },
+    {
+      "id": "2.6",
+      "title": "Academic Integrity",
+      "paragraphs": [
+        "Integrity in scholarship and research is an essential characteristic of academic life and social structure in the University. Any activity that compromises the pursuit of truth and the advancement of knowledge besmirches the intellectual effort and may undermine confidence in the academic enterprise. Such activities are not tolerated.",
+        "Violations of academic integrity may occur in classroom work and related academic functions or in research/scholarship endeavors. Classroom-type misconduct includes the use of information obtained from another student’s paper during an examination, plagiarism, submission of work written by someone else, falsification of data, etc. Violation of integrity in research/scholarship is deliberate fabrication, falsification or plagiarism in proposing, performing or reporting research or other deliberate misrepresentation in proposing, conducting, reporting or reviewing research. Misconduct does not include errors of judgment, errors in recording, selection or analysis of data, differences in opinions involving interpretation, nor conduct unrelated to the research process.",
+        "Misconduct includes practices that materially and adversely affect the integrity of scholarship and research.",
+        "If an individual suspects that a violation of academic integrity has occurred, they should discuss the matter confidentially with the DGS or department chair. If there appears to be a reasonable basis for further inquiry, the DGS or chair will select an impartial panel consisting of three members, one of whom may be a graduate student, to investigate the matter. The DGS or chair will inform the accused of the charges. The panel will determine initially whether to proceed directly to a hearing, to further investigate the case, or to dismiss the charges. If the panel decides to proceed directly to a hearing, the hearing will be held within 10 days of the original notification. If the panel decides that further investigation is necessary, it shall immediately notify the DGS or chair. If it decides that a hearing is not warranted, all information gathered for this investigation will be destroyed. The utmost care will be taken to minimize any negative consequence to the accused.",
+        "The accused party must be given the opportunity to respond to any and all allegations and supporting evidence at the hearing. The response will be made to the appointed panel. The panel will make final judgments; recommend appropriate disciplinary action, and the report to the chair in writing. The report will include all of the pertinent documentation and will be presented within 30 days after meeting with the accused. Copies of the report are to be made available to the accused, the DGS, the chair, and the Vice President for Research. If a violation is judged to have occurred, this might be ground for dismissal from the University; research/scholarship violations might be reported to the sponsor of the research, if appropriate.",
+        "If the student chooses to appeal, they must address the appeal in writing to the Dean of the Graduate School within 10 days. The student has the right to appear before the Dean or his or her delegate. The Dean may decide to appoint an ad hoc committee to handle this appeal if deemed necessary."
+      ]
+    },
+    {
+      "id": "3",
+      "title": "Requirements for the Master of Science Degree",
+      "paragraphs": []
+    },
+    {
+      "id": "3.1",
+      "title": "Basic Requirements",
+      "paragraphs": [
+        "The degree of Master of Science in Computer Science and Engineering (MSCSE) is awarded to a student for advanced technical competency in a focused area of computer science and engineering. The MSCSE degree described in this section is sometimes called a Professional M.S. degree, terminates with the MSCSE degree, and is focused on adding breadth and depth to the student’s knowledge and skills in computer science and engineering. (Note: Ph.D. degree-seeking students may also be awarded an MSCSE degree if they are eligible and satisfy separate requirements discussed in Section 4.5., whose eligibility and satisfaction will be reviewed and decided by the DGS.) The MSCSE degree requires 24 credits of regular courses and 6 credits of research (culminating in a project or thesis). M.S. students typically pay tuition and, if well prepared in computer science and engineering, can complete the program in 2 semesters plus a summer. Students with gaps in their preparation will likely require additional time."
+      ]
+    },
+    {
+      "id": "3.2",
+      "title": "Course Requirements",
+      "paragraphs": [
+        "M.S. students shall work closely with the ADGS or their advisor to develop a course of study appropriate to their research and career goals. The department course requirements represent a minimum, in order to allow flexibility to meet each student’s needs. Students may be required to take more than the minimum number of courses when needing pre-requisite courses to meet the expected preparation for the courses in the program. All courses taken by a student must have the approval of their advisor. The graduate school requires a total of thirty (30) credits of courses and research for the M.S. degree. The MSCSE degree requires a minimum of twenty-four (24) credit hours of regular courses and six (6) credits hours of Masters project (CSE 68902) or Masters thesis direction (CSE 68901) earned at Notre Dame.",
+        "Regular courses are defined as classes with a regular meeting time, assigned readings, graded assignments, and a final exam. Research seminar, research credits, independent study, and other similar courses do not count as regular courses. Up to six (6) credits at the 40000 level may count toward both the graduate school’s 30-credit requirement and the department’s 24-credit regular course requirement, subject to approval by the advisor and the ADGS. Up to nine (9) credits at the 60000 level or higher taken from a department other than CSE may count toward both the graduate school’s 30-credit requirement and the department’s 24-credit regular course requirement, subject to approval by the advisor and the ADGS."
+      ]
+    },
+    {
+      "id": "3.3",
+      "title": "Residence Time and Time to Degree",
+      "paragraphs": [
+        "The minimum residency requirement for the M.S. degree is registration in full-time status for one semester during the academic year or for one summer session. A student entering the M.S. program with an undergraduate degree in computer science or computer engineering can expect to take approximately 2 semesters and a summer to complete the degree requirements. The actual time may vary depending on the student’s preparation, the nature of the research undertaken and the student’s academic progress. Failure to complete all requirements for the M.S. degree within 5 years results in forfeiture of degree eligibility.",
+        "Students should be cognizant of deadlines for graduation established by the Graduate School."
+      ]
+    },
+    {
+      "id": "3.4",
+      "title": "M.S. Thesis Requirement",
+      "paragraphs": [
+        "For M.S. degree-seeking students, the M.S. project or thesis requirement can be satisfied in one of two ways: (i) completing a M.S. project, or (ii) completing a M.S. thesis.",
+        "(i) A M.S. project is a substantial implementation of software, algorithm development, data analysis, or a hardware artifact that is significantly larger than a course project. The project serves to demonstrate the student’s technical mastery in the chosen subject area. The project should be carried out under the supervision of the research advisor over six (6) credit hours of CSE 68901. The completed project should be described by a written project report and associated deliverables that may include for example: software, data, documentation, or hardware products. The project report and deliverables must be accepted and approved by the advisor to satisfy the project requirement.",
+        "(ii) A M.S. thesis is an original research contribution that is larger than a course project, but less comprehensive than a Ph.D. dissertation. A student may propose an M.S. thesis topic with the approval and supervision of their research advisor. With the approval of their research advisor, a student can take the M.S. thesis option by proposing a thesis topic. The approved research is conducted under the supervision of the research advisor and documented in a written thesis. Upon acceptance of the thesis by the thesis defense examination committee (advisor and two readers), the student must successfully pass the oral thesis defense examination. This defense will include general questions within the candidate’s major area of specialty.",
+        "Room scheduling for the oral thesis defense examination and preparation of associated forms should be done with the assistance of the Grad Admin. The thesis should be prepared following the formatting guidelines from the Graduate School web page at: Doctoral Dissertations & Master's Theses | Policies & Forms | The Graduate School.",
+        "Once the research advisor indicates approval of the thesis and its readiness for the readers, copies are distributed to the two official readers nominated by the student and the student’s advisor. Such readers are selected from among the Tenure and Tenure Track (TTT) faculty of the department. The appointment of a non-TTT faculty member from CSE or a faculty member from outside the department as a reader must have prior approval. The approval process must be initiated by the research advisor and the student by submitting a written request to the DGS. The research advisor may not be one of the two official readers.",
+        "After the readers approve the thesis, the candidate should submit the thesis electronically following the procedures described on the Graduate School’s web page: Doctoral Dissertations & Master's Theses | Policies & Forms | The Graduate School."
+      ]
+    },
+    {
+      "id": "3.5",
+      "title": "Integrated B.S. + M.S. in Computer Science and Engineering",
+      "paragraphs": [
+        "The Department of Computer Science and Engineering offers Notre Dame undergraduate CS and CPEG majors the option to complete the MSCSE Degree in Computer Science and Engineering in one year, following completion of the B.S. degree.",
+        "For current undergraduate students, an optimal route to earning the MSCSE degree is through the Department’s Integrated B.S. + M.S. program. Students may apply to this program by the application deadlines stated on the CSE Web site. This would typically be at the end of the fall semester of the senior year for students who will participate in undergraduate commencement in the Spring semester and enter the graduate program the following fall. The application process requires a one-page statement of intent, which should summarize a desired area of concentration for the M.S. studies, and list one or more names of CSE faculty members with whom the student has discussed M.S. project or thesis supervision. Applicants to the integrated B.S. + M.S. program do not need to submit GRE scores or pay an application fee. Admission to integrated B.S. + M.S. program requires an undergraduate GPA of 3.25 or greater, and the identification one or more faculty members willing to supervise their M.S. project or thesis.",
+        "The MSCSE degree is a 30-credit hour degree program consisting of twenty-four (24) credit hours of regular courses and six (6) credits of project or thesis.",
+        "With approval of the instructor and DGS, students in the integrated B.S. + M.S. program may, over the second semester of their junior year and their senior year, take one or two 3-credit CSE regular courses at the 60000 level or higher, and count these both as undergraduate CSE electives/Tech electives and as course requirements for the MSCSE degree. Additional 6xxxx-level CSE courses completed by the student in their senior year, and not used to meet the B.S. degree requirements, may, with approval of the course instructor and the DGS, be used to meet the M.S. requirements. Application is conducted online at: Application for Admission."
+      ]
+    },
+    {
+      "id": "3.6",
+      "title": "Transition to Computing",
+      "paragraphs": [
+        "The Transition to Computing is a set of bridge courses for students admitted to the MSCSE who require additional background in core computer science and engineering topics.",
+        "Prospective students should apply to the regular MSCSE program, and admitted students are considered degree-seeking MSCSE students. The determination for requiring the Transition to Computing bridge courses occurs at the time of admission."
+      ]
+    },
+    {
+      "id": "3.6.1",
+      "title": "Course Requirements",
+      "paragraphs": [
+        "Students must complete the following twelve (12) credit hours concurrently:",
+        "● CSE 50xxx: Transition to Software Design (3 cr)",
+        "● CSE 50xxx: Transition to Data Structures & Algorithms (3 cr)",
+        "● CSE 50xxx: Transition to Computer Systems & Organization (3 cr)",
+        "● CSE 60xxx: Integrative Computing Studio (3 cr)",
+        "With DGS approval, substitutions may be made for students with prior preparation, provided the total remains 12 credits.",
+        "CSE 50xxx courses are preparatory and do not count toward the MSCSE degree requirements in §3.1–3.5. With DGS approval, up to two (2) CSE 40xxx-level courses may count toward the MSCSE; such cases are expected to be rare. Any number of additional CSE 60000-level courses may count toward the MS, subject to degree limits in §3.2."
+      ]
+    },
+    {
+      "id": "4",
+      "title": "Requirements for the Doctor of Philosophy Degree",
+      "paragraphs": []
+    },
+    {
+      "id": "4.1",
+      "title": "Basic Requirements",
+      "paragraphs": [
+        "The degree of Doctor of Philosophy (Ph.D.) is conferred only in recognition of proficiency and high attainment in advanced scholastic endeavor, professional competence and independent investigation. It is not conferred merely for the completion of a required number of courses nor simply for independence, initiative, or exceptional ability in study and thought.",
+        "Successful completion of a Ph.D. degree requires a minimum of two years of residency, twenty- four (24) hours of satisfactory course credits, successful completion of the qualifying examination, the written and oral candidacy exam, a dissertation, and a dissertation defense. Depending on the student’s prior preparation, research experience, and previous graduate-level training, the Ph.D. degree typically takes 4-6 years to complete."
+      ]
+    },
+    {
+      "id": "4.2",
+      "title": "Course Requirements",
+      "paragraphs": [
+        "Graduate students shall work closely with their advisor to develop a course of study appropriate to their research and career goals. The department course requirements represent a minimum, in order to allow flexibility to meet each student’s needs. Most students will take more than the minimum number of courses in order to achieve appropriate depth and breadth in the field. All courses taken by a student must have the approval of their advisor.",
+        "The graduate school requires a total of sixty (60) credits of courses and research for the Ph.D. The CSE department requires a minimum of twenty-four (24) credit hours of regular courses at the 60000 level or higher.",
+        "Regular courses are defined as classes with a regular meeting time, assigned readings, graded assignments, and a final exam. Research seminar, research credits, and other similar courses do not count as regular courses.",
+        "Two credits of Research Seminar (CSE 63801 and CSE 63802) are required and expected to be taken during the first year of the program. Up to nine (9) credits at the 60000 level or higher taken from a department other than CSE may be used to satisfy the course requirement, subject to approval of the student’s advisor and DGS.",
+        "Up to six (6) credits from CSE 4xxxx may count toward both the graduate school’s 60-credit requirement and the department’s 24-credit regular course requirement, subject to approval of the student’s advisor and DGS. Courses from a M.S. degree earned at Notre Dame or another institution within the last five years prior to admission may be used to satisfy the course requirement. (See Section 5.2 for details on transfer of credits.)",
+        "Regardless of any credits transferred, all Ph.D. students must take at least nine (9) credits of regular courses at Notre Dame in order to satisfy the qualifying examination described in section 4.4."
+      ]
+    },
+    {
+      "id": "4.3",
+      "title": "Residence Time and Time to Degree",
+      "paragraphs": [
+        "The minimum residence requirement for the Ph.D. degree is full-time status for four (4) consecutive semesters (not including the summer session). While the time to completion of the Ph.D. degree typically takes approximately five (5) years, students entering the Ph.D. degree program with an M.S. degree in computer science and engineering can expect to take approximately four (4) years to complete the degree requirements. The actual time may vary depending on the nature of the research undertaken and the student’s academic progress.",
+        "Failure to complete all requirements for the Ph.D. degree within eight (8) years results in forfeiture of degree eligibility. Students should be cognizant of deadlines for graduation established by the Graduate School."
+      ]
+    },
+    {
+      "id": "4.4",
+      "title": "Qualifying Examination Policy",
+      "paragraphs": [
+        "The purpose of the qualifying examination is to determine whether a student is qualified to enter the Ph.D. program. The exam is designed to assess the student’s ability in applying fundamental computer science and engineering knowledge to problem solving.",
+        "The qualifier exams will include three parts, a (1) Core Knowledge component, (2) Category Specialization component, and (3) Research component. Students must complete all three components of the qualifier requirement within four (4) semesters of starting; the DGS may extend the deadline on a case-by-case basis. When the student has completed the qualifier course requirement, they must notify the CSE DGS office by filing the appropriate form."
+      ]
+    },
+    {
+      "id": "4.4.1",
+      "title": "Core Knowledge Requirement",
+      "paragraphs": [
+        "All PhD students are required to pass (or have previously passed) an Operating Systems course, an Algorithms course, and a Computer Architecture course, either at Notre Dame or at their previous institution. Graduate students entering the degree with a background in a different area must create a customized study plan in conjunction with their advisor and with the approval of the DGS."
+      ]
+    },
+    {
+      "id": "4.4.2",
+      "title": "Category Specialization Requirement",
+      "paragraphs": [
+        "Students are required to take three category specialization courses from three distinct groups and pass them with a grade of B or higher. Category specialization courses are organized into the following groups:",
+        "1. Algorithms",
+        "2. Human Centered Computing",
+        "3. Architecture",
+        "4. Data Science and Artificial Intelligence",
+        "5. Systems and Software",
+        "Each student should discuss their course selection with their advisor, but they do not need to declare courses in advance. If a student takes a course from the list of category-approved courses and fails to achieve an adequate grade, they may choose to retake that same course to replace the grade or take another course. In the latter case, the original grade will be replaced by the new grade for purposes of computing the category specialization course GPA.",
+        "Core Knowledge courses and Category Specialization courses may overlap. Approved category specialization courses are listed on the following page: [Graduate Course Rules]."
+      ]
+    },
+    {
+      "id": "4.4.3",
+      "title": "Research Component",
+      "paragraphs": [
+        "The goal of the research component is to evaluate a student’s ability to perform research at the PhD level.",
+        "Students must demonstrate research capability to their advisor through making a significant research contribution. Examples include: (a) serving as the first author or as a major contributing author to a workshop, conference, or journal submission, (b) writing a research survey.",
+        "The research advisor is responsible for evaluating the research contribution. Within 18 months of the student entering the program, the research advisor must determine whether the student has passed or failed the research component of the qualifier. The advisor must complete the Research-Qualifier form to indicate this decision and submit the form along with a sample of the student’s research (i.e., proposal, poster, workshop paper) to the DGS office. If the student fails the research qualifier, the DGS will form a committee composed of three faculty members. The committee will include the original advisor, if they plan to continue in that role. This committee will be responsible for determining whether a remediation plan is viable, executing such a plan, and forming a final judgement on the case within 6 months. If a student finds themselves without an advisor during this 6-month period, then normal CSE PhD student rules apply and the student must identify an advisor by the start of the next semester in order to retain funding and to continue in the PhD program."
+      ]
+    },
+    {
+      "id": "4.5",
+      "title": "Candidacy Examination",
+      "paragraphs": [
+        "The purpose of this examination (sometimes called the dissertation proposal) is to determine if the student has an in-depth understanding of their area of specialty, has identified a viable dissertation topic, performed the appropriate literature searches, and has proposed a reasonable set of research goals. The Ph.D. candidacy exam can be used by Ph.D. students to satisfy both the M.S. thesis requirement and the Ph.D. candidacy exam simultaneously, thus earning the MSCSE degree on successfully passing the candidacy exam, given that all the credits used to satisfy the requirements were earned at Notre Dame.",
+        "The candidacy exam must be taken before the end of the eighth semester in the program. Room scheduling and preparation of associated forms should be done with the assistance of the Grad Admin. All coursework for the Ph.D. must be completed (or in progress the same semester) before the candidacy exam can be taken. The candidacy examination consists of two parts: a written component and an oral component. The written requirement is satisfied by a successful completion of the dissertation proposal, and the oral part of the examination consists of a presentation by the student followed by a question/answer period. In continuing consultation with the dissertation director, the student explores research areas in their field to formulate a dissertation proposal. The student then prepares a written dissertation proposal that should summarize the background of the research topic together with the proposed plan of investigation. Prior to the oral examination, the student must distribute the proposal to the oral candidacy examination committee at least two (2) weeks prior to the oral examination date. At the examination, the student will make a presentation of the research problem, progress to date, and plans/goals for the doctoral dissertation. Questions from the examination committee will then be entertained within the research area and related areas. An Oral Candidacy Examination Committee administers the oral part of the examination. A senior faculty member of the committee, normally the adviser, should chair the exam. The committee should consist of the student’s research advisor (and co-advisor if there is one), at least three (3) additional voting members nominated by the student and their research advisor. Committee members are chosen from the Tenure and Tenure Track (TTT) faculty of the department. A non-TTT CSE faculty member, or an outside faculty member from another university may serve on the committee if approved by the student’s advisor and DGS. Prior to scheduling the candidacy exam, the student must initiate the request by sending to the DGS a written request together with the prospective committee member’s curriculum vita. (No curriculum vitae are required for faculty members from departments within the University.) The approval is made by the DGS. When forming the committee with members from outside the CSE department, the majority of the members (including the advisors) must be from the CSE department. For example, with the advisor and two committee members from CSE, one or two committee members could be from outside the department (from another Notre Dame department or from another university). The oral exam must be held on the campus of the University of Notre Dame. All Notre Dame committee members should be physically present; external committee members may be invited to physically attend, but this is not required. Room scheduling for the oral exam and preparation of associated forms should be done with the assistance of the Grad Admin.",
+        "After completion of the examination, the chair calls for a discussion followed by a vote of the examiners. On a committee of four, three votes are required to pass. If a committee has five members, four votes are required to pass. The Reporting Form for Results of Oral Candidacy Exams is completed when the chair and all committee members have indicated a Pass/Fail vote. This form should be signed by all members of the exam committee – it is the official record of the examination/defense. The voting form should be sent to the Graduate School within five (5) business days. The Graduate School officially notifies the student of the results of the candidacy examination.",
+        "In case of failure in either or both parts of the doctoral candidacy examination, the DGS on the recommendation of a majority of the examiners, may authorize a retake of the examination. The Graduate School must approve an authorization for retake. A second failure results in forfeiture of degree eligibility and is recorded on the candidate’s permanent record."
+      ]
+    },
+    {
+      "id": "4.6",
+      "title": "Dissertation Requirements",
+      "paragraphs": [
+        "After satisfying the above requirements, and upon approval of the dissertation director, the Ph.D. student can start writing the dissertation. The dissertation should be prepared following the guidelines from the Graduate School web page at: Doctoral Dissertations & Master's Theses | Policies & Forms | The Graduate School.",
+        "Upon completion of the dissertation and the approval by the research advisor, the student should deliver the dissertation to the same readers who served as candidacy examination committee members. Replacement of committee members should have the approval of the student’s advisor and DGS. Normally the readers should have two to four weeks to read the dissertation to decide whether it is ready to be defended. Reader approval of the dissertation for defense does not imply reader agreement or support; it implies reader acknowledgement that the dissertation is an academically sound and defensible scholarly product. Only a dissertation, which has been unanimously approved for defense by the readers, may be defended.",
+        "Even though the dissertation has been approved for defense, revisions may be required. If defects in the dissertation come to light at the defense, the candidate may be asked to revise the dissertation before the Graduate School accepts it and the degree is conferred. In that case, it will be the responsibility of the dissertation director, or such person as the committee may appoint, to report to the Graduate School that such revisions have been completed satisfactorily."
+      ]
+    },
+    {
+      "id": "4.7",
+      "title": "Defense of the Dissertation",
+      "paragraphs": [
+        "In defending the dissertation, the doctoral candidate supports its claims, procedures and results. The defense is the traditional instrument that enables the candidates to explore with the dissertation committee the dissertation’s substantive and methodological force. In this way, the candidate and the committee confirm the candidate’s scholarly grasp of the chosen research area. The first portion of a defense, in which a student presents their work, is open to the public. The second portion, in which the student is examined by the committee, is closed.",
+        "The dissertation defense must be held on the campus of the University of Notre Dame. All Notre Dame committee members should be physically present; external committee members may be invited to physically attend, but this is not required. Room scheduling for the dissertation defense and preparation of associated forms should be done with the assistance of the Grad Admin.",
+        "The dissertation committee must include all the readers of the dissertation and a senior faculty member of the committee, normally the adviser, should chair the exam At least three votes out of four (or four votes out of five) are required to pass. The Reporting Form for Results of Dissertation Defense is completed when the chair and all committee members have indicated a Pass/Fail vote. This form should be signed by all members of the exam committee – it is the official record of the defense. The voting form should be sent to the Graduate School within five (5) business days. The Graduate School officially notifies the student of the results of the dissertation defense.",
+        "After passing the oral exam and after the advisor and the readers approve the final written dissertation, the candidate should submit the dissertation electronically following the procedures described on the Graduate School’s web page: Doctoral Dissertations & Master's Theses | Policies & Forms | The Graduate School.",
+        "In case of failure of the defense, on the recommendation of a majority of the defense committee, another opportunity to defend may be authorized. The Graduate School must approve an authorization for retake. A second failure results in forfeiture of degree eligibility and is recorded on the candidate’s permanent record."
+      ]
+    },
+    {
+      "id": "5",
+      "title": "Additional Information",
+      "paragraphs": []
+    },
+    {
+      "id": "5.1",
+      "title": "Policy on Incompletes",
+      "paragraphs": [
+        "The policy on incompletes is given in the Academic Code of the Graduate School. In summary, a grade of I may only be given in exceptional circumstances, and must be resolved within 30 calendar days from when grades were due (for the semester in which the I was given) to complete the coursework or it is automatically converted into a grade of F. The department and the Graduate School will review a student who receives more than one grade of I in a semester or a grade of I in two or more consecutive semesters, to determine their eligibility for continued support and enrollment."
+      ]
+    },
+    {
+      "id": "5.2",
+      "title": "Transfer of Credits",
+      "paragraphs": [
+        "The Department may accept course work completed at another accredited university toward meeting its degree requirements. A student may transfer credits earned at another accredited university only if: 1) the student is in degree status at Notre Dame; 2) the courses taken are graduate courses appropriate to the Notre Dame graduate program and the student had graduate student status when they took these courses; 3) the courses were completed within a five-year period prior to admission to a graduate degree program at Notre Dame or while enrolled in a graduate degree program at Notre Dame; 4) grades of “B” (3.0 on 4.0 scale) or better were achieved; and 5) the transfer is recommended by the DGS and approved by the Graduate School. These five requirements also apply to the transfer of credits earned in another program at Notre Dame.",
+        "A student should send the credit transfer request to the Grad Admin and the DGS will approve and make a recommendation to the Graduate School. A request for credit transfer is considered only after a student has completed one semester in a Notre Dame graduate degree program and before the semester in which the graduate degree is conferred. Credits not earned on the semester system, such as trimester and quarter-hour credits, will be transferred on a pro-rata basis. A student transferring from an unfinished M.S. program may not transfer more than six (6) semester credit hours into either a Notre Dame M.S. or Ph.D. program. If the student has completed a M.S. or Ph.D. program, they may transfer up to nine (9) semester credit hours to a Notre Dame M.S. program and up to twenty-four (24) semester credit hours to a Notre Dame Ph.D. program. Occasionally a student may need to do dissertation research at another institution. Normally, the student would register for the appropriate number of credit hours of research at Notre Dame. If the student does not enroll at Notre Dame and expects to count research hours earned elsewhere toward the Notre Dame degree, the student must have the approval of the Graduate School in advance. The University requires similar prior approval for formal courses taken elsewhere and applied to the degree program.",
+        "No grades of transferred courses are included in the student’s GPA."
+      ]
+    },
+    {
+      "id": "5.3",
+      "title": "Foreign Language",
+      "paragraphs": [
+        "The department has no foreign language requirement."
+      ]
+    },
+    {
+      "id": "5.4",
+      "title": "Health Insurance",
+      "paragraphs": [
+        "All registered graduate and international student are automatically enrolled in the student insurance plan unless proof of comparable coverage is provided. The premium of the student health insurance plan is assigned to your student account. The University does not assume responsibility for any medical cost incurred by students. For more details of coverage and benefits, please refer to the Coordinator of Student Health Insurance at the Student Health Center on campus."
+      ]
+    },
+    {
+      "id": "5.5",
+      "title": "Vacation Policy",
+      "paragraphs": [
+        "Each graduate student is eligible to take two weeks of vacation during each twelve-month period in addition to the following University holidays: Thanksgiving, Christmas through New Year celebration, Good Friday, Memorial Day observance, Independence Day. Appropriate vacation times should be worked out well in advance with the student’s advisor and supervising instructor (if serving as a TA) to ensure they do not conflict with other responsibilities.",
+        "Note: The weeks of fall break and spring break are not University holidays. During those weeks, graduate students should be engaged full-time in their work as teaching or research assistants, unless vacation time has explicitly been approved. Departmental obligations may be scheduled during those weeks in order to avoid conflicts with class meeting times."
+      ]
+    },
+    {
+      "id": "5.6",
+      "title": "Policies on Harassment and Discrimination",
+      "paragraphs": [
+        "The University of Notre Dame prohibits sexual and discriminatory harassment. Definitions and policies regarding all forms of harassment and discrimination, confidential resources for help, and other related University initiatives, are posted on the Office of Institutional Equity website at: Office of Institutional Equity.",
+        "It is the student’s responsibility to be aware of these expectations and conduct themselves accordingly as members of the Notre Dame community. Questions regarding the policies and initiatives overseen by the Office of Institutional Equity may be directed to:",
+        "equity@nd.edu"
+      ]
+    },
+    {
+      "id": "5.7",
+      "title": "Leave of Absence",
+      "paragraphs": [
+        "For exceptional reasons and on the recommendation of the department, a student in good academic standing may request a leave of absence for a maximum of two consecutive semesters. A request for a leave of absence must be made before the semester in which the leave is taken and the Graduate School must approve all leaves of absence. If, for some urgent reason, a student is allowed to leave the University after the beginning of the semester, the withdrawal procedure below must be followed. If at the end of the leave of absence period the student does not return, the student is considered terminated. Application for readmission is required if the student wishes to return. In the case of a medical leave of absence, clearance from the University Health Center is required prior to readmission."
+      ]
+    },
+    {
+      "id": "5.8",
+      "title": "Withdrawal from the Program",
+      "paragraphs": [
+        "To withdraw from the University before the end of the semester, a student must complete the Registrar’s Separation from the University Form and inform their advisor and the Grad Admin.",
+        "Upon approval of the withdrawal, the University enters a grade of “W” for each course in which the student was registered. If a student drops out of the University without following the procedure described above, a grade of “F” is recorded for each course. The credit for any course or examination will be forfeited if the student interrupts their program of study for five years or more. The University reserves the right to require the withdrawal of any student when academic performance, health status or general conduct may be judged clearly detrimental to the best interests of either the student or the University community."
+      ]
+    },
+    {
+      "id": "6",
+      "title": "Grievance Procedure",
+      "paragraphs": [
+        "This procedure is to afford the graduate students in the department the opportunity to resolve complaints dealing with academic issues such as dismissal from graduate standing, placement on probationary status, and other departmental decisions that terminate or impede progress toward the degree.",
+        "This procedure is not to be used to address issues of sexual or discriminatory harassment (see section 5.6), or academic fraud (see section 2.6), or for disability-related grievances (see grievance procedures available through the Office of Disability Services: Students with Disabilities | Resources For | Apply | Undergraduate Admissions | University of Notre Dame.",
+        "If the student’s grievance concerns CSE faculty members, the student should ask the DGS and/or the chair to handle the complaints. If the grievance concerns the DGS and/or the chair, the student should ask the graduate committee (excluding the DGS and Chair) to handle the complaints.",
+        "Complaints must be initiated by a written statement from the student to the DGS/chair or one of the graduate committee members, indicating the nature of the problem, the date(s) the problem occurred, the grounds upon which the appeal is based, background information that the student considers important and the relief requested. The complaints should be filed within 30 days of the last date the problem occurred. The DGS/Chair or the graduate committee will respond to the complaints within two weeks of receiving the written statement. A written recommendation will be sent to the student.",
+        "If a student is not satisfied with the department’s recommendation, the student can consult with the Graduate School Ombudsperson: Ombuds Office | Support for Conflict, Communication, and Reporting Concerns | Policies & Forms | The Graduate School. The student may also follow the formal appeal procedure of the Graduate School to file grievance with the Graduate School: Graduate Student Appeal Procedure."
+      ]
+    }
+  ]
+}

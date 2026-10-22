@@ -4,8 +4,11 @@
 // whole attempt is abandoned. `fetch` is stubbed here with a script that
 // honours the abort signal; waits are milliseconds so the tests run fast.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, it } from 'node:test';
-import { fetchCsv, fetchCsvOnce, loadLiveRules, RulesLoadError, worthRetrying, type LoadProgress } from '../src/data/load.ts';
+import type { CsvTexts } from '../src/data/assemble.ts';
+import { fetchCsv, fetchCsvOnce, forgetSnapshotMeta, loadLiveRules, RulesLoadError, SNAPSHOT_META_PATH, worthRetrying, type LoadProgress } from '../src/data/load.ts';
+import { snapshotMetaOf } from '../src/data/snapshot-meta.ts';
 
 const CSV = 'course_id,title\r\nCSE 60641,Graduate Operating Systems\r\n';
 const realFetch = globalThis.fetch;
@@ -117,11 +120,18 @@ describe('rules loader: hedged attempts and retries', () => {
 describe('the Universities tab alone fails (P4-data-4)', () => {
   afterEach(() => {
     globalThis.fetch = realFetch;
+    forgetSnapshotMeta(); // a page asks for the meta once; each test here is its own page
   });
   it('the warning says credits count as printed', async () => {
     const urls = (await import('../data/sheet-urls.json', { with: { type: 'json' } })).default as Record<string, string>;
-    const snap = (await import('../data/snapshot.json', { with: { type: 'json' } })).default as { csv: Record<string, string> };
+    // Read from disk (W1, 2026-10-22): the loader no longer imports the file.
+    const snap = JSON.parse(readFileSync(new URL('../data/snapshot.json', import.meta.url), 'utf8')) as { syncedAt: string; csv: CsvTexts & Record<string, string | undefined> };
+    // The saved copy's meta is asked for beside the tabs (W1); here it answers
+    // too, so the rules are dated — and the failed optional tab counts as
+    // matching (review 2026-10-10), so they are dated `known`.
+    const meta = JSON.stringify(snapshotMetaOf({ syncedAt: snap.syncedAt, csv: snap.csv }));
     globalThis.fetch = ((url: string) => {
+      if (url === SNAPSHOT_META_PATH) return Promise.resolve(new Response(meta, { status: 200 }));
       const tab = Object.keys(urls).find((k) => urls[k] === url);
       if (tab === undefined || tab === 'universities' || snap.csv[tab] === undefined) return Promise.resolve(new Response('', { status: 404 }));
       return Promise.resolve(new Response(snap.csv[tab], { status: 200 }));
@@ -131,5 +141,33 @@ describe('the Universities tab alone fails (P4-data-4)', () => {
     assert.ok(issue, JSON.stringify(rules.issues));
     assert.match(issue.message, /credit system is unknown until it is reachable again: a course whose transcript reading \(or the student's choice at import\) says quarter or trimester units is still converted; the others count their credits as the transcript prints them/);
     assert.doesNotMatch(issue.message, /credit_system/);
+    assert.deepEqual(rules.rulesDate, { kind: 'known', at: snap.syncedAt }, 'a failed optional tab is dated as matching the saved copy');
+  });
+});
+
+// The saved copy's date and fingerprints (data/snapshot-meta.json) are fetched
+// beside the tabs (W1, 2026-10-22). When that one small file cannot be read
+// the page still loads — the rules are simply undated (the masthead then says
+// "those in effect for <term>") and the diagnostics panel says why.
+describe('the saved copy’s meta cannot be read (W1)', () => {
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    forgetSnapshotMeta();
+  });
+  it('the rules load undated, with a warning in the diagnostics', async () => {
+    const urls = (await import('../data/sheet-urls.json', { with: { type: 'json' } })).default as Record<string, string>;
+    const snap = JSON.parse(readFileSync(new URL('../data/snapshot.json', import.meta.url), 'utf8')) as { csv: Record<string, string> };
+    globalThis.fetch = ((url: string) => {
+      if (url === SNAPSHOT_META_PATH) return Promise.reject(new TypeError('Failed to fetch'));
+      const tab = Object.keys(urls).find((k) => urls[k] === url);
+      if (tab === undefined || snap.csv[tab] === undefined) return Promise.resolve(new Response('', { status: 404 }));
+      return Promise.resolve(new Response(snap.csv[tab], { status: 200 }));
+    }) as typeof fetch;
+    const rules = await loadLiveRules('2026-10-22T12:00:00Z');
+    assert.ok(rules.courses.size > 0);
+    assert.equal(rules.rulesDate, undefined);
+    const issue = rules.issues.find((i) => /snapshot-meta\.json/.test(i.message));
+    assert.ok(issue, JSON.stringify(rules.issues));
+    assert.equal(issue.severity, 'warning');
   });
 });
