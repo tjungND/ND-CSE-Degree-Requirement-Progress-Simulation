@@ -453,7 +453,8 @@ Approve the commands it proposes (`npm test`, `npm run build`, …) when it asks
 
 - **New handbook year.** Replace `policy-sources/CSE-Graduate-Handbook-live.pdf` with the new
   edition (git keeps the old one) and say so. Then run `npm run handbook-text` (it copies the new
-  edition's text into the hover text of the "CSE §" chips; the tests fail until you do). Then: *"Diff §2.3, §3, §4 and §5.2 of
+  edition's text into the hover text of the "CSE §" chips — two generated files to commit,
+  `src/ui/handbook-text.ts` and `public/handbook-text.json`; the tests fail until you do). Then: *"Diff §2.3, §3, §4 and §5.2 of
   policy-sources/CSE-Graduate-Handbook-live.pdf against the previous edition in git history
   (git show HEAD~1:policy-sources/CSE-Graduate-Handbook-live.pdf). List every rule that changed. Propose Parameters/Courses/Categories edits for
   the numbers and lists, and code changes only for changed structure."* Nothing in

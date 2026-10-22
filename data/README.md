@@ -167,6 +167,14 @@ the live sheet differs from this file they print "were updated after …" until 
 `Last-Modified` header for published CSVs (verified 2026-09-01), which is why the date comes from
 here (`src/data/rules-date.ts`).
 
+### `snapshot-meta.json` (built, not committed)
+Written by the build (`vite.config.ts`) from `snapshot.json` into `dist/data/`, and served at the
+same path by `npm run dev`: `{ syncedAt, tabs: { courses, parameters, categories, external?,
+universities? } }` — the snapshot's date and an eight-character fingerprint per tab
+(`src/data/fingerprint.ts` `tabFingerprint`, the same normalization as `sameCsvContent`). The
+pages fetch this 165-byte file on every load to date the live rules, and `snapshot.json` only when
+a student chooses the saved copy; neither is compiled into the JavaScript (2026-10-22).
+
 ### `ExternalCourses` tab (optional — courses from other universities)
 One row per course at ANOTHER university that the DGS has ruled on (feature
 2026-09-01; sample: `external.sample.csv`). The app matches a student's uploaded

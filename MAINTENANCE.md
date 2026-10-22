@@ -212,6 +212,13 @@ last edit (see "Sync" below).
   sheet is newer than the deployed copy the first half says "were updated after <date>" and the
   diagnostics panel explains; that state should last at most ~6 hours. Run the sync by hand: repo → Actions →
   sync-sheet → Run workflow; locally `npm run sync-sheet` (then commit the snapshot if it changed).
+  The build writes `dist/data/snapshot.json` (the committed file) and `dist/data/snapshot-meta.json`
+  (its date and one fingerprint per tab, computed by `vite.config.ts`) — the pages fetch the meta on
+  every load and the snapshot only on the saved-copy button; the sync Action still commits only
+  `data/snapshot.json`, and the dev server serves the same two paths (2026-10-22).
+- **Size**: after a change that could move a lot of code (a new dependency, a moved module, a lazy
+  chunk), run `npm run build && npm run bundle-report` and paste the two "first load" totals into the
+  commit message — 2026-10-22: self-check 709 KB / 212 KB gz, course-rules page 171 KB / 50 KB gz.
   **GitHub pauses scheduled workflows in a public repository after 60 days without repository
   activity** and emails the owner — re-enable from the Actions tab (Actions → sync-sheet →
   "Enable workflow"). If a run fails at `npm run sync-sheet` with a timeout: the very first run

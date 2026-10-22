@@ -2182,7 +2182,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     const who = deciderTitle(student.program);
     const decider = deciderContact(student.program);
     // The two course lists — Courses-tab rows and ExternalCourses rows
-    // (transcript/external.ts reviewRequestCourses; P3-dh-10-2).
+    // (review-request.ts reviewRequestCourses — in transcript/external.ts until W3, 2026-10-22; P3-dh-10-2).
     const slotOf = (p: PendingDgsReview): string | undefined =>
       p.course.entry.degreeLevel ? (DEGREE_SLOTS.find((sl) => sl.level === p.course.entry.degreeLevel)?.label ?? p.course.entry.degreeLevel) : undefined;
     const where = (p: PendingDgsReview): string =>

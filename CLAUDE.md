@@ -53,8 +53,9 @@ touching code and without the original author.
    2026”; the DGS replaces this file in place when a new edition is adopted, 2026-10-02 — the July
    2026 PDF it replaced is in git history under `docs/`). §3 (MSCSE) and §4 (Ph.D.). When code and
    handbook disagree, the handbook wins; flag the discrepancy instead of silently choosing. After
-   replacing it, run `npm run handbook-text` and commit `src/ui/handbook-text.ts` — the section
-   chips' hover text (DGS 2026-10-05); `tests/handbook-text.test.ts` fails until you do.
+   replacing it, run `npm run handbook-text` and commit `src/ui/handbook-text.ts` and
+   `public/handbook-text.json` — the section chips' hover text (DGS 2026-10-05; fetched on the
+   first hover since 2026-10-22); `tests/handbook-text.test.ts` fails until you do.
 2. Google Sheet **CSE-Degree-Checking-Rules** (renamed from CSE-Degree-Audit-Rules, 2026-09-05) — the DGS-editable data (tabs Courses, Parameters,
    Categories, ExternalCourses, Universities). Published-CSV URLs: `data/sheet-urls.json`. Schema: `data/README.md`.
 3. `docs/DECISIONS.md` — every interpretation decision already made, with dates and reasons.
