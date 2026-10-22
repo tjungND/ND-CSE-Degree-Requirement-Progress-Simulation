@@ -602,18 +602,19 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
           // Saved (complete, still open); what was read; else, with the Notre
           // Dame transcript already in (nothing it could tell, or imported
           // before 2026-10-08), just ask.
-          // Both say what Done does (blue-team review 2026-10-17, U7): a
+          // All five say what Done does (blue-team review 2026-10-17, U7): a
           // student who read "saved" had no reason to click it, yet the
-          // Previous-transcript rows wait for it (DGS 2026-10-14).
+          // Previous-transcript rows wait for it (DGS 2026-10-14) — in every
+          // variant, since every one of them keeps the rows inactive.
           background
             ? 'Your answers are saved. Change any of them here, then click Done. The Previous-transcript rows below open once these are answered and saved with Done.'
             : draftComplete
               ? 'Every question below is answered — check the answers, then click Done to use them. The Previous-transcript rows below open once these are answered and saved with Done.'
               : args.student.backgroundRead
-              ? 'What your transcripts show is filled in below — check it, and answer the rest. These answers decide which earlier transcripts to add here and how CSE §5.2 applies to them.'
+              ? 'What your transcripts show is filled in below — check it, and answer the rest. These answers decide which earlier transcripts to add here and how CSE §5.2 applies to them. The Previous-transcript rows below open once these are answered and saved with Done.'
               : args.student.courses.some((c) => c.fromNdTranscript)
-                ? 'Answer these questions. They decide which earlier transcripts to add here and how CSE §5.2 applies to them.'
-                : 'Import your Notre Dame transcript above and part of this fills itself in; answer the rest. These answers decide which earlier transcripts to add here and how CSE §5.2 applies to them.',
+                ? 'Answer these questions. They decide which earlier transcripts to add here and how CSE §5.2 applies to them. The Previous-transcript rows below open once these are answered and saved with Done.'
+                : 'Import your Notre Dame transcript above and part of this fills itself in; answer the rest. These answers decide which earlier transcripts to add here and how CSE §5.2 applies to them. The Previous-transcript rows below open once these are answered and saved with Done.',
         ),
         backgroundQuestions(
           background ?? args.student.backgroundDraft,

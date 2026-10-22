@@ -290,8 +290,9 @@ the code. Students can also report from the page itself: every result card's “
 ends with “Does this look wrong? Tell the DGS”, and each transcript preview with “Did the reader
 get this transcript wrong?” — both open the student's email app addressed to you, with that line
 filled in. Record each report in `docs/ACCURACY-LOG.md` (no names). Ask the student for their saved file ("Save to a file" — it holds the same line, the
-date it was checked and how every row read). With a working copy of the repository (Track B1),
-re-run it:
+date it was checked and how every row read; the file is named for the day it was saved —
+`cse-degree-audit-phd-2026-10-12.json` — so ask for the one from the day the report was made). With a
+working copy of the repository (Track B1), re-run it:
 
 ```
 npm run reproduce -- ~/Downloads/cse-degree-audit-phd-2026-10-12.json
@@ -744,7 +745,8 @@ tooling (details in `MAINTENANCE.md`).
    Graduate Program Administrator are the six `contact_*` rows of the sheet's Parameters tab
    (`contact_dgs_name` … `contact_grad_admin_email`; the footer, the feedback notes and the
    error-report address all read from them) — Track A, no code. `src/ui/contacts.ts` is only the
-   fallback used when a row is missing.
+   fallback used when a row is missing. Two lines HTML cannot read from the sheet: the `<noscript>`
+   blocks of `index.html` and `courses.html` name the DGS's address (2026-10-22) — change them too.
 4. **Walk through one live edit together:** change a Parameters value, wait five minutes, watch the
    app pick it up, change it back, log both in the Changelog.
 5. **Point them at this file.** Everything else follows from it.
