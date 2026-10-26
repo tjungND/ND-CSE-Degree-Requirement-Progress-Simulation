@@ -9,6 +9,11 @@
          /favicon.ico, gets a 404 and Chrome logs it as a console error
          (cross-browser review, 2026-10-10). -->
     <link rel="icon" href="data:," />
+    <!-- The rules start downloading here, while the app's script does (2026-10-26):
+         the build replaces the next line with a few lines written from
+         data/sheet-urls.json (vite.config.ts rulesHeadStart, src/data/head-start.ts).
+         Keep it above every stylesheet — a script after one waits for it. -->
+    <!-- rules-head-start -->
     <!-- Night mode before the first paint (DGS 2026-10-04; src/ui/theme.ts has the
          rest and must agree): a saved Light/Dark wins; otherwise the device's
          setting — embedded (?embed=1) too since 2026-10-25, where the page is

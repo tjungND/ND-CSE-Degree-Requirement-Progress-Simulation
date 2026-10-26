@@ -21,9 +21,11 @@ function wordPressSnippetScript() {
 // E2E: the basic app flow — initial Ph.D. report, a mid-degree record (the old example student, loaded from a file), M.S. tab.
 export async function driveApp(s, baseUrl) {
   await s.open(baseUrl);
+  await checkHeadStart(s, 'self-check page, first load');
   await s.evalJs(`localStorage.clear()`);
   await s.open(baseUrl);
   await s.waitFor(`document.querySelectorAll('.req').length > 5`);
+  await checkHeadStart(s, 'self-check page, reloaded');
   // A first visit describes the DEGREE, not a student who has failed thirteen
   // checks they have not been asked about (2026-09-08): the headline says so
   // and the "needs your attention" list is folded away, not gone.
@@ -1557,9 +1559,45 @@ async function checkSectionChip(s, selector, expected, label) {
   console.log(`  ${label}: hovering the section chip shows the handbook's text, leaving closes it`);
 }
 
+// The rules start downloading from the page's <head>, while the app's script
+// does (efficiency round 2026-10-26, src/data/head-start.ts): on the load just
+// made, every head request was taken over by the loader (none left waiting),
+// the first one started before the app's script had finished loading, and —
+// when no request was slow enough for the loader's hedge (2 s) — each tab was
+// asked for exactly once. Skipped when Google did not answer (the run then
+// drives the saved copy instead).
+async function checkHeadStart(s, label) {
+  const got = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const sheet = performance.getEntriesByType('resource').filter((e) => /docs\\.google\\.com\\/spreadsheets/.test(e.name));
+    const script = performance.getEntriesByType('resource').find((e) => /\\/assets\\/(index|courses)-[^/]*\\.js$/.test(e.name));
+    return {
+      live: (document.querySelector('footer.legal .legal-stamp')?.textContent ?? '').includes('read live') && sheet.length > 0, // the footer's stamp says where the rules came from
+      left: Object.keys(window.__cseRulesHeadStart ?? { missing: 1 }),
+      requests: sheet.length,
+      tabs: new Set(sheet.map((e) => e.name)).size,
+      firstStart: Math.round(Math.min(...sheet.map((e) => e.startTime))),
+      slowest: Math.round(Math.max(...sheet.map((e) => e.duration))),
+      scriptEnd: script ? Math.round(script.responseEnd) : null,
+      scriptCached: script ? script.transferSize === 0 : true, // from the browser's cache: nothing to start before
+      scriptMs: script ? Math.round(script.responseEnd - script.startTime) : 0,
+    };
+  })())`));
+  if (!got.live) {
+    console.log(`  rules head start (${label}): skipped — Google did not answer, the saved copy is in use`);
+    return;
+  }
+  if (got.left.length > 0) throw new Error(`${label}: the loader must take over every request the <head> started; left waiting: ${got.left.join(', ')}`);
+  // Measurable only when the script took a while to arrive: from the preview
+  // server on this machine it can land in 4 ms, the same moment as the requests.
+  if (!got.scriptCached && got.scriptMs >= 15 && got.scriptEnd !== null && got.firstStart >= got.scriptEnd) throw new Error(`${label}: the rules must start downloading before the app's script has finished loading: ` + JSON.stringify(got));
+  if (got.slowest < 1900 && got.requests !== got.tabs) throw new Error(`${label}: with no request slow enough to hedge, each tab must be asked for once (the <head> request, taken over): ` + JSON.stringify(got));
+  console.log(`  rules head start (${label}): ${got.tabs} tabs, ${got.requests} requests, the first at ${got.firstStart} ms (the app's script ${got.scriptCached ? 'came from the cache' : `finished at ${got.scriptEnd} ms`}); none left waiting`);
+}
+
 export async function driveCourses(s, baseUrl) {
   await s.open(new URL('courses.html', baseUrl).href);
   await s.waitFor(`document.querySelectorAll('.all-courses table.course-rules tbody tr').length > 10`);
+  await checkHeadStart(s, 'course-rules page');
   await s.shot('courses-list');
   await checkSheetLink(s, 'courses');
   const count = await s.evalJs(`document.querySelector('.count')?.textContent`);

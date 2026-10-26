@@ -349,7 +349,9 @@ last edit (see "Sync" below).
   context capsule (design decisions, invariants, recipes); `.claude/skills/run-app/` teaches
   Claude Code to launch and screenshot the app.
 - **Published-CSV URLs** live in `data/sheet-urls.json` (the only file to edit if the sheet is
-  ever re-published or replaced). Its `sheet_edit_url` is the spreadsheet's own link, shown on
+  ever re-published or replaced). Since 2026-10-26 the build also writes the five tab links into
+  the top of both pages, so the rules start downloading while the app's script does
+  (`src/data/head-start.ts`); every deploy rebuilds, so an edited link reaches both places. Its `sheet_edit_url` is the spreadsheet's own link, shown on
   both pages with a "faculty only" note (`src/ui/sheet-source.ts`, 2026-09-04) — the sheet is
   shared with faculty, not students, who see the same rules on `courses.html`. Moving the sheet
   between Drive locations changes none of these addresses: the file id, the published `/d/e/…`

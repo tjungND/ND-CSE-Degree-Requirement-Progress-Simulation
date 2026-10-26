@@ -18,6 +18,7 @@ import sheetUrls from '../../data/sheet-urls.json' with { type: 'json' }; // the
 import { rulesFromCsvTexts, type CsvTexts } from './assemble.ts';
 import { ndDateOnly } from './rules-date.ts';
 import { dateLiveRules, readRulesSnapshot, readSnapshotMeta, type SnapshotMeta, type SnapshotTab } from './snapshot-meta.ts';
+import { SHEET_FETCH_INIT, takeHeadStart } from './head-start.ts';
 import type { Rules } from './types.ts';
 
 /** Google's publish-to-web endpoint answers a tab in well under a second most
@@ -173,12 +174,16 @@ async function requestOnce(tab: TabName, url: string, signal: AbortSignal): Prom
   let res: Response;
   let text: string;
   try {
-    res = await fetch(url, {
-      signal,
-      // The published CSV is public; no credentials, no cookies.
-      credentials: 'omit',
-      cache: 'no-cache',
-    });
+    // The page's <head> may already have started this request while the
+    // script was downloading (src/data/head-start.ts, 2026-10-26): the first
+    // request for the tab takes it over — this attempt's abort reaches it —
+    // and every later one (a hedge, a retry, "Try again") asks afresh.
+    const early = takeHeadStart(tab, url);
+    if (early) {
+      if (signal.aborted) early.controller?.abort();
+      else signal.addEventListener('abort', () => early.controller?.abort(), { once: true });
+    }
+    res = await (early?.promise ?? fetch(url, { signal, ...SHEET_FETCH_INIT }));
     if (!res.ok) {
       // A 5xx is Google having a bad minute and reloading is worth a try; a
       // 4xx is an answer about this URL that will not change on a reload —

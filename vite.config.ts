@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
+import { HEAD_START_MARK, headStartScript } from './src/data/head-start.ts';
 import { snapshotMetaOf } from './src/data/snapshot-meta.ts';
 
 /** Which code this build is (DGS 2026-10-11, item 8: "stamp every result"):
@@ -61,6 +62,24 @@ function rulesSnapshotFiles(): Plugin {
   };
 }
 
+/** The rules start downloading while the script does (2026-10-26;
+ * src/data/head-start.ts explains): a few lines at the top of each page's
+ * <head>, written from data/sheet-urls.json at every build and on the dev
+ * server, so a new tab link reaches them with the next deploy like everything
+ * else. */
+function rulesHeadStart(): Plugin {
+  return {
+    name: 'rules-head-start',
+    // At the page's own marker, high in <head>: above the stylesheets Vite
+    // adds, since a script below a stylesheet waits for it to download.
+    transformIndexHtml(html, ctx) {
+      if (!html.includes(HEAD_START_MARK)) throw new Error(`${ctx.filename}: the line ${HEAD_START_MARK} is missing from <head> — the rules would start downloading late (vite.config.ts rulesHeadStart)`);
+      const sheetUrls = JSON.parse(readFileSync(new URL('data/sheet-urls.json', import.meta.url), 'utf8')) as Record<string, unknown>;
+      return html.replace(HEAD_START_MARK, `<script>\n${headStartScript(sheetUrls).replace(/^/gm, '      ')}\n    </script>`);
+    },
+  };
+}
+
 // base './' → relative asset paths, so dist/ works on GitHub Pages under a
 // project path, on any plain web host, from file:// (the pages, not the saved
 // copy of the rules — a fetch is refused from file:// — see W1 above), and
@@ -69,7 +88,7 @@ function rulesSnapshotFiles(): Plugin {
 // Tests do NOT run through vite — see the note in package.json.
 export default defineConfig({
   base: './',
-  plugins: [rulesSnapshotFiles()],
+  plugins: [rulesSnapshotFiles(), rulesHeadStart()],
   define: { __APP_BUILD__: JSON.stringify(buildInfo()) },
   build: {
     outDir: 'dist',

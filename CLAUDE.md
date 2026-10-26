@@ -78,7 +78,8 @@ it lives in git history only. `DGS-READ-THIS.md` was replaced by `README.md` on 
 - `src/engine/` — pure functions only: `audit(student, rules, today)`. No DOM, no fetch, no
   `Date.now()` ("today" is an argument so tests are deterministic). One function per
   requirement with its handbook sentence quoted above it; stable requirement ids in `audit.ts`.
-- `src/data/` — published-CSV fetch → parse → validate → typed `Rules`. Validation reports bad
+- `src/data/` — published-CSV fetch → parse → validate → typed `Rules` (the fetch starts in each
+  page's `<head>` while the script downloads — `src/data/head-start.ts`, 2026-10-26). Validation reports bad
   rows in plain English (the person who broke it is a DGS editing a spreadsheet). On fetch
   failure: THROW a typed `RulesLoadError` — the loading card (`src/ui/loading.ts`) then suggests
   reloading first and offers `data/snapshot.json` (raw CSV text) as a student-chosen fallback,
