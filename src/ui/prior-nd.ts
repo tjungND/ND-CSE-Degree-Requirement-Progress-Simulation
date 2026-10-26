@@ -23,7 +23,7 @@ import { NOTRE_DAME, isNotreDameInstitution } from '../data/external.ts';
 import { beforeProgramStart, isEarlyStartCourse } from '../engine/early-start.ts';
 import { conferralTerm, termIndex, termLabel } from '../engine/term.ts';
 import type { CourseEntry, Student, Term } from '../engine/types.ts';
-import { levelFromNumber } from '../transcript/parse.ts';
+import { levelFromNumber } from '../transcript/level.ts'; // not parse.ts: the reader loads at the Import click (2026-10-26)
 
 /** Bachelor's or Master's prior coursework. The level the student was
  * registered at (the transcript's UG/GR column) decides; without it, the term

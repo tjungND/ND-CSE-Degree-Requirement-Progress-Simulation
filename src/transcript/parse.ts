@@ -17,12 +17,8 @@ import { joinSpacedSubject } from '../data/assemble.ts';
 import { conferralTerm, termIndex, termLabel, termOfDate } from '../engine/term.ts';
 import type { Grade, Season, Term, TermGpa } from '../engine/types.ts';
 import { looksLikeNotreDameTranscript } from './nd-markers.ts';
-
-/** The level the student was registered at when taking the course — the
- * transcript's Level column (UG / GR…), else the term's level block ("Term
- * Totals (Undergraduate)", "College: Graduate School"), else the course number
- * (≥ 60000 graduate, < 50000 undergraduate; 5xxxx stays unknown). */
-type RegisteredLevel = 'undergraduate' | 'graduate';
+import { levelFromNumber, type RegisteredLevel } from './level.ts';
+export { levelFromNumber };
 
 export interface ParsedCourse {
   courseId: string;
@@ -760,14 +756,9 @@ export function totalsMismatchesOf(p: ParsedTranscript): TotalsMismatch[] {
   );
 }
 
-/** Notre Dame numbering: 1xxxx–4xxxx undergraduate, 6xxxx and up graduate;
- * 5xxxx (bridge courses) is taken by both and stays unknown. */
-export function levelFromNumber(courseId: string): RegisteredLevel | undefined {
-  const m = /\b(\d)\d{4}\b/.exec(courseId);
-  if (!m) return undefined;
-  const digit = Number(m[1]);
-  return digit >= 6 ? 'graduate' : digit <= 4 ? 'undergraduate' : undefined;
-}
+// levelFromNumber — Notre Dame's course-number rule — lives in level.ts since
+// 2026-10-26 (the page needs it before the reader loads); imported above and
+// re-exported, so `import { levelFromNumber } from './parse.ts'` still works.
 
 /** A print's page header or footer cell, between a table header and its
  * values at a page break: blank, "Page 2 of 3", the repeated "University of

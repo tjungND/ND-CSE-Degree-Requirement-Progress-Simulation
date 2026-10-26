@@ -21,7 +21,8 @@ import { gpaText } from '../engine/requirements/shared.ts';
 import { GPA_RANGE, formatValue, inRange, rangeSpan } from '../engine/ranges.ts';
 import { conferralTerm, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
 import type { CourseEntry, Student, Term, TermGpa } from '../engine/types.ts';
-import { parseTranscript, type DegreeAwarded, type EntryTermInference, type ParsedCourse, type TranscriptTerm, totalsMismatchesOf } from '../transcript/parse.ts';
+// The reader itself loads at the Import click, with pdf.js (2026-10-26): types only here.
+import type { DegreeAwarded, EntryTermInference, ParsedCourse, TranscriptTerm } from '../transcript/parse.ts';
 import { earlierDegreesState, forgetReadings, mergeReading, readBackgroundFromNdTerms, restoreEarlierDegrees, type ReadingResult } from './background-read.ts';
 import { el, inactiveButton, PREVIEW_OPEN_NOTE, SIMULATION_IMPORT_NOTE } from './dom.ts';
 import { plural } from './email-html.ts';
@@ -213,7 +214,9 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
     ndImportError = undefined;
     args.toast('Reading the transcript… (it never leaves this browser)');
     try {
-      const { pdfToLines } = await import('../transcript/pdf.ts'); // pdfjs loads lazily
+      // pdfjs and the Notre Dame transcript reader load lazily, together
+      // (the reader left the first download on 2026-10-26).
+      const [{ pdfToLines }, { parseTranscript, totalsMismatchesOf }] = await Promise.all([import('../transcript/pdf.ts'), import('../transcript/parse.ts')]);
       const lines = await pdfToLines(await file.arrayBuffer());
       // Kellogg's own instructions tell students to SCREENSHOT the page —
       // those PDFs have no text layer, and deserve a specific message,

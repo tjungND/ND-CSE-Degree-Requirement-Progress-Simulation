@@ -76,7 +76,6 @@ import { buildCombinedReviewRequest, reviewRequestCourses } from './review-reque
 import { priorStudyLabel, programHistory } from './program-history.ts';
 import { ndUndergraduateClause, notFinishedSentence, totalCreditsWord, transferRuleText } from './coursework-text.ts';
 import { alongTheWayBox, applyCourseTick, examsTickOffered } from './page-decisions.ts';
-import { advisorSummary } from './advisor-summary.ts';
 import { diagnosticsCard, footer, masthead, noticeStrip, snapshotBanner } from './page-frame.ts';
 import { type RequestCardArgs, askDgsCard, askGradAdminCard } from './request-cards.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
@@ -3116,7 +3115,10 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       {
         class: 'btn',
         'data-key': key,
-        onclick: () => {
+        onclick: async () => {
+          // The summary's builder loads at this click, not with the page
+          // (efficiency round, 2026-10-26): ~20 KB nobody needs until now.
+          const { advisorSummary } = await import('./advisor-summary.ts');
           const advisors = [student.milestones.advisorName, student.milestones.advisorName2].filter((n): n is string => !!n);
           // The processing request's transfer list (P3-emails-1).
           const transfers = processingItems(report, student, rules).transfers.map((t) => t.courseId);

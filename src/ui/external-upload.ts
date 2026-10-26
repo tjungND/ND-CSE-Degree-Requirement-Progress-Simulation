@@ -37,7 +37,6 @@ import { reclassifyNotreDameCourses } from './prior-nd.ts';
 import { unfinishedPriorLabel } from './program-history.ts';
 import { canonicalUniversityName } from './university-name.ts';
 import { confirmDialog } from './copy-dialog.ts';
-import { parseTranscript } from '../transcript/parse.ts';
 import { EARLIER_DEGREES_FIRST_NOTE, el, inactiveButton, option, PREVIEW_OPEN_NOTE, SIMULATION_IMPORT_NOTE } from './dom.ts';
 import { campusQuestion, MULTI_CAMPUS_SYSTEMS } from '../transcript/campus.ts';
 import { stripRegion, type StripRegion } from '../transcript/scan-strip.ts';
@@ -998,6 +997,7 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
       // for every degree the student took here, and the Notre Dame row reads
       // the earlier degrees, their courses and the entry term from it.
       // Accepting it here too listed every earlier course twice.
+      const { parseTranscript } = await import('../transcript/parse.ts'); // loads at the click since 2026-10-26
       if (parseTranscript(lines).isNotreDame) return fail(ndInPreviousRow(student));
       // A scan whose scanner embedded its own text (every page one image
       // covering the page, the text invisible over it — Batch C answer (6),

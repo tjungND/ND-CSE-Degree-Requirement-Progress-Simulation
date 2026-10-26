@@ -34,7 +34,7 @@ import type { ProgramHistory } from './program-history.ts';
 import { formatYmdLong } from './handbook.ts';
 import { allRequirementsMet } from './next-steps.ts';
 import { deadlineAlert, isNotStarted, standingColor, scoredRows, statusWord } from './report.ts';
-import { msLimitPassedClause, whyFor } from './advisor-summary.ts';
+import { msLimitPassedClause, whyFor } from './email-why.ts'; // not advisor-summary.ts, which loads at its button's click (2026-10-26)
 import { compareTerm } from '../engine/term.ts';
 import { sourceOf, sourcesLine } from './provenance.ts';
 import { ndPostingOf } from '../engine/nd-posting.ts';
