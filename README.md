@@ -537,10 +537,10 @@ rules sheet, so a Track A edit reaches it within five minutes like everywhere el
 
 Night mode (2026-10-04): both pages have an Auto · Light · Dark switch at the top, and Auto
 follows the reader's device — inside a WordPress frame too since 2026-10-25, as the csedept
-site's Notre Dame theme does. In the frame the night page takes that theme's own colours (navy
-page, white headings, gold links), so it reads as part of the host page. If the theme's colours
-ever change, the values are one block in `src/style-base.css` (`:root.embed[data-theme="dark"]`),
-each named after the theme colour it copies. A reader who flipped the theme's own Light/Dark
+site's Notre Dame theme does. At night both pages, framed or not, use that theme's own colours
+(navy page, white headings, gold links; 2026-10-25), so a frame reads as part of the host page.
+If the theme's colours ever change, the values are one block in `src/style-base.css`
+(`:root[data-theme="dark"]`), each named after the theme colour it copies. A reader who flipped the theme's own Light/Dark
 toggle against their device's setting can match the frame with its switch; Firefox matches it
 by itself.
 

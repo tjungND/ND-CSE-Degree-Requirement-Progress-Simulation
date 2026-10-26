@@ -82,83 +82,24 @@
   --failed: #b45309;
 }
 html { color-scheme: light; }
-/* Night mode. Screen only: a printout is always the light page. Contrast was
-   checked against --card and --bg for every text token (WCAG 1.4.3, 4.5:1). */
+/* Night mode. Screen only: a printout is always the light page. Contrast is
+   checked by axe-core in the e2e on both pages, full and framed (WCAG 1.4.3,
+   4.5:1).
+
+   The palette is Notre Dame's own night palette (DGS 2026-10-25). Both pages
+   sit in iframes on sites.nd.edu/csedept, whose Notre Dame theme (ndt 4.0,
+   conductor.nd.edu) has a night mode of its own: a navy page, navy raised
+   surfaces, white headings, gold links. The frame took it first ("csedept
+   site's dark mode color is different from the embed's colors. Can you match
+   them?"), then the full pages ("Change the colors of the full pages as
+   well."), so there is one night palette. The values are the theme's own
+   (ndt.css light-dark() pairs, read 2026-10-25), each named after the theme
+   colour it copies; the status colours and their tints are this app's (the
+   charcoal palette's, 2026-10-04 to 2026-10-25), which the theme has no
+   equivalent of. */
 @media screen {
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --navy: #9dbcf0;
-    --navy-fill: #2b5391;
-    --on-fill: #ffffff;
-    --gold: #c4a553;
-    --gold-text: #d8bd6c;
-    --ink: #e4e7ec;
-    --muted: #a5aebb;
-    --line: #363c46;
-    --bg: #121418;
-    --card: #1b1e24;
-    --ok: #63cf92;
-    --warn: #f0a650;
-    --bad: #f28b80;
-    --info: #92b8ef;
-    --grey: #9ca3af;
-    --surface-soft: #1f232a;
-    --note-bg: #342a12;
-    --note-bg-soft: #26221a;
-    --note-line: #6e5a22;
-    --note-line-soft: #62521f;
-    --note-ink: #ead08a;
-    --note-ink-strong: #f0d47a;
-    --note-accent: #c99700;
-    --alert-bg: #3b1b1b;
-    --alert-line: #7c3b3b;
-    --alert-ink: #f4b0aa;
-    --bad-bg: #3a1c19;
-    --bad-bg-soft: #2c1a19;
-    --official-bg: #1b2536;
-    --official-line: #3a4a66;
-    --official-ink: #c8d5ee;
-    --privacy-bg: #172a19;
-    --privacy-line: #2f5a33;
-    --privacy-ink: #b6deb6;
-    --navy-tint: #1d2a40;
-    --ok-tint: #16291e;
-    --ok-bg: #173323;
-    --warn-tint: #30271a;
-    --warn-bg: #382912;
-    --warn-line: #6e5428;
-    --warn-ink: #ebca8a;
-    --warn-ink-strong: #f2c274;
-    --due-bg: #4a2b12;
-    --due-ink: #ffb27a;
-    --due-line: #e0863a;
-    --info-bg: #1c2a40;
-    --combined-bg: #1a2638;
-    --combined-line: #34486a;
-    --adgs-bg: #2c2240;
-    --adgs-ink: #d0b8f2;
-    --quote-ink: #a6b0bd;
-    --neutral-bg: #262b34;
-    --neutral-bg-2: #2a2f38;
-    --neutral-bg-3: #2c2f36;
-    --na-bg: #191c21;
-    --neutral-bg-4: #2a2d33;
-    --locked-bg: #2a2f36;
-    --spinner-track: #3a414c;
-    --done: #2f9e55;
-    --failed: #d0782e;
-  }
-  /* Night mode INSIDE the WordPress frame (DGS 2026-10-25: "csedept site's dark
-     mode color is different from the embed's colors. Can you match them?").
-     Both pages sit in iframes on sites.nd.edu/csedept, whose Notre Dame theme
-     (ndt 4.0, conductor.nd.edu) has its own night palette: a navy page, navy
-     raised surfaces, white headings, gold links. In the frame the dark page
-     takes that palette instead of the charcoal one above, so it reads as part
-     of the host page, not a grey box on it. The values are the theme's own
-     (ndt.css light-dark() pairs, read 2026-10-25); every token not named here
-     — the status colours and their tints — keeps its night value above.
-     Contrast was checked as above (axe-core in the e2e, embed mode). */
-  :root.embed[data-theme="dark"] {
     --bg: #091b34; /* the theme's page */
     --card: #0c2340; /* its raised surfaces (cards, tags, dialogs): --brand-blue */
     --surface-soft: #0e2138; /* its table headers and striped rows */
@@ -188,14 +129,49 @@ html { color-scheme: light; }
     --na-bg: #0a1f3a;
     --locked-bg: #143865;
     --spinner-track: #37485e;
+    /* This app's status colours and their tints, unchanged. */
+    --ok: #63cf92;
+    --warn: #f0a650;
+    --bad: #f28b80;
+    --info: #92b8ef;
+    --note-bg: #342a12;
+    --note-bg-soft: #26221a;
+    --note-line: #6e5a22;
+    --note-line-soft: #62521f;
+    --note-ink: #ead08a;
+    --note-ink-strong: #f0d47a;
+    --note-accent: #c99700;
+    --alert-bg: #3b1b1b;
+    --alert-line: #7c3b3b;
+    --alert-ink: #f4b0aa;
+    --bad-bg: #3a1c19;
+    --bad-bg-soft: #2c1a19;
+    --privacy-bg: #172a19;
+    --privacy-line: #2f5a33;
+    --privacy-ink: #b6deb6;
+    --ok-tint: #16291e;
+    --ok-bg: #173323;
+    --warn-tint: #30271a;
+    --warn-bg: #382912;
+    --warn-line: #6e5428;
+    --warn-ink: #ebca8a;
+    --warn-ink-strong: #f2c274;
+    --due-bg: #4a2b12;
+    --due-ink: #ffb27a;
+    --due-line: #e0863a;
+    --adgs-bg: #2c2240;
+    --adgs-ink: #d0b8f2;
+    --done: #2f9e55;
+    --failed: #d0782e;
   }
 }
-/* Links in the frame's night palette are the host theme's gold. :where() keeps
-   these rules at the weight of a bare `a`, so every link that sets its own
-   colour (buttons, chips, the contact card's) keeps it. */
+/* Links at night are the theme's gold. :where() keeps these rules at the
+   weight of a bare `a`, so every link that sets its own colour (buttons,
+   chips, the contact card's) keeps it. In light mode links keep the
+   browser's own colours, as before. */
 @media screen {
-  :where(html.embed[data-theme="dark"]) a { color: var(--link); }
-  :where(html.embed[data-theme="dark"]) a:where(:visited) { color: var(--link-visited); }
+  :where(html[data-theme="dark"]) a { color: var(--link); }
+  :where(html[data-theme="dark"]) a:where(:visited) { color: var(--link-visited); }
 }
 
 * { box-sizing: border-box; }
@@ -441,7 +417,7 @@ html.embed, html.embed body { background: transparent; }
 }
 /* The frame's night page (Auto on a dark device since 2026-10-25, or Dark
    chosen — src/ui/theme.ts) paints its own ground: the host theme's navy
-   (`:root.embed` tokens above), so it is the host's colour on a dark host and
+   (the night tokens above), so it is the host's colour on a dark host and
    still a readable page if the host is light. */
 html.embed[data-theme="dark"], html.embed[data-theme="dark"] body { background: var(--bg); }
 /* No outer gutter: the frame already sits inside the host's content column, so

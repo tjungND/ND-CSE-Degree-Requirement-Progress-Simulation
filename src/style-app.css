@@ -326,13 +326,13 @@ table.courses .feeds-hidden .counts-toward.now { display: none; }
 /* Conditional satisfaction reads as its own band on the ring, in the same blue
    as its pill (interface review R2, 2026-09-18). */
 .dial-arc-conditional { opacity: 0.75; }
-/* In night mode --navy and --info are both light blues (about 1.5:1 apart), so
-   the met and conditionally met bands read as one arc (Opera review,
-   2026-10-10). The band was drawn half as wide there, a shape cue — which read
-   as a glitch: the ring seemed to pinch where the met band ended (DGS
-   2026-10-25). It is full width again, at half strength over the track, as in
-   light mode: about 2:1 from the met band on the charcoal page and 4:1 on the
-   frame's navy one (white met band), and about 2.5:1 from the empty track. */
+/* In the charcoal night palette --navy and --info were both light blues (about
+   1.5:1 apart), so the met and conditionally met bands read as one arc (Opera
+   review, 2026-10-10). The band was drawn half as wide there, a shape cue —
+   which read as a glitch: the ring seemed to pinch where the met band ended
+   (DGS 2026-10-25). It is full width again, at half strength over the track,
+   as in light mode: about 4:1 from the white met band of the navy night
+   palette, and about 2:1 from the empty track. */
 @media screen { :root[data-theme="dark"] .dial-arc-conditional { opacity: 0.5; } }
 /* The key to the ring's bands (interface review R2, 2026-09-18): what each
    band means, in words and in colour, so the ring never has to be guessed at.

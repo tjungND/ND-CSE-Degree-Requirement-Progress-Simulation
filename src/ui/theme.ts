@@ -17,8 +17,9 @@
 // 2026-10-25). From 2026-10-04 it stayed light there, because the host page
 // was light; the csedept site's Notre Dame theme (ndt 4.0) now has a night
 // mode of its own that follows the device unless the reader flips its toggle,
-// so a light frame sat as a pale box on a navy page. The frame's dark page
-// takes that theme's navy palette (style-base.css, `:root.embed`). A framed
+// so a light frame sat as a pale box on a navy page. The night palette is
+// that theme's navy one, on both pages, full and framed (style-base.css,
+// `:root[data-theme="dark"]`, DGS 2026-10-25). A framed
 // page cannot read the host's toggle (another origin; nothing is listened
 // for), but Firefox reports the host's own choice to the frame as the
 // device's setting, and the frame's own Auto · Light · Dark switch covers the

@@ -712,10 +712,10 @@ async function checkDeskFloats(s) {
 // text still meeting WCAG contrast (axe's color-contrast rule); Auto then puts
 // it back (headless browsers report a light device). The choice is saved, so
 // a reload stays dark until Auto is picked.
-// In the WordPress frame (`frame`), the dark page is the csedept host theme's
-// navy one (DGS 2026-10-25, style-base.css `:root.embed`): its page colour, a
-// plain link in its gold, a heading in its white — checked here so a token
-// edit that drifts from the host shows up.
+// The dark page is the csedept host theme's navy one (DGS 2026-10-25 — first
+// in the WordPress frame, then the full pages too; style-base.css): its page
+// colour, a plain link in its gold, a heading in its white — checked on every
+// page, full and framed, so a token edit that drifts from the host shows up.
 async function checkNightMode(s, page, label, { frame = false } = {}) {
   await s.evalJs(`document.querySelector('[data-key="theme.dark"]').click()`);
   await s.settle();
@@ -730,7 +730,7 @@ async function checkNightMode(s, page, label, { frame = false } = {}) {
         html: getComputedStyle(document.documentElement).backgroundColor,
         link: plain ? getComputedStyle(plain).color : '',
         linkText: plain?.textContent.trim().slice(0, 40) ?? '',
-        h2: getComputedStyle(document.querySelector('h2') ?? document.body).color,
+        h2: getComputedStyle(document.querySelector('.masthead h1') ?? document.body).color, // the heading colour (--navy) on both pages, full and framed
       };
     })())`),
   );
@@ -738,12 +738,13 @@ async function checkNightMode(s, page, label, { frame = false } = {}) {
   if (state.theme !== 'dark' || state.pressed !== 'true' || !(rgb.length === 3 && Math.max(...rgb) < 60)) {
     throw new Error('night mode: Dark did not turn the page dark — ' + JSON.stringify(state));
   }
-  if (frame) {
-    if (state.bg !== 'rgb(9, 27, 52)' || state.html !== 'rgb(9, 27, 52)') throw new Error('night mode in the frame: the page must be the host theme’s navy, rgb(9, 27, 52) — ' + JSON.stringify(state));
-    if (state.link !== 'rgb(221, 194, 120)') throw new Error('night mode in the frame: a plain link must be the host theme’s gold, rgb(221, 194, 120) — ' + JSON.stringify(state));
-    if (state.h2 !== 'rgb(255, 255, 255)') throw new Error('night mode in the frame: headings must be the host theme’s white — ' + JSON.stringify(state));
-    console.log(`  night mode in the frame: the host theme’s navy page, white headings, gold links (“${state.linkText}”)`);
-  }
+  const where = frame ? 'in the frame' : 'on the full page';
+  // On the full page <html> has no background of its own — the body's fills
+  // the whole window — so only the frame, which sets both, is checked for it.
+  if (state.bg !== 'rgb(9, 27, 52)' || (frame && state.html !== 'rgb(9, 27, 52)')) throw new Error(`night mode ${where}: the page must be the host theme’s navy, rgb(9, 27, 52) — ` + JSON.stringify(state));
+  if (state.link !== 'rgb(221, 194, 120)') throw new Error(`night mode ${where}: a plain link must be the host theme’s gold, rgb(221, 194, 120) — ` + JSON.stringify(state));
+  if (state.h2 !== 'rgb(255, 255, 255)') throw new Error(`night mode ${where}: headings must be the host theme’s white — ` + JSON.stringify(state));
+  console.log(`  night mode ${where}: the host theme’s navy page, white headings, gold links (“${state.linkText}”)`);
   await s.shot(`${page}-dark`);
   await checkAxe(s, `${label}, night mode`);
   await s.evalJs(`document.querySelector('[data-key="theme.auto"]').click()`);

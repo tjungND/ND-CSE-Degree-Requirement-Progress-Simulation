@@ -1,7 +1,8 @@
 // Night mode (DGS 2026-10-04): Auto follows the device, as Claude Desktop's
 // Appearance setting does; Light and Dark are fixed; embedded, Auto follows the
-// device too since 2026-10-25 (it stayed light before), in the host theme's
-// navy palette.
+// device too since 2026-10-25 (it stayed light before). The night palette is
+// the csedept site's Notre Dame theme's, on both pages, full and framed
+// (DGS 2026-10-25).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
@@ -34,18 +35,22 @@ describe('night mode (src/ui/theme.ts)', () => {
     }
   });
 
-  it('the frame’s night palette is the csedept host theme’s (ndt 4.0): navy page and surfaces, white headings, gold links', () => {
+  it('the night palette is the csedept host theme’s (ndt 4.0) on both pages, full and framed: navy page and surfaces, white headings, gold links', () => {
     const css = readFileSync(new URL('../src/style-base.css', import.meta.url), 'utf8');
-    const block = /:root\.embed\[data-theme="dark"\]\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    const block = /:root\[data-theme="dark"\]\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
     const token = (name: string) => new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`).exec(block)?.[1];
     assert.equal(token('bg'), '#091b34');
     assert.equal(token('card'), '#0c2340');
     assert.equal(token('ink'), '#e9ebee');
     assert.equal(token('navy'), '#ffffff');
     assert.equal(token('link'), '#ddc278');
-    // Inside the screen-only block, as the charcoal night palette is: paper stays light.
+    // One night palette: no second block for the frame (2026-10-25, its first form).
+    assert.ok(!/:root\.embed\[data-theme="dark"\]/.test(css), 'the frame has no palette of its own');
+    // Inside the screen-only block: paper stays light.
     const screen = css.indexOf('@media screen {');
-    assert.ok(screen >= 0 && screen < css.indexOf(':root.embed[data-theme="dark"]'));
+    assert.ok(screen >= 0 && screen < css.search(/:root\[data-theme="dark"\]\s*\{/));
+    // The links' gold applies on every page at night, not only in the frame.
+    assert.ok(css.includes(':where(html[data-theme="dark"]) a { color: var(--link); }'));
   });
 
   it('both pages’ first-paint scripts probe forced dark with the same link colour as theme.ts', () => {
@@ -71,7 +76,7 @@ describe('night mode (src/ui/theme.ts)', () => {
     for (const file of ['style-base.css', 'style-app.css', 'style-courses.css']) {
       const css = readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8');
       // Strip the token definitions and the @media print blocks (paper stays light).
-      let rest = css.replace(/:root\s*\{[^}]*\}/, '').replace(/:root\[data-theme="dark"\]\s*\{[^}]*\}/, '').replace(/:root\.embed\[data-theme="dark"\]\s*\{[^}]*\}/, '');
+      let rest = css.replace(/:root\s*\{[^}]*\}/, '').replace(/:root\[data-theme="dark"\]\s*\{[^}]*\}/, '');
       rest = rest.replace(/@media print\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
       assert.deepEqual(rest.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [], [], file);
     }
