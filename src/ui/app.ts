@@ -546,8 +546,30 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
    * CSS variable the Next steps box offsets by. The Next steps box's own
    * height is one too: the page leaves room for both at its end, so they
    * never sit over the footer's last lines (cross-browser review,
-   * 2026-10-10). Read after every render, when either box is folded or
-   * unfolded, and when the window resizes. */
+   * 2026-10-10).
+   *
+   * The heights are reported by a ResizeObserver (efficiency round,
+   * 2026-10-26): the browser measures the boxes in the layout it does anyway
+   * before painting, and a variable is written only when its value changes.
+   * Until then render() read `offsetHeight` itself, which forced the whole
+   * new page to be laid out on the spot — about a quarter of every re-render
+   * — and then laid out again once the variables were written. The observer
+   * also follows a box folding, unfolding or reflowing in a resized window.
+   * Called after every render (the boxes are new elements each time) and
+   * when either box is folded or unfolded (the two classes below). */
+  const floatVars = new Map<string, string>();
+  const setFloatVar = (name: '--float-warnings' | '--float-steps', value: string): void => {
+    if (floatVars.get(name) === value) return;
+    floatVars.set(name, value);
+    document.documentElement.style.setProperty(name, value);
+  };
+  const floatHeight = (box: Element): string => `${(box as HTMLElement).offsetHeight + 8}px`;
+  const floatObserver =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver((entries) => {
+          for (const e of entries) setFloatVar(e.target.classList.contains('warnings') ? '--float-warnings' : '--float-steps', floatHeight(e.target));
+        })
+      : undefined;
   function layoutFloats(): void {
     const warnings = root.querySelector<HTMLElement>('.warnings.floating');
     const steps = root.querySelector<HTMLElement>('.attention.floating');
@@ -555,14 +577,24 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // `has-floats` while either box is on the page, so the toast stack keeps
     // clear of them (U16); `two-floats` while BOTH are open, so the pair is
     // capped together and the report keeps most of the window (U15). Set
-    // before the heights are read — the cap changes them.
+    // before the heights are measured — the cap changes them.
     const open = (box: HTMLElement | null): boolean => box !== null && !box.classList.contains('folded');
     document.documentElement.classList.toggle('has-floats', warnings !== null || steps !== null);
     document.documentElement.classList.toggle('two-floats', open(warnings) && open(steps));
-    document.documentElement.style.setProperty('--float-warnings', warnings ? `${warnings.offsetHeight + 8}px` : '0px');
-    document.documentElement.style.setProperty('--float-steps', steps ? `${steps.offsetHeight + 8}px` : '0px');
+    if (!warnings) setFloatVar('--float-warnings', '0px');
+    if (!steps) setFloatVar('--float-steps', '0px');
+    if (floatObserver) {
+      floatObserver.disconnect();
+      if (warnings) floatObserver.observe(warnings);
+      if (steps) floatObserver.observe(steps);
+    } else {
+      // A browser without ResizeObserver (older than this page's floor): read
+      // the heights now, as before 2026-10-26.
+      if (warnings) setFloatVar('--float-warnings', floatHeight(warnings));
+      if (steps) setFloatVar('--float-steps', floatHeight(steps));
+    }
   }
-  window.addEventListener('resize', layoutFloats);
+  if (!floatObserver) window.addEventListener('resize', layoutFloats);
 
   /** Choices the page makes for the student (DGS 2026-09-12): whenever the
    * record itself shows the best answer, fill it in, say so in a toast, and
