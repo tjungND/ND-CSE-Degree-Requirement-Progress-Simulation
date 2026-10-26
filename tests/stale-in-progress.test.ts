@@ -13,6 +13,7 @@ import { audit } from '../src/engine/audit.ts';
 import type { CourseEntry, Student } from '../src/engine/types.ts';
 import { ORDER } from '../src/ui/next-step.ts';
 import { nextSteps, STEP_KEYS } from '../src/ui/next-steps.ts';
+import { simulationWarnings } from '../src/ui/simulation.ts';
 import { buildRules, loadScenario } from './helpers.ts';
 
 const rules = buildRules();
@@ -43,7 +44,7 @@ describe('courses still In progress after their semester ended (U21)', () => {
     const ip = (courseId: string, season: 'fall' | 'spring', year: number, origin: 'nd' | 'transfer' = 'nd'): CourseEntry =>
       ({ courseId, credits: 3, term: { season, year }, grade: 'IP', origin, ...(origin === 'transfer' ? { institution: 'Example Institute of Technology' } : {}) }) as CourseEntry;
     const groups = staleInProgressTerms([ip('CSE 60876', 'fall', 2026), ip('CSE 60770', 'fall', 2026), ip('CSE 60770', 'fall', 2026), ip('CSE 60321', 'spring', 2026)], '2027-03-01');
-    assert.deepEqual(groups.map(staleInProgressSentence), [
+    assert.deepEqual(groups.map((g) => staleInProgressSentence(g)), [
       'Spring 2026 has ended and CSE 60321 still reads In progress — import your updated Notre Dame transcript (Import again) or set its grade.',
       WARNING,
     ]);
@@ -54,6 +55,25 @@ describe('courses still In progress after their semester ended (U21)', () => {
     );
     // A Notre Dame course in the group brings the import path back for it.
     assert.match(staleInProgressSentence(staleInProgressTerms([ip('CS 53000', 'fall', 2026, 'transfer'), ip('CSE 60770', 'fall', 2026)], '2027-03-01')[0]!), /^Fall 2026 has ended and CS 53000, CSE 60770 still read In progress — import your updated/);
+  });
+  it('in simulation mode the warning drops "Import again" and speaks of the plan (DGS 2026-10-25)', () => {
+    const report = audit(sc.student, rules, sc.today);
+    const sim = simulationWarnings(report);
+    assert.deepEqual(
+      sim.warnings.filter((w) => /has ended and/.test(w)),
+      ['In this simulation, Fall 2026 has ended and CSE 60770, CSE 60876 still read In progress — give each course the grade you expect under Coursework.'],
+    );
+    // Every other warning is the engine's own, in its place; the report itself is not mutated.
+    assert.deepEqual(sim.warnings.filter((w) => !/has ended and/.test(w)), report.warnings.filter((w) => !/has ended and/.test(w)));
+    assert.equal(sim.warnings.indexOf(sim.warnings.find((w) => /has ended and/.test(w))!), report.warnings.indexOf(WARNING));
+    assert.ok(report.warnings.includes(WARNING));
+    assert.equal(sim.requirements, report.requirements);
+    // One course; a group with no Notre Dame course reads the same in the mode.
+    const one = staleInProgressTerms([{ courseId: 'CS 53000', credits: 3, term: { season: 'spring', year: 2026 }, grade: 'IP', origin: 'transfer', institution: 'Example Institute of Technology' } as CourseEntry], '2027-03-01')[0]!;
+    assert.equal(staleInProgressSentence(one, true), 'In this simulation, Spring 2026 has ended and CS 53000 still reads In progress — give it the grade you expect under Coursework.');
+    // No stale course: the very same report object back.
+    const fresh = audit(sc.student, rules, '2026-11-01');
+    assert.equal(simulationWarnings(fresh), fresh);
   });
   it('the Next steps list carries the step, right after "Check what your transcript set", linked to the Transcripts card', () => {
     assert.equal(STEP_KEYS.indexOf('grades.update'), STEP_KEYS.indexOf('standing.check') + 1);

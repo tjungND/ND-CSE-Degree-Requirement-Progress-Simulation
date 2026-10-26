@@ -1176,6 +1176,17 @@ async function driveSimulation(s, baseUrl) {
   if (!moved.status.startsWith('Simulated current semester: ' + later)) throw new Error('a semester change must be announced: ' + moved.status);
   if (moved.year !== later.split(' ')[1]) throw new Error('the course form’s year must default to the simulated year: ' + JSON.stringify([moved.year, later]));
   if (moved.real !== realBefore) throw new Error('changing the semester must not touch the real record’s key');
+  // Two years on, the example's in-progress courses sit in an ended semester:
+  // the warning names them without "Import again", inert in the mode, and
+  // the Next steps item links to Coursework (DGS 2026-10-25).
+  const simStale = JSON.parse(await s.evalJs(`JSON.stringify({
+    lines: [...document.querySelectorAll('.warnings .warning-line')].map((e) => e.textContent.replace(/^⚠ /, '')).filter((l) => /has ended and/.test(l)),
+    href: document.querySelector('[data-key="report.nextsteps"] li[data-step="grades.update"] a')?.getAttribute('href') ?? '',
+  })`));
+  if (simStale.lines.length === 0 || !simStale.lines.every((l) => /^In this simulation, (Spring|Summer|Fall) \d{4} has ended and .* still reads? In progress — give (it|each course) the grade you expect under Coursework\.$/.test(l)) || simStale.href !== '#coursework')
+    throw new Error('in simulation mode an ended semester’s In progress courses must be warned about without “Import again”: ' + JSON.stringify(simStale));
+  await s.shotElement('simulation-stale-grades', '.warnings');
+  console.log('  simulation, ended semester: ' + simStale.lines[0]);
   await checkCardStripes(s, ['bad', 'line']); // two years on, the example has overdue cards
 
   // Plan two courses in the simulated semester: one the sheet knows, with the

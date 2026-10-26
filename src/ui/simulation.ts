@@ -18,6 +18,8 @@
 // Everything in this file is DOM-free except the three localStorage calls
 // (mirroring state.ts), so tests/simulation.test.ts can cover the rest.
 import type { SavedStamp } from './stamp.ts';
+import { staleInProgressSentence } from '../engine/allocate.ts';
+import type { AuditReport } from '../engine/types.ts';
 import { compareTerm, nthSemester, parseTermCode, startOfTerm, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
 import type { Season, Student, Term } from '../engine/types.ts';
 import { plural } from './email-html.ts';
@@ -85,6 +87,18 @@ export function clampSimulationTerm(term: Term, realIso: string): Term {
 export function simulationToday(term: Term, realIso: string): string {
   if (compareTerm(term, termOfDate(realIso)) <= 0) return realIso;
   return startOfTerm(term).date;
+}
+
+/** The report as the page shows it in simulation mode: each "has ended and
+ * … still read In progress" warning in its simulation wording — no "Import
+ * again", which is inert in the mode (DGS 2026-10-25, "yes, reword"; the
+ * Next steps item already dropped it, next-steps.ts). Every other warning,
+ * and every row, is the engine's own. */
+export function simulationWarnings(report: AuditReport): AuditReport {
+  const groups = report.staleInProgress ?? [];
+  if (groups.length === 0) return report;
+  const swap = new Map(groups.map((g) => [staleInProgressSentence(g), staleInProgressSentence(g, true)]));
+  return { ...report, warnings: report.warnings.map((w) => swap.get(w) ?? w) };
 }
 
 /** The picker's option values: the semester CODE the tables print ("SP28"),

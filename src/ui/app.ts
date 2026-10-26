@@ -35,6 +35,7 @@ import {
   simulationTermCode,
   simulationTerms,
   simulationToday,
+  simulationWarnings,
 } from './simulation.ts';
 import { checkedWithLine, resultStamp, savedStamp } from './stamp.ts';
 import { sourcesLine } from './provenance.ts';
@@ -665,6 +666,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       report = audit(student, rules, todayIso());
       notice(autoNotices.join(' '));
     }
+    // In simulation mode a course "still In progress" after its semester ended
+    // is warned about without "Import again", inert there (DGS 2026-10-25).
+    if (simulation) report = simulationWarnings(report);
     // Nothing entered yet: the report describes the degree, not the student
     // (2026-09-08). Every row would otherwise read "Not yet" as if the student
     // had failed thirteen checks they have not been asked about.

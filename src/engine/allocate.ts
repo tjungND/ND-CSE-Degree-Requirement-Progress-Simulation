@@ -798,11 +798,21 @@ export function staleInProgressTerms(courses: readonly CourseEntry[], today?: st
  * CSE 60876 still read In progress — import your updated Notre Dame
  * transcript (Import again) or set each course’s grade." A group with no
  * Notre Dame course has no transcript to import again, so it gets the grade
- * path alone. */
-export function staleInProgressSentence(g: StaleInProgress): string {
+ * path alone.
+ *
+ * `simulation`: the page's simulation mode (DGS 2026-10-09), where the
+ * imports are inert and "today" is the simulated semester's, so the semester
+ * may have ended only in the plan. The page swaps this variant in for the engine's
+ * (simulation.ts `simulationWarnings`; DGS 2026-10-25: "yes, reword"), in the
+ * words of the mode's own course hint: "In this simulation, Fall 2026 has
+ * ended and CSE 60770 still reads In progress — give it the grade you expect
+ * under Coursework." The engine itself never knows the mode. */
+export function staleInProgressSentence(g: StaleInProgress, simulation = false): string {
   const one = g.courseIds.length === 1;
+  const still = `${g.courseIds.join(', ')} still ${one ? 'reads' : 'read'} In progress`;
+  if (simulation) return `In this simulation, ${termLabel(g.term)} has ended and ${still} — give ${one ? 'it' : 'each course'} the grade you expect under Coursework.`;
   const fix = `set ${one ? 'its' : 'each course’s'} grade`;
-  return `${termLabel(g.term)} has ended and ${g.courseIds.join(', ')} still ${one ? 'reads' : 'read'} In progress — ${g.nd ? `import your updated Notre Dame transcript (Import again) or ${fix}` : fix}.`;
+  return `${termLabel(g.term)} has ended and ${still} — ${g.nd ? `import your updated Notre Dame transcript (Import again) or ${fix}` : fix}.`;
 }
 
 /** Classify every course. Returns classified courses in a stable order
