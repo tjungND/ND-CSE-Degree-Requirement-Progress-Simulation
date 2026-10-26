@@ -148,6 +148,54 @@ html { color-scheme: light; }
     --done: #2f9e55;
     --failed: #d0782e;
   }
+  /* Night mode INSIDE the WordPress frame (DGS 2026-10-25: "csedept site's dark
+     mode color is different from the embed's colors. Can you match them?").
+     Both pages sit in iframes on sites.nd.edu/csedept, whose Notre Dame theme
+     (ndt 4.0, conductor.nd.edu) has its own night palette: a navy page, navy
+     raised surfaces, white headings, gold links. In the frame the dark page
+     takes that palette instead of the charcoal one above, so it reads as part
+     of the host page, not a grey box on it. The values are the theme's own
+     (ndt.css light-dark() pairs, read 2026-10-25); every token not named here
+     — the status colours and their tints — keeps its night value above.
+     Contrast was checked as above (axe-core in the e2e, embed mode). */
+  :root.embed[data-theme="dark"] {
+    --bg: #091b34; /* the theme's page */
+    --card: #0c2340; /* its raised surfaces (cards, tags, dialogs): --brand-blue */
+    --surface-soft: #0e2138; /* its table headers and striped rows */
+    --line: #37485e; /* its border, rgba(193, 205, 221, .25), on the page */
+    --ink: #e9ebee; /* its body text */
+    --muted: #c1cddd; /* its captions and table headers */
+    --grey: #a9b6c8;
+    --quote-ink: #c1cddd;
+    --navy: #ffffff; /* its headings */
+    --navy-fill: #ffffff; /* its chosen button: white, navy text */
+    --on-fill: #0c2340;
+    --navy-tint: #143865; /* its hover surface: --brand-blue-light */
+    --gold: #ae9142;
+    --gold-text: #ddc278; /* its gold for text: --brand-gold-light */
+    --link: #ddc278; /* its links… */
+    --link-visited: #bca566; /* …and visited links (15% darker) */
+    --official-bg: #12233f; /* its primary notice */
+    --official-line: #3f6494;
+    --official-ink: #cfdcee;
+    --info-bg: #12233f;
+    --combined-bg: #12233f;
+    --combined-line: #3f6494;
+    --neutral-bg: #112a4a;
+    --neutral-bg-2: #163256;
+    --neutral-bg-3: #163256;
+    --neutral-bg-4: #13304f;
+    --na-bg: #0a1f3a;
+    --locked-bg: #143865;
+    --spinner-track: #37485e;
+  }
+}
+/* Links in the frame's night palette are the host theme's gold. :where() keeps
+   these rules at the weight of a bare `a`, so every link that sets its own
+   colour (buttons, chips, the contact card's) keeps it. */
+@media screen {
+  :where(html.embed[data-theme="dark"]) a { color: var(--link); }
+  :where(html.embed[data-theme="dark"]) a:where(:visited) { color: var(--link-visited); }
 }
 
 * { box-sizing: border-box; }
@@ -385,15 +433,16 @@ abbr.term { text-decoration: underline dotted; text-decoration-color: var(--line
    back. See README.md § "Embedding these pages in a WordPress page". */
 /* The frame is transparent so the host's page colour shows through instead of
    our grey — which works until the host is dark, where navy headings on a dark
-   ground became unreadable (review R-26, 2026-09-18). The page keeps its own
-   light ground in that case: in the frame, Auto stays light (night mode,
-   2026-10-04 — src/ui/theme.ts), so a dark host gets a light page on its own
-   ground, and only a reader who picks Dark gets the dark page. */
+   ground became unreadable (review R-26, 2026-09-18). A light page on a dark
+   device (the reader picked Light) therefore keeps its own light ground. */
 html.embed, html.embed body { background: transparent; }
 @media (prefers-color-scheme: dark) {
   html.embed, html.embed body { background: var(--bg); }
 }
-/* Night mode chosen in the frame (src/ui/theme.ts — Auto stays light there). */
+/* The frame's night page (Auto on a dark device since 2026-10-25, or Dark
+   chosen — src/ui/theme.ts) paints its own ground: the host theme's navy
+   (`:root.embed` tokens above), so it is the host's colour on a dark host and
+   still a readable page if the host is light. */
 html.embed[data-theme="dark"], html.embed[data-theme="dark"] body { background: var(--bg); }
 /* No outer gutter: the frame already sits inside the host's content column, so
    our 20 px would be the second helping. The bottom keeps a little air. */

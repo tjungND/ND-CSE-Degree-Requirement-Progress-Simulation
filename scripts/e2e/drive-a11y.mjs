@@ -57,9 +57,16 @@ export async function driveA11y(s, baseUrl) {
   const coursesReady = `document.querySelectorAll('.all-courses table.course-rules tbody tr').length > 10`;
   await s.open(new URL('courses.html?embed=1', baseUrl).href, '.all-courses table.course-rules');
   await checkAxe(s, 'course-rules page, embed mode');
+  await checkNightMode(s, 'courses-embed', 'course-rules page, embed mode', { frame: true });
   for (const width of [360, 700, 1100]) await checkPhone(s, `courses-embed-${width}`, coursesReady, width);
+  await checkFrameFollowsDevice(s, new URL('courses.html?embed=1', baseUrl).href, '.all-courses table.course-rules');
   await s.open(new URL('?embed=1', baseUrl).href, '.masthead h1');
   await checkAxe(s, 'self-check page, embed mode');
+  await checkNightMode(s, 'app-embed', 'self-check page, embed mode', { frame: true });
+  // …and with a record on it, so the result cards, pills, meters and Next steps
+  // are measured in the frame's navy palette too (DGS 2026-10-25).
+  await loadExampleRecord(s, 'phd');
+  await checkNightMode(s, 'app-embed-example', 'self-check page, embed mode (example student)', { frame: true });
   await s.open(baseUrl, '.masthead h1');
   await checkWide(s, 'app', `document.querySelector('.layout')`);
   await s.setViewport({ width: 1400, height: 1900 });
@@ -705,15 +712,37 @@ async function checkDeskFloats(s) {
 // text still meeting WCAG contrast (axe's color-contrast rule); Auto then puts
 // it back (headless browsers report a light device). The choice is saved, so
 // a reload stays dark until Auto is picked.
-async function checkNightMode(s, page, label) {
+// In the WordPress frame (`frame`), the dark page is the csedept host theme's
+// navy one (DGS 2026-10-25, style-base.css `:root.embed`): its page colour, a
+// plain link in its gold, a heading in its white — checked here so a token
+// edit that drifts from the host shows up.
+async function checkNightMode(s, page, label, { frame = false } = {}) {
   await s.evalJs(`document.querySelector('[data-key="theme.dark"]').click()`);
   await s.settle();
   const state = JSON.parse(
-    await s.evalJs(`JSON.stringify({ theme: document.documentElement.dataset.theme, pressed: document.querySelector('[data-key="theme.dark"]').getAttribute('aria-checked'), bg: getComputedStyle(document.body).backgroundColor })`),
+    await s.evalJs(`JSON.stringify((() => {
+      // A link that sets no colour of its own: the host theme's gold in the frame.
+      const plain = [...document.querySelectorAll('a[href]')].find((a) => !a.className && a.offsetParent && !a.closest('.contact-card, .masthead .sub, .legal, .banner, .load-note'));
+      return {
+        theme: document.documentElement.dataset.theme,
+        pressed: document.querySelector('[data-key="theme.dark"]').getAttribute('aria-checked'),
+        bg: getComputedStyle(document.body).backgroundColor,
+        html: getComputedStyle(document.documentElement).backgroundColor,
+        link: plain ? getComputedStyle(plain).color : '',
+        linkText: plain?.textContent.trim().slice(0, 40) ?? '',
+        h2: getComputedStyle(document.querySelector('h2') ?? document.body).color,
+      };
+    })())`),
   );
   const rgb = (state.bg.match(/\d+/g) ?? []).slice(0, 3).map(Number);
   if (state.theme !== 'dark' || state.pressed !== 'true' || !(rgb.length === 3 && Math.max(...rgb) < 60)) {
     throw new Error('night mode: Dark did not turn the page dark — ' + JSON.stringify(state));
+  }
+  if (frame) {
+    if (state.bg !== 'rgb(9, 27, 52)' || state.html !== 'rgb(9, 27, 52)') throw new Error('night mode in the frame: the page must be the host theme’s navy, rgb(9, 27, 52) — ' + JSON.stringify(state));
+    if (state.link !== 'rgb(221, 194, 120)') throw new Error('night mode in the frame: a plain link must be the host theme’s gold, rgb(221, 194, 120) — ' + JSON.stringify(state));
+    if (state.h2 !== 'rgb(255, 255, 255)') throw new Error('night mode in the frame: headings must be the host theme’s white — ' + JSON.stringify(state));
+    console.log(`  night mode in the frame: the host theme’s navy page, white headings, gold links (“${state.linkText}”)`);
   }
   await s.shot(`${page}-dark`);
   await checkAxe(s, `${label}, night mode`);
@@ -728,6 +757,35 @@ async function checkNightMode(s, page, label) {
   if (back !== (forced ? 'dark' : 'light')) throw new Error(`night mode: Auto on a light device ${forced ? 'whose browser forces pages dark must be the page’s own dark theme' : 'must return the page to light'} — ` + back);
   if (forced) console.log('  the browser forces pages dark: Auto shows the page’s own dark theme');
   console.log(`  night mode: Dark turns the ${label} dark with no contrast violations; Auto returns it to light`);
+}
+
+// The frame's Auto follows the device, as the csedept host theme does (DGS
+// 2026-10-25; until then it stayed light in the frame). Driven where the
+// harness can set the device's light/dark setting — Chrome and WebKit; the
+// Firefox and Safari wrappers say they cannot, and the check is skipped there.
+// The page is loaded UNDER the setting, as a reader's device loads it, so the
+// first-paint script in <head> is what is checked, then a switch while open.
+async function checkFrameFollowsDevice(s, url, ready) {
+  try {
+    await s.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
+  } catch (e) {
+    if (!/no translation/.test(String(e?.message ?? e))) throw e;
+    console.log('  the frame’s Auto follows the device: skipped — this harness engine cannot set the device’s light/dark setting; the Chrome and WebKit runs drive it');
+    return;
+  }
+  try {
+    await s.open(url, ready);
+    const first = JSON.parse(await s.evalJs(`JSON.stringify({ theme: document.documentElement.dataset.theme, embed: document.documentElement.classList.contains('embed'), auto: document.querySelector('[data-key="theme.auto"]')?.getAttribute('aria-checked'), bg: getComputedStyle(document.body).backgroundColor })`));
+    if (first.theme !== 'dark' || !first.embed || first.auto !== 'true' || first.bg !== 'rgb(9, 27, 52)') throw new Error('on a dark device the frame’s Auto must be the host theme’s navy night page: ' + JSON.stringify(first));
+    await s.shot('courses-embed-dark-device');
+    await s.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+    await s.settle();
+    const back = await s.evalJs(`document.documentElement.dataset.theme`);
+    if (back !== 'light') throw new Error('the frame’s Auto must follow the device back to light while open: ' + back);
+    console.log('  the frame’s Auto follows the device: dark device → the host theme’s navy page; back to light while open');
+  } finally {
+    await s.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: '' }] });
+  }
 }
 
 async function checkAxe(s, label) {

@@ -536,8 +536,13 @@ away from it. Nothing is copied: the embedded page is the live page, still gener
 rules sheet, so a Track A edit reaches it within five minutes like everywhere else.
 
 Night mode (2026-10-04): both pages have an Auto · Light · Dark switch at the top, and Auto
-follows the reader's device. Inside a WordPress frame, Auto stays light to match the host page.
-A reader who picks Dark there still gets the dark page.
+follows the reader's device — inside a WordPress frame too since 2026-10-25, as the csedept
+site's Notre Dame theme does. In the frame the night page takes that theme's own colours (navy
+page, white headings, gold links), so it reads as part of the host page. If the theme's colours
+ever change, the values are one block in `src/style-base.css` (`:root.embed[data-theme="dark"]`),
+each named after the theme colour it copies. A reader who flipped the theme's own Light/Dark
+toggle against their device's setting can match the frame with its switch; Firefox matches it
+by itself.
 
 **Never paste the app's HTML into a WordPress page.** It would freeze at the day you pasted it.
 

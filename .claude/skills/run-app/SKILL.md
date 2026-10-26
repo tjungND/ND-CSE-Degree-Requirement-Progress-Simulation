@@ -41,6 +41,8 @@ decision said 560 — an 1100 px window (preview 582 px) showed two-line rows in
   Chrome run and CI never load it. `scripts/e2e/webkit.mjs` wraps a Playwright page in the SAME
   session shape the drivers use and translates the few DevTools commands they call directly
   (`Page.navigate`; `Emulation.setDeviceMetricsOverride` → the viewport size only;
+  `Emulation.setEmulatedMedia` → print media, or the device's light/dark setting as Playwright's
+  `colorScheme` (2026-10-25; the Firefox and Safari wrappers refuse the latter);
   `Input.dispatchKeyEvent` → `page.keyboard`); an untranslated command throws on purpose — add it there.
 - **Firefox (`E2E_BROWSER=firefox`, 2026-10-10)** — the INSTALLED Firefox (`FIREFOX_BIN` overrides
   the path), headless, from a throwaway profile in the temp folder (deleted at the end; its

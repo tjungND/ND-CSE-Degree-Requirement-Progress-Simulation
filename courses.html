@@ -11,12 +11,18 @@
     <link rel="icon" href="data:," />
     <!-- Night mode before the first paint (DGS 2026-10-04; src/ui/theme.ts has the
          rest and must agree): a saved Light/Dark wins; otherwise the device's
-         setting, except embedded (?embed=1), where Auto stays light; and dark
-         wherever the browser forces pages dark. -->
+         setting — embedded (?embed=1) too since 2026-10-25, where the page is
+         marked `embed` here so its first paint already has the frame's
+         palette; and dark wherever the browser forces pages dark. -->
     <script>
       try {
-        var p = localStorage.getItem('cse-degree-audit/v1/theme');
         var e = new URLSearchParams(location.search).get('embed') === '1' || location.hash === '#embed';
+        if (e) document.documentElement.classList.add('embed');
+        // Storage can be refused (all cookies blocked): the device decides then.
+        var p = null;
+        try {
+          p = localStorage.getItem('cse-degree-audit/v1/theme');
+        } catch (z) {}
         // A browser forcing pages dark (Opera's "Force dark pages") turns a
         // light-scheme link rgb(158, 158, 255): Auto is then the page's own dark
         // theme, in the frame too (src/ui/theme.ts browserForcesDark).
@@ -31,7 +37,7 @@
             a.remove();
           }
         } catch (y) {}
-        var d = p === 'dark' || (p !== 'light' && (f || (!e && matchMedia('(prefers-color-scheme: dark)').matches)));
+        var d = p === 'dark' || (p !== 'light' && (f || matchMedia('(prefers-color-scheme: dark)').matches));
         document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
       } catch (x) {}
     </script>

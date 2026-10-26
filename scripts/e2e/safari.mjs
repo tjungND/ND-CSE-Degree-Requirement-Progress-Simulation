@@ -254,7 +254,9 @@ async function openSafariSession({ call, s, home }, outDir) {
         return {};
       case 'Emulation.setEmulatedMedia':
         // WebDriver cannot switch the CSS media type: the page's own
-        // print/screen queries are swapped, as in firefox.mjs.
+        // print/screen queries are swapped, as in firefox.mjs. A device
+        // setting (prefers-color-scheme) cannot be emulated: the check is skipped.
+        if (params.features?.length) throw new Error('safari session: no translation for media features (' + params.features.map((f) => f.name).join(', ') + ')');
         if (params.media && params.media !== 'print') throw new Error(`safari session: only print media can be emulated, not "${params.media}"`);
         await evalJs(params.media ? PRINT_MEDIA_ON : PRINT_MEDIA_OFF);
         return {};

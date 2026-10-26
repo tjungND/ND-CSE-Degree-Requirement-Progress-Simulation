@@ -13,9 +13,16 @@
 // data, never sent anywhere. The resolved theme is written to <html> as
 // `data-theme="light|dark"`; the stylesheet's dark tokens hang off it.
 //
-// Embedded in a WordPress page (?embed=1), Auto stays light: the host page is
-// light, and a dark frame inside it would look broken. A reader who picks Dark
-// still gets it.
+// Embedded in a WordPress page (?embed=1), Auto follows the device too (DGS
+// 2026-10-25). From 2026-10-04 it stayed light there, because the host page
+// was light; the csedept site's Notre Dame theme (ndt 4.0) now has a night
+// mode of its own that follows the device unless the reader flips its toggle,
+// so a light frame sat as a pale box on a navy page. The frame's dark page
+// takes that theme's navy palette (style-base.css, `:root.embed`). A framed
+// page cannot read the host's toggle (another origin; nothing is listened
+// for), but Firefox reports the host's own choice to the frame as the
+// device's setting, and the frame's own Auto · Light · Dark switch covers the
+// rest (measured in Chrome, WebKit and Firefox, 2026-10-25).
 //
 // A browser that repaints light pages dark by itself (DGS 2026-10-10, Opera):
 // Opera's "Force dark pages" ignores the page's `color-scheme`, and its
@@ -27,9 +34,9 @@
 //
 // index.html and courses.html carry a few lines of the same logic inline in
 // <head>, so the first paint is already in the right theme; keep the two in
-// step (THEME_KEY, the embed rule and the forced-dark probe).
+// step (THEME_KEY, the forced-dark probe, and the `embed` class they put on
+// <html> so a framed page's first paint already has the frame's palette).
 import { el } from './dom.ts';
-import { isEmbedded } from './embed.ts';
 
 export type ThemePref = 'auto' | 'light' | 'dark';
 export const THEME_KEY = 'cse-degree-audit/v1/theme';
@@ -56,12 +63,13 @@ function saveThemePref(pref: ThemePref): void {
   }
 }
 
-/** Light or dark, for a choice, the device's current setting, the frame, and
- * whether the browser is forcing pages dark. Pure, so it is tested directly. */
-export function resolveTheme(pref: ThemePref, deviceDark: boolean, embedded: boolean, forcedDark = false): 'light' | 'dark' {
+/** Light or dark, for a choice, the device's current setting, and whether the
+ * browser is forcing pages dark — in the frame as on the full page (DGS
+ * 2026-10-25). Pure, so it is tested directly. */
+export function resolveTheme(pref: ThemePref, deviceDark: boolean, forcedDark = false): 'light' | 'dark' {
   if (pref !== 'auto') return pref;
   if (forcedDark) return 'dark';
-  return deviceDark && !embedded ? 'dark' : 'light';
+  return deviceDark ? 'dark' : 'light';
 }
 
 /** The colour a Chromium-based browser gives an unvisited link in the DARK
@@ -102,7 +110,7 @@ let current: ThemePref = 'auto';
 const toggles = new Set<HTMLElement>();
 
 function apply(): void {
-  document.documentElement.dataset.theme = resolveTheme(current, deviceDark(), isEmbedded(), browserForcesDark());
+  document.documentElement.dataset.theme = resolveTheme(current, deviceDark(), browserForcesDark());
   for (const t of toggles) {
     if (!t.isConnected) {
       toggles.delete(t);

@@ -443,6 +443,9 @@ export async function openFirefoxSession(conn, outDir) {
         await viewport(params.width, params.height);
         return {};
       case 'Emulation.setEmulatedMedia':
+        // A device setting (prefers-color-scheme) has no BiDi equivalent: the
+        // profile reports a light device (user.js), and the check is skipped.
+        if (params.features?.length) throw new Error('firefox session: no translation for media features (' + params.features.map((f) => f.name).join(', ') + ') — the profile reports a light device');
         // Only "print" and "back to the page's own" are used; see PRINT_MEDIA_ON.
         if (params.media && params.media !== 'print') throw new Error(`firefox session: only print media can be emulated, not "${params.media}"`);
         await evalJs(params.media ? PRINT_MEDIA_ON : PRINT_MEDIA_OFF);
