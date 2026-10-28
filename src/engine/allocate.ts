@@ -2514,8 +2514,18 @@ export function allocate(
     // DGS picks it" while the 60-credit row had already counted it as pending.
     const unreviewedCandidate =
       cc.caps.includes('transfer') && cc.tier === 'provisional' && cc.entry.origin === 'transfer' && cc.transferable !== 'yes' && cc.ndPosting === undefined;
+    // …nor ANY §5.2 transfer credit, decided or not (DGS 2026-10-27: "Only 17
+    // credits can be transferred now … If credits cannot be transferred
+    // because of the non-CSE limit or others, only those credits should be
+    // transferred"). Credit from another program reaches a Notre Dame degree
+    // only by transfer, so the part the allowance refuses is not transferred
+    // and counts toward nothing — the 60-credit row counted it while the §5.2
+    // row did not, and it never drew on §5.2's own cap. F1 stays for Notre
+    // Dame's own courses; credit the Graduate School already posted
+    // (`ndPosting`) was transferred, and keeps it.
+    const untransferred = unreviewedCandidate || (cc.caps.includes('transfer') && cc.ndPosting === undefined);
     const spillsToTotal =
-      opts.nonCseSpillsToTotal && excluded > 0 && !unknownCap && !unreviewedCandidate && boundCaps.length > 0 && boundCaps.every((id) => id === 'noncse');
+      opts.nonCseSpillsToTotal && excluded > 0 && !unknownCap && !untransferred && boundCaps.length > 0 && boundCaps.every((id) => id === 'noncse');
     if (spillsToTotal) {
       sums.totalOnly[cc.tier] += excluded;
       sums.total[cc.tier] += excluded;

@@ -232,7 +232,8 @@ describe('11: a course the §5.2 cap counts in part', () => {
   });
   // Verification, transfer-1: a cap other than §5.2's that cuts the course is
   // the one the table names, and the request does not call it over §5.2's.
-  it('a course the non-CSE allowance cuts names that allowance, not §5.2', async () => {
+  // Since DGS 2026-10-27 only the part that cap admits is submitted.
+  it('a course the non-CSE allowance cuts names that allowance, not §5.2, and only its admitted part is submitted', async () => {
     const { gradAdminRequest } = await import('../src/ui/grad-admin-request.ts');
     const r = buildRules({
       parameters: { ms_noncse_credits_max: '3' },
@@ -255,9 +256,15 @@ describe('11: a course the §5.2 cap counts in part', () => {
     const cell = req.items.courses.find((c) => c.courseId === 'MA 52000')?.credits ?? '';
     assert.match(cell, /^1 of 3 \(the rest over the 3-credit non-CSE cap \(§3\.2\)\)$/);
     assert.doesNotMatch(cell, /§5\.2/);
-    // §5.2 had room: the whole course goes to the Graduate School, with no "within the cap" part.
+    // Only the credit the allowance admits transfers (DGS 2026-10-27: "If
+    // credits cannot be transferred because of the non-CSE limit or others,
+    // only those credits should be transferred"), the rest named by its cap.
     assert.ok(!req.items.transfersOverCap.some((t) => t.courseId === 'MA 52000'));
-    assert.equal(req.items.transfers.find((t) => t.courseId === 'MA 52000')?.cappedCredits, undefined);
+    const ma = req.items.transfers.find((t) => t.courseId === 'MA 52000');
+    assert.equal(ma?.cappedCredits, 1);
+    assert.match(ma?.cutBy ?? '', /^over the 3-credit non-CSE cap \(§3\.2\)$/);
+    const action = req.items.actions.find((a) => a.includes('MA 52000')) ?? '';
+    assert.match(action, /\(Purdue University, Spring 2023, 3 credits — 1 of them to transfer, the rest over the 3-credit non-CSE cap \(§3\.2\)\) — recommended by the DGS in the course rules \(§5\.2\)\.$/);
   });
 });
 

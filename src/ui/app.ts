@@ -9,6 +9,7 @@ import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterC
 import { ndPostingOf } from '../engine/nd-posting.ts';
 import { fullTimeRecordsFrom, summerFullTimeFloor } from '../engine/requirements/residency.ts';
 import { compareTerm, normalizeEntryTerm, seasonName, semesterSeq, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
+import { formatCredits } from '../engine/credits.ts';
 import type { Rules } from '../data/types.ts';
 import { coursesNeedingDgsReviewFor } from '../engine/review.ts';
 import { shortName } from '../engine/short-names.ts';
@@ -3120,8 +3121,11 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           // (efficiency round, 2026-10-26): ~20 KB nobody needs until now.
           const { advisorSummary } = await import('./advisor-summary.ts');
           const advisors = [student.milestones.advisorName, student.milestones.advisorName2].filter((n): n is string => !!n);
-          // The processing request's transfer list (P3-emails-1).
-          const transfers = processingItems(report, student, rules).transfers.map((t) => t.courseId);
+          // The processing request's transfer list (P3-emails-1), with the part
+          // of a course that transfers when a cap cut the rest (DGS 2026-10-27).
+          const transfers = processingItems(report, student, rules).transfers.map((t) =>
+            t.cappedCredits !== undefined ? `${t.courseId} (${formatCredits(t.cappedCredits)} of its ${formatCredits(t.ndCredits ?? t.credits)} ${(t.ndCredits ?? t.credits) === 1 ? 'credit' : 'credits'})` : t.courseId,
+          );
           const built = advisorSummary(report, {
             todayIso: todayIso(),
             entryTerm: termLabel(student.entryTerm),

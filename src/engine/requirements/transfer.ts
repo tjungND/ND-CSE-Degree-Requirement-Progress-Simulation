@@ -220,7 +220,13 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       if (p.course.tier === 'provisional' && p.course.transferable !== 'yes' && p.course.caps.includes('transfer') && p.course.ineligibleReason === undefined) return false;
       return true;
     });
-    for (const p of excluded) parts.push(`${p.course.entry.courseId}: ${p.excludedReason ?? 'not counted'}`);
+    // A course a cap admits in part says how much is out (DGS 2026-10-27: the
+    // non-CSE nine cut INFO 6205 to one of its four credits).
+    for (const p of excluded) {
+      const whole = p.course.effectiveCredits ?? p.course.entry.credits;
+      const part = p.excluded < whole - 1e-9 ? `${formatCredits(p.excluded)} of its ${formatCredits(whole)} ${whole === 1 ? 'credit' : 'credits'} ` : '';
+      parts.push(`${p.course.entry.courseId}: ${part}${p.excludedReason ?? 'not counted'}`);
+    }
     if (status === 'not_applicable') {
       parts.push({ note: 'Nothing here needs a decision by the DGS — none of the courses you entered can transfer under §5.2, for the reason on each course’s line' });
     }
@@ -231,8 +237,14 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       });
     }
     // A `yes` in the course rules counts outright (2026-09-27); the Grad
-    // Admin still records it, so the row says which courses to send.
-    const approvedForAll = transfers.filter((c) => !c.superseded && c.transferable === 'yes' && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined);
+    // Admin still records it, so the row says which courses to send — not
+    // one a cap left no credit of (DGS 2026-10-27: TELE 5600, over the
+    // non-CSE nine, is not submitted; its own line above says why).
+    const admitted = (c: (typeof transfers)[number]): number => {
+      const a = ctx.alloc.perCourse.find((p) => p.course === c);
+      return a === undefined ? 0 : a.countedRegular + a.countedOther - (a.overCapToTotal ?? 0);
+    };
+    const approvedForAll = transfers.filter((c) => !c.superseded && c.transferable === 'yes' && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && admitted(c) > 0);
     if (approvedForAll.length > 0) {
       parts.push(`Approved by the DGS in the course rules: ${approvedForAll.map((c) => c.entry.courseId).join(', ')}${recorded ? ' — recorded by the Grad Admin, as you ticked under Approvals (§5.2)' : ''}`, ...(recorded ? [] : [{ note: upper(processWhen) }]));
     }

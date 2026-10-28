@@ -922,6 +922,9 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
       // Another cap, not §5.2's, cut the course (round 5 verification,
       // transfer-1): its own reason, as the course's line gives it.
       ...(a.boundCaps !== undefined && !a.boundCaps.includes('transfer') && a.excludedReason !== undefined ? { restOver: a.excludedReason } : {}),
+      // …and that cap's limit is missing from the sheet: the course cannot be
+      // checked, which is not "over" anything (DGS 2026-10-27 review).
+      ...(a.course.caps.some((id) => id !== 'transfer' && alloc.capUsage.get(id)?.limit === undefined) ? { restUnknown: true as const } : {}),
     }));
   const transferCap = alloc.capUsage.get('transfer')?.limit;
   return {

@@ -1742,7 +1742,7 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   (`pinsIgnored`/`bestAssignment`); the qualifier umbrella takes the `phd.credits.nd` row as a
   condition; `allocate.ts` sends credit refused only by the `noncse` cap to the total
   (`overCapToTotal`), which `capRow` in context.ts reports as "over the cap — count toward the
-  total-credit requirement only". Scenarios: phd-group-pin-is-a-preference,
+  total-credit requirement only" — not a §5.2 transfer course's unless already posted (DGS 2026-10-27). Scenarios: phd-group-pin-is-a-preference,
   phd-qualifier-needs-nine-nd-credits, mscse-undecided-project-inferred, mscse-undecided-either-route;
   e2e pins both toasts (drive-app: un-assign CSE 60876; drive-transcript: add CSE 68902 undecided).
   `detailExcludes` in a scenario's `expect` asserts a phrase is absent.
@@ -1823,7 +1823,11 @@ changed, so nobody undoes it by accident:
   `registrationCaps()` attaches a cap to the audit's own classified courses of each semester over the
   maximum that is not ticked, so the courses entered first fill it. Residency's three graduate-level
   credits a semester (`GRADUATE_LEVEL_CREDITS_MIN = 3`, Academic Code §4.1) live in `residency.ts`. `allocate(classified, caps, { nonCseSpillsToTotal })` —
-  true for the Ph.D. only (MSCSE non-CSE overflow counts toward nothing, §3.2 September text).
+  true for the Ph.D. only (MSCSE non-CSE overflow counts toward nothing, §3.2 September text), and never
+  for a course under §5.2's cap that the Graduate School has not posted (`untransferred`, DGS 2026-10-27):
+  refused transfer credit is not transferred, so it counts toward nothing. `report.transferCredits[].counted`
+  is the part on §5.2's cap (spill excluded); `restOver` names another cap that cut it, and
+  grad-admin-request.ts `processingItems` submits only that part (`cappedCredits` + `cutBy`).
   `fourk` is drawn by every level-4/5 course whatever its type; a listed row below level 4 counts
   nothing (`validate.ts` warns the DGS when such a row says it counts).
 - **Prior Notre Dame coursework** (`classifyPriorNdUndergraduate`): no five-year window (DGS);

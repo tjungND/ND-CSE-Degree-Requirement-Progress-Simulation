@@ -1,0 +1,250 @@
+{
+  "name": "phd-noncse-transfer-past-the-nine",
+  "description": "The DGS's case (2026-10-27): a finished master's from Northeastern University, six courses approved in the course rules at 4 credits each, four of them outside CSE (INFO, TELE), so §4.2's nine admits INFO 5100, INFO 6150 and one credit of INFO 6205. “Only 17 credits can be transferred now … If credits cannot be transferred because of the non-CSE limit or others, only those credits should be transferred.” The 7 credits the allowance refuses are not transferred and count toward nothing — not the 60 either (rule F1 stays for Notre Dame's own courses); the §5.2 row counts 17, the 60-credit row 17, and the Grad Admin request submits 17 (tests/transfer-noncse-request.test.ts). CSYE 7280 and INFO 7375 wait for the DGS; ENCP 6000 does not transfer.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 5100",
+          "course_title": "INFO 5100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 6150",
+          "course_title": "INFO 6150",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 6205",
+          "course_title": "INFO 6205",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "TELE 5600",
+          "course_title": "TELE 5600",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CSYE 6230",
+          "course_title": "CSYE 6230",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CSYE 7270",
+          "course_title": "CSYE 7270",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CSYE 7280",
+          "course_title": "CSYE 7280",
+          "transferable_PhD": "dgs_approval",
+          "transferable_MSCSE": "dgs_approval",
+          "is_cse": "yes"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 7375",
+          "course_title": "INFO 7375",
+          "transferable_PhD": "dgs_approval",
+          "transferable_MSCSE": "dgs_approval",
+          "is_cse": "no"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "ENCP 6000",
+          "course_title": "ENCP 6000",
+          "transferable_PhD": "no",
+          "transferable_MSCSE": "no",
+          "is_cse": "no"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    },
+    "priorMs": "completed",
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    },
+    "courses": [
+      {
+        "courseId": "INFO 5100",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 6150",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "ENCP 6000",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 6205",
+        "credits": 4,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSYE 7280",
+        "credits": 4,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSYE 6230",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSYE 7270",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "TELE 5600",
+        "credits": 4,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 7375",
+        "credits": 4,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      }
+    ],
+    "milestones": {},
+    "attestations": {}
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "17 of the 24 credits you may transfer are counted; 4 more pending review",
+        "INFO 6205: 3 of its 4 credits over the 9-credit non-CSE cap (§4.2)",
+        "TELE 5600: over the 9-credit non-CSE cap (§4.2)",
+        "Approved by the DGS in the course rules: INFO 5100, INFO 6150, INFO 6205, CSYE 6230, CSYE 7270."
+      ]
+    },
+    "phd.cap.noncse": {
+      "status": "met",
+      "detailIncludes": [
+        "INFO 6205: 3 credits not counted — beyond the allowance",
+        "TELE 5600: 4 credits not counted — beyond the allowance"
+      ],
+      "detailExcludes": [
+        "total-credit requirement only"
+      ]
+    },
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "17 of 60 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "INFO 6205": [
+      "counts 1 of 4 credits toward regular courses; 3 not counted — over the 9-credit non-CSE cap (§4.2)"
+    ],
+    "TELE 5600": [
+      "not counted — over the 9-credit non-CSE cap (§4.2)"
+    ]
+  }
+}

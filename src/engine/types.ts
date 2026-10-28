@@ -866,7 +866,7 @@ export interface AuditReport {
    * round 3, P3-prior-programs-5). `restOver` is set when a cap other than
    * §5.2's refused part of the course — the engine's own reason, e.g. "over
    * the 9-credit non-CSE cap (§3.2)" (round 5 verification, transfer-1). */
-  transferCredits?: { courseId: string; institution?: string; term: Term; counted: number; restOver?: string }[];
+  transferCredits?: { courseId: string; institution?: string; term: Term; counted: number; restOver?: string; restUnknown?: true }[];
   /** A first-semester student who has not finished a semester yet: no
    * cumulative GPA exists, and the GPA card and the emails say "no GPA yet"
    * (DGS 2026-10-14; requirements/shared.ts `noGpaYet`). */
