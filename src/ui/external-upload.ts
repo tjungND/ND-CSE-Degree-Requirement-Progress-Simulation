@@ -530,10 +530,12 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
   // 2026-09-22); while it is incomplete, from what is known so far
   // (priorSlotsForDraft, 2026-10-08) — every row until an answer rules it out.
   const background = args.student.background;
-  const answered = background ? priorSlotsFor(background) : priorSlotsForDraft(args.student.backgroundDraft);
+  const answered = background ? priorSlotsFor(background, args.student.program) : priorSlotsForDraft(args.student.backgroundDraft, args.student.program);
   // A row also stays while its preview is open, and a graduate row while its
   // courses are on file: an answer given meanwhile must not hide a transcript
   // being added, or one added — and its Remove (review of Option 1, 2026-10-08).
+  // The MSCSE's undergraduate rows already imported stay in the coursework
+  // table, each with its own remove button.
   const slots = answered.concat(
     (['bachelors', 'masters', 'phd'] as const).filter((l) => !answered.includes(l) && (preview?.slot === l || (l !== 'bachelors' && coursesInSlot(args.student, l).length > 0))),
   );
@@ -694,7 +696,10 @@ export function priorTranscriptSection(args: ExternalCardArgs): (HTMLElement | n
       el('strong', {}, 'A bachelor’s and a master’s from the same university'),
       ' (a 4+1 or 5+1) come as two transcripts or one. ',
       el('strong', {}, 'Two transcripts:'),
-      ' the bachelor’s in the Undergraduate row, the master’s in the Master’s row. ',
+      // The MSCSE has no Undergraduate row (DGS 2026-10-27).
+      args.student.program === 'phd'
+        ? ' the bachelor’s in the Undergraduate row, the master’s in the Master’s row. '
+        : ' import only the master’s, in the Master’s row — an undergraduate course counts toward nothing in the MSCSE (§5.2). ',
       el('strong', {}, 'One transcript covering both degrees:'),
       ' import it once, in the ',
       el('strong', {}, 'Previous Master’s Transcript'),

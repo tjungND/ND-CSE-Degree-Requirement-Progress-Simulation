@@ -212,26 +212,31 @@ export function completeBackground(b: Partial<Background> | undefined, program: 
 }
 
 /** Which previous-transcript rows this student needs. No answer yet → every
- * row, as before the questions existed. */
-export function priorSlotsFor(b: Background | undefined): PriorSlot[] {
-  if (!b) return ['bachelors', 'masters', 'phd'];
+ * row, as before the questions existed. The MSCSE has no Undergraduate row
+ * (DGS 2026-10-27: "In the MS tab, remove the prior undergrad transcript"):
+ * an undergraduate course counts toward nothing there — its credits do not
+ * transfer (§5.2), and core knowledge (§4.4.1) is the Ph.D.'s. */
+export function priorSlotsFor(b: Background | undefined, program: Program): PriorSlot[] {
+  const bachelors = program === 'phd';
+  if (!b) return bachelors ? ['bachelors', 'masters', 'phd'] : ['masters', 'phd'];
   const slots: PriorSlot[] = [];
   // A 4+1 elsewhere keeps the Undergraduate row: some universities issue two
   // transcripts, one per career, and the fold above the rows says which row
   // takes which shape.
-  if (b.bachelors === 'elsewhere') slots.push('bachelors');
+  if (bachelors && b.bachelors === 'elsewhere') slots.push('bachelors');
   if (b.graduate === 'elsewhere' || (asksAlsoElsewhere(b.graduate) && b.alsoElsewhere === true)) slots.push('masters', 'phd');
   return slots;
 }
 
 /** The rows for an answer still being given (2026-10-08, Option 1): a row
- * stays until the answer rules it out — the Undergraduate row unless the
- * bachelor's is known to be Notre Dame's, the Master's and Ph.D. rows unless
- * the earlier graduate history is known to hold nothing from elsewhere. */
-export function priorSlotsForDraft(b: Partial<Background> | undefined): PriorSlot[] {
-  if (!b) return ['bachelors', 'masters', 'phd'];
+ * stays until the answer rules it out — the Undergraduate row (Ph.D. only)
+ * unless the bachelor's is known to be Notre Dame's, the Master's and Ph.D.
+ * rows unless the earlier graduate history is known to hold nothing from
+ * elsewhere. */
+export function priorSlotsForDraft(b: Partial<Background> | undefined, program: Program): PriorSlot[] {
+  if (!b) return program === 'phd' ? ['bachelors', 'masters', 'phd'] : ['masters', 'phd'];
   const slots: PriorSlot[] = [];
-  if (b.bachelors === undefined || b.bachelors === 'elsewhere') slots.push('bachelors');
+  if (program === 'phd' && (b.bachelors === undefined || b.bachelors === 'elsewhere')) slots.push('bachelors');
   const noneElsewhere = b.graduate === 'none' || b.graduate === 'nd-other' || (asksAlsoElsewhere(b.graduate) && b.alsoElsewhere === false);
   if (!noneElsewhere) slots.push('masters', 'phd');
   return slots;

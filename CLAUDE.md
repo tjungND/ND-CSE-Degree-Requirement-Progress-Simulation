@@ -109,7 +109,7 @@ it lives in git history only. `DGS-READ-THIS.md` was replaced by `README.md` on 
   plus
   `external.ts`, the best-effort parser for transcripts from OTHER universities (all four
   transcript imports live in the single "Transcripts" card: Notre Dame + Previous
-  Undergraduate/Master's/Ph.D.; system-generated PDFs are read directly, scanned ones via the
+  Undergraduate (Ph.D. tab only, DGS 2026-10-27)/Master's/Ph.D.; system-generated PDFs are read directly, scanned ones via the
   opt-in in-browser OCR, English-language transcripts only; everything previewed and
   student-corrected before it is added; every course still needing a DGS decision — ND or
   external — feeds ONE combined review request in the "Ask the DGS to review" card). Matched against the sheet's optional

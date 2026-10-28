@@ -226,7 +226,7 @@ then reads "are effective as of <date>" instead — and keeps doing so until you
 
 ### A6b. A student asks about a course from another university
 
-Students import prior coursework (Previous Undergraduate / Master's / Ph.D. transcripts) and the app
+Students import prior coursework (Previous Undergraduate — Ph.D. tab only — / Master's / Ph.D. transcripts) and the app
 checks them against the **ExternalCourses** tab. When a student emails you a
 review request (the app writes ONE request covering their Notre Dame and
 external courses together), the email names the student (a line they fill in

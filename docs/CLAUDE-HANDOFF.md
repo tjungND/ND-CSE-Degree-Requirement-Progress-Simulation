@@ -251,11 +251,11 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   owns them (`backgroundQuestions(current, prefix, program, onChange, sequential, read)`), used
   INLINE in the Transcripts card (`fieldset#earlier-degrees`, prefix `earlier`, external-upload.ts)
   until the answer is complete, and by the "Change" dialog `openBackgroundDialog` (prefix
-  `background`) after. Row rules: `priorSlotsFor(background)` for an answer, `priorSlotsForDraft`
-  while unanswered. Next steps (next-steps.ts) and the standing card's “Earlier degrees” line link
+  `background`) after. Row rules: `priorSlotsFor(background, program)` for an answer, `priorSlotsForDraft`
+  while unanswered; the MSCSE never has the Undergraduate row (DGS 2026-10-27). Next steps (next-steps.ts) and the standing card's “Earlier degrees” line link
   to `#earlier-degrees` while it is open. The e2e consent helper (session-common.mjs) chooses the
   program, then answers “elsewhere / elsewhere / not the same place / finished” inline and clicks
-  Done, so every previous row exists for the transcript driver. drive-transcript.mjs's last block
+  Done, so every previous row exists for the transcript driver (on the Ph.D. tab; its MSCSE block checks the Undergraduate row is absent). drive-transcript.mjs's last block
   runs Option 1 end to end on tests/fixtures/nd-insidend-transcript.pdf (invented, insideND's
   positioned columns) and the Purdue master's fixture.
 - **Answer, draft, reading (Option 1, 2026-10-08).** `Student.background` = the complete answer, the

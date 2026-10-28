@@ -103,10 +103,10 @@ describe('folding readings into the record, and the student’s own answers', ()
     assert.equal(s.backgroundRead, undefined, 'Done is the check');
   });
   it('the transcript rows while the answer is incomplete', () => {
-    assert.deepEqual(priorSlotsForDraft(undefined), ['bachelors', 'masters', 'phd']);
-    assert.deepEqual(priorSlotsForDraft({ bachelors: 'nd-cse' }), ['masters', 'phd']);
-    assert.deepEqual(priorSlotsForDraft({ bachelors: 'nd-cse', graduate: 'none' }), []);
-    assert.deepEqual(priorSlotsForDraft({ bachelors: 'elsewhere', graduate: 'nd-mscse', alsoElsewhere: false }), ['bachelors']);
+    assert.deepEqual(priorSlotsForDraft(undefined, 'phd'), ['bachelors', 'masters', 'phd']);
+    assert.deepEqual(priorSlotsForDraft({ bachelors: 'nd-cse' }, 'phd'), ['masters', 'phd']);
+    assert.deepEqual(priorSlotsForDraft({ bachelors: 'nd-cse', graduate: 'none' }, 'phd'), []);
+    assert.deepEqual(priorSlotsForDraft({ bachelors: 'elsewhere', graduate: 'nd-mscse', alsoElsewhere: false }, 'phd'), ['bachelors']);
   });
   it('a saved file keeps the draft and what was read; a draft beside a complete answer is dropped', () => {
     const v = validateStudent({ ...phdStudent(), backgroundDraft: { bachelors: 'nd-cse', graduate: 'bogus' }, backgroundRead: { bachelors: 'your Notre Dame transcript shows …', nope: 'x' } } as never, []);

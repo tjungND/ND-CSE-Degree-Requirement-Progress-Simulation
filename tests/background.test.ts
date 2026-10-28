@@ -1,31 +1,38 @@
 // The earlier-degrees questions (DGS 2026-09-22): which transcript rows each answer needs.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { applyBackground, completeBackground, describeBackground, graduateOptions, graduateOptionsFor, priorSlotsFor, type Background } from '../src/ui/background.ts';
+import { applyBackground, completeBackground, describeBackground, graduateOptions, graduateOptionsFor, priorSlotsFor, priorSlotsForDraft, type Background } from '../src/ui/background.ts';
 import type { Program } from '../src/engine/types.ts';
 import { validateStudent } from '../src/ui/state.ts';
 import { phdStudent } from './helpers/student.ts';
 
 describe('earlier degrees → previous-transcript rows (DGS 2026-09-22)', () => {
   it('a bachelor’s elsewhere and no graduate degree: the Undergraduate row', () => {
-    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'none' }), ['bachelors']);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'none' }, 'phd'), ['bachelors']);
   });
   it('a bachelor’s and a graduate degree elsewhere, different universities: all three rows', () => {
-    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'elsewhere', samePlace: false }), ['bachelors', 'masters', 'phd']);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'elsewhere', samePlace: false }, 'phd'), ['bachelors', 'masters', 'phd']);
   });
   it('a 4+1 elsewhere: every row too — it may come as one transcript or two; the fold opens to say which row takes which', () => {
-    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'elsewhere', samePlace: true }), ['bachelors', 'masters', 'phd']);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'elsewhere', samePlace: true }, 'phd'), ['bachelors', 'masters', 'phd']);
   });
   it('a Notre Dame bachelor’s (CSE or another department) and no or a Notre Dame graduate degree: no previous row at all', () => {
-    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'none' }), []);
-    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-other', graduate: 'nd-mscse' }), []);
-    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'nd-other' }), []);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'none' }, 'phd'), []);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-other', graduate: 'nd-mscse' }, 'phd'), []);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'nd-other' }, 'phd'), []);
   });
   it('a Notre Dame bachelor’s and a graduate degree elsewhere: the Master’s and Ph.D. rows', () => {
-    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'elsewhere', samePlace: false }), ['masters', 'phd']);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'elsewhere', samePlace: false }, 'phd'), ['masters', 'phd']);
+  });
+  it('the MSCSE has no Undergraduate row, whatever the answer (DGS 2026-10-27)', () => {
+    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'none' }, 'mscse'), []);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'elsewhere', samePlace: true }, 'mscse'), ['masters', 'phd']);
+    assert.deepEqual(priorSlotsFor(undefined, 'mscse'), ['masters', 'phd']);
+    assert.deepEqual(priorSlotsForDraft({ bachelors: 'elsewhere' }, 'mscse'), ['masters', 'phd']);
+    assert.deepEqual(priorSlotsForDraft(undefined, 'mscse'), ['masters', 'phd']);
   });
   it('no answer yet: every row, as before the questions', () => {
-    assert.deepEqual(priorSlotsFor(undefined), ['bachelors', 'masters', 'phd']);
+    assert.deepEqual(priorSlotsFor(undefined, 'phd'), ['bachelors', 'masters', 'phd']);
   });
   it('a transfer from the MSCSE keeps its transfer term when given, and is complete without it (DGS 2026-09-28)', () => {
     assert.deepEqual(completeBackground({ bachelors: 'elsewhere', graduate: 'nd-mscse-transfer', transferredTerm: { season: 'spring', year: 2025 }, alsoElsewhere: false }, 'phd'), { bachelors: 'elsewhere', graduate: 'nd-mscse-transfer', transferredTerm: { season: 'spring', year: 2025 }, alsoElsewhere: false });
@@ -50,7 +57,7 @@ describe('earlier degrees → previous-transcript rows (DGS 2026-09-22)', () => 
     assert.ok(!graduateOptions('mscse').some(([v]) => v === 'nd-mscse-transfer'));
     assert.equal(completeBackground({ bachelors: 'elsewhere', graduate: 'nd-mscse-transfer' }, 'mscse'), undefined);
     assert.deepEqual(completeBackground({ bachelors: 'nd-cse', ndIntegrated: true, graduate: 'nd-mscse-transfer', alsoElsewhere: false }, 'phd'), { bachelors: 'nd-cse', ndIntegrated: true, graduate: 'nd-mscse-transfer', alsoElsewhere: false });
-    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'nd-mscse-transfer' }), []);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'nd-mscse-transfer' }, 'phd'), []);
     const s = { ...phdStudent(), program: 'phd' as const };
     applyBackground(s, { bachelors: 'nd-cse', graduate: 'nd-mscse-transfer', alsoElsewhere: false });
     assert.equal(s.priorMs, 'none');
@@ -67,8 +74,8 @@ describe('earlier degrees → previous-transcript rows (DGS 2026-09-22)', () => 
     const done = completeBackground({ bachelors: 'elsewhere', graduate: 'nd-mscse-transfer', transferredTerm: { season: 'fall', year: 2024 }, alsoElsewhere: true, finished: true }, 'phd');
     assert.deepEqual(done, { bachelors: 'elsewhere', graduate: 'nd-mscse-transfer', transferredTerm: { season: 'fall', year: 2024 }, alsoElsewhere: true, finished: true });
     assert.deepEqual(completeBackground({ bachelors: 'elsewhere', graduate: 'nd-mscse-transfer', alsoElsewhere: false, finished: true }, 'phd'), { bachelors: 'elsewhere', graduate: 'nd-mscse-transfer', alsoElsewhere: false }, 'a finished answer left over from a yes is dropped');
-    assert.deepEqual(priorSlotsFor(done), ['bachelors', 'masters', 'phd']);
-    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'nd-mscse-transfer', alsoElsewhere: true, finished: false }), ['masters', 'phd']);
+    assert.deepEqual(priorSlotsFor(done, 'phd'), ['bachelors', 'masters', 'phd']);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'nd-cse', graduate: 'nd-mscse-transfer', alsoElsewhere: true, finished: false }, 'phd'), ['masters', 'phd']);
     const s = { ...phdStudent(), program: 'phd' as const };
     applyBackground(s, done!);
     assert.equal(s.priorMs, 'completed');
@@ -88,7 +95,7 @@ describe('earlier degrees → previous-transcript rows (DGS 2026-09-22)', () => 
       assert.equal(completeBackground({ bachelors, graduate }, 'phd'), undefined, `${graduate}: the other-university question is open`);
       const done = completeBackground({ bachelors, graduate, alsoElsewhere: true, finished: true }, 'phd')!;
       assert.deepEqual(done, { bachelors, ...(graduate === 'nd-4plus1' ? { ndIntegrated: true } : {}), graduate, alsoElsewhere: true, finished: true });
-      assert.deepEqual(priorSlotsFor(done), bachelors === 'elsewhere' ? ['bachelors', 'masters', 'phd'] : ['masters', 'phd']);
+      assert.deepEqual(priorSlotsFor(done, 'phd'), bachelors === 'elsewhere' ? ['bachelors', 'masters', 'phd'] : ['masters', 'phd']);
       const s = { ...phdStudent(), program: 'phd' as const };
       applyBackground(s, done);
       assert.equal(s.priorMs, 'completed', graduate);
@@ -98,7 +105,7 @@ describe('earlier degrees → previous-transcript rows (DGS 2026-09-22)', () => 
     const s = { ...phdStudent(), program: 'phd' as const };
     applyBackground(s, { bachelors: 'elsewhere', graduate: 'nd-mscse', alsoElsewhere: false });
     assert.equal(s.priorMs, 'none');
-    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'nd-mscse', alsoElsewhere: false }), ['bachelors']);
+    assert.deepEqual(priorSlotsFor({ bachelors: 'elsewhere', graduate: 'nd-mscse', alsoElsewhere: false }, 'phd'), ['bachelors']);
   });
   it('a saved file from before the question keeps its answer and reads as before', () => {
     const old = validateStudent({ ...phdStudent(), background: { bachelors: 'elsewhere', graduate: 'nd-mscse-transfer' } }, []);

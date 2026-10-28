@@ -1111,14 +1111,22 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     await s.evalJs(`document.querySelector('[data-key="standing.msOption.undecided"]').click()`);
   }
 
-  // A Notre Dame undergraduate transcript in the Undergraduate row is refused
-  // (DGS 2026-09-22): it goes in the Notre Dame row, once. The in-progress
-  // fixture is a Notre Dame transcript too, so it gets the same answer.
+  // The MSCSE has no Undergraduate row (DGS 2026-10-27): with a bachelor's
+  // and a graduate degree elsewhere, only the Master's and Ph.D. rows show,
+  // and the "one university" fold sends a separate bachelor's nowhere.
+  const msRows = await s.evalJs(`[...document.querySelectorAll('.external-slot .slot-label')].map((e) => e.textContent).filter((t) => t.startsWith('Previous'))`);
+  const msFold = await s.evalJs(`document.querySelector('.combined-note')?.textContent ?? ''`);
+  if (JSON.stringify(msRows) !== JSON.stringify(['Previous Master’s Transcript', 'Previous Ph.D. Transcript']) || (await s.evalJs(`!!document.querySelector('.external-file-bachelors')`))) throw new Error('the MSCSE tab must have no Undergraduate row: ' + JSON.stringify(msRows));
+  if (!msFold.includes('Two transcripts: import only the master’s, in the Master’s row — an undergraduate course counts toward nothing in the MSCSE (CSE §5.2).') || msFold.includes('Undergraduate row')) throw new Error('the MSCSE fold must not send a bachelor’s to the Undergraduate row: ' + msFold);
+  console.log('  MSCSE tab: rows', JSON.stringify(msRows), '— no Undergraduate row; the fold says to import only the master’s');
+  // A Notre Dame undergraduate transcript in a previous row is refused (DGS
+  // 2026-09-22): it goes in the Notre Dame row, once. The in-progress fixture
+  // is a Notre Dame transcript too, so it gets the same answer.
   for (const [label, pdf] of [['in-progress', ndUgInProgressPdf], ['finished', ndUgPdf]]) {
-    await s.setFileInput('.external-file-bachelors', pdf);
-    await s.waitFor(`document.querySelector('[data-key="ext.error.bachelors"]')?.textContent.includes('This is a Notre Dame transcript')`);
+    await s.setFileInput('.external-file-masters', pdf);
+    await s.waitFor(`document.querySelector('[data-key="ext.error.masters"]')?.textContent.includes('This is a Notre Dame transcript')`);
     if (await s.evalJs(`!!document.querySelector('.external-card .transcript-preview')`)) throw new Error('a refused Notre Dame transcript must not open a preview');
-    console.log(`  ${label} ND undergraduate transcript in the Undergraduate row refused`);
+    console.log(`  ${label} ND undergraduate transcript in the Master’s row refused`);
   }
   // The 4+1 record — the courses the Notre Dame row's import files as prior
   // undergraduate coursework — is loaded as a saved record, so the rest of
