@@ -14,7 +14,7 @@ import type { ConditionMark, DetailPart, Grade, RequirementResult, Status, Term,
 import type { Ctx } from './context.ts';
 import { noteOf, capRow, heldForMissingParams, beforeForfeiture, priorRulesQualifierHeld, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds, titleCount, titleCountWord, gpaMinText } from './context.ts';
 import { fullTimeTermRecords, graduateLevelParts, longestFullTimeRun, sameTermDuplicate } from './residency.ts';
-import { advisorTttState, defendedBelowGpaNote, gpaText, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
+import { advisorTttState, BASIC_GROUP, defendedBelowGpaNote, gpaText, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { transferRow } from './transfer.ts';
 import { BS_SHARED_CREDITS_MAX, spentOnBachelorsAndMasters } from '../allocate.ts';
 
@@ -37,9 +37,12 @@ export function candidacyFormSentence(ctx: Ctx, degree: 'doctoral' | 'master’s
   return `Admission to ${degree} candidacy also needs the Graduate School’s application form, submitted through the Grad Admin by the Graduate School calendar’s deadline for that semester${dates ? ` (${dates})` : ''} (Academic Code ${degree === 'doctoral' ? '§6.2.9' : '§6.1.6'})`;
 }
 
+// The allowances sit under Coursework (DGS 2026-10-27: "Fold these unless
+// they become relevant. Then, include it under 'Coursework'") — still meters,
+// not verdicts (2026-09-27); the residency sits under Basic requirements and
+// the eight-year limit last under Dissertation and defense (DGS 2026-10-27),
+// so there is no "Residence and time" group.
 const COURSEWORK = 'Coursework — §4.2';
-const ALLOWANCES = 'Allowances — §4.2'; // meters, not verdicts (DGS 2026-09-27)
-const TIME = 'Residence and time — §4.3';
 const QUALIFIER = 'Qualifying examination — §4.4';
 // The DGS's name for the §4.5 examination (2026-09-06); the handbook quotes
 // below stay verbatim. "and candidacy" since admission to candidacy became a
@@ -138,7 +141,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
   rows.push(
     capRow({
       id: 'phd.cap.fourk',
-      group: ALLOWANCES,
+      group: COURSEWORK,
       title: `At most ${titleCount(ctx.params.number('phd_4xxxx_cse_credits_max'), 6)} credits from CSE courses below the 60000 level`,
       capId: 'fourk',
       capLabel: 'credits below the 60000 level',
@@ -163,7 +166,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
   rows.push(
     capRow({
       id: 'phd.cap.noncse',
-      group: ALLOWANCES,
+      group: COURSEWORK,
       title: `At most ${titleCount(ctx.params.number('phd_noncse_6xxxx_credits_max'), 9)} credits from outside CSE (60000 level or higher)`,
       capId: 'noncse',
       capLabel: 'non-CSE allowance credits',
@@ -227,7 +230,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
     rows.push(
       capRow({
         id: 'phd.cap.sharedbs',
-        group: ALLOWANCES,
+        group: COURSEWORK,
         title: `At most ${BS_SHARED_CREDITS_MAX} credits counted toward two degrees (your bachelor’s and the Ph.D.)`,
         capId: 'sharedbs',
         capLabel: 'credits that may still count toward both your bachelor’s degree and the Ph.D.',
@@ -255,7 +258,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
   // Academic Code §2.2's nine credits shared with a second Notre Dame
   // degree the student is enrolled in at the same time (policy review
   // 2026-10-04, P2-ac-1-3-2) — shown only when a course draws on it.
-  const otherDegree = otherDegreeCapRow(ctx, { id: 'phd.cap.otherdegree', group: ALLOWANCES });
+  const otherDegree = otherDegreeCapRow(ctx, { id: 'phd.cap.otherdegree', group: COURSEWORK });
   if (otherDegree) rows.push(otherDegree);
 
   rows.push(transferRow(ctx, { id: 'phd.transfer', group: COURSEWORK, capKeyCompleted: 'phd_transfer_completed_ms_credits_max', section: '§4.2, §5.2' }));
@@ -564,7 +567,7 @@ function residencyRow(ctx: Ctx): RequirementResult {
   }
   return {
     id: 'phd.residency',
-    group: TIME,
+    group: BASIC_GROUP,
     title: `${titleCountWord(ctx.params.number('phd_residency_semesters'), 4)} consecutive full-time semesters of residence`,
     status,
     ...joinedDetail(parts),
@@ -600,7 +603,7 @@ export function phdTimeLimitRow(ctx: Ctx, others: { allMet: boolean; anyCannotEv
   ]);
   return timeLimitRow(ctx, others, {
     id: 'phd.timeLimit',
-    group: TIME,
+    group: DISSERTATION,
     title: `All requirements complete within ${titleCount(ctx.params.number('phd_time_limit_years'), 8)} years`,
     yearsKey: 'phd_time_limit_years',
     section: '§4.3',
@@ -874,7 +877,7 @@ function qualifierUmbrellaRow(ctx: Ctx, children: RequirementResult[], ndCredits
   return {
     id: 'phd.qualifier',
     group: QUALIFIER,
-    title: 'Qualifying examination — all components', // "all components", not "all three": five cards sit under it (DGS 2026-09-06)
+    title: 'Qualifying examination — all components', // "all components", not "all three": five rows sit under it (DGS 2026-09-06) — three cards since core knowledge's three areas share one (DGS 2026-10-27)
     status,
     ...(completedLate ? { completedLate: true as const } : {}),
     ...(courseComponentsDone ? { qualifierCourseComponentsDone: true as const } : {}),

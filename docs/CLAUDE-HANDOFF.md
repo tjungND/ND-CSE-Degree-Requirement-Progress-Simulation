@@ -1870,6 +1870,22 @@ changed, so nobody undoes it by accident:
 - **Admission-to-candidacy conditions** (DGS 2026-10-05): `admissionPolicyNotes` (phd.ts) lists every condition as `{ note, pageOnly: true }`; `whyFor` (advisor-summary.ts) drops page-only notes, so the emails carry the facts only. The verified source list (quotes, line numbers) is in DECISIONS 2026-10-05; re-run the sweep if a handbook edition changes.
 - **Input-side "Relevant Policies"** (DGS 2026-10-05): `policyFold(key, …)` in form-helpers.ts wraps an input's policy hint in a closed selector (data-key `policy.<key>`); Your standing's selectors use it.
 - **One card for OCE + RCR + admission** (DGS 2026-10-04): `phd.candidacy` and `phd.rcr` carry `mergedInto: 'phd.candidacyAdmission'` and `unscored`; report.ts skips their cards and puts their anchors on the parent; `candidacyAdmissionRow(ctx, { oce, rcr })` folds in their notes and the OCE's attention states. Emails list only the admission line. A card's `{ lead, items, fold }` part folds the items behind a selector (the specialization card).
+- **One card for core knowledge; the report's groups** (DGS 2026-10-27). Unlike the OCE merge above,
+  the three `phd.qualifier.core.*` rows are NOT merged in the engine: report.ts `coreKnowledgeCard`
+  draws them as one card where the first stood, each area a `.req-area` sub-row carrying its own pill,
+  facts and old anchor id (`req-phd-qualifier-core-os` …; app.ts's Coursework "Core: …" links and
+  drive-app.mjs's link check depend on it). The card's pill and stripe are `furthestBehind(rows)`'s
+  (overdue → cannot evaluate → not yet → in progress → conditionally met → met; pinned by
+  tests/report-layout.test.ts); the deadline chip shows once while the open areas share it; the one
+  fold holds each area's notes (a note all share once), a course link per area, the quote once and one
+  "Does this look wrong?" line, whose mailto names `phd.qualifier.core` (the e2e check wants exactly
+  one per fold). Sub-row heads are `.req-area-head`, not `.req-head`, so the stripe and phone
+  pill-column checks see one pill per card. The same day the groups changed in the ENGINE (so the
+  emails follow): allowances are in Coursework (report.ts draws them after the group's requirement
+  cards and folds those with status `not_applicable` — "Not used yet" — into `details.allowance-fold`;
+  the advisor summary sorts them last in the section), the residency is in `BASIC_GROUP`
+  (shared.ts), the time limit — pushed last by audit.ts — is the last row of Dissertation and defense
+  / M.S. project or thesis, and there is no "Residence and time" group.
 - **Transcript-aware standing selectors** (DGS 2026-10-04, app.ts `transcriptGaps`, `fullTimeTerms`): with a `fromNdTranscript` row on file, an empty fall/spring is a gap (named in the leave question), never a research-only semester to tick.
 - **Readmission under five years** (P2-dh-3.1-3.13-3/-4/-9, 2026-10-04): `readmittedTerm` with a gap under five years marks the program's own earlier `nd` rows `beforeReadmission` (provisional, review-request ask, DGS Handbook §3.3); ≥ five years stays `interrupted` (§5.5, ND and prior-ND rows). Any readmission adds a `Readmission:` review flag. An empty semester is never read as a gap.
 - **Dual degree** (P2-ac-1-3-2, 2026-10-04): `Student.concurrentDegree` + `CourseEntry.sharedWithOtherDegree` add the cap `otherdegree` (nine, `DUAL_DEGREE_SHARED_CREDITS_MAX` — code, not sheet) in `classify()`'s outermost overlay `withSharedDegree`, ND rows only and only while `concurrentDegree` is true; without `attestations.dualPlanApproved` the course is provisional and its line leads “waiting for the Graduate School”. `otherDegreeCapRow` (shared.ts) builds `ms.cap.otherdegree`/`phd.cap.otherdegree`; `capRow` counts every counted credit for this cap (as for `transfer`). The standing checkbox has the key `standing.concurrentDegree`, not `attest.…` — the a11y driver's focus check clicks the first `attest.` box.

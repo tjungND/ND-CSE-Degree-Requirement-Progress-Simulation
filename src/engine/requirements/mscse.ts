@@ -5,16 +5,19 @@ import { openDeadline } from '../status.ts';
 import { compareTerm, deadlineTermLabel, endOfNextSemester, endOfTerm, termLabel } from '../term.ts';
 import type { DeadlineInfo, DetailPart, RequirementResult, Status } from '../types.ts';
 import type { Ctx } from './context.ts';
-import { defendedBelowGpaNote, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
+import { BASIC_GROUP, defendedBelowGpaNote, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { usableGpa } from '../ranges.ts';
 import { noteOf, joinedDetail, heldForMissingParams, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, titleCount, type Completion } from './context.ts';
 import { candidacyFormSentence } from './phd.ts';
 import { fullTimeTermRecords, graduateLevelParts } from './residency.ts';
 import { transferRow } from './transfer.ts';
 
+// The allowances sit under Coursework (DGS 2026-10-27: "Fold these unless
+// they become relevant. Then, include it under 'Coursework'") — still meters,
+// not verdicts (2026-09-27); the residency sits under Basic requirements and
+// the five-year limit last under M.S. project or thesis (DGS 2026-10-27),
+// so there is no "Residence and time" group.
 const COURSEWORK = 'Coursework — §3.2';
-const ALLOWANCES = 'Allowances — §3.2, §3.5'; // meters, not verdicts (DGS 2026-09-27)
-const TIME = 'Residence and time — §3.3';
 const PROJECT_THESIS = 'M.S. project or thesis — §3.4';
 
 // The whole §3.2 sentence, "earned at Notre Dame" included — the clause the
@@ -118,7 +121,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
   rows.push(
     capRow({
       id: 'ms.cap.fourk',
-      group: ALLOWANCES,
+      group: COURSEWORK,
       title: `At most ${titleCount(ctx.params.number('ms_4xxxx_credits_max'), 6)} credits from CSE courses below the 60000 level`,
       capId: 'fourk',
       capLabel: 'credits below the 60000 level',
@@ -143,7 +146,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
     rows.push(
       capRow({
         id: 'ms.cap.sharedbs',
-        group: ALLOWANCES,
+        group: COURSEWORK,
         title: `At most ${BS_SHARED_CREDITS_MAX} credits shared with your bachelor\u2019s degree`,
         capId: 'sharedbs',
         capLabel: 'credits shared with your bachelor\u2019s degree',
@@ -172,7 +175,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
   rows.push(
     capRow({
       id: 'ms.cap.noncse',
-      group: ALLOWANCES,
+      group: COURSEWORK,
       title: `At most ${titleCount(ctx.params.number('ms_noncse_credits_max'), 9)} credits from outside CSE (60000 level or higher)`,
       capId: 'noncse',
       capLabel: 'non-CSE allowance credits',
@@ -188,7 +191,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
   // Academic Code §2.2's nine credits shared with a second Notre Dame
   // degree the student is enrolled in at the same time (policy review
   // 2026-10-04, P2-ac-1-3-2) — shown only when a course draws on it.
-  const otherDegree = otherDegreeCapRow(ctx, { id: 'ms.cap.otherdegree', group: ALLOWANCES });
+  const otherDegree = otherDegreeCapRow(ctx, { id: 'ms.cap.otherdegree', group: COURSEWORK });
   if (otherDegree) rows.push(otherDegree);
 
   rows.push(residencyRow(ctx));
@@ -266,7 +269,7 @@ function residencyRow(ctx: Ctx): RequirementResult {
   }
   return {
     id: 'ms.residency',
-    group: TIME,
+    group: BASIC_GROUP,
     title: 'One semester of full-time status (or one summer session)',
     status,
     ...joinedDetail(parts),
@@ -338,7 +341,7 @@ export function msTimeLimitRow(ctx: Ctx, others: { allMet: boolean; anyCannotEva
   // the course that completed a credit requirement (P3-cse-3-1).
   return timeLimitRow(ctx, others, {
     id: 'ms.timeLimit',
-    group: TIME,
+    group: PROJECT_THESIS,
     title: `All requirements complete within ${titleCount(ctx.params.number('ms_time_limit_years'), 5)} years`,
     yearsKey: 'ms_time_limit_years',
     section: '§3.3',

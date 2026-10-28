@@ -298,13 +298,98 @@ function allowanceMeter(r: RequirementResult): HTMLElement {
   return el('span', { class: 'allowance-meter', 'aria-label': `${have} of ${p.need} ${p.unit} used` }, el('span', { class: 'bar', 'aria-hidden': 'true' }, fill), `${have} of ${p.need} used`);
 }
 
+/** A card's status pill — or, for an allowance, its meter: an allowance is a
+ * meter, not a verdict (DGS 2026-09-27). */
+function statusPill(r: RequirementResult): HTMLElement {
+  return r.allowance ? allowanceMeter(r) : el('span', { class: `pill s-${r.status}${r.statusLabel ? ' s-alarm' : ''}${pillState(r)}` }, pillLabel(r));
+}
+
+/** Deadlines in readable body-size type, coloured by state (usability review
+ * 2026-09-05, item 15; trim review 2026-09-18, P-50). */
+function deadlineChip(d: NonNullable<RequirementResult['deadline']>): HTMLElement {
+  return el('span', { class: `chip deadline d-${d.state}` }, d.label);
+}
+
+const isNote = (p: DetailPart): p is { note: string } => typeof p === 'object' && 'note' in p;
+const sentence = (t: string): string => (/[.!?]$/.test(t) ? t : `${t}.`);
+const fact = (t: string): string => sentence(withoutCitations(t));
+
+/** A row's parts as the page shows them: short §4.4.2 group names on the
+ * page, full ones in `detailParts` for the copied messages (DGS 2026-09-08).
+ * A row with no parts is one fact. */
+function pageParts(r: RequirementResult): DetailPart[] {
+  return r.shortDetailParts ?? r.detailParts ?? (r.detail ? [r.detail] : []);
+}
+
+/** The notes a row folds behind its "Relevant Policies" selector. */
+function notesOf(r: RequirementResult): string[] {
+  return pageParts(r).filter(isNote).map((p) => p.note);
+}
+
+/** What the card shows of a row: its facts, without their citations — prose,
+ * or bullets when there are several or one is structured. */
+function factsNode(r: RequirementResult): HTMLElement | null {
+  const facts = pageParts(r).filter((p) => !isNote(p) && !repeatsPill(r, p));
+  // A condition with its mark in the bullet's place (DGS 2026-10-06: "it's
+  // hard to see what are met and what are not met") — ✓ met, ◐ in progress,
+  // ● waiting for the DGS, ✕ not yet, as in the course table.
+  const checkItem = (text: string, mark: ConditionMark): HTMLElement => el('li', { class: `check check-${mark}` }, conditionMark(mark), fact(text));
+  // Several statements, or a structured one, read as bullets (DGS request
+  // 2026-09-04); one or two short ones stay prose.
+  const structured = facts.some((p) => typeof p !== 'string');
+  const factText = facts.filter((p): p is string => typeof p === 'string').map(fact);
+  return facts.length === 0
+    ? null
+    : structured || (facts.length > 1 && factText.join(' ').length > 120)
+      ? el(
+          'ul',
+          { class: 'req-detail detail-list' },
+          ...facts.map((p) =>
+            typeof p === 'string'
+              ? el('li', {}, fact(p))
+              : 'warn' in p
+                // Something the student is LOSING gets its own treatment (R2, 2026-09-18).
+                ? el('li', { class: 'detail-warn' }, fact(p.warn))
+                : 'note' in p
+                  ? null
+                  : 'check' in p
+                    ? checkItem(p.check, p.mark)
+                    : p.fold
+                    ? // The items behind a selector (DGS 2026-10-04: the
+                      // specialization card's course list); the data-key
+                      // keeps it open across re-renders.
+                      el(
+                        'li',
+                        {},
+                        fact(p.lead),
+                        el(
+                          'details',
+                          { class: 'detail-fold', 'data-key': `fold.${r.id}` },
+                          el('summary', {}, p.fold),
+                          el('ul', { class: 'detail-sublist' }, ...p.items.map((i) => el('li', {}, fact(i)))),
+                        ),
+                      )
+                    : el(
+                        'li',
+                        {},
+                        `${withoutCitations(p.lead)}:`,
+                        el(
+                          'ul',
+                          { class: `detail-sublist${p.marks ? ' checklist' : ''}` },
+                          ...p.items.map((i, k) => (p.marks?.[k] ? checkItem(i, p.marks[k]!) : el('li', {}, fact(i)))),
+                        ),
+                      ),
+          ),
+        )
+      : el('div', { class: 'req-detail' }, factText.join(' '));
+}
+
 function requirementCard(r: RequirementResult): HTMLElement {
   // A row may override the WORDING without changing its status or its place in
   // the counts (W-CS2): the §4.7 defense past §4.3's limit reads "Eligibility
   // at risk", since "Conditionally met" would promise a degree that may be
   // forfeit.
-  // An allowance is a meter, not a verdict (DGS 2026-09-27).
-  const pill = r.allowance ? allowanceMeter(r) : el('span', { class: `pill s-${r.status}${r.statusLabel ? ' s-alarm' : ''}${pillState(r)}` }, pillLabel(r));
+  const pill = statusPill(r);
   // WHAT IS SATISFIED BY WHAT, and nothing else, on the card (DGS 2026-10-03:
   // "In those cards, only need to show what are satisfied by what. Other
   // supplementary explanation all need to be hidden with selectors. Apply
@@ -317,72 +402,9 @@ function requirementCard(r: RequirementResult): HTMLElement {
   // (UI review, 2026-10-08); it looks as the span did.
   const head = el('div', { class: 'req-head' }, el('h4', { class: 'req-title' }, r.title), pill);
   const chips = el('div', { class: 'req-chips' });
-  if (r.deadline && r.status !== 'met') {
-    // Deadlines in readable body-size type, coloured by state (usability
-    // review 2026-09-05, item 15; trim review 2026-09-18, P-50).
-    chips.append(el('span', { class: `chip deadline d-${r.deadline.state}` }, r.deadline.label));
-  }
-  // Short §4.4.2 group names on the page, full ones in `detailParts` for the
-  // copied messages (DGS 2026-09-08). A row with no parts is one fact.
-  const parts: DetailPart[] = r.shortDetailParts ?? r.detailParts ?? (r.detail ? [r.detail] : []);
-  const isNote = (p: DetailPart): p is { note: string } => typeof p === 'object' && 'note' in p;
-  const facts = parts.filter((p) => !isNote(p) && !repeatsPill(r, p));
-  const notes = parts.filter(isNote).map((p) => p.note);
-  const sentence = (t: string): string => (/[.!?]$/.test(t) ? t : `${t}.`);
-  const fact = (t: string): string => sentence(withoutCitations(t));
-  // A condition with its mark in the bullet's place (DGS 2026-10-06: "it's
-  // hard to see what are met and what are not met") — ✓ met, ◐ in progress,
-  // ● waiting for the DGS, ✕ not yet, as in the course table.
-  const checkItem = (text: string, mark: ConditionMark): HTMLElement => el('li', { class: `check check-${mark}` }, conditionMark(mark), fact(text));
-  // Several statements, or a structured one, read as bullets (DGS request
-  // 2026-09-04); one or two short ones stay prose.
-  const structured = facts.some((p) => typeof p !== 'string');
-  const factText = facts.filter((p): p is string => typeof p === 'string').map(fact);
-  const detailNode =
-    facts.length === 0
-      ? null
-      : structured || (facts.length > 1 && factText.join(' ').length > 120)
-        ? el(
-            'ul',
-            { class: 'req-detail detail-list' },
-            ...facts.map((p) =>
-              typeof p === 'string'
-                ? el('li', {}, fact(p))
-                : 'warn' in p
-                  // Something the student is LOSING gets its own treatment (R2, 2026-09-18).
-                  ? el('li', { class: 'detail-warn' }, fact(p.warn))
-                  : 'note' in p
-                    ? null
-                    : 'check' in p
-                      ? checkItem(p.check, p.mark)
-                      : p.fold
-                      ? // The items behind a selector (DGS 2026-10-04: the
-                        // specialization card's course list); the data-key
-                        // keeps it open across re-renders.
-                        el(
-                          'li',
-                          {},
-                          fact(p.lead),
-                          el(
-                            'details',
-                            { class: 'detail-fold', 'data-key': `fold.${r.id}` },
-                            el('summary', {}, p.fold),
-                            el('ul', { class: 'detail-sublist' }, ...p.items.map((i) => el('li', {}, fact(i)))),
-                          ),
-                        )
-                      : el(
-                          'li',
-                          {},
-                          `${withoutCitations(p.lead)}:`,
-                          el(
-                            'ul',
-                            { class: `detail-sublist${p.marks ? ' checklist' : ''}` },
-                            ...p.items.map((i, k) => (p.marks?.[k] ? checkItem(i, p.marks[k]!) : el('li', {}, fact(i)))),
-                          ),
-                        ),
-            ),
-          )
-        : el('div', { class: 'req-detail' }, factText.join(' '));
+  if (r.deadline && r.status !== 'met') chips.append(deadlineChip(r.deadline));
+  const detailNode = factsNode(r);
+  const notes = notesOf(r);
   // Which courses and credits a credit row is built from (DGS 2026-09-22),
   // folded so the card stays short: "Courses counted (4 · 12 credits)".
   // The data-key keeps a fold the student opened open across re-renders.
@@ -440,10 +462,105 @@ function requirementCard(r: RequirementResult): HTMLElement {
 /** The card's "Does this look wrong? Tell the DGS" line — "Tell the ADGS" on
  * the MSCSE tab, by the page's own rewrite, and addressed to the ADGS there
  * (app.ts passes deciderContact). */
-function problemLine(r: RequirementResult): HTMLElement | null {
-  const href = problemHrefOf?.(r, r.allowance ? (r.statusLabel ?? statusWord(r)) : statusWord(r));
+function problemLine(r: RequirementResult, pill: string = r.allowance ? (r.statusLabel ?? statusWord(r)) : statusWord(r)): HTMLElement | null {
+  const href = problemHrefOf?.(r, pill);
   if (!href) return null;
   return el('p', { class: 'req-problem' }, 'Does this look wrong? ', el('a', { href, 'data-key': `problem.${r.id}` }, 'Tell the DGS'), ' — the email names this requirement and what the page shows, nothing else from your record.');
+}
+
+/** The core area a §4.4.1 row names: "Operating Systems". */
+const coreArea = (r: RequirementResult): string => r.title.replace(/^Core knowledge:\s*/, '');
+
+/** How far from done a row's pill says it is, furthest first: overdue, cannot
+ * evaluate, not yet, in progress, conditionally met, met. */
+function behindRank(r: RequirementResult): number {
+  if (isOverdue(r)) return 0;
+  const rank: Record<Status, number> = { cannot_evaluate: 1, unmet: 2, in_progress: 3, needs_dgs_review: 4, met: 5, not_applicable: 6 };
+  return rank[r.status];
+}
+
+/** The row furthest from done — the one whose pill a card speaking for
+ * several rows shows (the core-knowledge card, DGS 2026-10-27). The first of
+ * equals wins, so the areas' own order breaks ties. */
+export function furthestBehind(rows: readonly RequirementResult[]): RequirementResult {
+  return rows.reduce((a, b) => (behindRank(b) < behindRank(a) ? b : a));
+}
+
+/** §4.4.1's areas as ONE card with a sub-row each (DGS 2026-10-27: "Wrap
+ * these into one 'Core knowledge' category. Maybe the three can be
+ * subcategories under it"; sub-rows with their own pills chosen the same day).
+ * The engine keeps a row per area — the counts, the emails and the advisor
+ * summary read those — so only the drawing changes. The card's pill is the
+ * area furthest behind ("Met" only when all are); the deadline, the same for
+ * every open area, shows once; each area keeps its pill, its facts and its
+ * anchor, so the Coursework table's "Core: …" links still land on it; and one
+ * "Relevant Policies" fold holds the areas' notes, their course links, the
+ * quote they share and one "Does this look wrong?" line. */
+function coreKnowledgeCard(rows: readonly RequirementResult[]): HTMLElement {
+  const lead = furthestBehind(rows);
+  const open = rows.filter((r) => r.deadline && r.status !== 'met');
+  const same = (a: RequirementResult, b: RequirementResult) => a.deadline!.label === b.deadline!.label && a.deadline!.state === b.deadline!.state;
+  const shared = open.length > 0 && open.every((r) => same(r, open[0]!)) ? open[0]!.deadline : undefined;
+  const areas = rows.map((r) =>
+    el(
+      'div',
+      { class: `req-area s-${r.status}`, id: reqAnchorId(r.id) },
+      el('div', { class: 'req-area-head' }, el('h5', { class: 'req-area-title' }, coreArea(r)), statusPill(r)),
+      // Areas whose deadlines differ (none do today) keep their own.
+      !shared && r.deadline && r.status !== 'met' ? el('div', { class: 'req-chips' }, deadlineChip(r.deadline)) : null,
+      factsNode(r),
+    ),
+  );
+  // A note every area carries reads once; any other names its area (W-CL565).
+  const noteSets = rows.map(notesOf);
+  const common = noteSets[0]!.filter((n) => noteSets.every((s) => s.includes(n)));
+  const notes = [...common.map(sentence), ...rows.flatMap((r, i) => noteSets[i]!.filter((n) => !common.includes(n)).map((n) => `${coreArea(r)}: ${sentence(n)}`))];
+  const citation = rows[0]!.citation;
+  // The mailto names the card and each area's pill (W-CL566).
+  const card: RequirementResult = { ...lead, id: 'phd.qualifier.core', title: 'Core knowledge' };
+  const more = el(
+    'details',
+    { class: 'req-more', 'data-key': 'more.phd.qualifier.core' },
+    el('summary', {}, 'Relevant Policies'),
+    notes.length > 0 ? el('ul', { class: 'req-notes' }, ...notes.map((n) => el('li', {}, n))) : null,
+    coreCourseLinks(rows),
+    citation.quote !== '' ? el('p', { class: 'rule-quote' }, el('span', { class: 'rule-source' }, sourceName(citation.section)), `: “${citation.quote}”`) : null,
+    problemLine(card, `${statusWord(lead)} — ${rows.map((r) => `${coreArea(r)}: ${statusWord(r)}`).join(', ')}`),
+  );
+  return el(
+    'div',
+    { class: `req req-core s-${lead.status}${pillState(lead).replace(/ s-/g, ' req-')}`, id: reqAnchorId(card.id) },
+    el('div', { class: 'req-head' }, el('h4', { class: 'req-title' }, 'Core knowledge'), statusPill(lead)),
+    shared ? el('div', { class: 'req-chips' }, deadlineChip(shared)) : null,
+    ...areas,
+    more,
+  );
+}
+
+/** The core card's course links, one per area, each opening the course rules
+ * filtered to its area (W-CL564). Embedded, the one link to the ND page that
+ * frames the course rules, as each area's link was (DGS 2026-09-30). */
+function coreCourseLinks(rows: readonly RequirementResult[]): HTMLElement {
+  if (isEmbedded()) return el('a', { class: 'course-link', ...siblingAnchorAttrs('course-rules', window.location.search, true) }, 'See the courses for each area →');
+  const links = rows.flatMap((r, i) => {
+    const code = r.id.replace(/^phd\.qualifier\.core\./, '');
+    const link = el('a', { class: 'course-link', href: `./courses.html?core=${encodeURIComponent(code)}&view=qualifier` }, coreArea(r));
+    return i === 0 ? [link] : [' · ', link];
+  });
+  return el('p', { class: 'course-links' }, 'See the courses for each area: ', ...links);
+}
+
+/** The allowances not used yet, under Coursework (DGS 2026-10-27: "Fold
+ * these unless they become relevant. Then, include it under 'Coursework'"):
+ * their cards, unchanged, behind one line. A course that draws on one moves
+ * its card above the fold; the data-key keeps an opened fold open. */
+function allowanceFold(rows: readonly RequirementResult[]): HTMLElement {
+  return el(
+    'details',
+    { class: 'allowance-fold', 'data-key': `report.allowances.${rows[0]!.id.split('.')[0]}` },
+    el('summary', {}, `Allowances not used yet (${rows.length})`),
+    ...rows.map(requirementCard),
+  );
 }
 
 /** "Courses counted (4 · 12 credits)", plus the pending ones when there are
@@ -646,15 +763,30 @@ export function renderReport(report: AuditReport, untouched = false, next?: Next
     // The section reference after the dash is a citation: it lives in each
     // card's Details now (DGS 2026-10-03). The copied messages keep it.
     panel.append(el('h3', { class: 'group-head' }, group.replace(/ — (?:§|Academic Code|DGS Handbook).*$/, '')));
-    for (const r of rows) {
+    // §4.4.1's areas draw as one card, where the first of them stood (DGS 2026-10-27).
+    const core = rows.filter((r) => r.id.startsWith('phd.qualifier.core.') && !r.mergedInto && !doesNotApply(r));
+    // The allowances come after the group's requirement cards, and those not
+    // used yet wait in a fold at its end (DGS 2026-10-27).
+    const unused = rows.filter((r) => r.allowance && r.status === 'not_applicable');
+    const ordered = [...rows.filter((r) => !r.allowance), ...rows.filter((r) => r.allowance && !unused.includes(r))];
+    for (const r of ordered) {
       // Shown inside its parent's card (DGS 2026-10-04): no card of its own,
       // but its anchor lands on the parent so a link to it still arrives.
       if (r.mergedInto || doesNotApply(r)) continue;
+      if (core.includes(r)) {
+        if (r === core[0]) {
+          const card = coreKnowledgeCard(core);
+          if (sub.includes(r)) card.classList.add('req-sub');
+          panel.append(card);
+        }
+        continue;
+      }
       const card = requirementCard(r);
       for (const child of report.requirements.filter((x) => x.mergedInto === r.id)) card.prepend(el('span', { id: reqAnchorId(child.id), class: 'merged-anchor' }));
       if (sub.includes(r)) card.classList.add('req-sub');
       panel.append(card);
     }
+    if (unused.length > 0) panel.append(allowanceFold(unused));
   }
   return panel;
 }

@@ -10,7 +10,11 @@ import type { Ctx } from './context.ts';
 import { DUAL_DEGREE_SHARED_CREDITS_MAX } from '../allocate.ts';
 import { capRow, gpaMinText, joinedDetail, missingParamDetail } from './context.ts';
 
-const GROUP = 'Basic requirements — §2.2–2.3';
+/** The first group's heading. Since 2026-10-27 it also holds each program's
+ * residency row (DGS: "Move this under 'Basic Requirements'"; there is no
+ * "Residence and time" group any more). The page drops the § part; the
+ * copied messages print it, and each row its own §. */
+export const BASIC_GROUP = 'Basic requirements — §2.2–2.3';
 
 /** §2.2: "Continuation in a CSE graduate degree program, admission to degree
  * candidacy, and graduation require maintenance of at least a 3.0 (B)
@@ -133,7 +137,7 @@ export function gpaRow(ctx: Ctx): RequirementResult {
   }
   return {
     id: 'shared.gpa',
-    group: GROUP,
+    group: BASIC_GROUP,
     // Read from the sheet, formatted as the row's own sentence formats it
     // (P4-data-5).
     title: `Cumulative GPA of at least ${gpaMinText(min ?? 3)}`,
@@ -231,7 +235,7 @@ export function goodStandingRow(ctx: Ctx): RequirementResult | undefined {
   const passed = due < ctx.today;
   return {
     id: 'shared.goodStanding',
-    group: GROUP,
+    group: BASIC_GROUP,
     title: 'In good standing to receive the degree',
     shortTitle: 'Good standing',
     status: 'in_progress',
@@ -306,7 +310,7 @@ export function advisorRow(ctx: Ctx): RequirementResult {
   }
   return {
     id: 'shared.advisor',
-    group: GROUP,
+    group: BASIC_GROUP,
     title: ms ? 'A project or thesis advisor is identified' : 'Under continuous advisor supervision',
     status,
     ...joinedDetail(parts),

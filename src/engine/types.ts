@@ -669,8 +669,10 @@ export interface RequirementResult {
    * parent's card carries its facts and notes. */
   mergedInto?: string;
   /** An allowance — §3.2 / §4.2's caps, §3.5's shared credits — not a
-   * requirement (DGS 2026-09-27): drawn as a meter with no pill, in its own
-   * group, never counted in the headline. */
+   * requirement (DGS 2026-09-27): drawn as a meter with no pill, never counted
+   * in the headline. Under Coursework since 2026-10-27, after its requirement
+   * cards; one not used yet waits in a fold there (DGS: "Fold these unless
+   * they become relevant"). */
   allowance?: true;
   /** Done, but after the row's own deadline, and that lateness is the only
    * reason it reads Needs DGS review (a late OCE or admission to candidacy —

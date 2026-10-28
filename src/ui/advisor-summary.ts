@@ -160,6 +160,9 @@ export function advisorSummary(report: AuditReport, opts: AdvisorSummaryOptions)
     }
     s.rows.push(r);
   }
+  // An allowance follows its group's requirements, as on the page (under
+  // Coursework since 2026-10-27).
+  for (const s of sections) s.rows.sort((a, b) => Number(a.allowance === true) - Number(b.allowance === true));
 
   const todo = actionItems(report, opts.transfers);
   const deadlineNote = listed.some((r) => deadlineOf(r) !== undefined)

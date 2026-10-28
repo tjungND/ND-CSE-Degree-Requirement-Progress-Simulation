@@ -376,6 +376,16 @@ table.courses .feeds-hidden .counts-toward.now { display: none; }
 .req { border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--card); }
 .req-sub { margin-left: 18px; }
 .req-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+/* §4.4.1's one card (DGS 2026-10-27): a sub-row per core area, each with its
+   own pill on the card's right edge, a hairline between them. */
+.req-area { margin: 8px 0 0 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.req-area-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+h5.req-area-title { margin: 0; font-size: inherit; line-height: inherit; color: inherit; font-weight: 600; }
+.req-core > .req-chips + .req-area { margin-top: 6px; }
+/* The allowances not used yet, one quiet line at the end of Coursework (DGS 2026-10-27). */
+details.allowance-fold { margin: 2px 0 10px; }
+details.allowance-fold > summary { cursor: pointer; color: var(--navy); font-weight: 600; font-size: 13px; padding: 3px 0; min-height: 24px; box-sizing: border-box; }
+details.allowance-fold[open] > summary { margin-bottom: 6px; }
 .req-title { font-weight: 600; }
 h4.req-title { margin: 0; font-size: inherit; line-height: inherit; color: inherit; }
 /* The § chip sits inside the title span, after the last word, so a row with no
@@ -396,6 +406,8 @@ details.policy-fold > .hint { margin-top: 2px; }
 .req .req-notes { margin: 4px 0 0; padding-left: 18px; color: var(--ink); }
 .req .req-notes li { margin: 2px 0; }
 .req .req-more .course-link { display: inline-block; margin: 4px 0 0; }
+.req .req-more .course-links { margin: 4px 0 0; }
+.req .req-more .course-links .course-link { margin: 0; }
 /* "Does this look wrong? Tell the DGS" — last in the fold (DGS 2026-10-11, item 18). */
 .req .req-more .req-problem { margin: 6px 0 0; color: var(--muted); }
 /* The import's own totals check (DGS 2026-10-11, item 11): a term that does not add up. */
@@ -694,7 +706,7 @@ tr.ocr-low td { background: var(--note-bg); }
      line: 24 px tall beside 40–44 px controls, so a thumb opened the fold
      above (blue-team review 2026-10-17, U13). Padding, not display: flex —
      flex on a <summary> drops the ▶ marker that says the line opens. */
-  details.rare > summary, details.policy-fold > summary, .req .req-more > summary { min-height: 40px; padding: 10px 0; box-sizing: border-box; }
+  details.rare > summary, details.policy-fold > summary, .req .req-more > summary, details.allowance-fold > summary { min-height: 40px; padding: 10px 0; box-sizing: border-box; }
   /* A mis-tap on "Prior graduate study" silently changes the §5.2 caps, so the
      radios and the approval checkboxes get a real touch target (2026-09-08). */
   .radios { gap: 8px; }
@@ -722,9 +734,9 @@ tr.ocr-low td { background: var(--note-bg); }
      fits, else on a line of its own under the title (UI review item 8 (1);
      DGS 2026-10-09): a long pill used to squeeze the title to four lines
      (the 2026-09-08 one-line rule). `.pill` is already nowrap. */
-  .req-head { flex-wrap: wrap; }
-  .req-head .req-title { min-width: 0; }
-  .req-head .pill { flex: none; margin-left: auto; }
+  .req-head, .req-area-head { flex-wrap: wrap; }
+  .req-head .req-title, .req-area-head .req-area-title { min-width: 0; }
+  .req-head .pill, .req-area-head .pill { flex: none; margin-left: auto; }
   /* The report column's own dial and meters are hidden on phones (UI review
      item 8 (3); DGS 2026-10-09): the summary at the top and the sticky bar
      already show them, so the report starts with Next steps. */
