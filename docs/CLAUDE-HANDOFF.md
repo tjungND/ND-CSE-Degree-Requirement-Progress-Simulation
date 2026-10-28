@@ -354,8 +354,10 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   combined transcripts, and `expected.json` is what `parseExternalTranscript` must return for each;
   `tests/ms-transcripts.test.ts` pins all 48 (647 course rows). The PDFs themselves stay outside the
   repo (the DGS's iCloud Downloads, `ms-transcript-fixtures/pdf/`). To add or refresh one: run the PDF
-  through pdfjs (legacy build, node) → `runsFromTextItems` → `runsToLines`, save the lines, parse, and
-  write the rows as `id | title | credits | grade | season year[ | level]`; the harness that did this
+  through pdfjs (legacy build, node) → `runsFromTextItems` → `runsToLines`, save the lines with the
+  student's name replaced by `SAMPLE, STUDENT` and the student id by zeros of the same length (DGS
+  2026-10-27 — the generator's realistic names read as real records; the McGill Minerva set in
+  `public-transcripts/` had the same treatment), parse, and write the rows as `id | title | credits | grade | season year[ | level]`; the harness that did this
   lives in the session scratchpad, not the repo — twenty lines, easy to redo. Two layout rules came
   out of this batch: a two-column split needs three DIFFERENT wordy texts at the right edge (one
   repeated header such as "Attempted" is a table, not a column), and the crossing test reads per-word
