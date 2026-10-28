@@ -38,7 +38,7 @@ describe('the OCE gate waits for the DGS on a core area too (DGS 2026-10-06)', (
     const c = card(recordA());
     assert.match(c.detail, /^Not started\./);
     assert.match(c.detail, /Regular-course credits: 24 of 24 complete/);
-    assert.match(c.detail, /Core knowledge, Algorithms: waiting for the DGS \(CS 58000\)/);
+    assert.match(c.detail, /Core knowledge: 2 of 3 areas done — Algorithms: waiting for the DGS \(CS 58000\)/);
     assert.match(c.detail, /still needed: the DGS’s decision on CS 58000\./);
     assert.match(c.detail, /A course waiting for the DGS’s decision counts once the DGS approves it/);
   });
@@ -87,7 +87,7 @@ describe('regular credits waiting for the DGS are named, not asked for again (P3
     s.courses = s.courses.filter((c) => c.courseId !== 'CSE 60868');
     const c = card(s);
     assert.match(c.detail, /3 waiting for a DGS decision \(CS 58000\)/);
-    assert.match(c.detail, /Core knowledge, Algorithms: waiting for the DGS \(CS 58000\)/);
+    assert.match(c.detail, /Core knowledge: 2 of 3 areas done — Algorithms: waiting for the DGS \(CS 58000\)/);
     assert.match(c.detail, /still needed: 3 more regular-course credits \(all of them can be satisfied by CS 58000 if the DGS approves it\)\./);
     assert.equal((/still needed: [^.]*\./.exec(c.detail)?.[0] ?? '').split('CS 58000').length, 2, 'named once in what is still needed');
   });

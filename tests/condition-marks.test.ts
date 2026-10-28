@@ -54,7 +54,7 @@ describe('the candidacy card marks each condition (DGS 2026-10-06)', () => {
     assert.equal(lead.marks?.length, lead.items.length);
     const byLabel = Object.fromEntries(lead.items.map((t, i) => [t.replace(/:.*$/, ''), lead.marks![i]]));
     assert.equal(byLabel['Regular-course credits'], 'not_yet');
-    assert.equal(byLabel['Core knowledge, Operating Systems'], 'met');
+    assert.equal(byLabel['Core knowledge'], 'met'); // the three areas are one line (DGS 2026-10-27)
     assert.equal(byLabel['Tenured or tenure-track advisor'], 'met');
   });
   it('waiting for the DGS: an advisor answered “Not sure”', () => {
@@ -62,5 +62,42 @@ describe('the candidacy card marks each condition (DGS 2026-10-06)', () => {
     const lead = (c.detailParts ?? []).find((p): p is { lead: string; items: string[]; marks?: ConditionMark[] } => typeof p === 'object' && 'lead' in p)!;
     const i = lead.items.findIndex((t) => t.startsWith('Tenured or tenure-track advisor'));
     assert.equal(lead.marks![i], 'waiting');
+  });
+});
+
+// §4.4.1's three areas are one line on the candidacy card, as the
+// specialization is (DGS 2026-10-27: "fold these … into one core knowledge
+// requirement, just like the specialization"), marked by the area furthest behind.
+describe('core knowledge is one condition on the candidacy card (DGS 2026-10-27)', () => {
+  const leadOf = (s: Student) => {
+    const lead = (card(s).detailParts ?? []).find((p): p is { lead: string; items: string[]; marks?: ConditionMark[] } => typeof p === 'object' && 'lead' in p)!;
+    const i = lead.items.findIndex((t) => t.startsWith('Core knowledge'));
+    return { items: lead.items.filter((t) => t.startsWith('Core knowledge')), text: lead.items[i], mark: lead.marks![i] };
+  };
+  it('one area done, one in progress, one with no course: one line, marked not yet, naming the two open areas', () => {
+    const s = { ...student(0), entryTerm: fall(2025) }; // the qualifier's four semesters still running
+    s.courses = [ndCourse('CSE 60641', { term: spring(2026) }), ndCourse('CSE 60111', { term: fall(2026), grade: 'IP' })];
+    const c = leadOf(s);
+    assert.equal(c.items.length, 1);
+    assert.equal(c.text, 'Core knowledge: 1 of 3 areas done — Algorithms: in progress (CSE 60111, Fall 2026), Computer Architecture: no course yet');
+    assert.equal(c.mark, 'not_yet');
+  });
+  it('every area done: "Core knowledge: done", marked met', () => {
+    const c = leadOf(student(6));
+    assert.deepEqual([c.items.length, c.text, c.mark], [1, 'Core knowledge: done', 'met']);
+  });
+  it('the last open area in progress: marked in progress', () => {
+    const s = { ...student(0), entryTerm: fall(2025) };
+    s.courses = [ndCourse('CSE 60641', { term: spring(2026) }), ndCourse('CSE 60321', { term: spring(2026) }), ndCourse('CSE 60111', { term: fall(2026), grade: 'IP' })];
+    const c = leadOf(s);
+    assert.equal(c.text, 'Core knowledge: 2 of 3 areas done — Algorithms: in progress (CSE 60111, Fall 2026)');
+    assert.equal(c.mark, 'in_progress');
+  });
+  it('past the qualifier deadline, a course in progress is late, not "no course yet"', () => {
+    const s = student(0); // entered Fall 2024: the four semesters ended with Spring 2026
+    s.courses = [ndCourse('CSE 60641', { term: spring(2026) }), ndCourse('CSE 60321', { term: spring(2026) }), ndCourse('CSE 60111', { term: fall(2026), grade: 'IP' })];
+    const c = leadOf(s);
+    assert.equal(c.text, 'Core knowledge: 2 of 3 areas done — Algorithms: in progress (CSE 60111, Fall 2026) after the qualifier deadline');
+    assert.equal(c.mark, 'not_yet');
   });
 });

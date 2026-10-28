@@ -428,12 +428,12 @@ describe('why the OCE is not started yet', () => {
   it('a core-knowledge area with no course: the card names it', () => {
     const r = card(printout(), '2026-10-05');
     assert.equal(r.status, 'unmet');
-    assert.match(r.detail, /^Not started\. Becomes In progress once your coursework is complete or completing this semester, with a tenured or tenure-track advisor: Regular-course credits: 18 of 24 complete, 6 in progress — complete at the end of Spring 2027 \(transferred regular-course credits count\); Core knowledge, Operating Systems: in progress \(CSE 60641, Fall 2026\); Core knowledge, Algorithms: no course yet; Core knowledge, Computer Architecture: done \(CSE 60321\); Specialization courses: done; Tenured or tenure-track advisor: yes\. The OCE can be scheduled in the semester your coursework is complete or in its last semester — still needed: an Algorithms core-knowledge course\./);
+    assert.match(r.detail, /^Not started\. Becomes In progress once your coursework is complete or completing this semester, with a tenured or tenure-track advisor: Regular-course credits: 18 of 24 complete, 6 in progress — complete at the end of Spring 2027 \(transferred regular-course credits count\); Core knowledge: 1 of 3 areas done — Operating Systems: in progress \(CSE 60641, Fall 2026\), Algorithms: no course yet; Specialization courses: done; Tenured or tenure-track advisor: yes\. The OCE can be scheduled in the semester your coursework is complete or in its last semester — still needed: an Algorithms core-knowledge course\./);
   });
 
   it('every component under way, the last one next semester: the card names that semester', () => {
     const r = card(printout([ndCourse('CSE 60111', { term: spring27w, grade: 'IP' })]), '2026-10-05');
-    assert.match(r.detail, /Core knowledge, Algorithms: in progress \(CSE 60111, Spring 2027\);/);
+    assert.match(r.detail, /Core knowledge: 1 of 3 areas done — Operating Systems: in progress \(CSE 60641, Fall 2026\), Algorithms: in progress \(CSE 60111, Spring 2027\);/);
     assert.match(r.detail, /\. The OCE can be scheduled in Spring 2027 at the earliest, the semester your coursework is expected to be complete\./);
     // …and in that semester it is under way.
     assert.equal(card(printout([ndCourse('CSE 60111', { term: spring27w, grade: 'IP' })]), '2027-02-15').status, 'in_progress');

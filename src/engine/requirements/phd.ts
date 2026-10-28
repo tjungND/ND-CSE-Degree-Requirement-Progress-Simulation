@@ -1784,20 +1784,63 @@ function oceReadiness(ctx: Ctx, rows: RequirementResult[]): OceReadiness {
     // met or In progress". Now both keep the gate closed until the DGS decides,
     // and the card names the decision rather than a course to take.
     const waitingForDgs = (r: RequirementResult): boolean => r.status === 'needs_dgs_review' && r.statusLabel === undefined;
-    for (const r of rows.filter((x) => x.id.startsWith('phd.qualifier.core') || x.id === 'phd.qualifier.categories')) {
-      const core = r.id !== 'phd.qualifier.categories';
-      const name = core ? `Core knowledge, ${r.title.replace(/^Core knowledge:\s*/, '')}` : 'Specialization courses';
+    // §4.4.1's areas are ONE condition here, as the specialization is (DGS
+    // 2026-10-27: "fold these … into one core knowledge requirement, just
+    // like the specialization"): one line, marked by the area furthest
+    // behind, naming the areas still open. What each area still needs is
+    // kept for the sentences below (missing, completes).
+    const RANK: Record<ConditionMark, number> = { not_yet: 0, waiting: 1, in_progress: 2, met: 3 };
+    const areas: { mark: ConditionMark; open?: string }[] = [];
+    for (const r of rows.filter((x) => x.id.startsWith('phd.qualifier.core.'))) {
+      const area = r.title.replace(/^Core knowledge:\s*/, '');
       // Completed after §4.4's deadline is still completed coursework for
       // §4.5 (P3-cse-4a-2): the lateness is the qualifier card's question.
       if (r.status === 'met' || r.completedLate === true) {
-        item('met', `${name}: done${core && r.satisfiedBy?.[0] ? ` (${r.satisfiedBy[0]})` : ''}`);
+        areas.push({ mark: 'met' });
         continue;
       }
       if (waitingForDgs(r)) {
         const which = r.pendingBy && r.pendingBy.length > 0 ? r.pendingBy.join(', ') : undefined;
         // Said once when the regular-credit line already names the same decision.
         const named = which !== undefined && missing.some((m) => /the DGS’s decision on|if the DGS approves/.test(m) && which.split(', ').every((id) => m.includes(id)));
-        if (!named) missing.push(`the DGS’s decision on ${which ?? (core ? coreCourseNoun(r).replace(/^an? /, 'the ') : 'the specialization courses')}`);
+        if (!named) missing.push(`the DGS’s decision on ${which ?? coreCourseNoun(r).replace(/^an? /, 'the ')}`);
+        areas.push({ mark: 'waiting', open: `${area}: waiting for the DGS${which ? ` (${which})` : ''}` });
+        continue;
+      }
+      if (r.status === 'in_progress') {
+        const terms = (r.completingCourses ?? []).map(inProgressTerm).filter((t): t is Term => t !== undefined).sort(compareTerm);
+        completes.push(...terms);
+        const lastTerm = terms[terms.length - 1];
+        areas.push({ mark: 'in_progress', open: `${area}: in progress${r.completingCourses?.[0] ? ` (${r.completingCourses[0]}${lastTerm ? `, ${termLabel(lastTerm)}` : ''})` : ''}` });
+        continue;
+      }
+      missing.push(coreCourseNoun(r));
+      // Past §4.4's deadline a course still in progress is not "no course"
+      // (withQualifierDeadline keeps it, marked unmet): it is late.
+      const lateCourse = r.status === 'unmet' ? r.completingCourses?.[0] : undefined;
+      const lateTerm = lateCourse !== undefined ? inProgressTerm(lateCourse) : undefined;
+      const late = lateCourse !== undefined ? `${lateCourse}${lateTerm ? `, ${termLabel(lateTerm)}` : ''}` : undefined;
+      areas.push({
+        mark: 'not_yet',
+        open: r.status === 'cannot_evaluate' ? `${area}: cannot be checked — ${r.detail.replace(/\.$/, '')}` : late !== undefined ? `${area}: in progress (${late}) after the qualifier deadline` : `${area}: no course yet`,
+      });
+    }
+    if (areas.length > 0) {
+      const mark = areas.reduce((a, b) => (RANK[b.mark] < RANK[a.mark] ? b : a)).mark;
+      const open = areas.flatMap((a) => (a.open !== undefined ? [a.open] : []));
+      const done = areas.length - open.length;
+      item(mark, open.length === 0 ? 'Core knowledge: done' : `Core knowledge: ${done} of ${areas.length} areas done — ${open.join(', ')}`);
+    }
+    for (const r of rows.filter((x) => x.id === 'phd.qualifier.categories')) {
+      const name = 'Specialization courses';
+      if (r.status === 'met' || r.completedLate === true) {
+        item('met', `${name}: done`);
+        continue;
+      }
+      if (waitingForDgs(r)) {
+        const which = r.pendingBy && r.pendingBy.length > 0 ? r.pendingBy.join(', ') : undefined;
+        const named = which !== undefined && missing.some((m) => /the DGS’s decision on|if the DGS approves/.test(m) && which.split(', ').every((id) => m.includes(id)));
+        if (!named) missing.push(`the DGS’s decision on ${which ?? 'the specialization courses'}`);
         item('waiting', `${name}: waiting for the DGS${which ? ` (${which})` : ''}`);
         continue;
       }
@@ -1805,22 +1848,17 @@ function oceReadiness(ctx: Ctx, rows: RequirementResult[]): OceReadiness {
         const terms = (r.completingCourses ?? []).map(inProgressTerm).filter((t): t is Term => t !== undefined).sort(compareTerm);
         completes.push(...terms);
         const lastTerm = terms[terms.length - 1];
-        item('in_progress', `${name}: in progress${core && r.completingCourses?.[0] ? ` (${r.completingCourses[0]}${lastTerm ? `, ${termLabel(lastTerm)}` : ''})` : lastTerm ? ` — complete at the end of ${termLabel(lastTerm)}` : ''}`);
+        item('in_progress', `${name}: in progress${lastTerm ? ` — complete at the end of ${termLabel(lastTerm)}` : ''}`);
         continue;
       }
       if (r.status === 'cannot_evaluate') {
-        missing.push(core ? coreCourseNoun(r) : 'the specialization courses');
+        missing.push('the specialization courses');
         item('not_yet', `${name}: cannot be checked — ${r.detail.replace(/\.$/, '')}`);
         continue;
       }
-      if (core) {
-        missing.push(coreCourseNoun(r));
-        item('not_yet', `${name}: no course yet`);
-      } else {
-        missing.push('the specialization courses');
-        const lead = (r.detailParts ?? []).map((p) => (typeof p === 'string' ? p : 'lead' in p ? p.lead : '')).filter((t) => t !== '');
-        item('not_yet', `${name}: ${lead.length > 0 ? lead.join('; ') : 'not complete yet'}`);
-      }
+      missing.push('the specialization courses');
+      const lead = (r.detailParts ?? []).map((p) => (typeof p === 'string' ? p : 'lead' in p ? p.lead : '')).filter((t) => t !== '');
+      item('not_yet', `${name}: ${lead.length > 0 ? lead.join('; ') : 'not complete yet'}`);
     }
   }
   // A tenured or tenure-track advisor (DGS 2026-10-05: "When there is no TTT

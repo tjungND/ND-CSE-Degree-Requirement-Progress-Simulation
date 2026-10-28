@@ -195,7 +195,9 @@ export async function driveApp(s, baseUrl) {
   // with its mark in the bullet's place and a word for screen readers.
   const checks = JSON.parse(await s.evalJs(`JSON.stringify([...document.querySelectorAll('#req-phd-candidacyAdmission li.check')].map((li) => ({ cls: li.className, glyph: li.querySelector('.mark [aria-hidden]')?.textContent ?? '', word: li.querySelector('.mark .visually-hidden')?.textContent ?? '' })))`));
   console.log('  candidacy conditions:', checks.map((c) => c.glyph + ' ' + c.word.trim()).join(' · '));
-  if (checks.length < 5 || !checks.some((c) => c.cls.includes('check-met') && c.glyph === '✓') || !checks.some((c) => !c.cls.includes('check-met'))) throw new Error('candidacy condition marks: ' + JSON.stringify(checks));
+  // Four since core knowledge's three areas became one line (DGS 2026-10-27):
+  // regular credits, core knowledge, specialization, the advisor.
+  if (checks.length < 4 || !checks.some((c) => c.cls.includes('check-met') && c.glyph === '✓') || !checks.some((c) => !c.cls.includes('check-met'))) throw new Error('candidacy condition marks: ' + JSON.stringify(checks));
   await s.evalJs(`document.getElementById('req-phd-candidacyAdmission')?.scrollIntoView({ block: 'start' })`);
   await s.shot('app-condition-marks');
 
