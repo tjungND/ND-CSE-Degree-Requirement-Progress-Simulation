@@ -2594,8 +2594,22 @@ export function allocate(
     // a course still falls through to the "ineligible courses" loop below.
     const inTier = classified.filter((c) => c.tier === tier && c.pool !== 'none' && passesCreditFloor(c.entry.grade));
     const chosen = inTier.filter((c) => c.bsShare === 'both');
-    const singles = inTier.filter((c) => c.bsShare !== 'both' && c.caps.length <= 1);
-    const multis = inTier.filter((c) => c.bsShare !== 'both' && c.caps.length > 1);
+    // Transfer courses fill the non-CSE allowance first (DGS 2026-10-28:
+    // "Fill the transfer courses first … strictly better for the students"):
+    // a transfer credit the allowance refuses counts toward nothing, while a
+    // Notre Dame credit it refuses still counts toward the 60 (F1), so a
+    // Notre Dame course whose only cap is that allowance waits until the
+    // multi-cap courses — transfer courses among them — have taken it. The
+    // nine Notre Dame regular credits (§4.2) are not at stake: the
+    // specialization's three courses meet them (DGS, same day).
+    const yieldsToTransfer = (c: ClassifiedCourse): boolean => opts.nonCseSpillsToTotal === true && c.caps.length === 1 && c.caps[0] === 'noncse';
+    const singles = inTier.filter((c) => c.bsShare !== 'both' && c.caps.length <= 1 && !yieldsToTransfer(c));
+    const yielding = inTier.filter((c) => c.bsShare !== 'both' && yieldsToTransfer(c));
+    // Among equally good orders the first wins (bestMultiOrder), so transfer
+    // courses are listed first: they take the allowance on a tie.
+    const multis = inTier
+      .filter((c) => c.bsShare !== 'both' && c.caps.length > 1)
+      .sort((a, b) => Number(!a.caps.includes('transfer')) - Number(!b.caps.includes('transfer')));
 
     for (const cc of chosen) {
       const room = cc.caps.length === 0 ? Infinity : Math.min(...cc.caps.map((id) => Math.max(0, capRoom.get(id) ?? 0)));
@@ -2615,6 +2629,7 @@ export function allocate(
         take(cc, room);
       }
     }
+    for (const cc of yielding) take(cc, Math.max(0, capRoom.get('noncse') ?? 0));
   }
 
   // Ineligible courses still get a line — pool === 'none', or a passed grade

@@ -1827,7 +1827,9 @@ changed, so nobody undoes it by accident:
   for a course under §5.2's cap that the Graduate School has not posted (`untransferred`, DGS 2026-10-27):
   refused transfer credit is not transferred, so it counts toward nothing. `report.transferCredits[].counted`
   is the part on §5.2's cap (spill excluded); `restOver` names another cap that cut it, and
-  grad-admin-request.ts `processingItems` submits only that part (`cappedCredits` + `cutBy`).
+  grad-admin-request.ts `processingItems` submits only that part (`cappedCredits` + `cutBy`). In each tier a
+  Ph.D. course whose only cap is `noncse` (`yieldsToTransfer`) waits until the multi-cap courses, listed
+  transfer-first, have taken the nine (DGS 2026-10-28: its overflow still counts, a transfer's does not).
   `fourk` is drawn by every level-4/5 course whatever its type; a listed row below level 4 counts
   nothing (`validate.ts` warns the DGS when such a row says it counts).
 - **Prior Notre Dame coursework** (`classifyPriorNdUndergraduate`): no five-year window (DGS);

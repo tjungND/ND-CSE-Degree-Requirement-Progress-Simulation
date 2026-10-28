@@ -17,19 +17,18 @@ const fall = (year: number) => ({ season: 'fall' as const, year });
 const spring = (year: number) => ({ season: 'spring' as const, year });
 const UNI = 'Northeastern University';
 const row = (id: string, transferable: string, isCse: 'yes' | 'no') => ({ university: 'NORTHEASTERN UNIVERSITY', course_id: id, course_title: id, transferable_PhD: transferable, transferable_MSCSE: transferable, is_cse: isCse, credit_system: 'semester' });
-const rules = buildRules({
-  external: [
-    row('INFO 5100', 'yes', 'no'),
-    row('INFO 6150', 'yes', 'no'),
-    row('INFO 6205', 'yes', 'no'),
-    row('TELE 5600', 'yes', 'no'),
-    row('CSYE 6230', 'yes', 'yes'),
-    row('CSYE 7270', 'yes', 'yes'),
-    row('CSYE 7280', 'dgs_approval', 'yes'),
-    row('INFO 7375', 'dgs_approval', 'no'),
-    row('ENCP 6000', 'no', 'no'),
-  ],
-});
+const EXTERNAL = [
+  row('INFO 5100', 'yes', 'no'),
+  row('INFO 6150', 'yes', 'no'),
+  row('INFO 6205', 'yes', 'no'),
+  row('TELE 5600', 'yes', 'no'),
+  row('CSYE 6230', 'yes', 'yes'),
+  row('CSYE 7270', 'yes', 'yes'),
+  row('CSYE 7280', 'dgs_approval', 'yes'),
+  row('INFO 7375', 'dgs_approval', 'no'),
+  row('ENCP 6000', 'no', 'no'),
+];
+const rules = buildRules({ external: EXTERNAL });
 const ne = (id: string, term: { season: 'fall' | 'spring'; year: number }) => transferCourse(id, id, { credits: 4, term, degreeLevel: 'masters', institution: UNI });
 const student = phdStudent({
   entryTerm: fall(2026),
@@ -132,4 +131,24 @@ describe('around the change: credit already posted, a missing limit', () => {
     assert.match(req.text, /STAT 60200 \(Purdue University, Fall 2024\) — the rules sheet does not say what the .+ is, so this course cannot be counted yet — ask the DGS to fill it in \(§4\.2\)\./);
     assert.doesNotMatch(req.text, /the DGS may choose/);
   });
+});
+
+// DGS 2026-10-28: "Fill the transfer courses first." A Notre Dame course
+// outside CSE no longer takes the nine before the transfer courses: its
+// overflow still counts toward the 60, theirs would count toward nothing.
+describe('transfer courses fill the non-CSE nine first (DGS 2026-10-28)', () => {
+  const r = buildRules({
+    courses: [{ course_id: 'CSE 60876', set: { course_id: 'MATH 60850', title: 'Math Methods' } }],
+    external: EXTERNAL,
+  });
+  for (const [label, grade] of [['in progress', 'IP'], ['graded', 'A']] as const) {
+    it(`a Notre Dame MATH course ${label}: 17 credits still transfer, and it counts toward the 60`, () => {
+      const s = { ...student, courses: [...student.courses, ndCourse('MATH 60850', { term: fall(2026), grade })] };
+      const rep = audit(s, r, TODAY);
+      assert.match(rep.requirements.find((x) => x.id === 'phd.transfer')!.detail, /17 of the 24 credits you may transfer are counted/);
+      assert.match(rep.requirements.find((x) => x.id === 'phd.credits.total')!.detail, grade === 'A' ? /^20 of 60 credits complete/ : /^17 of 60 credits complete/);
+      const items = gradAdminRequest(rep, s, r, { todayIso: TODAY, entryTerm: 'Fall 2026', priorStudy: 'x' }).items;
+      assert.equal(items.transfers.reduce((sum, t) => sum + (t.cappedCredits ?? t.credits), 0), 17);
+    });
+  }
 });
