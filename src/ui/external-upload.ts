@@ -1145,6 +1145,21 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
       ),
       fileInput,
     );
+    // The Undergraduate row may be one to skip (DGS 2026-10-27): on the Ph.D.
+    // an undergraduate course counts only toward §4.4.1's core knowledge — its
+    // credits do not transfer (§5.2), and the preview offers only the rows
+    // that can serve an area (keepRelevantRows). The areas are the sheet's.
+    if (slot.level === 'bachelors' && student.program === 'phd') {
+      const areas = args.rules.coreAreas.map((a) => a.name);
+      const named = areas.length <= 1 ? areas.join('') : `${areas.slice(0, -1).join(', ')} or ${areas[areas.length - 1]}`;
+      parts.push(
+        el(
+          'p',
+          { class: 'hint slot-note', 'data-key': 'ext.optional.bachelors' },
+          `You may not need this one: an undergraduate course counts only toward core knowledge (§4.4.1)${named ? ` — ${named}` : ''}. If your bachelor’s had no such course, skip it.`,
+        ),
+      );
+    }
   }
   if (importError?.slot === slot.level) {
     parts.push(

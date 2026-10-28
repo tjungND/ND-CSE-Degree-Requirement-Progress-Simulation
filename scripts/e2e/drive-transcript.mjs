@@ -353,6 +353,18 @@ export async function driveTranscript(s, baseUrl, pdfs) {
     `[...document.querySelectorAll('.external-card button')].find(b => /^Add \\d+ selected course/.test(b.textContent)).click()`,
   );
   await s.waitFor(`!document.querySelector('.external-card .transcript-preview') && [...document.querySelectorAll('h3.subhead')].some(h => h.textContent.includes('Purdue University'))`);
+  // The DGS's case (2026-10-27): a bachelor's and a finished master's from
+  // other universities, the Master's transcript imported first. The next step
+  // follows the earlier-degrees answer — the Undergraduate row, still empty —
+  // and never the Ph.D. row: the one graduate degree is in. The Undergraduate
+  // row says when it can be skipped (W-CL569).
+  const afterMasters = await nextStepShown(s);
+  console.log('  after the Master’s row’s Add, the next step:', JSON.stringify(afterMasters));
+  if (afterMasters.focused !== 'ext.import.bachelors' || afterMasters.note !== 'Next step: import your Previous Undergraduate Transcript (highlighted).') throw new Error('after the Master’s transcript, the Undergraduate row must be next: ' + JSON.stringify(afterMasters));
+  const ugNotice = await s.evalJs(`document.querySelector('.next-step-ring [data-key="ext.optional.bachelors"]')?.textContent ?? ''`);
+  if (!/^You may not need this one: an undergraduate course counts only toward core knowledge \(CSE §4\.4\.1\) — .+\. If your bachelor’s had no such course, skip it\.$/.test(ugNotice)) throw new Error('the Undergraduate row must say when it can be skipped: ' + ugNotice);
+  console.log('  the Undergraduate row’s notice:', ugNotice);
+  await s.shotElement('next-step-undergraduate', '.next-step-ring');
   // The DGS's rulings live on each course's line in the coursework table
   // (2026-09-06 — the separate verdicts block was removed as redundant): the
   // 3 Purdue courses are unreviewed §5.2 transfer CANDIDATES, amber (later
@@ -807,12 +819,14 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   // Prior study is no longer inferred by an import once the earlier-degrees
   // answer exists (DGS 2026-09-22): the consent helper answered "finished".
   if (!combinedToast.includes('(2 undergraduate, 2 graduate)')) throw new Error('combined import must report the level split');
-  // An earlier transcript added is a finished step (DGS 2026-10-17): the next
-  // row the earlier degrees opened that is still empty — the Ph.D. row, its
-  // preview cancelled above — is next, ringed, focused and said (W-CL525).
+  // An earlier transcript added is a finished step (DGS 2026-10-17). The
+  // Ph.D. row is still empty, but it is not next (DGS 2026-10-27): the one
+  // graduate degree the earlier degrees name is in the Master's row, and the
+  // Undergraduate row holds courses — so the Next steps list goes on: the
+  // review request the new courses added to.
   const afterRow = await nextStepShown(s);
-  console.log('  after the Master’s row’s Add, the next step:', JSON.stringify(afterRow));
-  if (afterRow.focused !== 'ext.import.phd' || afterRow.note !== 'Next step: import your Previous Ph.D. Transcript (highlighted).') throw new Error('after a row’s Add, the next empty row must be the next step: ' + JSON.stringify(afterRow));
+  console.log('  after the combined transcript’s Add, the next step:', JSON.stringify(afterRow));
+  if (afterRow.focused !== 'review.copy' || !afterRow.note.startsWith('Next step: Send the review request')) throw new Error('with the graduate degree in, the Ph.D. row must not be next: ' + JSON.stringify(afterRow));
   if ((await s.evalJs(`JSON.parse(localStorage.getItem('cse-degree-audit/v1/student')).priorMs`)) !== 'completed') throw new Error('prior study must stay as the earlier-degrees answer set it');
   // The hand-set award term (3c) is kept — an import only replaces an inferred one (2026-09-06).
   if (combinedToast.includes('Bachelor’s degree awarded')) throw new Error('a hand-set award term must not be replaced by an import');

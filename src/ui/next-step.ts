@@ -12,7 +12,8 @@
 // Next steps list, item by item (next-steps.ts STEP_KEYS). When a change the
 // student made (app.ts `update`) leaves one of them no longer asked for, that
 // step is finished (`finishedBetween`), and the next one (`nextAfter`) — the
-// first still asked for AFTER it, else the first still asked for — is
+// first still asked for AFTER it, else the first still asked for; after an
+// earlier transcript, the rows the earlier degrees still ask for first — is
 // scrolled into view, focused, ringed with a "Next step" tag for ten seconds
 // and said in a message (`showNextStep`), for a button and for an answer in
 // a field alike (DGS 2026-10-17: "Scroll and focus too"). A step that waits
@@ -54,9 +55,21 @@ export function pendingOn(doc: ParentNode, steps: readonly NextStep[], newRecord
   if (newRecord && doc.querySelector('[data-key="import.nd"]') && !doc.querySelector('[data-key="import.nd.remove"]')) out.add('import.nd');
   if (doc.querySelector('[data-key="earlier.done"]')) out.add('earlier.done');
   // An earlier-transcript row offers Import while it has no courses (Remove once it has).
-  for (const b of doc.querySelectorAll<HTMLElement>('.external-slot [data-key^="ext.import."]')) out.add(`import:${b.getAttribute('data-key')!.slice('ext.import.'.length)}`);
+  const slotsWith = (prefix: string): string[] => [...doc.querySelectorAll<HTMLElement>(`.external-slot [data-key^="${prefix}"]`)].map((b) => b.getAttribute('data-key')!.slice(prefix.length));
+  for (const slot of importsAsked(slotsWith('ext.import.'), slotsWith('ext.remove.'))) out.add(`import:${slot}`);
   for (const s of steps) out.add(`step:${s.key}`);
   return out;
+}
+
+/** The earlier-transcript rows still asked for: those offering Import
+ * (`offering`), less the second graduate row once one holds courses
+ * (`holding`). The earlier-degrees answer says "a graduate degree at another
+ * university", not which, so its transcript goes in the Master's row or the
+ * Ph.D. row, once (DGS 2026-10-27: after a Master's transcript, the Ph.D.
+ * row was highlighted next). The other row stays on the page. */
+export function importsAsked(offering: readonly string[], holding: readonly string[]): string[] {
+  const graduateIn = holding.some((slot) => slot !== 'bachelors');
+  return offering.filter((slot) => slot === 'bachelors' || !graduateIn);
 }
 
 /** What was asked for before and is not any more: the steps just finished. */
@@ -65,11 +78,19 @@ export function finishedBetween(before: ReadonlySet<PendingId>, now: ReadonlySet
 }
 
 /** The order to look for the next step in, after `finished` was done: what
- * is still asked for after the earliest of them, then from the start. */
+ * is still asked for after the earliest of them, then from the start. After
+ * an earlier transcript, the rows the earlier degrees still ask for come
+ * first, in their order — the bachelor's, then the graduate degree (DGS
+ * 2026-10-27: "The order of highlights should match the prior study
+ * selection"; a Master's transcript imported first left the Undergraduate
+ * row behind it, reached only once the Next steps list was done). */
 export function nextOrder(finished: readonly PendingId[], now: ReadonlySet<PendingId>): PendingId[] {
   const from = Math.min(...finished.map(rank));
   const open = [...now].sort((a, b) => rank(a) - rank(b));
-  return [...open.filter((id) => rank(id) > from), ...open.filter((id) => rank(id) <= from)];
+  const isRow = (id: PendingId): boolean => id.startsWith('import:');
+  const rows = finished.some(isRow) ? open.filter(isRow) : [];
+  const rest = open.filter((id) => !rows.includes(id));
+  return [...rows, ...rest.filter((id) => rank(id) > from), ...rest.filter((id) => rank(id) <= from)];
 }
 
 export interface NextStepTarget {

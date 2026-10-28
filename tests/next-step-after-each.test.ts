@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { AuditReport, RequirementResult, Student } from '../src/engine/types.ts';
-import { finishedBetween, nextOrder, ORDER } from '../src/ui/next-step.ts';
+import { finishedBetween, importsAsked, nextOrder, ORDER } from '../src/ui/next-step.ts';
 import { nextSteps, STEP_KEYS } from '../src/ui/next-steps.ts';
 import { dropExampleRows, exampleRowsRemovedNote, validateStudent, type LoadCleanup } from '../src/ui/state.ts';
 import { ndCourse, phdStudent } from './helpers/student.ts';
@@ -55,6 +55,26 @@ describe('which step is next', () => {
     assert.deepEqual(nextOrder(['step:advisor.approved'], new Set(['step:standing.check'])), ['step:standing.check']);
     // Two finished at once: from the earlier of them.
     assert.deepEqual(nextOrder(['earlier.done', 'step:earlier-degrees'], new Set(['import:bachelors', 'step:coursework.degrees']))[0], 'import:bachelors');
+  });
+});
+
+describe('the earlier transcripts follow the earlier-degrees answer (DGS 2026-10-27)', () => {
+  it('one graduate transcript: once the Master’s or the Ph.D. row holds courses, the other is not asked for', () => {
+    assert.deepEqual(importsAsked(['bachelors', 'masters', 'phd'], []), ['bachelors', 'masters', 'phd']);
+    assert.deepEqual(importsAsked(['bachelors', 'phd'], ['masters']), ['bachelors']);
+    assert.deepEqual(importsAsked(['bachelors', 'masters'], ['phd']), ['bachelors']);
+    assert.deepEqual(importsAsked(['masters', 'phd'], ['bachelors']), ['masters', 'phd'], 'the bachelor’s transcript settles no graduate row');
+  });
+  it('a Master’s transcript imported first: the Undergraduate row is next, not the Ph.D. row or the Next steps list', () => {
+    const finished = finishedBetween(new Set(['import:bachelors', 'import:masters', 'import:phd', 'step:advisor.name']), new Set(['import:bachelors', 'step:coursework.degrees', 'step:advisor.name']));
+    assert.deepEqual(finished, ['import:masters', 'import:phd']);
+    assert.equal(nextOrder(finished, new Set(['import:bachelors', 'step:coursework.degrees', 'step:advisor.name']))[0], 'import:bachelors');
+  });
+  it('the Undergraduate transcript imported first: the graduate row is next', () => {
+    assert.equal(nextOrder(['import:bachelors'], new Set(['import:masters', 'import:phd', 'step:coursework.degrees']))[0], 'import:masters');
+  });
+  it('a step after the transcripts does not send the student back to a row they skipped', () => {
+    assert.equal(nextOrder(['step:advisor.name'], new Set(['import:bachelors', 'step:advisor.tenure']))[0], 'step:advisor.tenure');
   });
 });
 

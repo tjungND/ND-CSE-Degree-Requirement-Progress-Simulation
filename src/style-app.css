@@ -593,8 +593,8 @@ ul.req-detail.detail-list li.check > .mark { position: absolute; left: -1.3em; t
 .combined-note > summary { cursor: pointer; font-weight: 600; }
 .combined-note[open] > summary { margin-bottom: 5px; }
 .unofficial-note { margin-top: 2px; }
-/* The row's lasting warning, on a line of its own (DGS 2026-10-16). */
-.external-slot .unofficial-note { flex-basis: 100%; margin: 2px 0 0; }
+/* The row's lasting warning (DGS 2026-10-16) and the Ph.D. Undergraduate row's notice (2026-10-27), each on a line of its own. */
+.external-slot .unofficial-note, .external-slot .slot-note { flex-basis: 100%; margin: 2px 0 0; }
 .external-slot:last-of-type { border-bottom: 0; }
 .external-slot .slot-label { font-weight: 600; color: var(--navy); min-width: 140px; display: inline-block; }
 .external-card .transcript-preview input, .external-card .transcript-preview select { padding: 4px 6px; font-size: 13px; max-width: 130px; }
