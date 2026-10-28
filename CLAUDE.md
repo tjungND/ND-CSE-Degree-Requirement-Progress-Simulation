@@ -159,7 +159,8 @@ it lives in git history only. `DGS-READ-THIS.md` was replaced by `README.md` on 
 - The DGS keeps ONE long-lived Desktop session for this repo (never archived; a second session would
   mean a second branch to reconcile). Desktop runs the session in its own git worktree under
   `.claude/worktrees/<name>/` on the branch `claude/<name>`; the first command of a new session is
-  `npm ci` (a worktree starts without `node_modules`).
+  `npm ci` (a worktree starts without `node_modules`). A session opened on the clone itself
+  (`~/degree-audit-app`, no worktree) first makes its own `claude/<name>` branch there.
 - Start by reading `docs/CLAUDE-HANDOFF.md`, `docs/STATE.md` (where things stand, open items) and
   the newest rows of `docs/DECISIONS.md`. Never re-decide a recorded decision; append a row for
   every new one. Keep `docs/STATE.md` and the handoff current as you go, not at the end.
@@ -169,21 +170,23 @@ it lives in git history only. `DGS-READ-THIS.md` was replaced by `README.md` on 
   npm run e2e`, `E2E_BROWSER=firefox npm run e2e`; Chromium alone missed a Safari-only bug on
   2026-09-06 and a Firefox-only one on 2026-10-10). Show the result (screenshot or preview)
   in the reply that delivers it. Since 2026-10-04 (DGS: "From now on, commit and give the line to
-  merge and push without my approval") a verified batch is committed at once and the reply ends with
-  the merge-and-push line; revisions the DGS asks for afterwards are new commits.
+  merge and push without my approval") a verified batch is committed at once, and since 2026-10-27
+  Claude pushes it too (below); revisions the DGS asks for afterwards are new commits.
 - Commit on the session's branch under the DGS's own git identity (Taeho Jung <tjung@nd.edu>, the
   global git config on his Macs) with the change explained in the message. Before each commit that
-  the DGS will ship, run `git fetch origin && git merge origin/main` (the sheet-sync Action commits
+  ships, run `git fetch origin && git merge origin/main` (the sheet-sync Action commits
   to `main` every six hours) and re-run the checks if anything came in.
-- Claude NEVER pushes, opens PRs or uses "Continue in → Claude Code on the Web". The DGS merges and
-  pushes himself: after every shippable commit, end the reply with the exact line for him to paste
-  into Terminal, with the real branch name (`git branch --show-current`) filled in —
-  `cd ~/degree-audit-app && git pull --ff-only && git merge --no-edit <branch> && git push` —
-  and tell him what it deploys. (The second merge is deliberately NOT `--ff-only` — DGS
-  2026-09-28: the sheet-sync Action's six-hourly snapshot commit on `main` kept landing between
-  Claude's merge and his push, and a fast-forward was then impossible; a plain merge fast-forwards
-  when it can and otherwise makes the same merge commit Claude would have made. A conflict cannot
-  arise: only the Action writes `data/snapshot.json`.) Never rewrite history that has been pushed.
+- Claude pushes each verified batch itself (DGS 2026-10-27; until then the DGS pasted
+  `cd ~/degree-audit-app && git pull --ff-only && git merge --no-edit <branch> && git push`).
+  After the commit and the merge above, `git push origin HEAD:main` fast-forwards `main` to the
+  session's branch tip. If GitHub refuses it because the sheet-sync Action's snapshot commit landed
+  in between, fetch, merge `origin/main` and push again — no re-check needed, since only the Action
+  writes `data/snapshot.json` and it cannot conflict (the reason the paste line dropped
+  `--ff-only` on 2026-09-28). The reply then says what was deployed (GitHub Pages redeploys `main`
+  within a minute or two). Never `--force`, never rewrite history that has been pushed, never push
+  a `claude/` branch, open a PR or use "Continue in → Claude Code on the Web". Git signs in with
+  the GitHub CLI's login (`gh auth login`, then `gh auth setup-git`, once per Mac — MAINTENANCE.md);
+  if a push is refused for credentials, say so and give the DGS that command, never ask for a token.
 - FERPA: never open a real transcript. Sanitized copies only, kept outside the repo under neutral
   names; never let a student's name into code, fixtures, docs or commit messages.
 - Wording: "Grad Admin" is the Graduate Program Administrator; every student-facing string Claude

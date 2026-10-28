@@ -1011,12 +1011,14 @@ queue. Recent commits, newest first:
   `npx playwright-core install webkit` per Mac).
 - The cycle: the DGS asks → Claude changes, verifies, shows the result → revisions → Claude commits on
   the branch (fetching and merging `origin/main` first, since the sheet-sync Action commits there) →
-  Claude ends with the one Terminal line the DGS pastes to merge and push:
-  `cd ~/degree-audit-app && git pull --ff-only && git merge --no-edit <branch> && git push`
-  (no `--ff-only` on the second merge since 2026-09-28 — the snapshot commits kept blocking it).
-  GitHub Pages deploys `main` within a minute or two.
-- Claude never pushes; "Continue in → Claude Code on the Web" and "Create PR" would push a branch, so
-  they are not used for this repo.
+  Claude pushes the branch tip to `main` with `git push origin HEAD:main` (DGS 2026-10-27; before
+  that the DGS pasted `cd ~/degree-audit-app && git pull --ff-only && git merge --no-edit <branch> && git push`).
+  A refusal because a snapshot commit landed in between is answered by fetching, merging and
+  pushing again. GitHub Pages deploys `main` within a minute or two.
+- Claude pushes only `main`, only a verified batch, never with `--force`. "Continue in → Claude Code
+  on the Web" and "Create PR" would push a `claude/` branch, so they are not used for this repo.
+  Git pushes with the GitHub CLI's login (`gh auth setup-git`, once per Mac; set up on the second Mac
+  2026-10-27, where the session works on a branch in `~/degree-audit-app` itself, not a worktree).
 
 ## FERPA reminders that survive every session
 

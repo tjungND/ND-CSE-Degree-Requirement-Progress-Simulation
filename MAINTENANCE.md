@@ -531,7 +531,10 @@ a second engine or a bigger model must clear with you first.
   files dropped into `.git/refs/` ("fatal: bad object refs/Icon?"), and conflict-duplicated
   object directories (`objects/0a 2/`) that made trees unreadable. Since then each machine keeps
   an ordinary clone OUTSIDE any synced folder (e.g. `~/degree-audit-app` — still no `:` in the
-  path) and GitHub does the syncing: `git push` on one Mac, `git pull` on the other. If a repo
+  path) and GitHub does the syncing: `git push` on one Mac, `git pull` on the other. On a new Mac,
+  `gh auth login` then `gh auth setup-git` (once) let git — and Claude, which pushes each verified
+  batch since 2026-10-27 — push with the GitHub CLI's login, and `git config --global user.name`
+  / `user.email` set the DGS's commit identity. If a repo
   ever shows those symptoms again, everything is on GitHub — `git fetch --refetch origin` repairs
   missing objects (after `find .git -name $'Icon\r' -delete` if refs are poisoned), and a fresh
   clone is always the fastest cure. Drive's own files (`*.gsheet`, `*.gdoc`, `Icon\r`) are
