@@ -2,12 +2,14 @@
 // draw as one card whose pill is the area furthest behind; the allowances sit
 // under Coursework; the residency sits under Basic requirements and the time
 // limit last under the dissertation (Ph.D.) or the project/thesis (MSCSE),
-// so there is no "Residence and time" group. The drawing itself is checked in
-// the browser (scripts/e2e/drive-app.mjs); this pins the rule and the groups.
+// so there is no "Residence and time" group; the qualifier card counts §4.4's
+// three parts, core knowledge one of them. The drawing itself is checked in
+// the browser (scripts/e2e/drive-app.mjs); this pins the rules and the groups.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { audit } from '../src/engine/audit.ts';
 import type { RequirementResult, Student } from '../src/engine/types.ts';
+import { withoutCitations } from '../src/ui/citations.ts';
 import { furthestBehind, pillLabel } from '../src/ui/report.ts';
 import { buildRules } from './helpers.ts';
 import { ndCourse, phdStudent } from './helpers/student.ts';
@@ -53,6 +55,27 @@ describe('the core-knowledge card shows the area furthest behind', () => {
     assert.equal(furthestBehind([row('unmet', 'upcoming'), row('unmet', 'overdue')]).deadline?.state, 'overdue');
     assert.equal(furthestBehind([row('met'), row('needs_dgs_review'), row('in_progress')]).status, 'in_progress');
     assert.equal(furthestBehind([row('met'), row('needs_dgs_review')]).status, 'needs_dgs_review');
+  });
+});
+
+describe('the qualifier counts three parts: core knowledge, specialization, the research component', () => {
+  const standing = (s: Student): string => {
+    const q = audit(s, rules, TODAY).requirements.find((r) => r.id === 'phd.qualifier')!;
+    return q.detailParts![0] as string;
+  };
+
+  it('one core area met: core knowledge is still open and names the two areas left', () => {
+    const text = standing(phdStudent({ courses: [ndCourse('CSE 60641')] }));
+    assert.equal(text, '0 of 3 parts done — still open: core knowledge (Algorithms and Computer Architecture; §4.4.1), specialization (§4.4.2), the research component (§4.4.3)');
+    assert.equal(withoutCitations(text), '0 of 3 parts done — still open: core knowledge (Algorithms and Computer Architecture), specialization, the research component');
+  });
+
+  it('no core area met: core knowledge names no area', () => {
+    assert.equal(standing(phdStudent()), '0 of 3 parts done — still open: core knowledge (§4.4.1), specialization (§4.4.2), the research component (§4.4.3)');
+  });
+
+  it('every core area met: core knowledge counts as one part done', () => {
+    assert.match(standing(phdStudent({ courses: [ndCourse('CSE 60641'), ndCourse('CSE 60111'), ndCourse('CSE 60321')] })), /^\d of 3 parts done — still open: (?!core knowledge)/);
   });
 });
 

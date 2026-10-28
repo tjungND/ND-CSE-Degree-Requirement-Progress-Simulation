@@ -206,16 +206,16 @@ describe('advisor summary: deadlines on the rows that have them', () => {
       requirements: [
         ...report.requirements,
         {
-          ...req('phd.qualifier', 'Qualifying examination — all components', 'in_progress', '3 of 5 parts done.', 'Qualifying examination — §4.4', '§4.4'),
+          ...req('phd.qualifier', 'Qualifying examination — all components', 'in_progress', '1 of 3 parts done.', 'Qualifying examination — §4.4', '§4.4'),
           deadline: { date: '2027-05-31', approx: true, state: 'due_soon', horizon: 'next', label: 'Due by the end of Spring 2027 (approximate)' },
         },
       ],
     };
     const r = advisorSummary(soon, opts);
     assert.match(r.text, /\n1 of 4 requirements met · 3 in progress · 1 conditionally met · 1 deadline in this semester or the next\.\n/);
-    assert.match(r.text, /\n  \[IN PROGRESS\] Qualifying examination — all components \(§4\.4\)\n      !! DEADLINE NEXT SEMESTER: Due by the end of Spring 2027\n      Why: 3 of 5 parts done\.\n/);
-    assert.ok(r.html.includes(htmlRequirementBlock({ word: 'In progress', color: 'amber', title: 'Qualifying examination — all components', section: '§4.4', lines: ['3 of 5 parts done.'], deadline: { text: 'Due by the end of Spring 2027', alert: 'next' } })), r.html);
-    assert.ok(r.html.includes(' (§4.4)</p><p style="margin:6px 0 0;padding:4px 8px;background:#ffe3c9;color:#8a3a00;border-left:4px solid #e0863a"><strong>Deadline next semester:</strong> Due by the end of Spring 2027</p><p style="margin:4px 0 0">3 of 5 parts done.</p></div>'), 'the box sits right under the title, the why after it, all inside the block');
+    assert.match(r.text, /\n  \[IN PROGRESS\] Qualifying examination — all components \(§4\.4\)\n      !! DEADLINE NEXT SEMESTER: Due by the end of Spring 2027\n      Why: 1 of 3 parts done\.\n/);
+    assert.ok(r.html.includes(htmlRequirementBlock({ word: 'In progress', color: 'amber', title: 'Qualifying examination — all components', section: '§4.4', lines: ['1 of 3 parts done.'], deadline: { text: 'Due by the end of Spring 2027', alert: 'next' } })), r.html);
+    assert.ok(r.html.includes(' (§4.4)</p><p style="margin:6px 0 0;padding:4px 8px;background:#ffe3c9;color:#8a3a00;border-left:4px solid #e0863a"><strong>Deadline next semester:</strong> Due by the end of Spring 2027</p><p style="margin:4px 0 0">1 of 3 parts done.</p></div>'), 'the box sits right under the title, the why after it, all inside the block');
     assert.match(r.text, /\nNext deadline: Qualifying examination — all components \(§4\.4\) — Due by the end of Spring 2027 \(next semester\)\.\n/);
     assert.doesNotMatch(r.text, /\(approximate\)/, 'said once in the footnote');
   });

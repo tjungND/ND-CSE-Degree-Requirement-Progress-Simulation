@@ -1885,7 +1885,11 @@ changed, so nobody undoes it by accident:
   cards and folds those with status `not_applicable` — "Not used yet" — into `details.allowance-fold`;
   the advisor summary sorts them last in the section), the residency is in `BASIC_GROUP`
   (shared.ts), the time limit — pushed last by audit.ts — is the last row of Dissertation and defense
-  / M.S. project or thesis, and there is no "Residence and time" group.
+  / M.S. project or thesis, and there is no "Residence and time" group. The qualifier umbrella's
+  first sentence counts §4.4's THREE parts (phd.ts `qualifierUmbrellaRow`: `qualifierParts` groups
+  the core rows into one part, done when no area is open; an open core part names its open areas
+  only when some are done — "core knowledge (Algorithms and Computer Architecture; §4.4.1)", the
+  page dropping the "; §4.4.1"). The late note still names each area (`rowName`): each has its term.
 - **Transcript-aware standing selectors** (DGS 2026-10-04, app.ts `transcriptGaps`, `fullTimeTerms`): with a `fromNdTranscript` row on file, an empty fall/spring is a gap (named in the leave question), never a research-only semester to tick.
 - **Readmission under five years** (P2-dh-3.1-3.13-3/-4/-9, 2026-10-04): `readmittedTerm` with a gap under five years marks the program's own earlier `nd` rows `beforeReadmission` (provisional, review-request ask, DGS Handbook §3.3); ≥ five years stays `interrupted` (§5.5, ND and prior-ND rows). Any readmission adds a `Readmission:` review flag. An empty semester is never read as a gap.
 - **Dual degree** (P2-ac-1-3-2, 2026-10-04): `Student.concurrentDegree` + `CourseEntry.sharedWithOtherDegree` add the cap `otherdegree` (nine, `DUAL_DEGREE_SHARED_CREDITS_MAX` — code, not sheet) in `classify()`'s outermost overlay `withSharedDegree`, ND rows only and only while `concurrentDegree` is true; without `attestations.dualPlanApproved` the course is provisional and its line leads “waiting for the Graduate School”. `otherDegreeCapRow` (shared.ts) builds `ms.cap.otherdegree`/`phd.cap.otherdegree`; `capRow` counts every counted credit for this cap (as for `transfer`). The standing checkbox has the key `standing.concurrentDegree`, not `attest.…` — the a11y driver's focus check clicks the first `attest.` box.

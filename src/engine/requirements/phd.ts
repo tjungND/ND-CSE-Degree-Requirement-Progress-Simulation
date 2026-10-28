@@ -264,7 +264,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
   rows.push(transferRow(ctx, { id: 'phd.transfer', group: COURSEWORK, capKeyCompleted: 'phd_transfer_completed_ms_credits_max', section: '§4.2, §5.2' }));
   rows.push(residencyRow(ctx));
 
-  // The five parts carry their own pills but the umbrella is what the
+  // The five rows carry their own pills but the umbrella is what the
   // headline counts (DGS 2026-09-27: it counted the qualifier six times).
   const qualifierChildren = [...coreRows(ctx), categoriesRow(ctx), researchQualifierRow(ctx)].map((c) => ({ ...c, unscored: true as const }));
   // §4.4's four semesters bind EVERY component (DGS 2026-09-29: a core area
@@ -762,8 +762,11 @@ function qualifierUmbrellaRow(ctx: Ctx, children: RequirementResult[], ndCredits
   let status = combineAll([...children.map((c) => c.status), ...(ndCredits ? [ndCredits.status] : [])]);
   // The standing first (DGS 2026-09-27): how many parts are done and which
   // are still open — the first sentence used to describe the page layout.
-  const partName = (c: RequirementResult): string =>
-    c.id === 'phd.qualifier.categories' ? 'specialization (§4.4.2)' : c.id === 'phd.qualifier.research' ? 'the research component (§4.4.3)' : `${c.title.replace(/^Core knowledge:\s*/, '')} core knowledge (§4.4.1)`;
+  const coreArea = (c: RequirementResult): string => c.title.replace(/^Core knowledge:\s*/, '');
+  const andList = (xs: string[]): string => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+  // One name per row, for the late note: each area has its own term.
+  const rowName = (c: RequirementResult): string =>
+    c.id === 'phd.qualifier.categories' ? 'specialization (§4.4.2)' : c.id === 'phd.qualifier.research' ? 'the research component (§4.4.3)' : `${coreArea(c)} core knowledge (§4.4.1)`;
   // Parts done before a readmission after five years or more wait for the
   // DGS (Academic Code §5.5; P3-ac-5a-3, DGS 2026-10-05) — done, not reset.
   const forfeited = children.filter((c) => c.forfeitReview === true);
@@ -771,8 +774,24 @@ function qualifierUmbrellaRow(ctx: Ctx, children: RequirementResult[], ndCredits
   // 2026-10-06, option A; the research component's own 18 months, 2026-09-13)
   // — done, not open.
   const late = children.filter((c) => c.completedLate === true);
-  const open = children.filter((c) => c.status !== 'met' && c.forfeitReview !== true && c.completedLate !== true);
-  const doneCount = children.length - open.length;
+  const isOpen = (c: RequirementResult): boolean => c.status !== 'met' && c.forfeitReview !== true && c.completedLate !== true;
+  const open = children.filter(isOpen);
+  // The count is §4.4's three components (DGS 2026-10-27: "Qualifying Exam
+  // has 3 parts: Core knowledge, specialization, and research component"):
+  // the core areas make one part, done when every area is, and an open one
+  // names its open areas when only some are.
+  const isCore = (c: RequirementResult): boolean => c.id.startsWith('phd.qualifier.core.');
+  const core = children.filter(isCore);
+  const qualifierParts = [...(core.length > 0 ? [core] : []), ...children.filter((c) => !isCore(c)).map((c) => [c])];
+  const openParts = qualifierParts.filter((p) => p.some(isOpen));
+  const doneParts = qualifierParts.filter((p) => !p.some(isOpen));
+  const forfeitedParts = doneParts.filter((p) => p.some((c) => c.forfeitReview === true));
+  const lateParts = doneParts.filter((p) => p.some((c) => c.completedLate === true));
+  const partName = (p: RequirementResult[]): string => {
+    if (!isCore(p[0]!)) return rowName(p[0]!);
+    const areas = p.filter(isOpen).map(coreArea);
+    return areas.length < p.length ? `core knowledge (${andList(areas)}; §4.4.1)` : 'core knowledge (§4.4.1)';
+  };
   // §4.4's "qualifier course requirement" is the course components — core
   // knowledge and specialization, with §4.2's nine Notre Dame credits (policy
   // review round 3, P3-cse-4a-3; DGS 2026-10-07: option (a)); the research
@@ -782,7 +801,7 @@ function qualifierUmbrellaRow(ctx: Ctx, children: RequirementResult[], ndCredits
   const courseComponentsDone = courseParts.length > 0 && courseParts.every((c) => c.status === 'met') && (!ndCredits || ndCredits.status === 'met');
   // The standing is the fact; everything else is a note (DGS 2026-10-03).
   const parts: DetailPart[] = [
-    `${doneCount} of ${children.length} parts done${forfeited.length > 0 ? ` — ${forfeited.length === doneCount ? 'all' : forfeited.length} ${FORFEIT_FACT}, waiting for the DGS` : ''}${late.length > 0 ? ` — ${late.length === doneCount ? 'all' : late.length} after the deadline, waiting for the DGS` : ''}${open.length > 0 ? ` — still open: ${open.map(partName).join(', ')}` : ''}`,
+    `${doneParts.length} of ${qualifierParts.length} parts done${forfeitedParts.length > 0 ? ` — ${forfeitedParts.length === doneParts.length ? 'all' : forfeitedParts.length} ${FORFEIT_FACT}, waiting for the DGS` : ''}${lateParts.length > 0 ? ` — ${lateParts.length === doneParts.length ? 'all' : lateParts.length} after the deadline, waiting for the DGS` : ''}${openParts.length > 0 ? ` — still open: ${openParts.map(partName).join(', ')}` : ''}`,
     { note: 'One card per part below' },
   ];
   if (ndCredits && ndCredits.status !== 'met') {
@@ -843,13 +862,13 @@ function qualifierUmbrellaRow(ctx: Ctx, children: RequirementResult[], ndCredits
       const p = parts[i];
       if (typeof p === 'object' && 'note' in p && /^Overdue — talk to the DGS$/.test(p.note)) parts.splice(i, 1);
     }
-    const which = late.map((c) => `${partName(c)}${c.completedIn ? ` in ${termLabel(c.completedIn)}` : ''}`);
+    const which = late.map((c) => `${rowName(c)}${c.completedIn ? ` in ${termLabel(c.completedIn)}` : ''}`);
     // The completion form follows the course components (P3-cse-4a-3 (a)): it
     // waits for the extension only when a course component is among the late
     // parts; with only the research late, the note below already says "file
     // it now" (policy review round 4, P4-phd-7; DGS 2026-10-12).
     const formWaits = !courseComponentsDone && !ctx.student.milestones.qualifierFormFiled;
-    parts.push({ note: `Completed after the deadline: ${which.length <= 1 ? which.join('') : `${which.slice(0, -1).join(', ')} and ${which[which.length - 1]}`} — the DGS confirms the extension${formWaits ? '; then file the qualifier completion form with the Grad Admin (§4.4)' : ''}` });
+    parts.push({ note: `Completed after the deadline: ${andList(which)} — the DGS confirms the extension${formWaits ? '; then file the qualifier completion form with the Grad Admin (§4.4)' : ''}` });
   }
   // Every part done, some before the gap: the DGS rules — never Overdue.
   if (open.length === 0 && forfeited.length > 0 && status !== 'cannot_evaluate') {

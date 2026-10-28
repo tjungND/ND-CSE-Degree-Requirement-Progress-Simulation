@@ -58,7 +58,7 @@ describe('a specialization completed after the four semesters (P3-cse-4a-2, opti
     assert.equal(q.status, 'needs_dgs_review');
     assert.equal(q.completedLate, true);
     assert.equal(q.deadline?.label, 'Completed after the deadline — waiting for the DGS');
-    assert.match(q.detail, /^5 of 5 parts done — 1 after the deadline, waiting for the DGS\./);
+    assert.match(q.detail, /^3 of 3 parts done — 1 after the deadline, waiting for the DGS\./);
     assert.match(q.detail, /Completed after the deadline: specialization \(§4\.4\.2\) in Fall 2026 — the DGS confirms the extension; then file the qualifier completion form with the Grad Admin \(§4\.4\)/);
     assert.doesNotMatch(q.detail, /Remember to file|Overdue/);
     assert.match(report.milestoneDeadlines?.qualifierFormFiled?.basis ?? '', /^No deadline of its own — every part is done, some after the deadline; once the DGS confirms the extension, file the completion form with the Grad Admin \(§4\.4\)$/);
