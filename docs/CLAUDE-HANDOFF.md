@@ -1796,6 +1796,28 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   random configurations). `tests/allocator-blowup.test.ts` fails in seconds if anyone brings the
   enumeration back.
 
+- **The allocator since the credit-transfer review (2026-10-29; DECISIONS rows of that date).**
+  Read `allocate()` with these in mind. (1) `plan(cc, roomOf)` is the ONE place that decides what a
+  course takes — counted credit, the F1 `spill` (non-CSE credit the nine refuses that still counts
+  toward the total, now charged to and limited by the course's other caps) and the refused rest —
+  and both `take()` and `bestMultiOrder` call it; never compute a take anywhere else. The non-CSE
+  cap is charged `counted`, every other cap `counted + spill`. (2) Every credit, room and sum goes
+  through `exactCredits` (six decimals); `thresholdStatus` also allows a millionth. (3) Fill order
+  per tier: bsShare 'both' first; then courses toward a requirement of their own (regular, the
+  MSCSE project, the Ph.D. seminar courses) before total-only ones; within a group singles (sorted by
+  `precedence`: posted credit, transfers, the program's own courses, then classify order) and then
+  the multis by `bestMultiOrder`, whose objective is (credits the caps admit, then everything that
+  counts, spill included) — that second figure is what makes transfer courses take the non-CSE
+  nine first (DGS 2026-10-28). (4) §4.2's nine at Notre Dame and the MSCSE along the way are read
+  from a SECOND pass over the Notre Dame courses alone (`notreDameOnly`, Ph.D. only), exposed as
+  `ndRegular`/`ndResearch` and per course `ndRegularCredits`; a course a transfer pushed out of the
+  nine says on its line that it still counts toward the credits at Notre Dame. (5) `candidate`
+  on a CourseAllocation marks a §5.2 course the DGS has still to pick (unreviewed, or a held `yes`
+  the cap has no room for): no card or request calls it "over the cap". (6) The retake rule reads
+  Notre Dame's catalogue wherever a row is filed (`notreDameAttempt`), and same-term duplicates are
+  decided by grade. (7) The "transfer recorded" tick covers a list of transfers
+  (`transfer-recorded.ts`): use `transferRecordedFor(student, entry)`, never the attestation alone.
+
 ## The policy-compliance review's changes (2026-10-03) — what a later session must know
 
 The review of 2026-10-02 (workflow; report at the artifact “Policy Compliance Review”, data under

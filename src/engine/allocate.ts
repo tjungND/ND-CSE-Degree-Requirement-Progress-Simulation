@@ -2839,7 +2839,13 @@ export function allocate(
     // first counts toward the 24 (30) and the total, the second toward the
     // total alone, so a research, seminar or independent-study course taking
     // the room first cost the 24 and gained nothing.
-    const rest = inTier.filter((c) => c.bsShare !== 'both');
+    // Credit already posted on the Notre Dame record has been transferred: it
+    // takes its caps — §5.2's share above all — before any course still to be
+    // requested, whatever its pool or its number of caps (credit-transfer
+    // review 2026-10-28, #4; the review of the fix found a posted course
+    // outside CSE, or a posted thesis, still losing its room).
+    for (const cc of inTier.filter((c) => c.bsShare !== 'both' && c.ndPosting !== undefined)) take(cc);
+    const rest = inTier.filter((c) => c.bsShare !== 'both' && c.ndPosting === undefined);
     const feedsRequirement = (c: ClassifiedCourse): boolean =>
       c.pool === 'regular' || c.pool === 'project' || (c.pool === 'seminar' && (opts.seminarCourseIds ?? []).includes(c.entry.courseId.toUpperCase().replace(/\s+/g, ' ')));
     for (const group of [rest.filter(feedsRequirement), rest.filter((c) => !feedsRequirement(c))]) {
@@ -2892,14 +2898,22 @@ export function allocate(
   // were added, and the nine from 15 to 6 for a student whose specialization
   // came from the Notre Dame bachelor's.
   if (opts.notreDameOnly === true || opts.notreDameCounts === false) return { perCourse, ...sums, capUsage };
+  // Everything but transfer credit takes part: Notre Dame coursework from
+  // before the program that is not transfer credit (undergraduate,
+  // non-degree, before admission) shares the six and the nine with the
+  // program's courses whatever is transferred, so it competes here too — left
+  // out, a course it pushed out of the six "still counted" toward the nine
+  // with no transfer on the record (review of the fix, 2026-10-29). Only the
+  // courses taken here count toward the nine and the award.
   const atNd = allocate(
-    classified.filter((c) => c.entry.origin === 'nd' || c.ndMastersCredit === true),
+    classified.filter((c) => c.entry.origin === 'nd' || c.ndMastersCredit === true || c.notTransferCredit === true),
     caps,
     { ...opts, notreDameOnly: true },
   );
   const ndCredits = new Map(atNd.perCourse.map((p) => [p.course, p.countedRegular]));
   for (const p of perCourse) {
-    const nd = p.course.pool === 'regular' ? (ndCredits.get(p.course) ?? 0) : 0;
+    const atNotreDame = p.course.entry.origin === 'nd' || p.course.ndMastersCredit === true;
+    const nd = p.course.pool === 'regular' && atNotreDame ? (ndCredits.get(p.course) ?? 0) : 0;
     p.ndRegularCredits = nd;
     // A course a transfer pushed out of the allowance says it still counts here.
     if (nd > p.countedRegular) {
@@ -2973,12 +2987,17 @@ function bestMultiOrder(
     const hit = memo.get(key);
     if (hit) return hit;
     let best: { score: Score; order: number[] } | undefined;
-    // An optimistic ceiling for the whole state — no course can take more than
-    // its own credits, nor more than the smallest room it draws on, and none
-    // adds more than its credits to the total.
+    // An optimistic ceiling for the whole state: what each remaining course
+    // would take at the rooms as they stand. Rooms only fall as courses are
+    // taken, and what a course counts — and counts anywhere, its spill
+    // included — never rises as they fall, so no order can beat the sum. (A
+    // ceiling of every course's full credits never pruned once an untransferred
+    // course could not spill, and twenty two-cap courses took seconds — review
+    // of the fix, 2026-10-29.)
+    const now = remaining.map((i) => plan(multis[i]!, (id) => rooms[capIndex.get(id)!]!));
     const ceiling: Score = {
-      counted: exactCredits(remaining.reduce((sum, i) => sum + Math.min(creditsOf(multis[i]!), Math.min(...multis[i]!.caps.map((id) => Math.max(0, rooms[capIndex.get(id)!]!)))), 0)),
-      total: exactCredits(remaining.reduce((sum, i) => sum + creditsOf(multis[i]!), 0)),
+      counted: exactCredits(now.reduce((sum, t) => sum + t.counted, 0)),
+      total: exactCredits(now.reduce((sum, t) => sum + t.counted + t.spill, 0)),
     };
     for (let p = 0; p < remaining.length; p++) {
       if (best && !beats(ceiling, best.score)) break; // no child can strictly beat it

@@ -726,9 +726,15 @@ export function capRow(args: {
   // the §5.2 card — listed here too, it read "beyond the allowance" beside a
   // meter with room left. Nor a §5.2 candidate: which candidates fill a cap is
   // the DGS's choice, not a refusal (DGS 2026-09-06).
+  // A credit the non-CSE nine refused that spilled into the total is that
+  // card's "count toward the total-credit requirement only"; a part another
+  // cap then refused (a semester's maximum) is that cap's, not the nine's
+  // (review of the fix, 2026-10-29).
+  const refusedHere = (p: CourseAllocation): boolean =>
+    p.excluded > 0 && (p.boundCaps ?? []).includes(args.capId) && !(args.capId === 'noncse' && (p.overCapToTotal ?? 0) > 0);
   const excludedLines: DetailPart[] = args.ctx.alloc.perCourse
     .filter((p) => p.course.caps.includes(args.capId) && p.candidate !== true)
-    .filter((p) => (p.excluded > 0 && (p.boundCaps ?? []).includes(args.capId)) || ((p.overCapToTotal ?? 0) > 0 && args.capId === 'noncse'))
+    .filter((p) => refusedHere(p) || ((p.overCapToTotal ?? 0) > 0 && args.capId === 'noncse'))
     // Every number a student reads goes through formatCredits (credits.ts:
     // "never scientific notation, never '2.6666666666666665'"). These three
     // were raw (red-team 2026-09-13): one ordinary quarter-system transfer
@@ -736,7 +742,7 @@ export function capRow(args: {
     // "2.666666668 of the 9 non-CSE allowance credits used".
     .map((p) => ({
       warn:
-        p.excluded > 0
+        refusedHere(p)
           ? `${p.course.entry.courseId}: ${formatCredits(p.excluded)} ${p.excluded === 1 ? 'credit' : 'credits'} not counted — beyond the allowance`
           : // The non-CSE allowance limits regular-course credit only (F1,
             // 2026-09-12): what it refuses still counts toward the total.
