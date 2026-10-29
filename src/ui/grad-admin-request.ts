@@ -413,7 +413,10 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
         // course reaches the Graduate School through the DGS's own
         // recommendation, not through this request (policy review round 3,
         // P3-prior-programs-5).
-        c.approvalPending === undefined,
+        c.approvalPending === undefined &&
+        // …nor a course with no final grade yet: §5.2 needs its B on the
+        // record (credit-transfer review 2026-10-28, #19).
+        c.entry.grade !== 'IP',
     )
     .map((c) => {
       const cap = capOf(c);

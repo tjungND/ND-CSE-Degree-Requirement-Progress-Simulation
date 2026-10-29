@@ -1,0 +1,121 @@
+{
+  "name": "phd-short-readmission-holds-own-mscse",
+  "description": "Credit-transfer review 2026-10-28 (#15): readmitted in Fall 2022 after a shorter gap; the program “may reject some or all past credits” (DGS Handbook §3.3), so the Ph.D.’s own earlier courses wait for the DGS — but the student’s own Notre Dame MSCSE courses from before it counted in full. They are the same graduate program (Graduate School, 2026-10-03): they wait too, and their lines no longer say “counts in full”.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2020
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2018
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2019
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2019
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2018
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2020
+      }
+    },
+    "readmittedTerm": {
+      "season": "fall",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-mscse"
+    }
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "3 of 24 credits complete. 15 pending review/approval."
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 60641": [
+      "taken before your readmission (Fall 2022)"
+    ]
+  }
+}

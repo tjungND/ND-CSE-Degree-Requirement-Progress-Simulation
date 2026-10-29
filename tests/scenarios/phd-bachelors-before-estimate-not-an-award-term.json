@@ -1,0 +1,87 @@
+{
+  "name": "phd-bachelors-before-estimate-not-an-award-term",
+  "description": "Credit-transfer review 2026-10-28 (#17): a standalone Purdue master’s transcript gives the bachelor’s only as “Before Fall 2023” (DGS 2026-09-20), stored as Summer 2023. A graduate course from another source dated Summer 2023 was refused as “taken in the term your bachelor’s degree was awarded (Summer 2023)” — a term the student never gave. It now asks for the semester instead: “not counted yet — dated before Fall 2023, and this record knows only that your bachelor’s degree was awarded before then …”.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 52500",
+        "title": "CS 52500",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 53600",
+        "title": "CS 53600",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "EECS 58200",
+        "title": "EECS 58200",
+        "credits": 3,
+        "term": {
+          "season": "summer",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Michigan",
+        "degreeLevel": "masters"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "summer",
+      "year": 2023
+    },
+    "bachelorsAwardedInferred": {
+      "how": "the first semester on your Purdue University master’s transcript",
+      "before": {
+        "season": "fall",
+        "year": 2023
+      }
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet"
+    }
+  },
+  "expectCourseLines": {
+    "EECS 58200": [
+      "not counted yet — dated before Fall 2023, and this record knows only that your bachelor’s degree was awarded before then"
+    ]
+  }
+}

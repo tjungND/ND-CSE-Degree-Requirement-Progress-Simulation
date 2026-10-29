@@ -231,7 +231,10 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       const credits = unreviewed.reduce((sum, c) => sum + (c.entry.credits ?? 0), 0);
       parts.push(`Waiting for the DGS: ${unreviewed.map((c) => c.entry.courseId).join(', ')} (${formatCredits(credits)} credits)`, { note: 'Send the review request from the Transcripts card' });
     }
-    parts.push(`${formatCredits(Math.max(0, counted - outsideCap))} of the ${cap} credits you may transfer are counted${provisional > 0 ? `; ${formatCredits(provisional)} more pending review` : ''}${outsideCap > 0 ? `, besides ${formatCredits(outsideCap)} on your Notre Dame record, counted in full` : ''}`, { note: capNote });
+    // Credit still in progress elsewhere is not counted yet — it waits for its
+    // final grade (credit-transfer review 2026-10-28, #19).
+    const inProgress = ctx.alloc.transfer.in_progress;
+    parts.push(`${formatCredits(Math.max(0, counted - inProgress - outsideCap))} of the ${cap} credits you may transfer are counted${inProgress > 0 ? `; ${formatCredits(inProgress)} in progress` : ''}${provisional > 0 ? `; ${formatCredits(provisional)} more pending review` : ''}${outsideCap > 0 ? `, besides ${formatCredits(outsideCap)} on your Notre Dame record, counted in full` : ''}`, { note: capNote });
     // Only courses under §5.2's own cap belong on this row: Notre Dame
     // coursework taken as an undergraduate is filed as 'transfer' but is not
     // transfer credit (2026-09-10), and its lines used to be repeated here.

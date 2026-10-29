@@ -1,0 +1,92 @@
+{
+  "name": "phd-transfer-in-progress-not-submitted",
+  "description": "Credit-transfer review 2026-10-28 (#19): a Purdue course approved in the course rules but still in progress there (IP). The §5.2 card counted it and the Grad Admin request submitted it, while the same course graded I was held because it cannot show §5.2’s B. A transfer with no final grade is in progress: the card says so, its line says to send it once its final grade is in, and the request leaves it out.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 58000",
+          "course_title": "CS 58000",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 59100",
+          "course_title": "CS 59100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 58000",
+        "title": "CS 58000",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 59100",
+        "title": "CS 59100",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "3 of the 24 credits you may transfer are counted; 3 in progress"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 59100": [
+      "once its final grade (B or better, §5.2) is in"
+    ]
+  }
+}

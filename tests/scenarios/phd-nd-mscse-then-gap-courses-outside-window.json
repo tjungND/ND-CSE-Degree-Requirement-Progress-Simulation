@@ -1,0 +1,191 @@
+{
+  "name": "phd-nd-mscse-then-gap-courses-outside-window",
+  "description": "Credit-transfer review 2026-10-28 (#6): the Notre Dame MSCSE (Fall 2012 – Spring 2014), then a Northeastern master’s in 2015–2017, then the Ph.D. in Fall 2026. §5.2’s window counted back from the MSCSE admission with no end, so the Northeastern courses — after the MSCSE ended and more than five years before the Ph.D. — counted and were submitted. Academic Code §4.6 criterion 3: “within a five-year period prior to admission … or while enrolled”; they are neither: “not counted — completed after your Notre Dame MSCSE ended (Spring 2014) and more than 5 years before you entered the Ph.D. (before Fall 2021) …”.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CS 5001",
+          "course_title": "CS 5001",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CS 5002",
+          "course_title": "CS 5002",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CS 5003",
+          "course_title": "CS 5003",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CS 5004",
+          "course_title": "CS 5004",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2012
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2013
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2013
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CS 5001",
+        "title": "CS 5001",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2015
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 5002",
+        "title": "CS 5002",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2016
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 5003",
+        "title": "CS 5003",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2016
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 5004",
+        "title": "CS 5004",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2017
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2012
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2014
+      }
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-mscse",
+      "alsoElsewhere": true,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "0 of 24 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 5001": [
+      "not counted — completed after your Notre Dame MSCSE ended (Spring 2014) and more than 5 years before you entered the Ph.D. (before Fall 2021)"
+    ]
+  }
+}

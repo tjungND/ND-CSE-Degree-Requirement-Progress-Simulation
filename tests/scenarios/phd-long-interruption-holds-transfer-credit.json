@@ -1,0 +1,132 @@
+{
+  "name": "phd-long-interruption-holds-transfer-credit",
+  "description": "Credit-transfer review 2026-10-28 (#7): readmitted in Fall 2025 after seven years away. The warning says the Academic Code forfeits credit for every course from before the interruption (§5.5), and the Notre Dame courses waited for the DGS — but the Northeastern transfer credit from 2016–2017 counted and went to the Grad Admin. §5.5 says “any course”: it waits for the DGS too, without “send the Grad Admin the processing request” on its line.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CS 5001",
+          "course_title": "CS 5001",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CS 5002",
+          "course_title": "CS 5002",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2018
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 5001",
+        "title": "CS 5001",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2016
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 5002",
+        "title": "CS 5002",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2017
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2018
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2019
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2015
+    },
+    "readmittedTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "3 of 24 credits complete. 12 pending review/approval."
+      ]
+    },
+    "phd.transfer": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "Waiting for the DGS: CS 5001"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 5001": [
+      "taken before an interruption of five years or more"
+    ]
+  }
+}

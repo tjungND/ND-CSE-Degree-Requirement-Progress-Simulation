@@ -642,8 +642,24 @@ export function isOwnMscseCoursework(student: Student, c: CourseEntry): boolean 
   if (student.program !== 'phd' || student.ndMasters === undefined) return false;
   if (!(c.origin === 'nd' || isNotreDameInstitution(c.institution)) || c.degreeLevel === 'bachelors') return false;
   if (compareTerm(c.term, normalizeEntryTerm(student.entryTerm).term) >= 0) return false;
+  // The early-start summer just before the Ph.D. is the Ph.D.'s own
+  // coursework (P3-chg-other-1, DGS 2026-10-05), not the MSCSE's — read as the
+  // MSCSE's, it dated the MSCSE to that summer and erased a five-year
+  // separation (credit-transfer review 2026-10-28, #9).
+  if (c.origin === 'nd' && isEarlyStartCourse(c, student)) return false;
   const awarded = student.bachelorsAwarded;
   return awarded === undefined || compareTerm(c.term, awarded) > 0 || c.countedToward === 'mscse' || c.countedToward === 'both';
+}
+
+/** When the student's own Notre Dame MSCSE ended: its award term, or else its
+ * last course on the record. */
+export function ownMscseEnd(student: Student): Term | undefined {
+  if (student.ndMasters?.term !== undefined) return student.ndMasters.term;
+  return student.courses
+    .filter((c) => isOwnMscseCoursework(student, c))
+    .map((c) => c.term)
+    .sort(compareTerm)
+    .pop();
 }
 
 /** What a five-year separation from the Notre Dame MSCSE holds for the DGS
@@ -1021,13 +1037,19 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // course from before it is counted provisionally and sent to the DGS.
   const readmitted = student.readmittedTerm;
   const longInterruption = longInterruptionReadmission(student) !== undefined;
-  const interruptedCourse = (c: CourseEntry): boolean => longInterruption && compareTerm(c.term, readmitted!) < 0 && (c.origin === 'nd' || isNotreDameInstitution(c.institution));
+  // "Credit for ANY course" — transfer credit from another university too,
+  // posted or not (credit-transfer review 2026-10-28, #7: it counted and went
+  // to the Grad Admin while the warning said every earlier course waits).
+  const interruptedCourse = (c: CourseEntry): boolean => longInterruption && compareTerm(c.term, readmitted!) < 0;
   // A shorter gap (policy review 2026-10-04, P2-dh-3.1-3.13-3/-4/-9; DGS:
   // "apply the suggested handling"): readmission after a withdrawal or a missed
   // fall or spring semester lets the program "reject some or all past credits"
   // (DGS Handbook §3.3) — this program's own earlier courses wait for the DGS.
+  // The program's own earlier courses include the student's own Notre Dame
+  // MSCSE's — one graduate program with the Ph.D. (Graduate School,
+  // 2026-10-03; credit-transfer review 2026-10-28, #15).
   const beforeShortReadmission = (c: CourseEntry): boolean =>
-    readmitted !== undefined && !longInterruption && c.origin === 'nd' && compareTerm(c.term, readmitted) < 0;
+    readmitted !== undefined && !longInterruption && (c.origin === 'nd' || isOwnMscseCoursework(student, c)) && compareTerm(c.term, readmitted) < 0;
   // The Notre Dame MSCSE five years or more before the Ph.D. (DGS 2026-10-06):
   // every one of its courses waits for the DGS and the Graduate School.
   const separatedSince = mscseSeparation(student);
@@ -1165,6 +1187,13 @@ export function classify(student: Student, rules: Rules, today?: string): {
     };
     // The DGS's ruling on a held course, recorded with its tick (P4-ac-2 (a)).
     const ticked = (cc: ClassifiedCourse, note: string): ClassifiedCourse => ({ ...cc, dgsHoldTicked: true, approvedNote: cc.approvedNote ? `${cc.approvedNote}; ${note}` : note });
+    // A held course is not approved for processing: its line names the hold,
+    // not "send the Grad Admin the processing request" (credit-transfer
+    // review 2026-10-28, #7 — as the two-programs hold already does).
+    const held = (cc: ClassifiedCourse): ClassifiedCourse => {
+      const { approvedNote: _a, ...rest } = cc;
+      return rest;
+    };
     const withInterruption = (cc: ClassifiedCourse): ClassifiedCourse => {
       // The hold's own ruling, not a case-by-case approval (round 5, item 29 (b)).
       if (c.dgsHoldApproved === true && cc.ineligibleReason === undefined) {
@@ -1175,7 +1204,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
       }
       if (beforeShortReadmission(c) && cc.ineligibleReason === undefined) {
         return {
-          ...cc,
+          ...held(cc),
           beforeReadmission: true,
           tier: 'provisional',
           approvalPending: `taken before your readmission (${termLabel(readmitted!)}) — the program may reject some or all past credits (DGS Handbook §3.3); the DGS confirms${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
@@ -1183,7 +1212,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
       }
       if (separatedSince !== undefined && !interruptedCourse(c) && heldWithSeparatedMscse(student, c) && cc.ineligibleReason === undefined) {
         return {
-          ...cc,
+          ...held(cc),
           interrupted: true,
           mscseSeparated: true,
           tier: 'provisional',
@@ -1192,7 +1221,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
       }
       if (!interruptedCourse(c) || cc.ineligibleReason !== undefined) return cc;
       return {
-        ...cc,
+        ...held(cc),
         interrupted: true,
         tier: 'provisional',
         approvalPending: `taken before an interruption of five years or more (readmitted ${termLabel(readmitted!)}) — Academic Code §5.5 forfeits the credit unless the DGS and the Graduate School rule otherwise${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
@@ -1609,6 +1638,25 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // does, 2026-09-11).
   if (isNotreDameInstitution(c.institution) && c.degreeLevel !== 'bachelors' && student.priorMs === 'none' && student.ndMasters === undefined) {
     // (student.priorMs / student.ndMasters are the record's own facts, not the program.)
+    // A Notre Dame bachelor's with no award term yet: the course may be
+    // coursework from before the bachelor's — a 4+1's graduate course, which
+    // counts toward the MSCSE (DGS 2026-10-07, P3-fourplusone-1), or toward
+    // the Ph.D. unless the bachelor's used it (Graduate School, 2026-09-10) —
+    // and only the award term tells, so the line asks for it, on either
+    // program and before any non-degree reading (credit-transfer review
+    // 2026-10-28, #43: on the Ph.D. it was refused as dated before the entry
+    // term). It still counts for nothing until then (UI review, 2026-10-08).
+    const ndBachelor = student.background?.bachelors === 'nd-cse' || student.background?.bachelors === 'nd-other';
+    if (student.bachelorsAwarded === undefined && (program === 'mscse' ? student.integratedBsMs === true : ndBachelor)) {
+      return {
+        ...extBase,
+        notTransferCredit: true,
+        ineligibleReason:
+          program === 'mscse'
+            ? `not counted yet — set the semester your bachelor’s degree was awarded, under Your standing: a 4+1 student’s graduate courses from before the bachelor’s count toward the MSCSE (§3.5), and this page cannot tell which courses those are until it knows when you graduated${coreNote}`
+            : `not counted yet — set the semester your bachelor’s degree was awarded, under Your standing: Notre Dame coursework from before the bachelor’s that the bachelor’s did not use can count toward the Ph.D. (the Graduate School’s answer, 2026-09-10), and this page cannot tell which courses those are until it knows when you graduated${coreNote}`,
+      };
+    }
     // NON-DEGREE STATUS (Academic Code §2.3, policy review 2026-10-03): "No
     // more than 12 credit hours earned by a student while in non-degree status
     // may be counted toward a degree program." The question is asked only when
@@ -1644,19 +1692,6 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
         caps: ['nondegree', ...(shape?.caps ?? []), ...(rule === undefined && deptOf(c.courseId) !== 'CSE' ? (['noncse'] as CapId[]) : [])],
         tier: 'provisional',
         approvalPending: `taken at Notre Dame as a non-degree student before you were admitted — at most ${NON_DEGREE_CREDITS_MAX} such credits may count toward the degree (Academic Code §2.3); the DGS decides${rule === undefined ? '; not in the course rules yet — send the review request so the DGS can enter it' : shape && !('ineligibleReason' in shape) && shape.approvalPending ? `; ${shape.approvalPending}` : ''}${coreNote}`,
-      };
-    }
-    // A 4+1 MSCSE student with no bachelor's term yet: the course may be one
-    // of the 4+1's graduate courses taken as an undergraduate, which count
-    // toward the MSCSE (DGS 2026-10-07, P3-fourplusone-1) — only the award
-    // term tells, so the line asks for it rather than for the entry term. It
-    // still counts for nothing until then (UI review, 2026-10-08: the reason
-    // sent the student to the wrong field).
-    if (program === 'mscse' && student.integratedBsMs === true && student.bachelorsAwarded === undefined) {
-      return {
-        ...extBase,
-        notTransferCredit: true,
-        ineligibleReason: `not counted yet — set the semester your bachelor’s degree was awarded, under Your standing: a 4+1 student’s graduate courses from before the bachelor’s count toward the MSCSE (§3.5), and this page cannot tell which courses those are until it knows when you graduated${coreNote}`,
       };
     }
     return {
@@ -1842,6 +1877,18 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // transferable=yes ruling in the ExternalCourses tab does NOT restore
   // the credit of a course taken before the bachelor's degree — the
   // ruling is about the course, criterion 2 about the student.
+  // A "Before <semester>" estimate (a standalone master's transcript, DGS
+  // 2026-09-20) is not the award term: it places only the courses dated from
+  // that semester on. A course from another source dated before it cannot be
+  // placed, so the line asks for the semester instead of refusing on a term
+  // the student never gave (credit-transfer review 2026-10-28, #17).
+  const estimateBefore = student.bachelorsAwardedInferred?.before;
+  if (estimateBefore !== undefined && compareTerm(c.term, estimateBefore) < 0) {
+    return {
+      ...extBase,
+      ineligibleReason: `not counted yet — dated before ${termLabel(estimateBefore)}, and this record knows only that your bachelor’s degree was awarded before then; set the semester it was awarded, under Your standing (§5.2)${coreNote}`,
+    };
+  }
   const awarded = student.bachelorsAwarded;
   const beforeBachelors = awarded !== undefined && compareTerm(c.term, awarded) <= 0;
   const whenTaken = awarded !== undefined && compareTerm(c.term, awarded) === 0 ? 'in the term' : 'before';
@@ -1880,11 +1927,21 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   const windowFrom = mscseStart !== undefined && compareTerm(mscseStart, entry) < 0 ? mscseStart : entry;
   const windowStartUnknown =
     windowYears !== undefined && program === 'phd' && student.ndMasters !== undefined && mscseStart === undefined && compareTerm(c.term, shiftTermYears(entry, -windowYears)) < 0;
-  if (windowYears !== undefined && !windowStartUnknown && compareTerm(c.term, shiftTermYears(windowFrom, -windowYears)) < 0) {
+  // Academic Code §4.6 criterion 3: "within a five-year period prior to
+  // admission to a graduate degree program at Notre Dame or while enrolled in
+  // a graduate degree program at Notre Dame". From the MSCSE admission the
+  // window runs to the MSCSE's end; a course after that and more than five
+  // years before the Ph.D. is neither (credit-transfer review 2026-10-28, #6:
+  // the window had no upper bound, so such a course counted and was submitted).
+  const mscseEnd = windowFrom !== entry ? ownMscseEnd(student) : undefined;
+  const inPhdWindow = windowYears === undefined || compareTerm(c.term, shiftTermYears(entry, -windowYears)) >= 0;
+  const afterMscse = mscseEnd !== undefined && compareTerm(c.term, mscseEnd) > 0 && !inPhdWindow;
+  if (windowYears !== undefined && !windowStartUnknown && (compareTerm(c.term, shiftTermYears(windowFrom, -windowYears)) < 0 || afterMscse)) {
     return {
       ...extBase,
-      ineligibleReason:
-        windowFrom === entry
+      ineligibleReason: afterMscse
+        ? `not counted — completed after your Notre Dame MSCSE ended (${termLabel(mscseEnd!)}) and more than ${windowYears} years before you entered the Ph.D. (before ${termLabel(shiftTermYears(entry, -windowYears))}), so neither within ${windowYears} years before an admission nor while enrolled (§5.2)${coreNote}`
+        : windowFrom === entry
           ? `not counted — completed more than ${windowYears} years before you entered (before ${termLabel(shiftTermYears(entry, -windowYears))}; §5.2)${coreNote}`
           : `not counted — completed more than ${windowYears} years before you entered the Notre Dame MSCSE in ${termLabel(windowFrom)}, your first admission to a Notre Dame graduate program (before ${termLabel(shiftTermYears(windowFrom, -windowYears))}; §5.2)${coreNote}`,
     };
@@ -1947,7 +2004,12 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   //   program after the student's admission" (DGS Handbook §3.14; CSE §5.2).
   const fromNd = isNotreDameInstitution(c.institution);
   const passFail = grade === 'S' && transferFloor !== undefined;
-  const afterAdmission = !fromNd && compareTerm(c.term, entry) >= 0;
+  // …and, for a student who held the Notre Dame MSCSE, a course taken
+  // elsewhere while enrolled in it: the window counts from the MSCSE
+  // admission, so the advance approval does too (credit-transfer review
+  // 2026-10-28, #39 — it counted outright and went to the Grad Admin).
+  const duringMscse = mscseStart !== undefined && compareTerm(c.term, mscseStart) >= 0 && (mscseEnd === undefined || compareTerm(c.term, mscseEnd) <= 0);
+  const afterAdmission = !fromNd && (compareTerm(c.term, entry) >= 0 || duringMscse);
   // — no earlier graduate program at all (DGS 2026-10-03: "route such courses
   //   to DGS review"): the Code's §4.6 names an allowance for an unfinished
   //   program and for a completed one, and nothing for graduate courses taken
@@ -2053,9 +2115,12 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     pool: transferPool,
     caps: ['transfer', ...(shape?.caps ?? []), ...nonCseCap],
     tier: tierFor(grade, !settled),
-    ...(settled && approvedForAll && !attested ? { approvedNote: `approved by the DGS in the course rules — ${processWhen}${coreNote}${projectNote}` } : {}),
+    // No final grade yet (IP at the other university): counted as in progress,
+    // and sent only once its grade — B or better — is in (credit-transfer
+    // review 2026-10-28, #19; the Grad Admin request leaves it out until then).
+    ...(settled && approvedForAll && !attested ? { approvedNote: `approved by the DGS in the course rules — ${grade === 'IP' ? 'once its final grade (B or better, §5.2) is in, ' : ''}${processWhen}${coreNote}${projectNote}` } : {}),
     // The tick settled a case-by-case course: say so, and what to do next (2026-10-03).
-    ...(settled && attested ? { approvedNote: `approved by the DGS for you, as you ticked on the course (the course rules say case by case; the DGS office holds the record) (§5.2) — ${processWhen}${coreNote}${projectNote}` } : {}),
+    ...(settled && attested ? { approvedNote: `approved by the DGS for you, as you ticked on the course (the course rules say case by case; the DGS office holds the record) (§5.2) — ${grade === 'IP' ? 'once its final grade (B or better, §5.2) is in, ' : ''}${processWhen}${coreNote}${projectNote}` } : {}),
     // §5.2 "pro-rata" for non-semester systems: the DGS's fixed value for
     // this course wins; otherwise a quarter university's credits are
     // converted from what the transcript prints (DGS 2026-09-08), which is
@@ -3129,7 +3194,9 @@ function buildExplanationText(
     }
     // The fact on every row; the reason (one graduate program, DGS 2026-10-03)
     // once, in the group's intro above the rows (UI review, 2026-10-08).
-    else if (cc.ndMastersCredit) parts.push(`from your Notre Dame MSCSE — counts in full as Ph.D. coursework (not transfer credit)${cc.pool === 'total_only' ? '; a master’s project or thesis is not a regular course, so it counts toward the total credits only (§4.2)' : ''}`);
+    // Held by an interruption of five years or more, the line never promises
+    // full credit beside "§5.5 forfeits it" (credit-transfer review 2026-10-28, #40).
+    else if (cc.ndMastersCredit) parts.push(`from your Notre Dame MSCSE — ${cc.interrupted || cc.beforeReadmission ? '' : 'counts in full as '}Ph.D. coursework (not transfer credit)${cc.pool === 'total_only' ? '; a master’s project or thesis is not a regular course, so it counts toward the total credits only (§4.2)' : ''}`);
     // The rule, not a computed date (policy review round 3, P3-cross-doc-4; DGS
     // 2026-10-06: "Apply the suggested handling"): the 30 days are the
     // student's and the 14 after them the instructor's (Academic Code §4.4:

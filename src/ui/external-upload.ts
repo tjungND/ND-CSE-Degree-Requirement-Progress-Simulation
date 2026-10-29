@@ -47,6 +47,16 @@ type DegreeLevel = NonNullable<CourseEntry['degreeLevel']>;
 /** What the Notre Dame row is called, which depends on the program the student
  * picked at the top (DGS 2026-09-11). A 4+1 student holds several Notre Dame
  * transcripts; the row wants the one for the program they are in now. */
+
+/** The "Before <semester>" estimate of the bachelor's award after one more
+ * graduate transcript (DGS 2026-09-20): the bachelor's preceded the EARLIEST
+ * first semester, so a later transcript never moves it later — that refiled
+ * the first transcript's courses as taken before the bachelor's (credit-
+ * transfer review 2026-10-28, #8). The new estimate, or undefined when the
+ * current one stands. */
+export function estimateAfterImport(current: Term | undefined, first: Term): Term | undefined {
+  return current === undefined || compareTerm(first, current) < 0 ? first : undefined;
+}
 export function ndRowLabel(student: Student): string {
   // "Current" (DGS 2026-09-11): this row is for the program the student is in
   // now — and, since 2026-09-22, for the earlier Notre Dame degrees too: they
@@ -2060,8 +2070,12 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       if (p.slot !== 'bachelors' && !p.bachelorsRequired && p.bachelorsAwarded === undefined && (s.bachelorsAwarded === undefined || s.bachelorsAwardedInferred?.before !== undefined)) {
         const dated = ready.filter((r) => r.year !== undefined).map((r) => ({ season: r.season, year: r.year! }));
         const first = dated.sort(compareTerm)[0];
-        if (first !== undefined) {
-          const wasBefore = s.bachelorsAwardedInferred?.before;
+        const wasBefore = s.bachelorsAwardedInferred?.before;
+        // The bachelor's preceded the EARLIEST graduate transcript: a second
+        // transcript never moves the estimate later, refiling the first one's
+        // courses as taken before the bachelor's (credit-transfer review
+        // 2026-10-28, #8 — the import order decided the credit).
+        if (first !== undefined && estimateAfterImport(wasBefore, first) !== undefined) {
           s.bachelorsAwarded = termBefore(first);
           s.bachelorsAwardedInferred = { how: `the first semester on your ${university} ${p.slot === 'phd' ? 'Ph.D.' : 'master’s'} transcript`, before: { ...first } };
           if (wasBefore === undefined || termIndex(wasBefore) !== termIndex(first)) bachelorsBefore = first;

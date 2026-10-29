@@ -25,3 +25,16 @@ describe('the posting goes on the attempt that could carry §5.2 credit', () => 
     assert.equal(preferredTwin([]), undefined);
   });
 });
+
+// Credit-transfer review 2026-10-28 (#8): a second graduate transcript never
+// moves the "Before <semester>" estimate of the bachelor's later.
+import { estimateAfterImport } from '../src/ui/external-upload.ts';
+describe('the bachelor’s estimate after a second graduate transcript', () => {
+  it('keeps the earliest first semester', () => {
+    const f19 = { season: 'fall' as const, year: 2019 };
+    const f21 = { season: 'fall' as const, year: 2021 };
+    assert.deepEqual(estimateAfterImport(undefined, f21), f21);
+    assert.equal(estimateAfterImport(f19, f21), undefined, 'a later transcript leaves Before Fall 2019');
+    assert.deepEqual(estimateAfterImport(f21, f19), f19, 'an earlier one moves it earlier');
+  });
+});

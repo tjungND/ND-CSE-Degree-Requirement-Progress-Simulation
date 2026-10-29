@@ -1,0 +1,125 @@
+{
+  "name": "phd-early-start-not-mscse-coursework",
+  "description": "Credit-transfer review 2026-10-28 (#9): a Notre Dame MSCSE finished in Spring 2019, the Ph.D. in Fall 2026 — a separation of five years or more, so the MSCSE’s courses wait for the DGS and the Graduate School (DGS 2026-10-06). One early-start course in Summer 2026 was read as MSCSE coursework, which moved the MSCSE’s end to that summer and erased the separation: 15 of 60 counted at once. The early-start summer is the Ph.D.’s own coursework (DGS 2026-10-05): it counts, and the MSCSE courses still wait.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2017
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2018
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2018
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2019
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "summer",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2017
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2019
+      }
+    },
+    "ndDegrees": [
+      {
+        "level": "masters",
+        "date": "2019-05-19"
+      }
+    ],
+    "background": {
+      "bachelors": "nd-cse",
+      "graduate": "nd-mscse"
+    }
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "3 of 60 credits complete. 3 in progress. 12 pending review/approval."
+      ]
+    }
+  },
+  "expectWarnings": [
+    "Your Notre Dame MSCSE ended in Spring 2019, five years or more before you entered the Ph.D. in Fall 2026"
+  ]
+}
