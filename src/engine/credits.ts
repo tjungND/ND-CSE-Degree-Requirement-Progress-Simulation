@@ -13,6 +13,19 @@
 // policy review P1-units-4plus1-1, -2, -c6.) Everything a student reads goes
 // through here.
 
+/** A credit figure on the arithmetic's own grid: six decimals. Full precision
+ * stays (above) — every real figure, a §3.14 product such as 2.64 or a value
+ * the DGS typed such as 3.3, has at most a few decimals — but binary floating
+ * point adds noise when they are added and subtracted (3 × 0.66 is
+ * 1.9800000000000002; a cap's room after 1.98 + 2.64 + 2.64 is
+ * 1.7399999999999989), and a sum that is exactly 24 came out as
+ * 23.999999999999996, so the row printed "24 of 24 credits complete" and read
+ * Not met (credit-transfer review 2026-10-28). Every converted credit, cap
+ * room and sum the allocator keeps passes through here. */
+export function exactCredits(n: number): number {
+  return Math.round(n * 1e6) / 1e6;
+}
+
 /** A credit count as a student should read it: a whole number plain ("3"),
  * anything else to at most two decimals with no trailing zeros ("2.67",
  * "2.5"). Never scientific notation, never "2.6666666666666665". */

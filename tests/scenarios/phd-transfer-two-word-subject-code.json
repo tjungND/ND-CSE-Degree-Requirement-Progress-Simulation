@@ -1,0 +1,163 @@
+{
+  "name": "phd-transfer-two-word-subject-code",
+  "description": "Credit-transfer review 2026-10-28 (#1): Wisconsin prints its computer science courses “COMP SCI 787”. Their ExternalCourses rows leave is_cse blank (as all of the live sheet’s Wisconsin rows do), so the cse_subject_codes list decides — and the subject used to be read from the first word only, “COMP”, which is not on the list: all four courses were charged to §4.2’s non-CSE nine and COMP SCI 764 was cut past it (“not counted — over the 9-credit non-CSE cap”), 9 of 60. The subject is now read from everything before the course number (“COMPSCI”), so the four are CSE courses: 12 credits transfer and count toward the 24 and the 60, and none draws on the nine.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "UNIVERSITY OF WISCONSIN-MADISON",
+          "course_id": "COMP SCI 787",
+          "course_title": "COMP SCI 787",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "UNIVERSITY OF WISCONSIN-MADISON",
+          "course_id": "COMP SCI 744",
+          "course_title": "COMP SCI 744",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "UNIVERSITY OF WISCONSIN-MADISON",
+          "course_id": "COMP SCI 760",
+          "course_title": "COMP SCI 760",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "UNIVERSITY OF WISCONSIN-MADISON",
+          "course_id": "COMP SCI 764",
+          "course_title": "COMP SCI 764",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "COMP SCI 787",
+        "title": "COMP SCI 787",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Wisconsin-Madison",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "COMP SCI 744",
+        "title": "COMP SCI 744",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Wisconsin-Madison",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "COMP SCI 760",
+        "title": "COMP SCI 760",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Wisconsin-Madison",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "COMP SCI 764",
+        "title": "COMP SCI 764",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Wisconsin-Madison",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "15 of 60 credits complete"
+      ]
+    },
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "15 of 24 credits complete"
+      ]
+    },
+    "phd.transfer": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "12 of the 24 credits you may transfer are counted"
+      ]
+    },
+    "phd.cap.noncse": {
+      "status": "not_applicable",
+      "detailIncludes": [
+        "0 of the 9 non-CSE allowance credits used"
+      ],
+      "detailExcludes": [
+        "COMP SCI"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "COMP SCI 764": [
+      "counts toward regular courses (3 cr)"
+    ]
+  }
+}

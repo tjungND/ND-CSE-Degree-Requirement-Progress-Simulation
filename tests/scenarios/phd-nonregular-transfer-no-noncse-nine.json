@@ -1,0 +1,164 @@
+{
+  "name": "phd-nonregular-transfer-no-noncse-nine",
+  "description": "Credit-transfer review 2026-10-28 (#14): a research course outside CSE from an earlier Notre Dame master’s (MATH 98900, 6 credits, §5.2 transfer) drew §4.2’s nine on the Ph.D. — pushing two regular Notre Dame courses out of the 24 while its own refused credits counted toward nothing. The Ph.D.’s nine is for regular courses only (§4.2, as the engine already reads it for Notre Dame courses): MATH 98900 counts toward the 60 only and draws nothing from the nine; 9 of 24, 15 of 60.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 98900",
+          "set": {
+            "course_id": "MATH 98900",
+            "title": "MATH 98900",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60876",
+          "set": {
+            "course_id": "MATH 60850",
+            "title": "MATH 60850",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60770",
+          "set": {
+            "course_id": "EE 60770",
+            "title": "EE 60770",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60762",
+          "set": {
+            "course_id": "PHYS 60762",
+            "title": "PHYS 60762",
+            "category_group": "",
+            "core_area": ""
+          }
+        }
+      ],
+      "external": [
+        {
+          "university": "UNIVERSITY OF NOTRE DAME",
+          "course_id": "MATH 98900",
+          "course_title": "MATH 98900",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes"
+        },
+        {
+          "university": "UNIVERSITY OF NOTRE DAME",
+          "course_id": "MATH 60850",
+          "course_title": "MATH 60850",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes"
+        },
+        {
+          "university": "UNIVERSITY OF NOTRE DAME",
+          "course_id": "EE 60770",
+          "course_title": "EE 60770",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes"
+        },
+        {
+          "university": "UNIVERSITY OF NOTRE DAME",
+          "course_id": "PHYS 60762",
+          "course_title": "PHYS 60762",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "MATH 98900",
+        "title": "MATH 98900",
+        "credits": 6,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "MATH 60850",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "EE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "PHYS 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-other",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "9 of 24 credits complete"
+      ]
+    },
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "15 of 60 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "MATH 98900": [
+      "counts toward the total-credit requirement only (6 cr)"
+    ]
+  }
+}

@@ -21,6 +21,7 @@
 // render, while this file loads only when "Send summary to advisor" is
 // clicked — app.ts imports it at that click).
 import type { AuditReport, RequirementResult, Status } from '../engine/types.ts';
+import { exactCredits, formatCredits } from '../engine/credits.ts';
 import { deadlineTermLabel, dueTermPhrase, termLabel } from '../engine/term.ts';
 import { shortenAfterFirst } from './first-mention.ts';
 import { decisionWording } from '../engine/decider.ts';
@@ -339,10 +340,13 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
     const m = /^(\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) (?:credits|semesters)/.exec(d) ?? /: (\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) semesters/.exec(d);
     if (!m) return undefined;
     const ip = /(\d+(?:\.\d+)?) in progress/.exec(d);
-    return { left: Number(m[2]) - Number(m[1]), total: Number(m[2]), inProgress: ip ? Number(ip[1]) : 0 };
+    // The printed figures are decimals: subtract on the credits' own grid
+    // ("1.44 more", not "1.4399999999999977 more"; credit-transfer review
+    // 2026-10-28).
+    return { left: exactCredits(Number(m[2]) - Number(m[1])), total: Number(m[2]), inProgress: ip ? Number(ip[1]) : 0 };
   };
-  const cr = (k: number) => `${k} more ${k === 1 ? 'credit' : 'credits'}`;
-  const ipNote = (x: { inProgress: number }) => (x.inProgress > 0 ? ` (${x.inProgress} of them in progress)` : '');
+  const cr = (k: number) => `${formatCredits(k)} more ${k === 1 ? 'credit' : 'credits'}`;
+  const ipNote = (x: { inProgress: number }) => (x.inProgress > 0 ? ` (${formatCredits(x.inProgress)} of them in progress)` : '');
   const section = (r: RequirementResult) => `(${r.citation.section})`;
 
   // Basic requirements.
@@ -382,6 +386,9 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
     const r = byId.get(id);
     if (!r || !isOpen(r.status)) continue;
     const x = remaining(r);
+    // Every credit already counted, the row waiting only on how one counts: no
+    // "Complete 0 more credits" (the row's own detail says what it waits for).
+    if (x && x.left <= 0) continue;
     out.student.push(x ? `Complete ${cr(x.left)} ${what}${ipNote(x)} ${section(r)}.` : `Complete the ${r.title.toLowerCase()} ${section(r)}.`);
   }
   const seminar = byId.get('phd.seminar');

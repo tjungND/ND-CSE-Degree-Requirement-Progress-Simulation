@@ -1,0 +1,74 @@
+{
+  "name": "phd-summer-maximum-regular-first",
+  "description": "Credit-transfer review 2026-10-28 (#28): an early-start summer with 12 credits entered, two over Academic Code §3.8’s ten. The research credits kept the room and the 40000-level course was cut to 1 of 3 (4 of 24), because a course with one cap was always placed before one with two. Regular credit now takes a semester’s room before credit toward the total only: CSE 40113 and CSE 60111 count in full and CSE 98900 counts 4 of its 6 — 6 of 24, the 60 unchanged at 10.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 40113",
+        "credits": 3,
+        "term": {
+          "season": "summer",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "summer",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "summer",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2026
+    }
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 24 credits complete"
+      ]
+    },
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "10 of 60 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 98900": [
+      "counts 4 of 6 credits toward the total-credit requirement only; 2 not counted — over the 10-credit summer-session maximum for Summer 2026 (Academic Code §3.8)"
+    ]
+  }
+}

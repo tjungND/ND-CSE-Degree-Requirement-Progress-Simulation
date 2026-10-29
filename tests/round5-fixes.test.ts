@@ -93,7 +93,11 @@ describe('4: the §5.2 meter never goes below zero', () => {
     s.courses = [...s.courses.filter((c) => c.origin === 'nd'), posted('MATH 51400'), posted('MATH 52300'), posted('MATH 54400'), posted('MATH 56200')];
     const row = audit(s, buildRules(sc.rules.patch), sc.today).requirements.find((r) => r.id === 'phd.transfer')!;
     assert.doesNotMatch(row.detail, /(^|\s)-\d/, row.detail);
-    assert.match(row.detail, /^0 of the 6 credits you may transfer are counted, besides 9 on your Notre Dame record, counted in full/);
+    // All twelve count — nine as regular credit, three toward the 60 past the
+    // nine (F1) — and since the credit-transfer review (2026-10-28, #3) the
+    // three are transferred credit on the meter's own scale too, so the
+    // figure is 12 (it read the nine alone).
+    assert.match(row.detail, /^0 of the 6 credits you may transfer are counted, besides 12 on your Notre Dame record, counted in full/);
   });
 });
 

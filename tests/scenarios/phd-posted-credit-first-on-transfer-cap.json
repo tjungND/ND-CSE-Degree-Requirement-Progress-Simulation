@@ -1,0 +1,299 @@
+{
+  "name": "phd-posted-credit-first-on-transfer-cap",
+  "description": "Credit-transfer review 2026-10-28 (#4): eight Purdue courses approved in the course rules (24 credits) and two more already posted on the Notre Dame record. The cap was filled in term order, so the posted courses read “not counted — over the transfer-credit cap” while the §5.2 card said they count “with no review or processing request”, and the Grad Admin request asked for 24 credits on top of the 6 posted. Posted credit has been transferred, so it takes its share of the cap first: CS 59100 and CS 59200 count, CS 50700 and CS 50800 are over the 24.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50100",
+          "course_title": "CS 50100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50200",
+          "course_title": "CS 50200",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50300",
+          "course_title": "CS 50300",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50400",
+          "course_title": "CS 50400",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50500",
+          "course_title": "CS 50500",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50600",
+          "course_title": "CS 50600",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50700",
+          "course_title": "CS 50700",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50800",
+          "course_title": "CS 50800",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 59100",
+          "course_title": "CS 59100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 59200",
+          "course_title": "CS 59200",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 50100",
+        "title": "CS 50100",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50200",
+        "title": "CS 50200",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50300",
+        "title": "CS 50300",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50400",
+        "title": "CS 50400",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50500",
+        "title": "CS 50500",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50600",
+        "title": "CS 50600",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50700",
+        "title": "CS 50700",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50800",
+        "title": "CS 50800",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 59100",
+        "title": "CS 59100",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters",
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2026
+          },
+          "credits": 3,
+          "level": "graduate"
+        }
+      },
+      {
+        "courseId": "CS 59200",
+        "title": "CS 59200",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters",
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2026
+          },
+          "credits": 3,
+          "level": "graduate"
+        }
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "24 of the 24 credits you may transfer are counted",
+        "CS 50700: over the transfer-credit cap (§5.2)",
+        "CS 50800: over the transfer-credit cap (§5.2)"
+      ],
+      "detailExcludes": [
+        "CS 59100: over"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 59100": [
+      "counts toward regular courses (3 cr); transfer credit on your Notre Dame record"
+    ]
+  }
+}

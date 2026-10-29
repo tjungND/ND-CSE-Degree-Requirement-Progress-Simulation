@@ -1,0 +1,73 @@
+{
+  "name": "phd-missing-noncse-limit-still-totals",
+  "description": "Credit-transfer review 2026-10-28 (#42): with phd_noncse_6xxxx_credits_max missing from the sheet, a Notre Dame course outside CSE left the 60 too (3 of 60), though rule F1 counts it toward the total whichever way the nine would go. It now counts toward the 60 (6 of 60); its line says only whether it counts toward regular courses waits for the number.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "parameters": {
+        "phd_noncse_6xxxx_credits_max": null
+      },
+      "courses": [
+        {
+          "course_id": "CSE 60427",
+          "set": {
+            "course_id": "MATH 60427",
+            "title": "MATH 60427",
+            "category_group": "",
+            "core_area": ""
+          }
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "MATH 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {}
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 60 credits complete"
+      ]
+    },
+    "phd.cap.noncse": {
+      "status": "cannot_evaluate"
+    }
+  },
+  "expectCourseLines": {
+    "MATH 60427": [
+      "counts toward the total-credit requirement (3 cr); the rules sheet does not say what the non-CSE cap is, so whether it counts toward regular courses cannot be checked yet"
+    ]
+  }
+}

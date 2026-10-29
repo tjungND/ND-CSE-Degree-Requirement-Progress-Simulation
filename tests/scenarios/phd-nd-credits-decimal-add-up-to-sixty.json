@@ -1,0 +1,233 @@
+{
+  "name": "phd-nd-credits-decimal-add-up-to-sixty",
+  "description": "Credit-transfer review 2026-10-28 (#0): three Purdue STAT courses outside CSE, each 3.3 Notre Dame credits in the course rules (nd_credits); §4.2’s nine admits 3.3 + 3.3 + 2.4, and with 51 Notre Dame credits the total is exactly 60. It read 59.99999999999999 — “60 of 60 credits complete.” and Not met, and the advisor email asked for “0 more credits”.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "STAT 60100",
+          "course_title": "STAT 60100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "nd_credits": "3.3",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "STAT 60200",
+          "course_title": "STAT 60200",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "nd_credits": "3.3",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "STAT 60300",
+          "course_title": "STAT 60300",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "nd_credits": "3.3",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "STAT 60100",
+        "title": "STAT 60100",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "STAT 60200",
+        "title": "STAT 60200",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "STAT 60300",
+        "title": "STAT 60300",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 63801",
+        "credits": 1,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 8,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 63802",
+        "credits": 1,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 8,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 9,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "met",
+      "detailIncludes": [
+        "60 credits — the 60-credit minimum is met"
+      ]
+    },
+    "phd.cap.noncse": {
+      "status": "met",
+      "detailIncludes": [
+        "9 of the 9 non-CSE allowance credits used"
+      ]
+    }
+  },
+  "expectEmailItems": {
+    "excludes": [
+      "Complete 0 more credits"
+    ]
+  }
+}

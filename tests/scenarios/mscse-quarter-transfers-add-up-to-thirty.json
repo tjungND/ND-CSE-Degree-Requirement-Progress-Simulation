@@ -1,0 +1,211 @@
+{
+  "name": "mscse-quarter-transfers-add-up-to-thirty",
+  "description": "Credit-transfer review 2026-10-28 (#0): four UCSD quarter-system transfers convert at 0.66 (1.98 + 2.64 + 2.64 + 1.98 = 9.24), §5.2’s nine cuts MATH 280A to its exact remainder 1.74, and with 21 Notre Dame credits the sums are exactly 30 total and 24 regular. Binary floating point made them 29.999999999999996 and 23.999999999999996, so both rows printed “30 of 30” / “24 of 24 credits complete” and read Not met, and the master’s candidacy application was not offered. The allocator now keeps its sums on a six-decimal grid and the threshold test allows a millionth of a credit.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "UNIVERSITY OF CALIFORNIA, SAN DIEGO",
+          "course_id": "CSE 202",
+          "course_title": "CSE 202",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes"
+        },
+        {
+          "university": "UNIVERSITY OF CALIFORNIA, SAN DIEGO",
+          "course_id": "CSE 221",
+          "course_title": "CSE 221",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes"
+        },
+        {
+          "university": "UNIVERSITY OF CALIFORNIA, SAN DIEGO",
+          "course_id": "CSE 222A",
+          "course_title": "CSE 222A",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes"
+        },
+        {
+          "university": "UNIVERSITY OF CALIFORNIA, SAN DIEGO",
+          "course_id": "MATH 280A",
+          "course_title": "MATH 280A",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no"
+        }
+      ],
+      "universities": [
+        {
+          "university": "UNIVERSITY OF CALIFORNIA, SAN DIEGO",
+          "credit_system": "quarter"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 202",
+        "title": "CSE 202",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of California, San Diego",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 221",
+        "title": "CSE 221",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of California, San Diego",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 222A",
+        "title": "CSE 222A",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of California, San Diego",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "MATH 280A",
+        "title": "MATH 280A",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of California, San Diego",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 6,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "msOption": "project",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "gpa": 3.6,
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "ms.credits.total": {
+      "status": "met",
+      "detailIncludes": [
+        "30 credits — the 30-credit minimum is met"
+      ]
+    },
+    "ms.credits.regular": {
+      "status": "met",
+      "detailIncludes": [
+        "24 credits — the 24-credit minimum is met"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "MATH 280A": [
+      "counts 1.74 of 1.98 credits toward regular courses"
+    ]
+  },
+  "expectEmailItems": {
+    "excludes": [
+      "Complete 0 more credits"
+    ]
+  }
+}

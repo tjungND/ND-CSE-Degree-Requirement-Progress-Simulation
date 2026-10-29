@@ -1,0 +1,257 @@
+{
+  "name": "phd-along-the-way-noncse-transfers",
+  "description": "Credit-transfer review 2026-10-28 (#2a): three approved Northeastern transfers outside CSE fill §4.2’s non-CSE nine first (DGS 2026-10-28), which pushed the Notre Dame courses MATH 60427, EE 60535 and PHYS 60762 out of it — and so out of the MSCSE along the way, which fell from 24 to 15 Notre Dame regular credits (and from the processing request). Transfer credit never counts toward that award (DGS 2026-10-03), so it is counted from the Notre Dame courses alone: the award stays met at 24, the 60 keeps the transfer-first gain (39), and each pushed-out course’s line says it still counts toward the regular credits taken at Notre Dame.",
+  "today": "2028-06-01",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 60427",
+          "set": {
+            "course_id": "MATH 60427",
+            "title": "Math Methods",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60535",
+          "set": {
+            "course_id": "EE 60535",
+            "title": "EE Signals",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60762",
+          "set": {
+            "course_id": "PHYS 60762",
+            "title": "Physics Methods",
+            "category_group": "",
+            "core_area": ""
+          }
+        }
+      ],
+      "external": [
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 6150",
+          "course_title": "INFO 6150",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 6205",
+          "course_title": "INFO 6205",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 5100",
+          "course_title": "INFO 5100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "MATH 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60868",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "EE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd",
+        "assignedGroup": "hcc"
+      },
+      {
+        "courseId": "PHYS 60762",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 98900",
+        "credits": 6,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "INFO 6150",
+        "title": "INFO 6150",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 6205",
+        "title": "INFO 6205",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 5100",
+        "title": "INFO 5100",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      }
+    ],
+    "milestones": {
+      "candidacyPassed": "2027-12-01",
+      "researchQualifierPassed": "2026-12-01",
+      "advisorIdentified": "2025-10-01",
+      "advisorName": "Prof. X",
+      "advisorTtt": "yes",
+      "rcrCompleted": "2026-05-01"
+    },
+    "attestations": {
+      "wantsMsAlongTheWay": true
+    },
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "gpa": 3.8,
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.msAlongTheWay": {
+      "status": "met",
+      "detailIncludes": [
+        "Earned at Notre Dame: 24 regular-course credits and 6 research credits"
+      ]
+    },
+    "phd.credits.nd": {
+      "status": "met",
+      "detailIncludes": [
+        "24 credits — the 9-credit minimum is met"
+      ]
+    },
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "39 of 60 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "MATH 60427": [
+      "over the 9-credit non-CSE cap",
+      "it still counts toward the regular-course credits taken at Notre Dame"
+    ]
+  }
+}

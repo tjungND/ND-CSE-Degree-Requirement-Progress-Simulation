@@ -207,9 +207,12 @@ export function makeParameters(
     codeList: (key) => {
       const entry = raw.get(key);
       if (!entry) return undefined;
+      // Letters and digits only, as subjectCodes reads a course id, so
+      // "COMP SCI" or "CSCI-GA" in the cell matches (credit-transfer review
+      // 2026-10-28: such an entry never equalled the derived code).
       const list = entry.value
         .split(/[;,/]/)
-        .map((s) => s.trim().toUpperCase())
+        .map((s) => s.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''))
         .filter((s) => s !== '');
       return list.length > 0 ? list : undefined;
     },

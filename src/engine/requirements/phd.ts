@@ -194,9 +194,9 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       title: `At least ${titleCount(ctx.params.number('phd_nd_credits_min'), 9)} credits of regular courses taken at Notre Dame`,
       shortTitle: `${titleCount(ctx.params.number('phd_nd_credits_min'), 9)} regular credits at ND`,
       sums: ctx.alloc.ndRegular,
-      pendingBy: pendingCourseIds(ctx, (p) => (atNotreDame(p.course) && p.course.pool === 'regular' ? p.countedRegular : 0)),
-      contributions: courseContributions(ctx, (p) => (atNotreDame(p.course) && p.course.pool === 'regular' ? p.countedRegular : 0)),
-      satisfiedBy: countedCourseIds(ctx, (p) => (atNotreDame(p.course) && p.course.pool === 'regular' ? p.countedRegular : 0)),
+      pendingBy: pendingCourseIds(ctx, (p) => p.ndRegularCredits ?? 0),
+      contributions: courseContributions(ctx, (p) => p.ndRegularCredits ?? 0),
+      satisfiedBy: countedCourseIds(ctx, (p) => p.ndRegularCredits ?? 0),
       required: ctx.params.number('phd_nd_credits_min'),
       requiredKey: 'phd_nd_credits_min',
       section: '§4.2',
@@ -599,7 +599,7 @@ export function phdTimeLimitRow(ctx: Ctx, others: { allMet: boolean; anyCannotEv
     ...[m.dissertationSubmitted, m.defensePassed].filter((d): d is string => d !== undefined).map((date) => ({ date })),
     creditsReachedAt(ctx, (a) => a.countedRegular + a.countedOther, total, `the ${total} total credits`),
     creditsReachedAt(ctx, (a) => a.countedRegular, regular, `the ${regular} regular-course credits`),
-    creditsReachedAt(ctx, (a) => (atNotreDame(a.course) && a.course.pool === 'regular' ? a.countedRegular : 0), nd, `the ${nd} regular-course credits taken at Notre Dame`),
+    creditsReachedAt(ctx, (a) => a.ndRegularCredits ?? 0, nd, `the ${nd} regular-course credits taken at Notre Dame`),
   ]);
   return timeLimitRow(ctx, others, {
     id: 'phd.timeLimit',
@@ -2695,7 +2695,7 @@ function msAlongTheWayRow(ctx: Ctx): RequirementResult {
     msLimit === undefined
       ? undefined
       : lastCompletion([
-          creditsReachedAt(ctx, (a) => (atNotreDame(a.course) && a.course.pool === 'regular' ? a.countedRegular : 0), reqReg, `the ${reqReg} regular-course credits at Notre Dame`),
+          creditsReachedAt(ctx, (a) => a.ndRegularCredits ?? 0, reqReg, `the ${reqReg} regular-course credits at Notre Dame`),
           creditsReachedAt(
             ctx,
             (a) => (a.course.entry.origin === 'nd' && (a.course.rule?.courseType === 'research' || a.course.rule?.courseType === 'project') ? a.countedOther - (a.overCapToTotal ?? 0) : 0),

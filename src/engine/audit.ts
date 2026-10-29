@@ -232,6 +232,9 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     // seminar the ADGS approves counts toward the 30, never the 24 (DGS
     // 2026-10-04, P1-sheet-40).
     seminarCourseIds: student.program === 'phd' ? (params.courseList('phd_seminar_courses') ?? []) : [],
+    // §4.2's nine at Notre Dame and the MSCSE along the way, counted from the
+    // Notre Dame courses alone (credit-transfer review 2026-10-28) — Ph.D. rows.
+    notreDameCounts: student.program === 'phd',
   };
   const alloc = allocate(classified, capSpecs, allocOptions);
 

@@ -7,7 +7,7 @@
 // uncapped and single-cap credits greedily (provably optimal by an exchange
 // argument), the rare multi-cap courses by exact search — never the prototype's
 // entry-order greedy, where re-sorting the course list changed the verdict.
-import { formatCredits } from './credits.ts';
+import { exactCredits, formatCredits } from './credits.ts';
 import { canonicalCourseId, isIncompleteCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { approverToken, needsCourseApproval } from './decider.ts';
 import { NOTRE_DAME_ROW_UNIVERSITY, findExternalRule, isCseCourse, isNotreDameInstitution, ndEquivalentCredits, needsApproval, normalizeUniversity, transferableFor, universityCreditSystem, creditSystemFactor, creditSystemFactorLabel } from '../data/external.ts';
@@ -382,6 +382,11 @@ export interface CourseAllocation {
    * so a course table can name the cap that cut it, not the §5.2 cap by
    * default (round 5 verification, transfer-1, 2026-10-14). */
   boundCaps?: CapId[];
+  /** The regular-course credits this course counts toward §4.2's nine at
+   * Notre Dame and the MSCSE along the way — from the pass over the Notre
+   * Dame courses alone, so transfer credit never takes them (allocate,
+   * credit-transfer review 2026-10-28); 0 for a course not taken here. */
+  ndRegularCredits?: number;
   explanation: string; // the per-course line shown to the student
   mark: CourseMark;
   /** What the course does for the Ph.D. qualifier (§4.4.1), when that is a
@@ -546,7 +551,10 @@ function priorNdShape(
     case 'regular':
       return shape('regular', levelCaps);
     case 'project':
-      return shape('project', levelCaps);
+      // §3.2's six project credits are CSE 68901/68902 by number, and the
+      // Ph.D. has no project requirement: any other project-typed course
+      // counts toward the total only (credit-transfer review 2026-10-28, #37).
+      return shape(program === 'mscse' && isMsProjectCourse(courseId) ? 'project' : 'total_only', levelCaps);
     case 'seminar':
       return shape('seminar', levelCaps);
     case 'research':
@@ -1425,7 +1433,9 @@ export function classify(student: Student, rules: Rules, today?: string): {
       case 'regular':
         return shaped('regular');
       case 'project':
-        return shaped('project');
+        // §3.2 names the project courses by number (the MSCSE's are caught
+        // above), and the Ph.D. has no project requirement (#37).
+        return shaped(program === 'mscse' && isMsProjectCourse(c.courseId) ? 'project' : 'total_only');
       case 'seminar':
         return shaped('seminar');
       case 'research':
@@ -1945,7 +1955,13 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // a student until the DGS has answered. Notre Dame's own earlier
   // courses are decided by their own subject, as they always were.
   const isCse = fromNd ? deptOf(c.courseId) === 'CSE' : isCseCourse(c.courseId, external, cseSubjectCodes);
-  const nonCseCap: CapId[] = isCse === false && !(shape?.caps ?? []).includes('noncse') ? ['noncse'] : [];
+  // §4.2 scopes the Ph.D.'s nine to the course requirement, which only regular
+  // courses feed (priorNdShape and classifyOne already read it so): a thesis,
+  // research or seminar course reached through §5.2 does not draw it on the
+  // Ph.D. — it pushed regular courses out of the 24 while its own refused
+  // credit counted toward nothing (credit-transfer review 2026-10-28, #14).
+  const transferPool: Pool = isProject ? 'total_only' : (shape?.pool ?? 'regular');
+  const nonCseCap: CapId[] = isCse === false && !(shape?.caps ?? []).includes('noncse') && (program === 'mscse' || transferPool === 'regular') ? ['noncse'] : [];
   // A course the sheet cannot place (DGS 2026-10-03, P1-transfer-eligibility-23:
   // "non-CSE courses may draw on the nine-credit allowance, but it needs to
   // follow the sheet's rule"): until the ExternalCourses row's `is_cse` cell
@@ -1986,7 +2002,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     ...(cseUnknown ? { cseUnknown: true as const } : {}),
     ...(creditsAsPrinted ? { creditsAsPrinted: true as const } : {}),
     ...(settled && attested ? { tickApproved: true as const } : {}),
-    pool: isProject ? 'total_only' : (shape?.pool ?? 'regular'),
+    pool: transferPool,
     caps: ['transfer', ...(shape?.caps ?? []), ...nonCseCap],
     tier: tierFor(grade, !settled),
     ...(settled && approvedForAll && !attested ? { approvedNote: `approved by the DGS in the course rules — ${processWhen}${coreNote}${projectNote}` } : {}),
@@ -2087,7 +2103,8 @@ function classifyPosted(env: ClassifyEnv, c: CourseEntry, extBase: ClassifiedCou
     ...(cseUnknown ? { cseUnknown: true as const } : {}),
     ...(settled && ticked ? { tickApproved: true as const } : {}),
     pool: nonRegular ? 'total_only' : 'regular',
-    caps: [...(noStatedLimit ? [] : (['transfer'] as CapId[])), ...(isCse === false ? (['noncse'] as CapId[]) : [])],
+    // The Ph.D.'s nine is for regular courses only (#14, as classifyTransfer).
+    caps: [...(noStatedLimit ? [] : (['transfer'] as CapId[])), ...(isCse === false && (env.program === 'mscse' || !nonRegular) ? (['noncse'] as CapId[]) : [])],
     ...(noStatedLimit ? { transferOutsideCap: true as const } : {}),
     ...(nonRegular ? { postedNonRegular: true as const } : {}),
     tier: settled ? 'definite' : 'provisional',
@@ -2447,6 +2464,11 @@ export function allocate(
      * and its line says so (policy review 2026-10-04, P1-sheet-40: SOC 63270,
      * and on the MSCSE CSE 63801/63802, read "the research seminar requirement"). */
     seminarCourseIds?: readonly string[];
+    /** Count §4.2's nine at Notre Dame and the MSCSE along the way from a
+     * second pass over the Notre Dame courses alone (the Ph.D.; default on). */
+    notreDameCounts?: boolean;
+    /** This call is that second pass. */
+    notreDameOnly?: boolean;
   } = { nonCseSpillsToTotal: true },
 ): AllocationResult {
   const capRoom = new Map<CapId, number>();
@@ -2481,95 +2503,153 @@ export function allocate(
   const missingLimitCap = (cc: ClassifiedCourse): CapId | undefined =>
     cc.caps.find((id) => capById.get(id)?.limit === undefined);
 
-  const take = (cc: ClassifiedCourse, amount: number) => {
+  /** An UNREVIEWED §5.2 candidate has no standing in any total yet (DGS
+   * 2026-09-06: "every graduate course here is a candidate … until the DGS
+   * has ruled", and the allocator "never ranks the candidates"). F1 is about
+   * a settled credit the allowance refuses, not about a course whose place in
+   * the record is still an open question — spilling a candidate's over-cap
+   * credits into the total made the report contradict itself (red-team
+   * 2026-09-13): the course's own line said "counts only if the DGS picks it"
+   * while the 60-credit row had already counted it as pending. */
+  const unreviewedCandidateOf = (cc: ClassifiedCourse): boolean =>
+    cc.caps.includes('transfer') && cc.tier === 'provisional' && cc.entry.origin === 'transfer' && cc.transferable !== 'yes' && cc.ndPosting === undefined;
+  /** …nor ANY §5.2 transfer credit, decided or not (DGS 2026-10-27: "Only 17
+   * credits can be transferred now … If credits cannot be transferred because
+   * of the non-CSE limit or others, only those credits should be
+   * transferred"). Credit from another program reaches a Notre Dame degree
+   * only by transfer, so the part the allowance refuses is not transferred and
+   * counts toward nothing — the 60-credit row counted it while the §5.2 row
+   * did not, and it never drew on §5.2's own cap. F1 stays for Notre Dame's
+   * own courses; credit the Graduate School already posted (`ndPosting`) was
+   * transferred, and keeps it. */
+  const untransferredOf = (cc: ClassifiedCourse): boolean => unreviewedCandidateOf(cc) || (cc.caps.includes('transfer') && cc.ndPosting === undefined);
+
+  /** What a course takes from the caps' rooms as they stand — pure, so the
+   * order search (bestMultiOrder) and take() compute exactly the same thing.
+   *
+   * §4.2 / §3.2 scope the non-CSE allowance to "the course requirement": "Up
+   * to nine (9) credits … may be used to satisfy the course requirement." A
+   * credit that allowance refuses is still a passed graduate credit toward
+   * the Graduate School's total of courses and research (F1, 2026-09-12 —
+   * superseding the 2026-08-31 default for this one cap; the below-60000
+   * allowance still refuses outright). That `spill` is still a credit of the
+   * course, so the course's other caps limit it and are charged for it as
+   * for a counted credit (credit-transfer review 2026-10-28, #3): a semester's
+   * maximum, the non-degree twelve, the dual-degree nine, the two-degree six
+   * and §5.2's own cap for posted credit — the 60 read past every one of them. */
+  const plan = (cc: ClassifiedCourse, roomOf: (id: CapId) => number): CapPlan => {
     const credits = cc.effectiveCredits ?? cc.entry.credits;
     const unknownCap = missingLimitCap(cc);
-    const counted = unknownCap ? 0 : Math.min(credits, amount);
-    const excluded = credits - counted;
+    const spillable = opts.nonCseSpillsToTotal && !untransferredOf(cc) && cc.pool === 'regular';
+    const others = cc.caps.filter((id) => id !== 'noncse');
+    const roomAfter = (taken: number) => (others.length === 0 ? Infinity : Math.min(...others.map((id) => Math.max(0, roomOf(id) - taken))));
+    if (unknownCap !== undefined) {
+      // A missing limit: nothing may be granted on a guess (2026-09-09). On
+      // the Ph.D. a credit the non-CSE nine governs counts toward the total
+      // whichever way the nine would have gone (F1), so it still does — only
+      // the 24 and the nine at Notre Dame wait for the number (#42).
+      const missing = cc.caps.filter((id) => capById.get(id)?.limit === undefined);
+      // A missing limit reads as no room, so it is among the caps that bound.
+      const noRoom = cc.caps.filter((id) => roomOf(id) <= 0);
+      if (spillable && missing.every((id) => id === 'noncse')) {
+        const spill = exactCredits(Math.min(credits, roomAfter(0)));
+        const excluded = exactCredits(credits - spill);
+        return { counted: 0, spill, excluded, boundCaps: [...new Set([...noRoom, ...(excluded > 0 ? others.filter((id) => roomOf(id) - spill <= 0) : [])])], unknownCap };
+      }
+      return { counted: 0, spill: 0, excluded: credits, boundCaps: noRoom, unknownCap };
+    }
+    const room = cc.caps.length === 0 ? Infinity : Math.min(...cc.caps.map((id) => Math.max(0, roomOf(id))));
+    const counted = exactCredits(Math.min(credits, room));
+    let excluded = exactCredits(credits - counted);
+    let boundCaps = excluded > 0 ? cc.caps.filter((id) => roomOf(id) - counted <= 0) : [];
+    let spill = 0;
+    if (spillable && excluded > 0 && boundCaps.length > 0 && boundCaps.every((id) => id === 'noncse')) {
+      spill = exactCredits(Math.min(excluded, roomAfter(counted)));
+      excluded = exactCredits(excluded - spill);
+      if (excluded > 0) boundCaps = [...boundCaps, ...others.filter((id) => roomOf(id) - counted - spill <= 0)];
+    }
+    return { counted, spill, excluded, boundCaps };
+  };
+
+  /** "over the 9-credit non-CSE cap and 15-credit semester maximum for Fall
+   * 2026 (§4.2; Academic Code §3.8)" — each cap's own source (#71). */
+  const overCaps = (ids: CapId[]): string => {
+    const sections = [...new Set(ids.map((id) => capById.get(id)?.section ?? '').filter((x) => x !== ''))];
+    return `over the ${ids.map(capLabel).join(' and ')} (${sections.join('; ')})`;
+  };
+
+  const take = (cc: ClassifiedCourse) => {
+    const { counted, spill, excluded, boundCaps, unknownCap } = plan(cc, (id) => capRoom.get(id) ?? 0);
+    // On exactCredits' grid throughout, so a cap's last course takes the exact
+    // remainder and a sum of exactly 24 is 24 (credit-transfer review 2026-10-28).
+    const add = (t: TierSums, n: number) => {
+      t[cc.tier] = exactCredits(t[cc.tier] + n);
+    };
     for (const capId of cc.caps) {
-      capRoom.set(capId, (capRoom.get(capId) ?? 0) - counted);
+      // The non-CSE allowance is charged what it admitted; every other cap the
+      // whole credit that counts anywhere, the spill included (#3).
+      const charge = capId === 'noncse' ? counted : exactCredits(counted + spill);
+      capRoom.set(capId, exactCredits((capRoom.get(capId) ?? 0) - charge));
       const usage = capUsage.get(capId)!;
-      usage.used += counted;
-      if (excluded > 0) usage.excluded.push(cc.entry.courseId);
+      usage.used = exactCredits(usage.used + charge);
+      // Listed under the caps that refused it, not every cap it draws on (#11).
+      if (boundCaps.includes(capId)) usage.excluded.push(cc.entry.courseId);
     }
     const isRegular = cc.pool === 'regular';
     const target =
       cc.pool === 'regular' ? sums.regular : cc.pool === 'project' ? sums.project : cc.pool === 'seminar' ? sums.seminar : sums.totalOnly;
-    target[cc.tier] += counted;
-    sums.total[cc.tier] += counted;
-    // §4.2 / §3.2 scope the non-CSE allowance to "the course requirement":
-    // "Up to nine (9) credits … may be used to satisfy the course
-    // requirement." A credit that allowance refuses is still a passed
-    // graduate credit toward the Graduate School's total of courses and
-    // research (F1, 2026-09-12 — superseding the 2026-08-31 default for this
-    // one cap; the below-60000 allowance still refuses outright).
-    const boundCaps = excluded > 0 ? cc.caps.filter((id) => (capRoom.get(id) ?? Infinity) <= 0) : [];
-    // …but an UNREVIEWED §5.2 candidate has no standing in any total yet (DGS
-    // 2026-09-06: "every graduate course here is a candidate … until the DGS
-    // has ruled", and the allocator "never ranks the candidates"). F1 is about
-    // a settled credit the allowance refuses, not about a course whose place
-    // in the record is still an open question — spilling a candidate's
-    // over-cap credits into the total made the report contradict itself
-    // (red-team 2026-09-13): the course's own line said "counts only if the
-    // DGS picks it" while the 60-credit row had already counted it as pending.
-    const unreviewedCandidate =
-      cc.caps.includes('transfer') && cc.tier === 'provisional' && cc.entry.origin === 'transfer' && cc.transferable !== 'yes' && cc.ndPosting === undefined;
-    // …nor ANY §5.2 transfer credit, decided or not (DGS 2026-10-27: "Only 17
-    // credits can be transferred now … If credits cannot be transferred
-    // because of the non-CSE limit or others, only those credits should be
-    // transferred"). Credit from another program reaches a Notre Dame degree
-    // only by transfer, so the part the allowance refuses is not transferred
-    // and counts toward nothing — the 60-credit row counted it while the §5.2
-    // row did not, and it never drew on §5.2's own cap. F1 stays for Notre
-    // Dame's own courses; credit the Graduate School already posted
-    // (`ndPosting`) was transferred, and keeps it.
-    const untransferred = unreviewedCandidate || (cc.caps.includes('transfer') && cc.ndPosting === undefined);
-    const spillsToTotal =
-      opts.nonCseSpillsToTotal && excluded > 0 && !unknownCap && !untransferred && boundCaps.length > 0 && boundCaps.every((id) => id === 'noncse');
-    if (spillsToTotal) {
-      sums.totalOnly[cc.tier] += excluded;
-      sums.total[cc.tier] += excluded;
+    add(target, counted);
+    add(sums.total, counted);
+    if (spill > 0) {
+      add(sums.totalOnly, spill);
+      add(sums.total, spill);
     }
     // §4.2's nine at Notre Dame: courses taken in the program, and (DGS
     // 2026-09-22) the regular courses of the student's own Notre Dame MSCSE —
-    // not a 4+1's undergraduate coursework (DGS 2026-09-13).
-    if (isRegular && (cc.entry.origin === 'nd' || cc.ndMastersCredit)) sums.ndRegular[cc.tier] += counted;
+    // not a 4+1's undergraduate coursework (DGS 2026-09-13). Read from the
+    // Notre Dame-only pass below; this pass's own count is that pass's.
+    if (isRegular && (cc.entry.origin === 'nd' || cc.ndMastersCredit)) add(sums.ndRegular, counted);
     if (cc.entry.origin === 'nd' && (cc.rule?.courseType === 'research' || cc.rule?.courseType === 'project')) {
-      sums.ndResearch[cc.tier] += counted; // §4.5 along-the-way (DGS 2026-09-04)
+      add(sums.ndResearch, counted); // §4.5 along-the-way (DGS 2026-09-04)
     }
     // §5.2's running total counts only what §5.2's cap governs. Notre Dame
     // coursework taken as an undergraduate is filed as 'transfer' (it is not
     // this program's coursework) but is NOT transfer credit: the Graduate
     // School put it "above and beyond the usual 24" (2026-09-10). Counting it
     // here made the §5.2 row read "6 of 6 transfer credits counted" for a
-    // student with no transfer credit at all.
-    if (cc.entry.origin === 'transfer' && (cc.caps.includes('transfer') || cc.transferOutsideCap === true)) sums.transfer[cc.tier] += counted;
+    // student with no transfer credit at all. Posted credit's spill is
+    // transferred credit too (#3).
+    if (cc.entry.origin === 'transfer' && (cc.caps.includes('transfer') || cc.transferOutsideCap === true)) add(sums.transfer, exactCredits(counted + spill));
 
+    const section = (id: CapId) => capById.get(id)?.section ?? '';
+    // Name the cap that actually ran out, not every cap the course draws on
+    // (2026-09-11): an all-non-CSE master's read "over the transfer-credit cap
+    // and 9-credit non-CSE cap" with 15 of the 24 transfer credits still free.
+    // A refused part beside a spill names the caps that refused it.
+    const refusedBy = spill > 0 ? boundCaps.filter((id) => id !== 'noncse') : boundCaps;
+    const spillReason = spill > 0 && unknownCap === undefined ? overCaps(['noncse']) : undefined;
     const excludedReason = unknownCap
-      ? `the rules sheet does not say what the ${capLabel(unknownCap)} is, so this course cannot be counted yet — ask the DGS to fill it in (${capById.get(unknownCap)?.section ?? ''})`
+      ? spill > 0
+        ? `the rules sheet does not say what the ${capLabel(unknownCap)} is, so whether it counts toward regular courses cannot be checked yet — ask the DGS to fill it in (${section(unknownCap)})`
+        : `the rules sheet does not say what the ${capLabel(unknownCap)} is, so this course cannot be counted yet — ask the DGS to fill it in (${section(unknownCap)})`
       : excluded > 0 && cc.caps.length > 0
-        ? (() => {
-            // Name the cap that actually ran out, not every cap the course
-            // draws on (2026-09-11): an all-non-CSE master's read "over the
-            // transfer-credit cap and 9-credit non-CSE cap" with 15 of the 24
-            // transfer credits still free.
-            const named = boundCaps.length > 0 ? boundCaps : cc.caps;
-            return `over the ${named.map(capLabel).join(' and ')} (${capById.get(named[0]!)?.section ?? ''})`;
-          })()
-        : undefined;
+        ? overCaps(refusedBy.length > 0 ? refusedBy : cc.caps)
+        : spillReason;
     // An UNREVIEWED transfer course is a candidate, whatever the cap did with
     // it here (DGS 2026-09-06): the DGS decides which courses transfer, so
     // the allocator's choice of which candidates fill the cap is not a
-    // verdict — its line says "candidate", never "over the cap".
-    const transferCandidate = unreviewedCandidate ? { capLimit: capById.get('transfer')?.limit } : undefined;
+    // verdict — its line says "candidate", never "over the cap". The cap that
+    // limits it is named (#32).
+    const transferCandidate = unreviewedCandidateOf(cc) ? { capLimit: capById.get('transfer')?.limit, ...(boundCaps.some((id) => id !== 'transfer') ? { limitedBy: boundCaps.filter((id) => id !== 'transfer').map(capLabel).join(' and ') } : {}) } : undefined;
     allocations.set(cc, {
       course: cc,
       countedRegular: isRegular ? counted : 0,
-      countedOther: (isRegular ? 0 : counted) + (spillsToTotal ? excluded : 0),
-      excluded: spillsToTotal ? 0 : excluded,
-      ...(spillsToTotal ? { overCapToTotal: excluded } : {}),
+      countedOther: (isRegular ? 0 : counted) + spill,
+      excluded,
+      ...(spill > 0 ? { overCapToTotal: spill } : {}),
       ...(boundCaps.length > 0 ? { boundCaps } : {}),
       excludedReason,
+      ndRegularCredits: 0,
       ...buildExplanation(
         cc,
         counted,
@@ -2578,58 +2658,61 @@ export function allocate(
         transferCandidate,
         unknownCap !== undefined,
         capById.get('fourk'),
-        spillsToTotal,
+        spill,
         (opts.seminarCourseIds ?? []).includes(cc.entry.courseId.toUpperCase().replace(/\s+/g, ' ')),
+        spillReason,
       ),
     });
   };
 
+  /** Which course takes a shared cap first when the counts tie (bestMultiOrder
+   * keeps the first best order; singles go in this order): credit already
+   * posted on the Notre Dame record — it has been transferred, so it takes its
+   * share of §5.2's allowance before any course still to be requested (#4);
+   * then transfer courses (DGS 2026-10-28: "Fill the transfer courses first");
+   * then the program's own Notre Dame courses before earlier coursework, whose
+   * place in the six or the nine changes nothing in the 24 or the 60 but
+   * pushed a course of the program out of §4.2's nine at Notre Dame (#25);
+   * then the classified order (tier, term, course). */
+  const precedence = (a: ClassifiedCourse, b: ClassifiedCourse): number =>
+    Number(a.ndPosting === undefined) - Number(b.ndPosting === undefined) ||
+    Number(!a.caps.includes('transfer')) - Number(!b.caps.includes('transfer')) ||
+    Number(a.entry.origin !== 'nd') - Number(b.entry.origin !== 'nd');
+
   for (const tier of TIER_ORDER) {
-    // The courses the app chose to apply to both degrees fill their caps
-    // first (2026-09-11): the choice is "best grade first", and the term
-    // order below would otherwise hand §3.2's six credits to a weaker course
-    // taken earlier, leaving the chosen one "over the cap".
     // A passed grade below C never fills a cap or counts toward a sum
     // (passesCreditFloor — DGS decision 2026-09-12, Academic Code §4.3): such
     // a course still falls through to the "ineligible courses" loop below.
     const inTier = classified.filter((c) => c.tier === tier && c.pool !== 'none' && passesCreditFloor(c.entry.grade));
-    const chosen = inTier.filter((c) => c.bsShare === 'both');
-    // Transfer courses fill the non-CSE allowance first (DGS 2026-10-28:
-    // "Fill the transfer courses first … strictly better for the students"):
-    // a transfer credit the allowance refuses counts toward nothing, while a
-    // Notre Dame credit it refuses still counts toward the 60 (F1), so a
-    // Notre Dame course whose only cap is that allowance waits until the
-    // multi-cap courses — transfer courses among them — have taken it. The
-    // nine Notre Dame regular credits (§4.2) are not at stake: the
-    // specialization's three courses meet them (DGS, same day).
-    const yieldsToTransfer = (c: ClassifiedCourse): boolean => opts.nonCseSpillsToTotal === true && c.caps.length === 1 && c.caps[0] === 'noncse';
-    const singles = inTier.filter((c) => c.bsShare !== 'both' && c.caps.length <= 1 && !yieldsToTransfer(c));
-    const yielding = inTier.filter((c) => c.bsShare !== 'both' && yieldsToTransfer(c));
-    // Among equally good orders the first wins (bestMultiOrder), so transfer
-    // courses are listed first: they take the allowance on a tie.
-    const multis = inTier
-      .filter((c) => c.bsShare !== 'both' && c.caps.length > 1)
-      .sort((a, b) => Number(!a.caps.includes('transfer')) - Number(!b.caps.includes('transfer')));
-
-    for (const cc of chosen) {
-      const room = cc.caps.length === 0 ? Infinity : Math.min(...cc.caps.map((id) => Math.max(0, capRoom.get(id) ?? 0)));
-      take(cc, room);
+    // The courses the app chose to apply to both degrees fill their caps
+    // first (2026-09-11): the choice is "best grade first", and the term
+    // order below would otherwise hand §3.2's six credits to a weaker course
+    // taken earlier, leaving the chosen one "over the cap".
+    for (const cc of inTier.filter((c) => c.bsShare === 'both')) take(cc);
+    // Credit toward a requirement of its own — regular courses, the project,
+    // the research seminar — before credit toward the total only (#12, #28):
+    // where the two compete for one allowance or a semester's maximum, the
+    // first counts toward the 24 (30) and the total, the second toward the
+    // total alone, so a research, seminar or independent-study course taking
+    // the room first cost the 24 and gained nothing.
+    const rest = inTier.filter((c) => c.bsShare !== 'both');
+    const feedsRequirement = (c: ClassifiedCourse): boolean =>
+      c.pool === 'regular' || c.pool === 'project' || (c.pool === 'seminar' && (opts.seminarCourseIds ?? []).includes(c.entry.courseId.toUpperCase().replace(/\s+/g, ' ')));
+    for (const group of [rest.filter(feedsRequirement), rest.filter((c) => !feedsRequirement(c))]) {
+      // Transfer courses fill the non-CSE allowance first (DGS 2026-10-28:
+      // "Fill the transfer courses first … strictly better for the
+      // students"): a transfer credit the allowance refuses counts toward
+      // nothing, while a Notre Dame credit it refuses still counts toward the
+      // 60 (F1), so a Notre Dame course whose only cap is that allowance joins
+      // the order search, which counts the most credits — the 60 included —
+      // and on a tie keeps `precedence`. §4.2's nine at Notre Dame does not
+      // depend on this order: the Notre Dame-only pass below counts it.
+      const yieldsToTransfer = (c: ClassifiedCourse): boolean => opts.nonCseSpillsToTotal === true && c.caps.length === 1 && c.caps[0] === 'noncse';
+      const singles = group.filter((c) => c.caps.length <= 1 && !yieldsToTransfer(c)).sort(precedence);
+      const multis = group.filter((c) => c.caps.length > 1 || yieldsToTransfer(c)).sort(precedence);
+      for (const cc of singles) take(cc);
+      for (const cc of bestMultiOrder(multis, new Map(capRoom), plan)) take(cc);
     }
-    for (const cc of singles) {
-      const room = cc.caps.length === 0 ? Infinity : Math.max(0, capRoom.get(cc.caps[0]!) ?? 0);
-      take(cc, room);
-    }
-
-    if (multis.length > 0) {
-      // Exact: try every processing order, keep the one counting the most
-      // credits (first best in permutation order → deterministic).
-      const best = bestMultiOrder(multis, new Map(capRoom));
-      for (const cc of best) {
-        const room = Math.min(...cc.caps.map((id) => Math.max(0, capRoom.get(id) ?? 0)));
-        take(cc, room);
-      }
-    }
-    for (const cc of yielding) take(cc, Math.max(0, capRoom.get('noncse') ?? 0));
   }
 
   // Ineligible courses still get a line — pool === 'none', or a passed grade
@@ -2648,12 +2731,50 @@ export function allocate(
       countedOther: 0,
       excluded: cc.entry.credits,
       excludedReason: reason,
+      ndRegularCredits: 0,
       ...buildExplanation(cc, 0, cc.entry.credits, reason),
     });
   }
 
   const perCourse = classified.map((cc) => allocations.get(cc)!);
-  return { perCourse, ...sums, capUsage };
+  // §4.2: "Regardless of any credits transferred, all Ph.D. students must take
+  // at least nine (9) credits of regular courses at Notre Dame"; and §4.5's
+  // MSCSE along the way counts only "credits … earned at Notre Dame", which
+  // transferred credit never joins (DGS 2026-10-03). Both are counted as if
+  // the courses taken here were the whole record — a second pass over them
+  // alone — so transfer credit filling a shared allowance first (DGS
+  // 2026-10-28) never costs them (credit-transfer review 2026-10-28, #2): the
+  // award fell from 24 to 15 Notre Dame credits when three approved transfers
+  // were added, and the nine from 15 to 6 for a student whose specialization
+  // came from the Notre Dame bachelor's.
+  if (opts.notreDameOnly === true || opts.notreDameCounts === false) return { perCourse, ...sums, capUsage };
+  const atNd = allocate(
+    classified.filter((c) => c.entry.origin === 'nd' || c.ndMastersCredit === true),
+    caps,
+    { ...opts, notreDameOnly: true },
+  );
+  const ndCredits = new Map(atNd.perCourse.map((p) => [p.course, p.countedRegular]));
+  for (const p of perCourse) {
+    const nd = p.course.pool === 'regular' ? (ndCredits.get(p.course) ?? 0) : 0;
+    p.ndRegularCredits = nd;
+    // A course a transfer pushed out of the allowance says it still counts here.
+    if (nd > p.countedRegular) {
+      const whole = nd >= (p.course.effectiveCredits ?? p.course.entry.credits);
+      p.explanation += `; ${whole ? 'it still counts' : `${formatCredits(nd)} of its credits still count`} toward the regular-course credits taken at Notre Dame — §4.2 counts those “regardless of any credits transferred”`;
+    }
+  }
+  return { perCourse, ...sums, ndRegular: atNd.ndRegular, ndResearch: atNd.ndResearch, capUsage };
+}
+
+/** What a course takes from the caps (allocate's plan()). `spill` is the
+ * part the non-CSE allowance refused that still counts toward the total (F1);
+ * `excluded` what counts toward nothing. */
+interface CapPlan {
+  counted: number;
+  spill: number;
+  excluded: number;
+  boundCaps: CapId[];
+  unknownCap?: CapId;
 }
 
 /** The processing order for the multi-cap courses that counts the most credits.
@@ -2680,48 +2801,62 @@ export function allocate(
 function bestMultiOrder(
   multis: ClassifiedCourse[],
   roomSnapshot: Map<CapId, number>,
+  /** allocate's own plan(), so the search counts exactly what take() will —
+   * the spill into the total and its charge to the other caps included. */
+  plan: (cc: ClassifiedCourse, roomOf: (id: CapId) => number) => CapPlan,
 ): ClassifiedCourse[] {
   const n = multis.length;
   if (n <= 1) return multis;
   // Only the caps these courses actually draw on take part in the state.
   const capIds = [...new Set(multis.flatMap((c) => c.caps))];
   const creditsOf = (cc: ClassifiedCourse): number => cc.effectiveCredits ?? cc.entry.credits;
-  const startRooms = capIds.map((id) => Math.max(0, roomSnapshot.get(id) ?? 0));
+  const startRooms = capIds.map((id) => roomSnapshot.get(id) ?? 0);
   const capIndex = new Map(capIds.map((id, k) => [id, k]));
-  const courseCaps = multis.map((cc) => cc.caps.map((id) => capIndex.get(id)!));
-
-  const memo = new Map<string, { counted: number; order: number[] }>();
-  /** Best counted credits obtainable from `remaining`, and the first order that
+  /** What an order is worth: the credits the caps admit, then — on a tie —
+   * everything that counts anywhere, the non-CSE allowance's spill into the
+   * total (F1) included. That second figure is why a transfer course takes
+   * the allowance before a Notre Dame course (DGS 2026-10-28): either admits
+   * the same credits, but the Notre Dame course's refused credit still counts
+   * toward the 60 and the transfer's does not. */
+  type Score = { counted: number; total: number };
+  const beats = (a: Score, b: Score): boolean => a.counted > b.counted || (a.counted === b.counted && a.total > b.total);
+  const memo = new Map<string, { score: Score; order: number[] }>();
+  /** The best score obtainable from `remaining`, and the first order that
    * gets there. `rooms` is this state's room per cap, in capIds order. */
-  const solve = (remaining: number[], rooms: number[]): { counted: number; order: number[] } => {
-    if (remaining.length === 0) return { counted: 0, order: [] };
+  const solve = (remaining: number[], rooms: number[]): { score: Score; order: number[] } => {
+    if (remaining.length === 0) return { score: { counted: 0, total: 0 }, order: [] };
     const key = remaining.join(',') + '|' + rooms.join(',');
     const hit = memo.get(key);
     if (hit) return hit;
-    let best: { counted: number; order: number[] } | undefined;
+    let best: { score: Score; order: number[] } | undefined;
     // An optimistic ceiling for the whole state — no course can take more than
-    // its own credits, nor more than the smallest room it draws on.
-    const ceiling = remaining.reduce(
-      (sum, i) => sum + Math.min(creditsOf(multis[i]!), Math.min(...courseCaps[i]!.map((k) => rooms[k]!))),
-      0,
-    );
+    // its own credits, nor more than the smallest room it draws on, and none
+    // adds more than its credits to the total.
+    const ceiling: Score = {
+      counted: exactCredits(remaining.reduce((sum, i) => sum + Math.min(creditsOf(multis[i]!), Math.min(...multis[i]!.caps.map((id) => Math.max(0, rooms[capIndex.get(id)!]!)))), 0)),
+      total: exactCredits(remaining.reduce((sum, i) => sum + creditsOf(multis[i]!), 0)),
+    };
     for (let p = 0; p < remaining.length; p++) {
+      if (best && !beats(ceiling, best.score)) break; // no child can strictly beat it
       const i = remaining[p]!;
-      const avail = Math.min(...courseCaps[i]!.map((k) => rooms[k]!));
-      const took = Math.min(creditsOf(multis[i]!), avail);
-      if (best && ceiling <= best.counted) break; // no child can strictly beat it
+      const cc = multis[i]!;
+      const taken = plan(cc, (id) => rooms[capIndex.get(id)!]!);
       const nextRooms = rooms.slice();
-      for (const k of courseCaps[i]!) nextRooms[k] = nextRooms[k]! - took;
+      for (const id of cc.caps) {
+        const k = capIndex.get(id)!;
+        nextRooms[k] = exactCredits(nextRooms[k]! - (id === 'noncse' ? taken.counted : taken.counted + taken.spill));
+      }
       const sub = solve([...remaining.slice(0, p), ...remaining.slice(p + 1)], nextRooms);
-      const counted = took + sub.counted;
-      if (!best || counted > best.counted) best = { counted, order: [i, ...sub.order] };
+      // On the same grid as take(), so two equally good orders tie exactly
+      // and the first one wins, as it should.
+      const score: Score = { counted: exactCredits(taken.counted + sub.score.counted), total: exactCredits(taken.counted + taken.spill + sub.score.total) };
+      if (!best || beats(score, best.score)) best = { score, order: [i, ...sub.order] };
     }
     // No room anywhere: every remaining course counts zero, in array order.
-    const result = best ?? { counted: 0, order: [...remaining] };
+    const result = best ?? { score: { counted: 0, total: 0 }, order: [...remaining] };
     memo.set(key, result);
     return result;
   };
-
   const { order } = solve(
     multis.map((_, i) => i),
     startRooms,
@@ -2769,7 +2904,7 @@ function buildExplanationText(
   counted: number,
   excluded: number,
   excludedReason?: string,
-  transferCandidate?: { capLimit: number | undefined },
+  transferCandidate?: { capLimit: number | undefined; limitedBy?: string },
   /** A cap this course draws on whose limit the Parameters tab is missing:
    * amber and honest, never the red "over the cap" (2026-09-09). */
   capLimitMissing?: boolean,
@@ -2777,14 +2912,18 @@ function buildExplanationText(
    * degree's § and credit limit (§3.2's for the MSCSE, §4.2's for the
    * Ph.D. — 2026-09-11). */
   fourkCap?: CapSpec,
-  /** The refused credits still count toward the total (the non-CSE cap, F1). */
-  spillsToTotal = false,
+  /** Credits the non-CSE cap refused that still count toward the total (F1);
+   * `excluded` is then what counts toward nothing. */
+  spilled = 0,
   /** The course fills the Ph.D.'s research seminar requirement (one of
    * `phd_seminar_courses`); any other seminar-type course feeds the total only. */
   fillsSeminar = false,
+  /** Why the spilled credits are not regular-course credit ("over the
+   * 9-credit non-CSE cap (§4.2)"). */
+  spillReason?: string,
 ): { explanation: string; mark: CourseMark } {
   const parts: string[] = [];
-  if (capLimitMissing) return { explanation: excludedReason ?? 'cannot be counted yet — a cap is missing from the rules sheet', mark: 'pending' };
+  if (capLimitMissing && spilled === 0) return { explanation: excludedReason ?? 'cannot be counted yet — a cap is missing from the rules sheet', mark: 'pending' };
   const poolName =
     cc.pool === 'regular'
       ? 'regular courses'
@@ -2808,7 +2947,7 @@ function buildExplanationText(
       counted > 0 && excluded === 0
         ? `would count toward ${poolName} (${formatCredits(counted)} cr) if approved`
         : counted > 0
-          ? `would count ${formatCredits(counted)} of ${formatCredits(total)} credits toward ${poolName} if approved (the ${capWord}transfer allowance limits the rest)`
+          ? `would count ${formatCredits(counted)} of ${formatCredits(total)} credits toward ${poolName} if approved (the ${transferCandidate.limitedBy ?? `${capWord}transfer allowance`} limits the rest)`
           : `counts only if the DGS picks it — together the candidates exceed the ${cc.caps.includes('noncse') ? 'non-CSE allowance or the ' : ''}${capWord}transfer allowance`;
     const coreNote = /; (the same review can confirm|satisfies) [^;]*core-knowledge requirement[^;]*/.exec(cc.approvalPending ?? '')?.[0] ?? '';
     // The two facts the pending text carries that the student must see on the
@@ -2860,10 +2999,15 @@ function buildExplanationText(
         ? ' when passed'
         : '';
   let mark: CourseMark;
-  if (spillsToTotal) {
+  // The non-CSE cap's limit is missing, but on the Ph.D. the course counts
+  // toward the total either way (F1; credit-transfer review 2026-10-28, #42).
+  if (capLimitMissing) return { explanation: `${lead} toward the total-credit requirement (${formatCredits(spilled)} cr)${tail}; ${excludedReason ?? ''}`, mark: 'pending' };
+  if (spilled > 0) {
     mark = markForTier(cc.tier);
-    const how = counted > 0 ? `${lead} ${formatCredits(counted)} of ${formatCredits(total)} credits toward ${poolName} and ${formatCredits(excluded)} toward the total-credit requirement only${tail}` : `${lead} toward the total-credit requirement only (${formatCredits(excluded)} cr)${tail}`;
-    parts.push(`${how} — ${excludedReason ?? 'beyond the non-CSE allowance'} — the allowance limits regular-course credit, not the total`);
+    const how = counted > 0 ? `${lead} ${formatCredits(counted)} of ${formatCredits(total)} credits toward ${poolName} and ${formatCredits(spilled)} toward the total-credit requirement only${tail}` : `${lead} toward the total-credit requirement only (${formatCredits(spilled)} cr)${tail}`;
+    // A part the course's other caps refused as well (#3).
+    const refused = excluded > 0 ? `; ${formatCredits(excluded)} not counted — ${excludedReason ?? ''}` : '';
+    parts.push(`${how} — ${spillReason ?? 'beyond the non-CSE allowance'} — the allowance limits regular-course credit, not the total${refused}`);
     return { explanation: parts.join('; '), mark };
   }
   if (counted > 0 && excluded > 0) {

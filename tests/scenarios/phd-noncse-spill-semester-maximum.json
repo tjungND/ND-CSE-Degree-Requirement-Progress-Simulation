@@ -1,0 +1,177 @@
+{
+  "name": "phd-noncse-spill-semester-maximum",
+  "description": "Credit-transfer review 2026-10-28 (#3a): with §4.2’s nine already used, two more Notre Dame courses outside CSE in an 18-credit Fall 2026 count toward the 60 under rule F1 — and the 60 read “18 in progress” beside the warning that only 15 of the semester count (Academic Code §3.8). A refused non-CSE credit that still counts toward the total is charged to the semester’s maximum like any counted credit: 15 in progress, and PSY 60427 “not counted — over the 9-credit non-CSE cap and 15-credit semester maximum for Fall 2026 (§4.2; Academic Code §3.8)”.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 60876",
+          "set": {
+            "course_id": "MATH 60850",
+            "title": "MATH 60850",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60770",
+          "set": {
+            "course_id": "EE 60770",
+            "title": "EE 60770",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60762",
+          "set": {
+            "course_id": "PHYS 60762",
+            "title": "PHYS 60762",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60535",
+          "set": {
+            "course_id": "ACMS 60535",
+            "title": "ACMS 60535",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60427",
+          "set": {
+            "course_id": "PSY 60427",
+            "title": "PSY 60427",
+            "category_group": "",
+            "core_area": ""
+          }
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "MATH 60850",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "EE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "PHYS 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60868",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "nd"
+      },
+      {
+        "courseId": "ACMS 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "nd"
+      },
+      {
+        "courseId": "PSY 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2025
+    }
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "9 of 60 credits complete. 15 in progress."
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "PSY 60427": [
+      "not counted — over the 9-credit non-CSE cap and 15-credit semester maximum for Fall 2026 (§4.2; Academic Code §3.8)"
+    ]
+  }
+}

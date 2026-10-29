@@ -33,9 +33,14 @@ export const ZERO_SUMS: TierSums = { definite: 0, in_progress: 0, provisional: 0
  * sheet is missing the parameter → cannot evaluate (never silently pass). */
 export function thresholdStatus(sums: TierSums, required: number | undefined): Status {
   if (required === undefined) return 'cannot_evaluate';
-  if (sums.definite >= required) return 'met';
-  if (sums.definite + sums.in_progress >= required) return 'in_progress';
-  if (sums.definite + sums.in_progress + sums.provisional >= required) return 'needs_dgs_review';
+  // Within a millionth of a credit is the minimum reached: credits are
+  // decimals added in binary floating point, and a sum of exactly 24 must
+  // never read short of 24 (credit-transfer review 2026-10-28; the allocator
+  // keeps its sums on exactCredits' grid, this is the second guard).
+  const reached = (n: number) => n >= required - 1e-6;
+  if (reached(sums.definite)) return 'met';
+  if (reached(sums.definite + sums.in_progress)) return 'in_progress';
+  if (reached(sums.definite + sums.in_progress + sums.provisional)) return 'needs_dgs_review';
   return 'unmet';
 }
 

@@ -1,0 +1,125 @@
+{
+  "name": "phd-fourk-program-courses-first",
+  "description": "Credit-transfer review 2026-10-28 (#25): two 40000-level courses from the Notre Dame bachelor’s filled §4.2’s six below the 60000 level in term order, pushing the Ph.D.’s own CSE 40721 out — and with it out of the nine credits of regular courses at Notre Dame (6 of 9). Any two of the three fill the six and the 24 and the 60 are the same either way, so the program’s own course goes first: the nine are met.",
+  "today": "2026-10-29",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 40113",
+          "set": {
+            "counts_toward_phd": "yes"
+          }
+        },
+        {
+          "course_id": "CSE 40243",
+          "set": {
+            "course_id": "CSE 40322",
+            "counts_toward_phd": "yes"
+          }
+        },
+        {
+          "course_id": "CSE 40567",
+          "set": {
+            "course_id": "CSE 40721",
+            "counts_toward_phd": "yes"
+          }
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 40113",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate",
+        "countedToward": "neither"
+      },
+      {
+        "courseId": "CSE 40322",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate",
+        "countedToward": "neither"
+      },
+      {
+        "courseId": "CSE 40721",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    },
+    "background": {
+      "bachelors": "nd-cse",
+      "ndIntegrated": false,
+      "graduate": "none"
+    }
+  },
+  "expect": {
+    "phd.credits.nd": {
+      "status": "met",
+      "detailIncludes": [
+        "9 credits — the 9-credit minimum is met"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 40721": [
+      "counts toward regular courses (3 cr)"
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "name": "phd-project-course-total-only",
+  "description": "Credit-transfer review 2026-10-28 (#37): on the Ph.D. a course the Courses tab types “project” read “counts toward the project/thesis requirement” — a requirement the Ph.D. does not have — while counting toward the 60 only. It now reads “counts toward the total-credit requirement only”. (On the MSCSE only CSE 68901/68902 fill §3.2’s six project credits, by number.)",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 68902",
+          "set": {
+            "counts_toward_phd": "yes"
+          }
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {}
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 60 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 68902": [
+      "counts toward the total-credit requirement only (3 cr)"
+    ]
+  }
+}

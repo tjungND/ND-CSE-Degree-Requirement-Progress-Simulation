@@ -14,6 +14,25 @@ import type { Ctx } from './context.ts';
 import { conferralWindow, earlierTransferPrograms, firstSemesterComplete, outsideIncompleteNote, transferWindowClosedText } from '../allocate.ts';
 import { joinedDetail, missingParamDetail, countedCourseIds } from './context.ts';
 
+/** The Parameters keys of the sheet-set caps (the non-CSE nine, the
+ * below-60000 six) that a transfer course draws on and the sheet does not
+ * give. The other caps' limits are the Graduate School's, in code. */
+function missingCapKeys(ctx: Ctx, transfers: Ctx['classified']): string[] {
+  const keyOf: Partial<Record<string, string>> =
+    ctx.student.program === 'mscse'
+      ? { noncse: 'ms_noncse_credits_max', fourk: 'ms_4xxxx_credits_max' }
+      : { noncse: 'phd_noncse_6xxxx_credits_max', fourk: 'phd_4xxxx_cse_credits_max' };
+  const keys = new Set<string>();
+  for (const c of transfers) {
+    if (c.superseded || c.ineligibleReason !== undefined) continue;
+    for (const id of c.caps) {
+      const key = keyOf[id];
+      if (key !== undefined && ctx.params.number(key) === undefined) keys.add(key);
+    }
+  }
+  return [...keys];
+}
+
 /** §4.2 + §5.2 transfer credit: window, B floor, and the 6/24 caps are enforced
  * by the classifier/allocator; this row reports the result. Every transfer is
  * needs-DGS-review until attested (§5.2 requires DGS + Graduate School approval) —
@@ -55,6 +74,13 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
   } else if (cap === undefined) {
     status = 'cannot_evaluate';
     parts.push(missingParamDetail(capKey));
+  } else if (missingCapKeys(ctx, transfers).length > 0) {
+    // A transfer course another cap governs whose limit the sheet does not give
+    // (the non-CSE nine, the below-60000 six): the course cannot be counted
+    // (allocate.ts), so neither can this row — it read "not applicable" when
+    // every transfer was such a course (credit-transfer review 2026-10-28).
+    status = 'cannot_evaluate';
+    for (const key of missingCapKeys(ctx, transfers)) parts.push(missingParamDetail(key));
   } else if (ctx.params.gradeLetter('transfer_min_grade') === undefined || ctx.params.number(ctx.student.program === 'mscse' ? 'ms_transfer_window_years' : 'phd_transfer_window_years') === undefined) {
     // §5.2's grade and window cannot be checked (item 1): no course is counted
     // (allocate.ts), and the row says which number is missing.
@@ -70,13 +96,14 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     const provisional = ctx.alloc.transfer.provisional;
     // Posted credit outside the working limit (P4-transfer-2 (a)) counts, but
     // not against the limit: the meter below says what the limit admitted.
-    // Measured as `counted` is (allocate.ts sums.transfer): without the
-    // non-CSE allowance's spill into the total (`overCapToTotal`), which
-    // sums.transfer leaves out — the meter read "-3 of the 6" for a posted
-    // non-CSE course past the nine (policy review round 5; DGS 2026-10-14).
+    // Measured as `counted` is (allocate.ts sums.transfer), which since the
+    // credit-transfer review (2026-10-28, #3) includes the non-CSE
+    // allowance's spill into the total (`overCapToTotal`) — the spill is
+    // transferred credit, charged to §5.2's cap; until then both left it out
+    // (the meter read "-3 of the 6" when only one did; round 5, DGS 2026-10-14).
     const outsideCap = ctx.alloc.perCourse
       .filter((p) => p.course.transferOutsideCap === true && !p.course.superseded && p.course.tier !== 'provisional')
-      .reduce((sum, p) => sum + p.countedRegular + p.countedOther - (p.overCapToTotal ?? 0), 0);
+      .reduce((sum, p) => sum + p.countedRegular + p.countedOther, 0);
     // Split the pending courses by what the DGS's ExternalCourses tab says,
     // so the student knows exactly what to do next (2026-09-01). Ruled
     // transferable already → nothing is left for the DGS to decide: the

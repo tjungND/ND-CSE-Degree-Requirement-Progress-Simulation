@@ -406,6 +406,24 @@ describe('is a transferred course a CSE course?', () => {
     assert.equal(subjectCode('60610'), '');
   });
 
+  // Credit-transfer review 2026-10-28 (#1): a college prefix or a level
+  // suffix around the department made these CSE courses "outside CSE", cut
+  // by the nine (Wisconsin, Boston University, NYU, Indiana, UT Austin).
+  it('a college prefix or a level suffix around the department still names it', () => {
+    const live = buildRules().parameters.codeList('cse_subject_codes');
+    for (const id of ['COMP SCI 787', 'CAS CS 505', 'GRS CS 630', 'CSCI-GA.1170', 'CSCI-P 556', 'CSCI-B 501', 'C S 314', 'CS&E 101'])
+      assert.equal(isCseCourse(id, undefined, live), true, id);
+    for (const id of ['CAS MA 123', 'MATH 280A', 'INFO 5100', 'STAT 51200', 'COMP LIT 101'])
+      assert.equal(isCseCourse(id, undefined, live), false, id);
+    // Johns Hopkins school.department.course: the department number, which
+    // the list names as it names Rutgers' 198.
+    assert.equal(isCseCourse('EN.601.433', undefined, live), false, 'not on the list yet');
+    assert.equal(isCseCourse('EN.601.433', undefined, [...(live ?? []), '601']), true);
+    // A list entry written with its space or dash matches.
+    assert.deepEqual(buildRules({ parameters: { cse_subject_codes: 'COMP SCI; CSCI-GA; CS' } }).parameters.codeList('cse_subject_codes'), ['COMPSCI', 'CSCIGA', 'CS']);
+    assert.equal(isCseCourse('COMP SCI 787', undefined, ['COMPSCI']), true);
+  });
+
   // Rutgers numbers its courses school:subject:course, and its subject is a
   // number — 198 is Computer Science (DGS 2026-10-16), which the list names
   // as "198".

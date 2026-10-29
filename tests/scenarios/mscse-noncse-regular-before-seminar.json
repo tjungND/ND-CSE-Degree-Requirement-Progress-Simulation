@@ -1,0 +1,122 @@
+{
+  "name": "mscse-noncse-regular-before-seminar",
+  "description": "Credit-transfer review 2026-10-28 (#12a): on the MSCSE a seminar outside CSE draws §3.2’s nine like a regular course (DGS 2026-10-03) but counts toward the 30 only. Taken first, it took three of the nine and PHYS 60762 was refused: “6 of 24”. Regular credit counts toward the 24 and the 30, so it now fills a shared allowance before credit toward the total only: 9 of 24 whichever semester each was taken in, the 30 unchanged at 9.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 63801",
+          "set": {
+            "course_id": "SOC 63270",
+            "title": "Sociology Seminar",
+            "category_group": "",
+            "core_area": "",
+            "counts_toward_mscse": "yes"
+          }
+        },
+        {
+          "course_id": "CSE 60876",
+          "set": {
+            "course_id": "MATH 60850",
+            "title": "MATH 60850",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60770",
+          "set": {
+            "course_id": "EE 60770",
+            "title": "EE 60770",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60762",
+          "set": {
+            "course_id": "PHYS 60762",
+            "title": "PHYS 60762",
+            "category_group": "",
+            "core_area": ""
+          }
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "SOC 63270",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "MATH 60850",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "EE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "PHYS 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "msOption": "project"
+  },
+  "expect": {
+    "ms.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "9 of 24 credits complete"
+      ]
+    },
+    "ms.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "9 of 30 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "SOC 63270": [
+      "not counted — over the 9-credit non-CSE cap (§3.2)"
+    ]
+  }
+}

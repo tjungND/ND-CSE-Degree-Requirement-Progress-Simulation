@@ -1,0 +1,265 @@
+{
+  "name": "phd-nd-nine-regardless-of-transfers",
+  "description": "Credit-transfer review 2026-10-28 (#2b): the specialization and core areas come from the Notre Dame bachelor’s (allowed, DGS 2026-09-11), so the Ph.D.’s own Notre Dame regular courses are three outside CSE plus two CSE. Four approved transfers took §4.2’s non-CSE nine first and the nine credits of regular courses at Notre Dame fell from 15 to 6 — the qualifier read Overdue. §4.2: “Regardless of any credits transferred, all Ph.D. students must take at least nine (9) credits of regular courses at Notre Dame” — so the nine are counted from the Notre Dame courses alone: 15, met, and the qualifier met.",
+  "today": "2027-06-01",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 60427",
+          "set": {
+            "course_id": "MATH 60427",
+            "title": "Math Methods",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60535",
+          "set": {
+            "course_id": "EE 60535",
+            "title": "EE Signals",
+            "category_group": "",
+            "core_area": ""
+          }
+        },
+        {
+          "course_id": "CSE 60762",
+          "set": {
+            "course_id": "PHYS 60762",
+            "title": "Physics Methods",
+            "category_group": "",
+            "core_area": ""
+          }
+        }
+      ],
+      "external": [
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 6150",
+          "course_title": "INFO 6150",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 6205",
+          "course_title": "INFO 6205",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "INFO 5100",
+          "course_title": "INFO 5100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        },
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CSYE 6230",
+          "course_title": "CSYE 6230",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate",
+        "countedToward": "neither"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate",
+        "countedToward": "neither"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "undergraduate",
+        "countedToward": "neither"
+      },
+      {
+        "courseId": "MATH 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "EE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "PHYS 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60868",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60876",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd",
+        "assignedGroup": "hcc"
+      },
+      {
+        "courseId": "INFO 6150",
+        "title": "INFO 6150",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 6205",
+        "title": "INFO 6205",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 5100",
+        "title": "INFO 5100",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSYE 6230",
+        "title": "CSYE 6230",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      }
+    ],
+    "milestones": {
+      "researchQualifierPassed": "2026-12-01",
+      "advisorIdentified": "2025-10-01",
+      "advisorName": "Prof. X",
+      "advisorTtt": "yes"
+    },
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "gpa": 3.8,
+    "background": {
+      "bachelors": "nd-cse",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.nd": {
+      "status": "met",
+      "detailIncludes": [
+        "15 credits — the 9-credit minimum is met"
+      ]
+    },
+    "phd.qualifier": {
+      "status": "met",
+      "detailIncludes": [
+        "3 of 3 parts done"
+      ]
+    }
+  }
+}

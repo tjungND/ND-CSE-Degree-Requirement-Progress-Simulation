@@ -6,6 +6,7 @@
 // on the name exactly as transcripts print it (the aliases column was retired
 // 2026-09-03), and course ids ignore spaces and hyphens — but a course
 // with no matching row is NEVER guessed at; it stays "not yet reviewed".
+import { exactCredits } from '../engine/credits.ts';
 import { namesOtherNotreDame } from '../transcript/nd-markers.ts';
 import type { ExternalRule, Transferable } from './types.ts';
 
@@ -104,9 +105,10 @@ export function needsApproval(t: Transferable | undefined): boolean {
   return t === 'dgs_approval' || t === 'adgs_approval';
 }
 
-/** The subject code of a course id — "CompSci 537" → "COMPSCI". Everything
- * before the first space, upper-cased and stripped of punctuation, so
- * "CS-503" and "CS 503" answer the same.
+/** The subject code of a course id — "CompSci 537" → "COMPSCI": the letters
+ * before the course number, upper-cased and stripped of punctuation, so
+ * "CS-503" and "CS 503" answer the same (subjectCodes' first reading; the
+ * CSE test reads them all).
  *
  * A code of three numbers joined by colons is school:subject:course —
  * Rutgers', "01:198:344" (its bachelor's record) and "16:198:507" (its
@@ -115,9 +117,31 @@ export function needsApproval(t: Transferable | undefined): boolean {
  * 2026-10-16: "The '198' in the middle refers to Computer Science."). A code
  * of digits alone ("60610", "30240233") still has no subject. */
 export function subjectCode(courseId: string): string {
+  return subjectCodes(courseId)[0] ?? '';
+}
+
+/** Every reading of a course id's subject, the whole prefix first (credit-
+ * transfer review 2026-10-28). Schools print a college prefix or a level
+ * suffix around the department: Wisconsin "COMP SCI 787", UT Austin "C S 314",
+ * Boston University "CAS CS 505" (college, then department), NYU
+ * "CSCI-GA.1170" and Indiana "CSCI-P 556" (department, then a level or campus
+ * letter), Johns Hopkins "EN.601.433" (school.department.course). Reading only
+ * the first word made every one of them a course outside CSE, cut by the
+ * nine. The candidates are the letters of everything before the course number
+ * ("COMPSCI", "CS", "CASCS", "CSCIGA"), its first and its last part ("CAS",
+ * "CS"; "CSCI", "GA"), and a department number between a school and a course
+ * number ("601"; Rutgers' "198"). A course is a CSE course when any candidate
+ * is on the `cse_subject_codes` list. A code of digits alone has none. */
+export function subjectCodes(courseId: string): string[] {
   const numbered = /^\s*\d{1,2}\s*:\s*(\d{3})\s*:\s*\d{3}\s*$/.exec(courseId);
-  if (numbered) return numbered[1]!;
-  return (courseId.split(' ')[0] ?? '').toUpperCase().replace(/[^A-Z]/g, '');
+  if (numbered) return [numbered[1]!];
+  const id = courseId.toUpperCase();
+  const prefix = /^[^0-9]*/.exec(id)![0];
+  const parts = prefix.split(/[^A-Z]+/).filter((p) => p !== '');
+  const out = parts.length > 0 ? [parts.join(''), parts[0]!, parts[parts.length - 1]!] : [];
+  const dotted = /^\s*[A-Z]{1,4}\.(\d{3})\.\d{3}/.exec(id);
+  if (dotted) out.push(dotted[1]!);
+  return [...new Set(out)];
 }
 
 /** Is a course from ANOTHER university a CSE course, for §4.2's nine-credit
@@ -145,7 +169,7 @@ export function isCseCourse(
 ): boolean | undefined {
   if (rule?.isCse !== undefined) return rule.isCse;
   if (cseSubjectCodes === undefined) return undefined;
-  return cseSubjectCodes.includes(subjectCode(courseId));
+  return subjectCodes(courseId).some((code) => cseSubjectCodes.includes(code));
 }
 
 /** True for any spelling of Notre Dame as an institution name.
@@ -267,6 +291,6 @@ export function ndEquivalentCredits(
   factor: number | undefined,
 ): number | undefined {
   if (rule?.ndCredits !== undefined) return rule.ndCredits;
-  if ((system === 'quarter' || system === 'trimester') && factor !== undefined) return printed * factor;
+  if ((system === 'quarter' || system === 'trimester') && factor !== undefined) return exactCredits(printed * factor);
   return undefined;
 }
