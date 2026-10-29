@@ -308,6 +308,15 @@ function creditsCell(c: CourseEntry, cc: ClassifiedCourse | undefined, capCounte
     return `${formatCredits(capCounted.counted)} of ${formatCredits(whole)} (${converted ? `${converted}; ` : ''}the rest ${capCounted.restOver ?? `over the ${transferCap !== undefined ? `${formatCredits(transferCap)}-credit ` : ''}transfer cap`})`;
   return converted ? `${formatCredits(whole)} (${converted})` : formatCredits(c.credits);
 }
+/** What the caps admitted of this registration (report.transferCredits) —
+ * by its row in the record, so two sections of one course in one term each
+ * read their own part (credit-transfer review 2026-10-28, #20). */
+function capFor(report: AuditReport, student: Student, c: CourseEntry): NonNullable<AuditReport['transferCredits']>[number] | undefined {
+  const index = student.courses.indexOf(c);
+  return report.transferCredits?.find((x) =>
+    x.entryIndex !== undefined && index >= 0 ? x.entryIndex === index : x.courseId === c.courseId && x.institution === c.institution && compareTerm(x.term, c.term) === 0,
+  );
+}
 function gradeCell(c: CourseEntry): string {
   return c.grade === 'IP' && ndPostingOf(c) !== undefined ? '—' : c.grade;
 }
@@ -323,8 +332,11 @@ function countedCourses(standing: StandingTable[], report: AuditReport, student:
     const r = byId.get(t.heading);
     const label = r ? `${r.shortTitle ?? r.title} (${r.citation.section})` : t.heading;
     for (const c of t.courseEntries) {
-      const key = `${c.courseId}|${c.institution ?? ''}|${termLabel(c.term)}`;
-      const capCounted = report.transferCredits?.find((x) => x.courseId === c.courseId && x.institution === c.institution && compareTerm(x.term, c.term) === 0);
+      // One row per registration: two sections of one course in one term are
+      // two rows (credit-transfer review 2026-10-28, #20).
+      const index = student.courses.indexOf(c);
+      const key = index >= 0 ? `#${index}` : `${c.courseId}|${c.institution ?? ''}|${termLabel(c.term)}`;
+      const capCounted = capFor(report, student, c);
       const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c), capCounted, report.transferCap), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
       if (!row.countsToward.includes(label)) row.countsToward.push(label);
       out.set(key, row);
@@ -375,8 +387,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   // (DGS 2026-10-27: "If credits cannot be transferred because of the non-CSE
   // limit or others, only those credits should be transferred" — reversing
   // round 5's transfer-1, which submitted a course another cap cut whole).
-  const capOf = (c: ClassifiedCourse) =>
-    report.transferCredits?.find((x) => x.courseId === c.entry.courseId && x.institution === c.entry.institution && compareTerm(x.term, c.entry.term) === 0);
+  const capOf = (c: ClassifiedCourse) => capFor(report, student, c.entry);
   const decided: (ProcessingTransfer & { overCap: boolean })[] = classified
     .filter(
       (c) =>
@@ -455,9 +466,13 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   // not reach them by another door (2026-09-08).
   // The counted registrations of each course id, in the classifier's order —
   // what `satisfiedBy` lists (countedCourseIds: definite, not superseded).
+  // …and only those the report counts: a registration passed below C or cut
+  // to nothing by a cap is not the one to print (credit-transfer review
+  // 2026-10-28, #55 — the C- row stood in for the A that counted).
+  const refused = new Set(report.courseLines.filter((l) => l.mark === 'excluded' && l.entryIndex !== undefined).map((l) => l.entryIndex!));
   const countedById = new Map<string, CourseEntry[]>();
   for (const c of classified) {
-    if (c.superseded || c.tier !== 'definite') continue;
+    if (c.superseded || c.tier !== 'definite' || refused.has(student.courses.indexOf(c.entry))) continue;
     countedById.set(c.entry.courseId, [...(countedById.get(c.entry.courseId) ?? []), c.entry]);
   }
   const countedEntries = (id: string): CourseEntry[] => countedById.get(id) ?? [];

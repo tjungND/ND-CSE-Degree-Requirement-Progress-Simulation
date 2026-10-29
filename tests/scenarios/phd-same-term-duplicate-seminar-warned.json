@@ -1,0 +1,62 @@
+{
+  "name": "phd-same-term-duplicate-seminar-warned",
+  "description": "Credit-transfer review 2026-10-28 (#62): a research seminar entered twice for one term counted twice toward the 60 with no warning — the retake rule covers regular courses only, and the same-term warning skipped Notre Dame rows. A second row of a seminar, research or independent-study course in one term is now said: “CSE 63801 is entered 2 times for Fall 2025. Each row is counted separately — if it is one registration, remove the duplicate.”",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 63801",
+        "credits": 1,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 63801",
+        "credits": 1,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "S",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {}
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "5 of 60 credits complete"
+      ]
+    }
+  },
+  "expectWarnings": [
+    "CSE 63801 is entered 2 times for Fall 2025. Each row is counted separately — if it is one registration, remove the duplicate."
+  ]
+}

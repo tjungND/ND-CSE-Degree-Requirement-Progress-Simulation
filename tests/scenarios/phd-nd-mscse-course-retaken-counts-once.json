@@ -1,0 +1,77 @@
+{
+  "name": "phd-nd-mscse-course-retaken-counts-once",
+  "description": "Credit-transfer review 2026-10-28 (#5): CSE 60111 passed with a C in the student’s own Notre Dame MSCSE and taken again in the Ph.D. The retake rule looked only at rows filed as this program’s, so both counted — 6 credits from one 3-credit course, toward the 60, the 24 and the nine at Notre Dame — with no warning. Notre Dame’s catalogue is one wherever a row is filed: the later attempt counts, the MSCSE one reads superseded, and “CSE 60111 is entered 2 times — its credits count once.”",
+  "today": "2026-12-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "C",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2026
+      }
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-mscse",
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "3 of 60 credits complete"
+      ]
+    },
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "3 of 24 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 60111": [
+      "superseded by the Fall 2026 retake"
+    ]
+  },
+  "expectWarnings": [
+    "CSE 60111 is entered 2 times — its credits count once."
+  ]
+}

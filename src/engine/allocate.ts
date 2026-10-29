@@ -909,7 +909,17 @@ export function classify(student: Student, rules: Rules, today?: string): {
     else sameTerm.set(key, [c]);
   }
   for (const group of sameTerm.values()) {
-    if (group.length < 2 || group.every((c) => c.origin === 'nd')) continue; // all-ND duplicates: the retake rule below already says it
+    if (group.length < 2) continue;
+    // All Notre Dame: a regular course's duplicates are the retake rule's
+    // below; a seminar, research or independent-study course is counted per
+    // row (its credits may accumulate across terms), so a second row in the
+    // same term is said here — it read nothing and counted twice
+    // (credit-transfer review 2026-10-28, #62).
+    if (group.every((c) => c.origin === 'nd' || isNotreDameInstitution(c.institution))) {
+      if ((ruleOf(group[0]!)?.courseType ?? 'regular') !== 'regular')
+        warnings.push(`${group[0]!.courseId} is entered ${group.length} times for ${termLabel(group[0]!.term)}. Each row is counted separately — if it is one registration, remove the duplicate.`);
+      continue;
+    }
     warnings.push(
       `${group[0]!.courseId} is entered ${group.length} times for ${termLabel(group[0]!.term)}, under different origins (${[...new Set(group.map((c) => (c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'))))].join(' and ')}). Each row is counted separately — if it is one course, remove the duplicate.`,
     );
@@ -1037,8 +1047,20 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // credit, and a later failed attempt never erases an earlier pass).
   const supersededSet = new Set<CourseEntry>();
   const byId = new Map<string, CourseEntry[]>();
-  for (const c of sorted) {
-    if (c.origin !== 'nd') continue;
+  // Notre Dame's catalogue, wherever the row is filed: a course of this
+  // program, or Notre Dame coursework from before it that could count toward
+  // this degree — the student's own MSCSE, a 4+1's or an undergraduate's
+  // course not used for the bachelor's, an earlier Notre Dame program's
+  // (credit-transfer review 2026-10-28, #5: one attempt filed as earlier
+  // coursework counted twice, with no warning). A course used for the
+  // bachelor's is that degree's, not an attempt at this one.
+  const notreDameAttempt = (c: CourseEntry): boolean =>
+    c.origin === 'nd' || (c.origin === 'transfer' && isNotreDameInstitution(c.institution) && c.countedToward !== 'bs');
+  // Within one term the best grade last, so a same-term duplicate is decided
+  // by its grade, not by which row was entered last (#61).
+  const attemptOrder = [...sorted].sort((a, b) => compareTerm(a.term, b.term) || a.courseId.localeCompare(b.courseId) || (GRADE_POINTS[a.grade] ?? (isPassed(a.grade) ? 3 : -1)) - (GRADE_POINTS[b.grade] ?? (isPassed(b.grade) ? 3 : -1)));
+  for (const c of attemptOrder) {
+    if (!notreDameAttempt(c)) continue;
     const type = ruleOf(c)?.courseType ?? 'regular';
     if (type !== 'regular') continue;
     const list = byId.get(c.courseId) ?? [];

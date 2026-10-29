@@ -778,6 +778,10 @@ export interface RequirementResult {
 export interface CourseLine {
   courseId: string;
   term: Term;
+  /** The row of `student.courses` this line is (credit-transfer review
+   * 2026-10-28): two registrations of one course in one term share an id
+   * and a term. */
+  entryIndex?: number;
   text: string;
   /** Every requirement row this course feeds, in report order (DGS request
    * 2026-09-08). One course routinely serves several — a 60000-level course
@@ -866,7 +870,9 @@ export interface AuditReport {
    * round 3, P3-prior-programs-5). `restOver` is set when a cap other than
    * §5.2's refused part of the course — the engine's own reason, e.g. "over
    * the 9-credit non-CSE cap (§3.2)" (round 5 verification, transfer-1). */
-  transferCredits?: { courseId: string; institution?: string; term: Term; counted: number; restOver?: string; restUnknown?: true }[];
+  /** `entryIndex`: the row of `student.courses` — two rows of one course from
+   * one university in one term (two topic sections) share the rest. */
+  transferCredits?: { courseId: string; entryIndex?: number; institution?: string; term: Term; counted: number; restOver?: string; restUnknown?: true }[];
   /** A first-semester student who has not finished a semester yet: no
    * cumulative GPA exists, and the GPA card and the emails say "no GPA yet"
    * (DGS 2026-10-14; requirements/shared.ts `noGpaYet`). */

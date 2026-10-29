@@ -821,14 +821,23 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     const mark: CourseMark = roles.some((x) => x.when === 'now') ? 'counts' : roles.length === 0 ? 'excluded' : p.mark === 'in_progress' ? 'in_progress' : 'pending';
     return { mark, text: parts.join(' · ') };
   };
+  const entryIndex = new Map(student.courses.map((c, i) => [c, i]));
   const courseLines = alloc.perCourse.map((p) => {
     const id = p.course.entry.courseId;
     const aLiveSibling = !canCount(p) && alloc.perCourse.some((q) => q !== p && q.course.entry.courseId === id && canCount(q));
-    const counts = aLiveSibling ? [] : (feeds.get(id) ?? []);
+    // A registration still in progress or waiting does not count toward
+    // anything NOW, whatever a graded registration of the same course does
+    // (credit-transfer review 2026-10-28, #21: the Fall research semester read
+    // "Counts toward: 60 total credits" from the Spring one).
+    const notYet = p.mark === 'in_progress' || p.mark === 'pending';
+    const counts = (aLiveSibling ? [] : (feeds.get(id) ?? [])).map((x) => (notYet && x.when === 'now' ? { ...x, when: 'later' as const } : x));
     const qualifier = p.qualifier ?? qualifierFromFeeds(p, counts);
     return {
       courseId: id,
       term: p.course.entry.term,
+      // Which row of the record this is — two registrations of one course in
+      // one term share an id and a term (#20, #55).
+      ...(entryIndex.has(p.course.entry) ? { entryIndex: entryIndex.get(p.course.entry)! } : {}),
       text: p.explanation,
       mark: p.mark,
       ...(qualifier ? { qualifier } : {}),
@@ -919,6 +928,7 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     .filter((a) => a.course.caps.includes('transfer') && !a.course.superseded)
     .map((a) => ({
       courseId: a.course.entry.courseId,
+      ...(student.courses.indexOf(a.course.entry) >= 0 ? { entryIndex: student.courses.indexOf(a.course.entry) } : {}),
       ...(a.course.entry.institution !== undefined ? { institution: a.course.entry.institution } : {}),
       term: a.course.entry.term,
       counted: a.countedRegular + a.countedOther,

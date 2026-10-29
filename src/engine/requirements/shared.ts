@@ -4,7 +4,7 @@ import { coursesNeedingDgsReviewFor } from '../review.ts';
 import { openDeadline } from '../status.ts';
 import { endOfTerm, normalizeEntryTerm, termLabel } from '../term.ts';
 import type { DetailPart, RequirementResult, Student } from '../types.ts';
-import { GRADE_POINTS } from '../grades.ts';
+import { GRADE_POINTS, passesCreditFloor } from '../grades.ts';
 import { isNotreDameInstitution } from '../../data/external.ts';
 import type { Ctx } from './context.ts';
 import { DUAL_DEGREE_SHARED_CREDITS_MAX } from '../allocate.ts';
@@ -403,8 +403,15 @@ export function approvalsRow(ctx: Ctx): RequirementResult {
   // A course the review request still asks about — a `yes` transfer whose
   // §4.4.1 core area is unrecorded — belongs here too, though nothing is
   // pending on its line (2026-09-27: a `yes` counts outright).
-  const stillWithDgs = new Set(coursesNeedingDgsReviewFor(ctx.classified, ctx.student).map((p) => p.course.entry.courseId));
-  const pending = ctx.classified.filter((c) => !c.superseded && c.pool !== 'none' && (c.approvalPending !== undefined || stillWithDgs.has(c.entry.courseId)));
+  // By registration, not course id: a settled registration beside a waiting
+  // one of the same course is not waiting (credit-transfer review 2026-10-28,
+  // #56). A course passed below C is not asked about — no ruling can make it
+  // count (DGS 2026-09-13) — so it is not listed here either, unless the
+  // request asks about it for another reason (#27).
+  const stillWithDgs = new Set<object>(coursesNeedingDgsReviewFor(ctx.classified, ctx.student).map((p) => p.course));
+  const pending = ctx.classified.filter(
+    (c) => !c.superseded && c.pool !== 'none' && ((c.approvalPending !== undefined && passesCreditFloor(c.entry.grade)) || stillWithDgs.has(c)),
+  );
   // §3.2/§4.2: "All courses taken by a student must have the approval of their
   // advisor." — self-attested via the plan-of-study checkbox (decision Q21).
   const planUnconfirmed =
@@ -420,7 +427,7 @@ export function approvalsRow(ctx: Ctx): RequirementResult {
   const reasonOf = (c: (typeof pending)[number]): string => c.approvalPending ?? 'the DGS has still to record its core-knowledge area (§4.4.1)';
   const actorsOf = (c: (typeof pending)[number]): SignOffActor[] => {
     const actors = new Set<SignOffActor>(signOffActors(reasonOf(c)));
-    if (stillWithDgs.has(c.entry.courseId)) actors.add('dgs');
+    if (stillWithDgs.has(c)) actors.add('dgs');
     return ACTOR_ORDER.filter((a) => actors.has(a));
   };
   const LEADS: Record<string, string> = {

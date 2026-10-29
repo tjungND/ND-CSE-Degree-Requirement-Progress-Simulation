@@ -1,0 +1,64 @@
+{
+  "name": "phd-same-term-duplicate-best-grade-counts",
+  "description": "Credit-transfer review 2026-10-28 (#61): CSE 60641 entered twice for Fall 2025, an A and a C-. Which row counted depended on which was entered last — with the C- last the course counted nothing. Within one term the best grade now decides: the A counts in either order and the other row reads “entered twice for Fall 2025 — its credits count once”.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "C-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {}
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 24 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 60641": [
+      "entered twice for Fall 2025"
+    ]
+  }
+}

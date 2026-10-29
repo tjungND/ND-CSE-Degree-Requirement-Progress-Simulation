@@ -1,0 +1,60 @@
+{
+  "name": "mscse-approvals-by-registration",
+  "description": "Credit-transfer review 2026-10-28 (#56): CSE 68902 in two semesters, the first a lapsed Incomplete waiting for the ADGS, the second graded. The approvals card listed the course twice — the counted registration “the ADGS has still to record its core-knowledge area (§4.4.1)”, a Ph.D. question on the MSCSE tab — because it matched by course number. It lists the waiting registration only.",
+  "today": "2027-06-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "I",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 68902",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2027
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "msOption": "project"
+  },
+  "expect": {
+    "shared.approvals": {
+      "status": "needs_dgs_review",
+      "detailExcludes": [
+        "§4.4.1"
+      ]
+    }
+  }
+}

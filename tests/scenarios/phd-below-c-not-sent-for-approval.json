@@ -1,0 +1,71 @@
+{
+  "name": "phd-below-c-not-sent-for-approval",
+  "description": "Credit-transfer review 2026-10-28 (#27): courses passed below C whose approval is still open — CSE 40437 (case by case), an unlisted CSE 60777, an unlisted MATH 60123. The review request leaves them out, since no ruling can make a passed grade below C count (DGS 2026-09-13), and its button is inactive; yet the approvals card told the student to send the review request for them. They are not listed there either now.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 40437",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "D",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60777",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "D",
+        "origin": "nd"
+      },
+      {
+        "courseId": "MATH 60123",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "C-",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {}
+  },
+  "expect": {
+    "shared.approvals": {
+      "status": "in_progress",
+      "detailExcludes": [
+        "send the review request",
+        "CSE 40437",
+        "MATH 60123"
+      ]
+    }
+  }
+}
