@@ -542,8 +542,11 @@ export function parseExternalTab(
     const nd = cells['nd_credits'] ?? '';
     if (nd !== '') {
       const n = Number(nd);
-      if (Number.isFinite(n) && n >= 0 && n <= 30) rule.ndCredits = n;
-      else err(rowNum, 'nd_credits', `ExternalCourses row ${rowNum} (${university} ${courseId}): nd_credits '${nd}' is not a number between 0 and 30. That cell is ignored (credits as printed will count).`);
+      // Above 0: a course worth no Notre Dame credit is a `no`, not a 0 — a 0
+      // counted nothing with no reason, and the request filed the course
+      // "over the transfer cap" (credit-transfer review 2026-10-28, #67).
+      if (Number.isFinite(n) && n > 0 && n <= 30) rule.ndCredits = n;
+      else err(rowNum, 'nd_credits', `ExternalCourses row ${rowNum} (${university} ${courseId}): nd_credits '${nd}' is not a number above 0 and at most 30 (a course that should not count is a 'no' in transferable_PhD / transferable_MSCSE). That cell is ignored (the course's credits count from its transcript).`);
     }
 
     // credit_system: the OLD per-course cell (DGS 2026-09-08 until
@@ -554,7 +557,7 @@ export function parseExternalTab(
     if (system === 'quarter' || system === 'semester' || system === 'trimester') rule.creditSystem = system;
     else if (system !== '') {
       err(rowNum, 'credit_system',
-        `ExternalCourses row ${rowNum} (${university} ${courseId}): credit_system must be 'quarter', 'trimester', 'semester' or blank — got '${system}'. That cell is ignored (credits count as printed).`);
+        `ExternalCourses row ${rowNum} (${university} ${courseId}): credit_system must be 'quarter', 'trimester', 'semester' or blank — got '${system}'. That cell is ignored (credits count as printed, unless the course's own transcript reading, or the student's choice at import, says quarter or trimester).`);
     }
 
     // A ruling the DGS may not have meant (2026-10-04, P1-sheet-48 / -c2 and
@@ -642,7 +645,7 @@ export function parseUniversitiesTab(text: string, issues: SheetIssue[]): Univer
   for (const name of missing) {
     err(1, name,
       `The Universities tab has no '${name}' column (the header row names: ${tab.header.filter((h) => h).join(', ') || 'nothing'}). ` +
-        `No university's credit system can be read — every other university's credits count as printed until the column is named '${name}' again.`);
+        `No university's credit system can be read — every other university's credits count as printed — unless a course's own transcript reading, or the student's choice at import, says quarter or trimester — until the column is named '${name}' again.`);
   }
   if (missing.length > 0) return out;
   for (const [rowNum, cells] of tab.rows) {
@@ -666,7 +669,7 @@ export function parseUniversitiesTab(text: string, issues: SheetIssue[]): Univer
     if (system === 'quarter' || system === 'semester' || system === 'trimester') row.creditSystem = system;
     else if (system !== '') {
       err(rowNum, 'credit_system',
-        `Universities row ${rowNum} (${university}): credit_system must be 'quarter', 'trimester', 'semester' or blank — got '${cells['credit_system']}'. That cell is ignored (credits from ${university} count as printed).`);
+        `Universities row ${rowNum} (${university}): credit_system must be 'quarter', 'trimester', 'semester' or blank — got '${cells['credit_system']}'. That cell is ignored (credits from ${university} count as printed, unless a course's own transcript reading, or the student's choice at import, says quarter or trimester).`);
     }
     if (cells['notes']) row.notes = cells['notes'];
     const dupIndex = out.findIndex((r) => r.universityKey === row.universityKey);
@@ -689,7 +692,9 @@ export function parseUniversitiesTab(text: string, issues: SheetIssue[]): Univer
     issues.push({
       severity: 'warning',
       tab: 'Universities',
-      message: 'The Universities tab has no rows — every other university’s credits count as printed (a quarter or trimester university needs its row there).',
+      // What the engine does (credit-transfer review 2026-10-28, #68): a course
+      // whose transcript read quarter or trimester hours still converts.
+      message: 'The Universities tab has no rows — every other university’s credits count as printed, unless a course’s own transcript reading, or the student’s choice at import, says quarter or trimester (a quarter or trimester university needs its row there).',
     });
   }
   return out;

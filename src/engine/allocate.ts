@@ -392,6 +392,10 @@ export interface CourseAllocation {
    * Dame courses alone, so transfer credit never takes them (allocate,
    * credit-transfer review 2026-10-28); 0 for a course not taken here. */
   ndRegularCredits?: number;
+  /** A §5.2 candidate the DGS has still to decide for this student: which
+   * candidates fill a cap is the DGS's choice, so none is "over the cap"
+   * (DGS 2026-09-06). */
+  candidate?: true;
   explanation: string; // the per-course line shown to the student
   mark: CourseMark;
   /** What the course does for the Ph.D. qualifier (§4.4.1), when that is a
@@ -1259,7 +1263,8 @@ export function classify(student: Student, rules: Rules, today?: string): {
         ...rest,
         twoPrograms: true as const,
         tier: 'provisional',
-        approvalPending: `from one of two earlier graduate programs on your record (${list}) — §5.2 states a transfer allowance after a finished program and one after an unfinished one, but not how two programs’ allowances combine, so the DGS decides${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
+        // The count the §5.2 card names (#59: three programs read "one of two").
+        approvalPending: `from one of ${programs.length === 2 ? 'two' : programs.length} earlier graduate programs on your record (${list}) — §5.2 states a transfer allowance after a finished program and one after an unfinished one, but not how two programs’ allowances combine, so the DGS decides${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
       };
     }),
     warnings,
@@ -2083,7 +2088,8 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // or the `cse_subject_codes` list says which side of §4.2's nine it is on,
   // the course is held for the DGS instead of counting as CSE by default.
   const cseUnknown = !fromNd && isCse === undefined;
-  if (cseUnknown) heldForDgs.push('the course rules do not say whether this is a CSE course (no is_cse cell on its row, and no cse_subject_codes list) — §4.2’s nine-credit non-CSE allowance depends on it; the DGS decides');
+  // The degree's own nine (§3.2 for the MSCSE; credit-transfer review 2026-10-28, #58).
+  if (cseUnknown) heldForDgs.push(`the course rules do not say whether this is a CSE course (no is_cse cell on its row, and no cse_subject_codes list) — ${program === 'mscse' ? '§3.2' : '§4.2'}’s nine-credit non-CSE allowance depends on it; the DGS decides`);
   // An earlier Notre Dame course keeps its Courses-tab verdict on top of the
   // transfer verdict (2026-09-09): a case-by-case row — §4.2's approval for a
   // course below the 60000 level or outside CSE — still needs its tick,
@@ -2241,7 +2247,7 @@ function classifyPosted(env: ClassifyEnv, c: CourseEntry, extBase: ClassifiedCou
       : {
           // A held thesis or independent study says why it counts toward the
           // total only, as the settled one does (round 5, item 10).
-          approvalPending: `${where}${held.length > 0 ? `, but ${held.join(', and ')} — the DGS confirms it counts toward this degree` : ''}${cseUnknown ? `${held.length > 0 ? '; ' : ' — '}the course rules do not say whether this is a CSE course (no is_cse cell on its row, and no cse_subject_codes list) — §4.2’s nine-credit non-CSE allowance depends on it; the DGS decides` : ''}${coreNote}`,
+          approvalPending: `${where}${held.length > 0 ? `, but ${held.join(', and ')} — the DGS confirms it counts toward this degree` : ''}${cseUnknown ? `${held.length > 0 ? '; ' : ' — '}the course rules do not say whether this is a CSE course (no is_cse cell on its row, and no cse_subject_codes list) — ${env.program === 'mscse' ? '§3.2' : '§4.2'}’s nine-credit non-CSE allowance depends on it; the DGS decides` : ''}${coreNote}`,
         }),
   };
 }
@@ -2640,6 +2646,13 @@ export function allocate(
    * while the 60-credit row had already counted it as pending. */
   const unreviewedCandidateOf = (cc: ClassifiedCourse): boolean =>
     cc.caps.includes('transfer') && cc.tier === 'provisional' && cc.entry.origin === 'transfer' && cc.transferable !== 'yes' && cc.ndPosting === undefined;
+  /** A `yes` course a hold keeps waiting for the DGS (an S grade, after
+   * admission, an interruption, …): the DGS decides it for this student, so
+   * when the cap has no room for it, it is a candidate too — never ranked out
+   * in red while an undecided course holds the room (credit-transfer review
+   * 2026-10-28, #60). */
+  const heldYesOf = (cc: ClassifiedCourse): boolean =>
+    cc.caps.includes('transfer') && cc.tier === 'provisional' && cc.entry.origin === 'transfer' && cc.transferable === 'yes' && cc.ndPosting === undefined;
   /** …nor ANY §5.2 transfer credit, decided or not (DGS 2026-10-27: "Only 17
    * credits can be transferred now … If credits cannot be transferred because
    * of the non-CSE limit or others, only those credits should be
@@ -2767,7 +2780,10 @@ export function allocate(
     // the allocator's choice of which candidates fill the cap is not a
     // verdict — its line says "candidate", never "over the cap". The cap that
     // limits it is named (#32).
-    const transferCandidate = unreviewedCandidateOf(cc) ? { capLimit: capById.get('transfer')?.limit, ...(boundCaps.some((id) => id !== 'transfer') ? { limitedBy: boundCaps.filter((id) => id !== 'transfer').map(capLabel).join(' and ') } : {}) } : undefined;
+    const transferCandidate =
+      unreviewedCandidateOf(cc) || (heldYesOf(cc) && excluded > 0 && unknownCap === undefined)
+        ? { capLimit: capById.get('transfer')?.limit, ...(boundCaps.some((id) => id !== 'transfer') ? { limitedBy: boundCaps.filter((id) => id !== 'transfer').map(capLabel).join(' and ') } : {}) }
+        : undefined;
     allocations.set(cc, {
       course: cc,
       countedRegular: isRegular ? counted : 0,
@@ -2775,6 +2791,7 @@ export function allocate(
       excluded,
       ...(spill > 0 ? { overCapToTotal: spill } : {}),
       ...(boundCaps.length > 0 ? { boundCaps } : {}),
+      ...(transferCandidate !== undefined ? { candidate: true as const } : {}),
       excludedReason,
       ndRegularCredits: 0,
       ...buildExplanation(
@@ -3086,8 +3103,11 @@ function buildExplanationText(
     // An Incomplete from another university says so on its own line (P3-ac-4-1, 2026-10-05).
     const incompleteNote = cc.outsideIncomplete ? `; ${outsideIncompleteNote(cc.entry)} — the DGS decides once the grade is final` : '';
     // Any other §5.2 hold, said as the transfer card and the review request
-    // say it (#72): a ticked box beside "if approved" was left unexplained.
-    const holdNote = cc.transferHold !== undefined && !cc.outsideIncomplete ? `; ${cc.transferHold}` : '';
+    // say it (#72): a ticked box beside "if approved" was left unexplained. A
+    // held `yes` course (#60) says its whole pending reason, which carries
+    // every hold on it.
+    const heldYes = cc.transferable === 'yes' && cc.approvalPending !== undefined;
+    const holdNote = heldYes ? `; ${cc.approvalPending!.replace(/^waiting for the DGS — /, '')}` : cc.transferHold !== undefined && !cc.outsideIncomplete ? `; ${cc.transferHold}` : '';
     return {
       // A Notre Dame course here is one from the student's EARLIER Notre Dame
       // program (red-team wording table, 2026-09-12): say so, since its
@@ -3096,7 +3116,7 @@ function buildExplanationText(
       // (clarity review 2026-09-26): what is being waited for, then what the
       // course would do. "Candidate" is the DGS's word for it; the §5.2
       // paragraph above the group says it once.
-      explanation: `waiting for the DGS — ${fate}${isNotreDameInstitution(cc.entry.institution) ? ' — a course from your earlier Notre Dame program' : ''} (§5.2)${incompleteNote}${holdNote}${creditNote}${coreNote}`,
+      explanation: `waiting for the DGS — ${fate}${isNotreDameInstitution(cc.entry.institution) ? ' — a course from your earlier Notre Dame program' : ''} (§5.2)${heldYes ? '' : incompleteNote}${holdNote}${creditNote}${heldYes ? '' : coreNote}`,
       mark: 'pending',
     };
   }
@@ -3149,6 +3169,9 @@ function buildExplanationText(
     parts.push(
       `${lead} ${formatCredits(counted)} of ${formatCredits(total)} credits toward ${poolName}${tail}; ${formatCredits(excluded)} not counted — ${excludedReason ?? ''}`,
     );
+    // The part that counts still has to be sent: the approved note stays, as
+    // on a whole course (credit-transfer review 2026-10-28, #54).
+    if (cc.approvedNote) parts.push(cc.approvedNote);
   } else if (counted > 0) {
     mark = markForTier(cc.tier);
     parts.push(`${lead} toward ${poolName} (${formatCredits(counted)} cr)${tail}`);

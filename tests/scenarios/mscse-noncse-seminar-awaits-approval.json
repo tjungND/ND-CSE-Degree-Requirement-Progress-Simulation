@@ -1,0 +1,64 @@
+{
+  "name": "mscse-noncse-seminar-awaits-approval",
+  "description": "Credit-transfer review 2026-10-28 (#13): a seminar outside CSE that the ADGS approves case by case draws §3.2’s nine on the MSCSE (DGS 2026-10-03). Unticked, the non-CSE card read Met, “3 of the 9 … used”, with no course needing approval and none in its list, because only regular credit was looked at. The card is conditionally met until the ADGS approves it, names it, and lists it.",
+  "today": "2027-06-01",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 63801",
+          "set": {
+            "course_id": "SOC 63270",
+            "title": "Sociology Seminar",
+            "counts_toward_mscse": "adgs_approval",
+            "category_group": "",
+            "core_area": ""
+          }
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "SOC 63270",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "msOption": "project"
+  },
+  "expect": {
+    "ms.cap.noncse": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "needs approval: SOC 63270"
+      ]
+    }
+  }
+}

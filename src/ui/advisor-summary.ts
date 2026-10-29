@@ -720,9 +720,16 @@ export function approvalItems(course: string, reason: string, program: 'mscse' |
   }
   const section = /\((§[^)]*)\)\s*$/.exec(reason)?.[1] ?? (program === 'mscse' ? '§3.2' : '§4.2');
   const unlisted = /not in the course rules/i.test(reason);
-  const nonCse = /outside CSE|non-CSE/i.test(reason);
-  const below = /below the 60000|4xxxx|allowance for courses below/i.test(reason) || /advisor \+ [A-Z]+ approval per the course rules/.test(reason);
-  const caseByCase = /case by case/i.test(reason);
+  // The Courses tab's case-by-case verdict ("needs advisor + DGS approval per
+  // the course rules") says nothing of WHY: the course's own number and
+  // subject do — it read "a course below the 60000 level" for every such
+  // course, a 60000-level one outside CSE included (credit-transfer review
+  // 2026-10-28, #16).
+  const courseRulesCaseByCase = /advisor \+ [A-Z]+ approval per the course rules/.test(reason);
+  const level = Number(/(\d)\d{4}\b/.exec(course)?.[1]);
+  const nonCse = /outside CSE|non-CSE/i.test(reason) || (courseRulesCaseByCase && !/^\s*CSE\b/i.test(course));
+  const below = /below the 60000|4xxxx|allowance for courses below/i.test(reason) || (courseRulesCaseByCase && (level === 4 || level === 5));
+  const caseByCase = /case by case/i.test(reason) || (courseRulesCaseByCase && !below);
   // Credit already accepted on the Notre Dame record that the DGS confirms for
   // this student (P3-import-1, 2026-10-05) — nothing to recommend.
   const onRecord = /transfer credit on your Notre Dame record/i.test(reason);

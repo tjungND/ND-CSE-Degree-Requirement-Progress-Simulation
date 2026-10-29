@@ -4,11 +4,11 @@
 import { transferRecordedFor } from './transfer-recorded.ts';
 import { undergraduateGraduateCourseworkFlagFor } from './review.ts';
 import type { Rules } from '../data/types.ts';
-import { BS_SHARED_CREDITS_MAX, DUAL_DEGREE_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, allocate, classify, conferralWindow, levelOf, decidedCaseByCase, heldByRecord, longInterruptionReadmission, mscseSeparation, overMaxTerms, registrationCaps, spentOnBachelorsAndMasters, type CapSpec, type CourseMark } from './allocate.ts';
+import { BS_SHARED_CREDITS_MAX, DUAL_DEGREE_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, allocate, classify, conferralWindow, levelOf, decidedCaseByCase, heldByRecord, longInterruptionReadmission, mscseSeparation, overMaxTerms, registrationCaps, spentOnBachelorsAndMasters, type CapId, type CapSpec, type CourseMark } from './allocate.ts';
 import { specialTracks } from './tracks.ts';
 import { decisionWording, decisionWordingDeep } from './decider.ts';
 import { beforeProgramStart } from './early-start.ts';
-import { normalizeEntryTerm, termLabel, compareTerm, termOfDate, semesterSeq, startOfTerm } from './term.ts';
+import { normalizeEntryTerm, termIndex, termLabel, compareTerm, termOfDate, semesterSeq, startOfTerm } from './term.ts';
 import type { AuditReport, Grade, RequirementResult, Student, TermGpa } from './types.ts';
 import { beforeForfeiture, datedBeforeForfeiture, isCovidCohort, priorRulesQualifierHeld, type Ctx } from './requirements/context.ts';
 import { uncoveredRegistrationGaps } from './registration-gaps.ts';
@@ -20,7 +20,7 @@ import { mscseRows, msTimeLimitRow, summerOnlyReviewFlag, thesisReadersReviewFla
 import { extensionReviewFlag } from './requirements/context.ts';
 import { ADMISSION_DEADLINE_SEMESTER, eighthSemester, phdRows, phdTimeLimitRow, qualifierPriorRulesEligible, readmissionGapCounted } from './requirements/phd.ts';
 import { msMilestoneDeadlines, phdMilestoneDeadlines } from './requirements/milestone-deadlines.ts';
-import { formatCredits } from './credits.ts';
+import { exactCredits, formatCredits } from './credits.ts';
 import { GRADE_POINTS, isAudit, isInProgress, isPassed, meetsGradeFloor } from './grades.ts';
 
 /** Requirement id ↔ plan-inventory mapping (docs/DECISIONS.md, plan §1):
@@ -100,7 +100,9 @@ function sharedDegreesCap(base: number | undefined, spent: number): CapSpec {
     limit,
     label:
       spent > 0 && base !== undefined
-        ? `allowance for coursework counted toward two degrees — ${formatCredits(spent)} of its ${formatCredits(base)} credits already used by the courses counted toward your bachelor’s degree and your MSCSE`
+        ? // Never "9 of its 6" (credit-transfer review 2026-10-28, #45): the
+          // answers that say more are warned about at the top.
+          `allowance for coursework counted toward two degrees — ${spent > base ? 'all' : formatCredits(spent)} of its ${formatCredits(base)} credits already used by the courses counted toward your bachelor’s degree and your MSCSE`
         : capLabel(limit, 'allowance for coursework counted toward two degrees'),
     section: 'Graduate School',
   };
@@ -193,6 +195,16 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
           },
         ];
 
+  // More than six credits answered as counted toward both the bachelor's and
+  // the MSCSE (credit-transfer review 2026-10-28, #45): the Graduate School
+  // allows at most six toward two degrees, so at least one answer is likely
+  // wrong — said, rather than read as "9 of its 6 credits already used".
+  const sharedSpent = spentOnBachelorsAndMasters(student);
+  if (student.program === 'phd' && sharedSpent > BS_SHARED_CREDITS_MAX)
+    warnings.push(
+      `Your answers count ${formatCredits(sharedSpent)} credits of Notre Dame coursework toward both your bachelor’s degree and your MSCSE — the Graduate School allows at most ${BS_SHARED_CREDITS_MAX} toward two degrees, so check the “Counted toward” answers on those courses.`,
+    );
+
   // On probation (Academic Code §5.7.2; DGS 2026-10-04, policy review
   // P2-ac-5b-6.1-3 — "a rare case", asked under Your standing behind a
   // selector): the probation letter's stipulations and date govern, and may be
@@ -215,14 +227,6 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
   // says which semester.
   const overMax = overMaxTerms(classified, student, entry);
   const capSpecs: CapSpec[] = [...baseCapSpecs, ...registrationCaps(overMax)];
-  for (const o of overMax) {
-    if (o.overloadApproved) continue;
-    const excess = o.credits - o.max;
-    const summer = o.term.season === 'summer';
-    warnings.push(
-      `${termLabel(o.term)}: ${formatCredits(o.credits)} credits of ${summer ? 'courses' : 'graduate courses (60000 level or higher)'} are entered — the Graduate School allows at most ${o.max} in ${summer ? 'the summer session' : 'a semester'} (Academic Code §3.8; DGS Handbook §3.9), so ${formatCredits(excess)} ${excess === 1 ? 'credit is' : 'credits are'} not counted. Check for a duplicate row or a wrong credit value; if a credit overload was approved for you, tick it under Approvals you already have.`,
-    );
-  }
 
   // Non-CSE credit the nine-credit allowance refuses: into the total for the
   // Ph.D. (F1, 2026-09-12), nowhere for the MSCSE (DGS 2026-10-03 — §3.2's
@@ -238,6 +242,19 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     notreDameCounts: student.program === 'phd',
   };
   const alloc = allocate(classified, capSpecs, allocOptions);
+  // The semesters over §3.8's maximum, with the credits the maximum itself
+  // refused — not the excess over it, part of which another cap may already
+  // refuse (credit-transfer review 2026-10-28, #70: "so 2 credits are not
+  // counted" when the maximum cut nothing).
+  for (const o of overMax) {
+    if (o.overloadApproved) continue;
+    const capId: CapId = `term:${termIndex(o.term)}`;
+    const refused = exactCredits(alloc.perCourse.filter((p) => (p.boundCaps ?? []).includes(capId)).reduce((sum, p) => sum + p.excluded, 0));
+    const summer = o.term.season === 'summer';
+    warnings.push(
+      `${termLabel(o.term)}: ${formatCredits(o.credits)} credits of ${summer ? 'courses' : 'graduate courses (60000 level or higher)'} are entered — the Graduate School allows at most ${o.max} in ${summer ? 'the summer session' : 'a semester'} (Academic Code §3.8; DGS Handbook §3.9)${refused > 0 ? `, so ${formatCredits(refused)} ${refused === 1 ? 'credit is' : 'credits are'} not counted` : ''}. Check for a duplicate row or a wrong credit value; if a credit overload was approved for you, tick it under Approvals you already have.`,
+    );
+  }
 
   // The department's qualifier clocks run from the Ph.D.'s own start: for a
   // transfer from the unfinished MSCSE, the term of the transfer (DGS
@@ -302,6 +319,10 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
   for (const cc of classified) {
     const c = cc.entry;
     if (c.origin !== 'transfer' || isNotreDameInstitution(c.institution) || cc.pool === 'none' || cc.superseded) continue;
+    // Credit the Graduate School already accepted is not to be checked
+    // "before approving it" (credit-transfer review 2026-10-28, #65); its
+    // own checks follow (a thesis or independent-study title).
+    if (cc.ndPosting !== undefined) continue;
     const verdict = cc.transferable === 'yes' ? 'yes' : cc.transferable === 'dgs_approval' || cc.transferable === 'adgs_approval' ? 'case' : cc.transferable === undefined ? 'unlisted' : undefined;
     if (verdict === undefined) continue; // the rules say no
     staffChecks.push(...transferCourseChecks(c.courseId, c.institution ?? cc.external?.university ?? 'another university', c.title ?? cc.external?.title, student.program === 'mscse' ? '§3.2' : '§4.2', verdict));
@@ -839,6 +860,9 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
       // Which row of the record this is — two registrations of one course in
       // one term share an id and a term (#20, #55).
       ...(entryIndex.has(p.course.entry) ? { entryIndex: entryIndex.get(p.course.entry)! } : {}),
+      ...(p.countedRegular + p.countedOther > 0 && p.excluded > 0 && p.excludedReason !== undefined
+        ? { part: { counted: p.countedRegular + p.countedOther, whole: p.course.effectiveCredits ?? p.course.entry.credits, rest: p.excludedReason } }
+        : {}),
       text: p.explanation,
       mark: p.mark,
       ...(qualifier ? { qualifier } : {}),
@@ -933,12 +957,15 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
       ...(a.course.entry.institution !== undefined ? { institution: a.course.entry.institution } : {}),
       term: a.course.entry.term,
       counted: a.countedRegular + a.countedOther,
-      // Another cap, not §5.2's, cut the course (round 5 verification,
-      // transfer-1): its own reason, as the course's line gives it.
-      ...(a.boundCaps !== undefined && !a.boundCaps.includes('transfer') && a.excludedReason !== undefined ? { restOver: a.excludedReason } : {}),
-      // …and that cap's limit is missing from the sheet: the course cannot be
-      // checked, which is not "over" anything (DGS 2026-10-27 review).
-      ...(a.course.caps.some((id) => id !== 'transfer' && alloc.capUsage.get(id)?.limit === undefined) ? { restUnknown: true as const } : {}),
+      // Another cap cut the course (round 5 verification, transfer-1) — alone,
+      // or with §5.2's own (credit-transfer review 2026-10-28, #34): its own
+      // reason, as the course's line gives it, naming every cap that ran out.
+      ...(a.boundCaps !== undefined && a.boundCaps.some((id) => id !== 'transfer') && a.excludedReason !== undefined ? { restOver: a.excludedReason } : {}),
+      // …or a limit missing from the sheet — §5.2's own included: the course
+      // cannot be checked, which is not "over" anything (DGS 2026-10-27 review).
+      ...(a.course.caps.some((id) => alloc.capUsage.get(id)?.limit === undefined) && a.excludedReason !== undefined
+        ? { restUnknown: true as const, ...(a.boundCaps?.some((id) => id !== 'transfer') ? {} : { restOver: a.excludedReason }) }
+        : {}),
     }));
   const transferCap = alloc.capUsage.get('transfer')?.limit;
   return {
@@ -949,7 +976,9 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     // (DGS 2026-10-14) — the card's own state, so a missing gpa_min (the card
     // cannot evaluate) never reads "no GPA yet" in an email.
     ...(rows.find((r) => r.id === 'shared.gpa')?.status === 'in_progress' ? { noGpaYet: true as const } : {}),
-    ...(staffChecks.length > 0 ? { staffChecks } : {}),
+    // The decider named for the degree, as everything else at this boundary
+    // (credit-transfer review 2026-10-28, #57: "the DGS decides" to the ADGS).
+    ...(staffChecks.length > 0 ? { staffChecks: staffChecks.map((x) => decisionWording(p, x)) } : {}),
     ...(summerFloor !== undefined ? { summerFullTimeCredits: summerFloor } : {}),
     program: p,
     requirements: rows.map((r) => decisionWordingDeep(p, r)),

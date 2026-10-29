@@ -289,7 +289,19 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
   // 4. After the DGS answers; and what the Grad Admin can already record.
   const approvals = report.requirements.find((r) => r.id === 'shared.approvals');
   if (!waitsForEarlierDegrees && (approvals?.status === 'needs_dgs_review' || reviewCount > 0)) steps.push({ key: 'review.wait', waiting: true, text: 'When the DGS answers, come back to this page — it reads the latest course rules — and tick the box next to each course approved for you; then send the processing request, and the Grad Admin records it.', href: '#grad-admin', covers: ['shared.approvals'] });
-  if (processingCount > 0) steps.push({ key: 'processing.send', text: `Send the processing request (${plural(processingCount, 'item')}) — the Grad Admin records it.`, href: '#grad-admin' });
+  // Once the semester of graduation has begun, the step asks what the request,
+  // the card, the warning and the email ask (credit-transfer review
+  // 2026-10-28, #73; P4-transfer-1).
+  const closed = report.transferRequestWindowClosed;
+  if (processingCount > 0)
+    steps.push({
+      key: 'processing.send',
+      text:
+        closed !== undefined
+          ? `Send the processing request (${plural(processingCount, 'item')}) — it asks the Grad Admin whether your transfer request went to the Graduate School before ${termLabel(closed)}; if it did not, ask the DGS.`
+          : `Send the processing request (${plural(processingCount, 'item')}) — the Grad Admin records it.`,
+      href: '#grad-admin',
+    });
   // The master's candidacy application, once its conditions are in hand
   // (Academic Code §6.1.6 — policy review 2026-10-04, P2-dh-front-1-2-2).
   if (report.requirements.some((r) => r.id === 'shared.msCandidacy' && r.status === 'unmet'))

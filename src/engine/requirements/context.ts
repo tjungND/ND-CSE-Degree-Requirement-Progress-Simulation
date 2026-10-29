@@ -176,12 +176,13 @@ export function heldForMissingParams(row: RequirementResult, ctx: Ctx, keys: rea
   };
 }
 
-/** The regular-pool courses counted only provisionally — named on the credit
- * rows whenever the verdict leans on them. */
-export function provisionalRegularIds(ctx: Ctx): string[] {
-  return ctx.classified
-    .filter((c) => c.pool === 'regular' && c.tier === 'provisional' && !c.superseded)
-    .map((c) => c.entry.courseId);
+/** The courses a credit row counts only provisionally — named on the row
+ * whenever its verdict leans on them. Read from the row's own allocation
+ * (`pick`), not the pool (credit-transfer review 2026-10-28, #35): a pending
+ * course a cap refused changes no count, and a pending total-only course
+ * does count toward the total. */
+export function provisionalCourseIds(ctx: Ctx, pick: (p: CourseAllocation) => number): string[] {
+  return [...new Set(ctx.alloc.perCourse.filter((p) => pick(p) > 0 && p.course.tier === 'provisional' && !p.course.superseded).map((p) => p.course.entry.courseId))];
 }
 
 /** §2.2's bar on defending with a low GPA, as the sentence the defense rows
@@ -496,7 +497,11 @@ export function joinedDetail(parts: DetailPart[]): { detail: string; detailParts
   return {
     // A closing period only where the last part has none (a part ending in
     // "the Ph.D." used to reach the emails as "the Ph.D..", 2026-09-26).
-    detail: parts.map(flat).join('. ') + (parts.length > 0 && !/[.!?]$/.test(flat(parts[parts.length - 1]!)) ? '.' : ''),
+    // …and no period after a middle part that already ends in one ("the
+    // Ph.D.. The Graduate School’s answer …", credit-transfer review 2026-10-28, #46).
+    detail:
+      parts.map(flat).map((t, i, all) => (i === all.length - 1 ? t : /[.!?]$/.test(t) ? `${t} ` : `${t}. `)).join('') +
+      (parts.length > 0 && !/[.!?]$/.test(flat(parts[parts.length - 1]!)) ? '.' : ''),
     detailParts: parts.length > 1 || structured ? parts : undefined,
   };
 }
@@ -672,6 +677,14 @@ export function lastCompletion(list: readonly (Completion | undefined)[]): Compl
 
 /** Cap row: caps are enforced by the engine, so the row reports usage and names
  * every excluded credit; it is n/a when nothing touches the cap. */
+/** The credits an allowance admitted of a course, as allocate.ts take()
+ * charges them: the non-CSE nine what it counted, any other cap the spill
+ * into the total as well. */
+function admittedBy(p: Ctx['alloc']['perCourse'][number] | undefined, capId: CapId): number {
+  if (p === undefined) return 0;
+  return p.countedRegular + p.countedOther - (capId === 'noncse' ? (p.overCapToTotal ?? 0) : 0);
+}
+
 export function capRow(args: {
   id: string;
   group: string;
@@ -708,8 +721,14 @@ export function capRow(args: {
   // present as an unqualified pass (interface review R2, 2026-09-18): these are
   // emitted as warning parts, so the report gives them their own treatment
   // instead of the grey prose they used to share with everything else.
+  // Only what THIS cap refused (credit-transfer review 2026-10-28, #11): a
+  // course another cap cut is named, with that cap, on its own line and on
+  // the §5.2 card — listed here too, it read "beyond the allowance" beside a
+  // meter with room left. Nor a §5.2 candidate: which candidates fill a cap is
+  // the DGS's choice, not a refusal (DGS 2026-09-06).
   const excludedLines: DetailPart[] = args.ctx.alloc.perCourse
-    .filter((p) => p.course.caps.includes(args.capId) && (p.excluded > 0 || (p.overCapToTotal ?? 0) > 0))
+    .filter((p) => p.course.caps.includes(args.capId) && p.candidate !== true)
+    .filter((p) => (p.excluded > 0 && (p.boundCaps ?? []).includes(args.capId)) || ((p.overCapToTotal ?? 0) > 0 && args.capId === 'noncse'))
     // Every number a student reads goes through formatCredits (credits.ts:
     // "never scientific notation, never '2.6666666666666665'"). These three
     // were raw (red-team 2026-09-13): one ordinary quarter-system transfer
@@ -744,7 +763,10 @@ export function capRow(args: {
     // Only a course the allowance actually admits is worth an approval: one
     // refused as beyond it is told so on its own line, not sent to seek an
     // approval that cannot help (clarity review 2026-09-26).
-    const admitted = (c: (typeof relevant)[number]): boolean => (args.ctx.alloc.perCourse.find((p) => p.course === c)?.countedRegular ?? 0) > 0;
+    // Any credit the allowance admits, toward the 24 or toward the total only
+    // — a seminar, research or independent-study course drawing on it waits
+    // for its approval like a regular one (credit-transfer review 2026-10-28, #13).
+    const admitted = (c: (typeof relevant)[number]): boolean => admittedBy(args.ctx.alloc.perCourse.find((p) => p.course === c), args.capId) > 0;
     const pending = relevant.filter((c) => c.approvalPending && admitted(c));
     status = args.approvalDriven && pending.length > 0 ? 'needs_dgs_review' : 'met';
     parts.push(`${formatCredits(usage.used)} of the ${formatCredits(usage.limit)} ${args.capLabel} used`);
@@ -764,9 +786,10 @@ export function capRow(args: {
   // What each course draws on this allowance (2026-09-22): the regular-course
   // credits it counts, or every counted credit for a transfer cap and for the
   // credits shared with another degree (2026-10-04).
-  const contributions = courseContributions(args.ctx, (p) =>
-    p.course.caps.includes(args.capId) ? (args.capId === 'transfer' || args.capId === 'otherdegree' ? p.countedRegular + p.countedOther : p.countedRegular) : 0,
-  );
+  // What the allowance admitted of each course, so the list adds up to the
+  // meter: the non-CSE nine is charged what it counted, every other cap the
+  // credit that counts anywhere (allocate.ts take(); #13).
+  const contributions = courseContributions(args.ctx, (p) => (p.course.caps.includes(args.capId) ? admittedBy(p, args.capId) : 0));
   return {
     id: args.id,
     group: args.group,

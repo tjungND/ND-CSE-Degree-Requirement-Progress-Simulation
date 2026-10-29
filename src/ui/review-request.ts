@@ -10,6 +10,7 @@
 // (grad-admin-request.ts) pulled the whole 4,000-line parser into every first
 // load. The markers now live in email-html.ts beside the other email helpers.
 import { NOTRE_DAME_ROW_UNIVERSITY, isNotreDameInstitution, normalizeCourseId, normalizeUniversity } from '../data/external.ts';
+import { formatCredits } from '../engine/credits.ts';
 import type { PendingDgsReview } from '../engine/review.ts';
 import { termLabel } from '../engine/term.ts';
 import { ACTION_HEADING, DO_NOT_MODIFY_MARKER, EDITABLE_MARKER, MARKER_DIVIDER, STUDENT_LINE, esc, studentLineHtml } from './email-html.ts';
@@ -21,7 +22,11 @@ interface ReviewRequestCourse {
   institution?: string;
   courseId: string;
   title?: string;
+  /** As the transcript prints them. */
   credits: number;
+  /** The Notre Dame credits the self-check counts, when they differ — a
+   * quarter or trimester conversion, or the DGS's nd_credits (#63). */
+  ndCredits?: number;
   grade: string;
   termText: string;
   slotLabel?: string;
@@ -157,7 +162,11 @@ export function reviewRequestCourses(
   const request = (p: PendingDgsReview): PendingReviewCourse => ({
     courseId: p.course.entry.courseId,
     title: p.course.entry.title ?? p.course.rule?.title,
+    // The transcript's figure, with the Notre Dame credits the self-check
+    // counts when they differ — a quarter or trimester conversion, or the
+    // DGS's nd_credits (credit-transfer review 2026-10-28, #63).
     credits: p.course.entry.credits,
+    ...(p.course.effectiveCredits !== undefined && Math.abs(p.course.effectiveCredits - p.course.entry.credits) > 1e-9 ? { ndCredits: p.course.effectiveCredits } : {}),
     grade: p.course.entry.grade,
     termText: termLabel(p.course.entry.term),
     reason: p.reason,
@@ -272,7 +281,15 @@ export function buildCombinedReviewRequest(opts: {
     const a = askOf(c);
     return a.rulings ?? a.decide.filter((d) => /\bfor me\b/.test(d));
   };
-  const detail = (c: PendingReviewCourse): string[] => [c.courseId, c.title ?? '', String(c.credits), c.grade, c.termText, askOf(c).decide.join('; '), voiced(c.reason)];
+  const detail = (c: PendingReviewCourse): string[] => [
+    c.courseId,
+    c.title ?? '',
+    c.ndCredits !== undefined ? `${formatCredits(c.credits)} on the transcript (${formatCredits(c.ndCredits)} Notre Dame credits)` : formatCredits(c.credits),
+    c.grade,
+    c.termText,
+    askOf(c).decide.join('; '),
+    voiced(c.reason),
+  ];
   // One row per course for the sheet; every attempt still shown in the details.
   const ndRows = oncePerCourse(opts.nd, (c) => normalizeCourseId(c.courseId));
   const extRows = oncePerCourse(opts.external, (c) => `${normalizeUniversity(c.institution ?? '')}|${normalizeCourseId(c.courseId)}`);

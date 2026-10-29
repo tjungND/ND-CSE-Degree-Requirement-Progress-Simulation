@@ -19,6 +19,7 @@
 // Dame or at their previous institution" — undergraduate or graduate — once
 // the DGS confirms the course. §5.2 criterion 5: "the transfer is recommended
 // by the DGS and approved by the Graduate School."
+import { BS_SHARED_CREDITS_MAX, spentOnBachelorsAndMasters } from './allocate.ts';
 import { termIndex } from './term.ts';
 import { isNotreDameInstitution, needsApproval } from '../data/external.ts';
 import type { Rules } from '../data/types.ts';
@@ -156,7 +157,7 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
   const CORE = 'core area (§4.4.1), if any';
   const GROUP = 'specialization group (§4.4.2), if any';
   const TRANSFERABLE = `transferable to the ${degree} (§5.2): yes / no / case by case`;
-  const IS_CSE = 'say whether this counts as a CSE course for §4.2’s nine-credit non-CSE allowance (the is_cse cell on its row)';
+  const IS_CSE = `say whether this counts as a CSE course for ${student.program === 'mscse' ? '§3.2' : '§4.2'}’s nine-credit non-CSE allowance (the is_cse cell on its row)`;
   // The sheet's own questions (P3-emails-2): a cell the DGS fills in, read by
   // the page on its next visit — no reply. Every other ask is a ruling.
   const SHEET_QUESTIONS = new Set([COUNTS, CORE, GROUP, TRANSFERABLE, `${COUNTS} — the row is blank`, `${TRANSFERABLE} — the row is blank`, IS_CSE]);
@@ -294,8 +295,11 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
         course: c,
         kind: 'external',
         ask: {
-          needsRow: false,
-          replyNeeded: true,
+          // A row question (is_cse, the core area) for a course with no
+          // ExternalCourses row asks for the row, with a paste-ready one
+          // (credit-transfer review 2026-10-28, #65).
+          needsRow: c.external === undefined && (c.cseUnknown === true || coreOpen),
+          replyNeeded: c.ndPostingHeld !== undefined,
           decide: [
             ...(c.ndPostingHeld !== undefined ? ['confirm this credit, already accepted on my Notre Dame record, counts toward this degree (I tick the box on the course when you do)'] : []),
             ...(c.cseUnknown ? [IS_CSE] : []),
@@ -399,7 +403,11 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
         // P3-fourplusone-2 (DGS 2026-10-07: option (2)): the GR registration and
         // the answered admission term disagree; the DGS settles it.
         ...(c.admissionTermConflict ? ['confirm this course counts — my Notre Dame transcript registers it at the graduate level (moved from UG to GR), but the Integrated-program admission I entered is after my bachelor’s degree (Graduate School 4+1 guidance)'] : []),
-        ...(c.caps.includes('sharedbs') && student.program === 'phd' && c.entry.countedToward === 'bs' && c.entry.dgsApproved !== true ? ['confirm it may count toward both my bachelor’s degree and the Ph.D. (the Graduate School’s 2026-09-22 answer)'] : []),
+        // Not when the six are already spent on the bachelor's and the MSCSE:
+        // no ruling can make it count (credit-transfer review 2026-10-28, #44).
+        ...(c.caps.includes('sharedbs') && student.program === 'phd' && c.entry.countedToward === 'bs' && c.entry.dgsApproved !== true && spentOnBachelorsAndMasters(student) < BS_SHARED_CREDITS_MAX
+          ? ['confirm it may count toward both my bachelor’s degree and the Ph.D. (the Graduate School’s 2026-09-22 answer)']
+          : []),
         ...(bachelors && !c.ugToGrUnverified && !c.caps.includes('sharedbs') && c.approvalPending !== undefined && /advance approval|§3\.5/.test(c.approvalPending)
           ? // Each document named (policy review round 3, P3-text-ui-4): the
             // advance approval is the Code's §4.6, the window CSE's §3.5.

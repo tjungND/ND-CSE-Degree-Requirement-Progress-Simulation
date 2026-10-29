@@ -1,0 +1,160 @@
+{
+  "name": "phd-transfer-card-names-ticked-and-partial",
+  "description": "Credit-transfer review 2026-10-28 (#51, #54): CS 50200 is case by case and ticked as approved by the DGS — it counts and the Grad Admin request submits it, but the §5.2 card never named it. And INFO 6205, which §4.2’s nine admits only in part, lost the “approved by the DGS … send the Grad Admin the processing request” note every whole course carries. The card names the ticked course; the part keeps its note.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50100",
+          "course_title": "CS 50100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50200",
+          "course_title": "CS 50200",
+          "transferable_PhD": "dgs_approval",
+          "transferable_MSCSE": "dgs_approval",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "INFO 5100",
+          "course_title": "INFO 5100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "INFO 6150",
+          "course_title": "INFO 6150",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "INFO 6205",
+          "course_title": "INFO 6205",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 50100",
+        "title": "CS 50100",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50200",
+        "title": "CS 50200",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters",
+        "dgsApproved": true
+      },
+      {
+        "courseId": "INFO 5100",
+        "title": "INFO 5100",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 6150",
+        "title": "INFO 6150",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "INFO 6205",
+        "title": "INFO 6205",
+        "credits": 4,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "Approved by the DGS for you, as you ticked: CS 50200"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "INFO 6205": [
+      "counts 1 of 4 credits toward regular courses",
+      "approved by the DGS in the course rules"
+    ]
+  }
+}

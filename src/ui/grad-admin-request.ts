@@ -341,7 +341,10 @@ function countedCourses(standing: StandingTable[], report: AuditReport, student:
       // two rows (credit-transfer review 2026-10-28, #20).
       const index = student.courses.indexOf(c);
       const key = index >= 0 ? `#${index}` : `${c.courseId}|${c.institution ?? ''}|${termLabel(c.term)}`;
-      const capCounted = capFor(report, student, c);
+      // A Notre Dame course a cap admitted in part prints its part too, as a
+      // transfer's does (credit-transfer review 2026-10-28, #36).
+      const linePart = report.courseLines.find((l) => l.entryIndex !== undefined && l.entryIndex === index)?.part;
+      const capCounted = capFor(report, student, c) ?? (linePart !== undefined ? { counted: linePart.counted, restOver: linePart.rest } : undefined);
       const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c), capCounted, report.transferCap), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
       if (!row.countsToward.includes(label)) row.countsToward.push(label);
       out.set(key, row);
@@ -727,7 +730,10 @@ export function gradAdminRequest(
       cutBy === ''
         ? {
             heading: `Not submitted — over the ${items.transferCap !== undefined ? `${formatCredits(items.transferCap)}-credit ` : ''}transfer cap`,
-            lines: [`${named} — the self-check filled the cap in term order, which is not a ruling; the DGS may choose which courses fill it.`],
+            // The fill order is the self-check's (posted credit, then CSE
+            // courses, then the rest — allocate.ts), not term order (credit-
+            // transfer review 2026-10-28, #33): say only that it is its choice.
+            lines: [`${named} — which courses fill it is the self-check’s choice, not a ruling; the DGS may choose.`],
           }
         : group[0]!.cutUnknown
           ? { heading: 'Not submitted — cannot be checked yet', lines: [`${named} — ${cutBy}.`] }

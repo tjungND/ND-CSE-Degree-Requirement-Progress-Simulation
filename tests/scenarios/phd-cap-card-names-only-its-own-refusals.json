@@ -1,0 +1,257 @@
+{
+  "name": "phd-cap-card-names-only-its-own-refusals",
+  "description": "Credit-transfer review 2026-10-28 (#11): §5.2’s 24 ran out on MA 50100, a Purdue course outside CSE, while §4.2’s non-CSE nine had room — yet the non-CSE card read “0 of the 9 … MA 50100: 3 credits not counted — beyond the allowance”. An allowance card lists only what its own cap refused; the course line and the §5.2 card name the transfer cap.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "MA 50100",
+          "course_title": "MA 50100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "no",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50100",
+          "course_title": "CS 50100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50200",
+          "course_title": "CS 50200",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50300",
+          "course_title": "CS 50300",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50400",
+          "course_title": "CS 50400",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50500",
+          "course_title": "CS 50500",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50600",
+          "course_title": "CS 50600",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50700",
+          "course_title": "CS 50700",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50800",
+          "course_title": "CS 50800",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "MA 50100",
+        "title": "MA 50100",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50100",
+        "title": "CS 50100",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50200",
+        "title": "CS 50200",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50300",
+        "title": "CS 50300",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50400",
+        "title": "CS 50400",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50500",
+        "title": "CS 50500",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50600",
+        "title": "CS 50600",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50700",
+        "title": "CS 50700",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50800",
+        "title": "CS 50800",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2021
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.cap.noncse": {
+      "status": "met",
+      "detailExcludes": [
+        "MA 50100"
+      ]
+    },
+    "phd.transfer": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "MA 50100: over the transfer-credit cap"
+      ]
+    }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "name": "mscse-three-earlier-programs-wording",
+  "description": "Credit-transfer review 2026-10-28 (#59): courses from three earlier graduate programs. The §5.2 card said “3 earlier graduate programs” and each course “one of your two earlier graduate programs”. The count is said once and right.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50100",
+          "course_title": "CS 50100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "UNIVERSITY OF MICHIGAN",
+          "course_id": "EECS 584",
+          "course_title": "EECS 584",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "UNIVERSITY OF TEXAS AT AUSTIN",
+          "course_id": "CS 380",
+          "course_title": "CS 380",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 50100",
+        "title": "CS 50100",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "EECS 584",
+        "title": "EECS 584",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Michigan",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 380",
+        "title": "CS 380",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Texas at Austin",
+        "degreeLevel": "masters"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "msOption": "project",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2019
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "ms.transfer": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "Transfer credit from 3 earlier graduate programs"
+      ],
+      "detailExcludes": [
+        "one of your two"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 50100": [
+      "from one of 3 earlier graduate programs on your record"
+    ]
+  }
+}

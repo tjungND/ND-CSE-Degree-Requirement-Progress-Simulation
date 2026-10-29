@@ -132,10 +132,10 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
               : 'taken outside any degree program — the Academic Code states no transfer allowance for a student with no earlier graduate program (Academic Code §4.6)']
           : []),
         // P3-prior-programs-3 (3), 2026-10-07: said once, as the row's first fact.
-        ...(c.twoPrograms ? ['from one of your two earlier graduate programs — the DGS decides how their allowances combine'] : []),
+        ...(c.twoPrograms ? ['from one of your earlier graduate programs — the DGS decides how their allowances combine'] : []),
         // P3-prior-programs-4 (b), 2026-10-07.
         ...(c.windowStartUnknown ? ['more than five years before your Ph.D. entry — §5.2 counts back from your Notre Dame MSCSE admission, which this record does not date'] : []),
-        ...(c.cseUnknown ? ['the course rules do not say whether it is a CSE course, so §4.2’s nine-credit non-CSE allowance cannot be applied yet'] : []),
+        ...(c.cseUnknown ? [`the course rules do not say whether it is a CSE course, so ${ctx.student.program === 'mscse' ? '§3.2' : '§4.2'}’s nine-credit non-CSE allowance cannot be applied yet`] : []),
         ...(c.incompleteLapsed ? ['an Incomplete past its deadline (Academic Code §4.4)'] : []),
         // Another university's Incomplete (P3-ac-4-1, 2026-10-05).
         ...(c.outsideIncomplete ? [`${outsideIncompleteNote(c.entry)} — the DGS decides once the grade is final`] : []),
@@ -233,7 +233,10 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       });
     for (const c of held) parts.push(`Waiting for the DGS: ${c.entry.courseId}`, { note: `${c.entry.courseId}: ${upper(heldReason(c))}; the review request asks` });
     if (unreviewed.length > 0) {
-      const credits = unreviewed.reduce((sum, c) => sum + (c.entry.credits ?? 0), 0);
+      // The credits the meter counts — converted from quarter or trimester
+      // hours, or the DGS's nd_credits — not the transcript's figure
+      // (credit-transfer review 2026-10-28, #66).
+      const credits = unreviewed.reduce((sum, c) => sum + (c.effectiveCredits ?? c.entry.credits ?? 0), 0);
       parts.push(`Waiting for the DGS: ${unreviewed.map((c) => c.entry.courseId).join(', ')} (${formatCredits(credits)} credits)`, { note: 'Send the review request from the Transcripts card' });
     }
     // Credit still in progress elsewhere is not counted yet — it waits for its
@@ -247,6 +250,11 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     const excluded = ctx.alloc.perCourse.filter((p) => {
       const e = p.course.entry;
       if (e.origin !== 'transfer' || e.degreeLevel === 'bachelors' || p.excluded <= 0) return false;
+      // Notre Dame coursework that is not transfer credit (own MSCSE,
+      // non-degree, before admission) is not this card's (credit-transfer
+      // review 2026-10-28, #24 — it was listed as a refused transfer, then
+      // called "not transfer credit" two lines on).
+      if (p.course.notTransferCredit === true) return false;
       // The second row of one course (P3-import-1 (c)): counted on its twin's line.
       if (p.course.superseded) return false;
       // Notre Dame coursework taken in or before the bachelor's award term went
@@ -255,7 +263,7 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       // An unreviewed candidate the allocator happened to leave outside the
       // cap is not "over the cap" — the DGS decides which candidates transfer
       // (2026-09-06); the line already says "candidate", and so does this row.
-      if (p.course.tier === 'provisional' && p.course.transferable !== 'yes' && p.course.caps.includes('transfer') && p.course.ineligibleReason === undefined) return false;
+      if (p.candidate === true) return false;
       return true;
     });
     // A course a cap admits in part says how much is out (DGS 2026-10-27: the
@@ -285,6 +293,13 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     const approvedForAll = transfers.filter((c) => !c.superseded && c.transferable === 'yes' && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && admitted(c) > 0);
     if (approvedForAll.length > 0) {
       parts.push(`Approved by the DGS in the course rules: ${approvedForAll.map((c) => c.entry.courseId).join(', ')}${recorded ? ' — recorded by the Grad Admin, as you ticked under Approvals (§5.2)' : ''}`, ...(recorded ? [] : [{ note: upper(processWhen) }]));
+    }
+    // A case-by-case course the student ticked as approved counts and goes in
+    // the request too, so the card names it (credit-transfer review
+    // 2026-10-28, #51 — it appeared nowhere on the card).
+    const approvedForMe = transfers.filter((c) => !c.superseded && needsApproval(c.transferable) && c.tickApproved === true && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && admitted(c) > 0);
+    if (approvedForMe.length > 0) {
+      parts.push(`Approved by the DGS for you, as you ticked: ${approvedForMe.map((c) => c.entry.courseId).join(', ')}${recorded ? ' — recorded by the Grad Admin, as you ticked under Approvals (§5.2)' : ''}`, ...(recorded || approvedForAll.length > 0 ? [] : [{ note: upper(processWhen) }]));
     }
     if (pending.length === 0 && counted > 0 && !recorded) {
       parts.push({ note: 'Final once the Graduate School has approved the transfer and the Grad Admin has recorded it (§5.2, criterion 5) — then tick “The Graduate School approved my transfer credit” under Approvals' });

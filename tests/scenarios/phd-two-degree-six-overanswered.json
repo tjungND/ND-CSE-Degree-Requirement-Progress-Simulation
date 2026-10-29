@@ -1,0 +1,118 @@
+{
+  "name": "phd-two-degree-six-overanswered",
+  "description": "Credit-transfer review 2026-10-28 (#45, #46): answers put nine credits of Notre Dame coursework toward both the bachelor’s and the MSCSE, past the Graduate School’s six. Nothing said so; the line read “9 of its 6 credits already used”, and the card printed “the Ph.D..”. A warning now names the answers to check, the line says “all of its 6”, and no double period.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "graduate",
+        "countedToward": "both"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "graduate",
+        "countedToward": "both"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "graduate",
+        "countedToward": "both"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "bachelors",
+        "registeredLevel": "graduate",
+        "countedToward": "bs"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2025
+      }
+    },
+    "background": {
+      "bachelors": "nd-cse",
+      "graduate": "nd-mscse",
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.cap.sharedbs": {
+      "status": "met",
+      "detailExcludes": [
+        "Ph.D.."
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 60321": [
+      "all of its 6 credits already used"
+    ]
+  },
+  "expectWarnings": [
+    "Your answers count 9 credits of Notre Dame coursework toward both your bachelor’s degree and your MSCSE"
+  ]
+}

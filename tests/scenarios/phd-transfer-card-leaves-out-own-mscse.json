@@ -1,0 +1,153 @@
+{
+  "name": "phd-transfer-card-leaves-out-own-mscse",
+  "description": "Credit-transfer review 2026-10-28 (#24): the student’s own Notre Dame MSCSE course CSE 40243, refused by §4.2’s six below the 60000 level, was listed on the §5.2 card as a refused transfer — then the same card said “Your Notre Dame MSCSE courses … are not transfer credit”. The §5.2 card lists §5.2 transfer courses only.",
+  "today": "2026-10-29",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 40243",
+          "set": {
+            "counts_toward_phd": "yes"
+          }
+        },
+        {
+          "course_id": "CSE 40113",
+          "set": {
+            "counts_toward_phd": "yes"
+          }
+        },
+        {
+          "course_id": "CSE 40567",
+          "set": {
+            "counts_toward_phd": "yes"
+          }
+        }
+      ],
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50100",
+          "course_title": "CS 50100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 50100",
+        "title": "CS 50100",
+        "credits": 3,
+        "term": {
+          "season": "summer",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 40113",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 40567",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 40243",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2024
+      }
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-mscse",
+      "alsoElsewhere": true,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "in_progress",
+      "detailExcludes": [
+        "CSE 40243: over"
+      ]
+    }
+  }
+}

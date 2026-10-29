@@ -12,7 +12,7 @@ import { combineAll, deadlineStatus, openDeadline } from '../status.ts';
 import { addMonthsIso, deadlineTerm, deadlineTermLabel, endOfNextSemester, endOfTerm, maxConsecutiveFullTime, nthSemester, semesterNumber, startOfTerm, termIndex, termLabel, termOfDate, compareTerm } from '../term.ts';
 import type { ConditionMark, DetailPart, Grade, RequirementResult, Status, Term, DeadlineInfo } from '../types.ts';
 import type { Ctx } from './context.ts';
-import { noteOf, capRow, heldForMissingParams, beforeForfeiture, priorRulesQualifierHeld, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds, titleCount, titleCountWord, gpaMinText } from './context.ts';
+import { noteOf, capRow, heldForMissingParams, beforeForfeiture, priorRulesQualifierHeld, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalCourseIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds, titleCount, titleCountWord, gpaMinText } from './context.ts';
 import { fullTimeTermRecords, graduateLevelParts, longestFullTimeRun, sameTermDuplicate } from './residency.ts';
 import { advisorTttState, BASIC_GROUP, defendedBelowGpaNote, gpaText, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { transferRow } from './transfer.ts';
@@ -75,7 +75,6 @@ const atNotreDame = (c: { entry: { origin: string }; ndMastersCredit?: true }): 
 
 export function phdRows(ctx: Ctx): RequirementResult[] {
   const rows: RequirementResult[] = [];
-  const provisionalRegular = provisionalRegularIds(ctx);
 
   // §4.2: "The graduate school requires a total of sixty (60) credits of
   // courses and research for the Ph.D." Only passed courses count toward the
@@ -94,7 +93,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       requiredKey: 'phd_total_credits_min',
       section: '§4.2',
       quote: 'The graduate school requires a total of sixty (60) credits of courses and research for the Ph.D.',
-      provisionalCourses: provisionalRegular,
+      provisionalCourses: provisionalCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
     }),
   );
 
@@ -124,7 +123,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       section: '§4.2',
       quote:
         'The CSE department requires a minimum of twenty-four (24) credit hours of regular courses at the 60000 level or higher.',
-      provisionalCourses: provisionalRegular,
+      provisionalCourses: provisionalCourseIds(ctx, (p) => p.countedRegular),
     }),
   );
 
@@ -211,8 +210,19 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       // the MSCSE should count"). Said out loud only when the student actually
       // has undergraduate coursework of that kind, so a shortfall does not
       // read as a data-entry problem they could fix.
+      // Only Notre Dame coursework taken as an undergraduate — not non-degree
+      // or before-admission coursework, nor an earlier program's §5.2
+      // transfer credit (credit-transfer review 2026-10-28, #38).
       extraDetail: ctx.classified.some(
-        (c) => c.entry.origin === 'transfer' && isNotreDameInstitution(c.entry.institution) && !c.ndMastersCredit && c.pool === 'regular' && c.ineligibleReason === undefined,
+        (c) =>
+          c.entry.origin === 'transfer' &&
+          isNotreDameInstitution(c.entry.institution) &&
+          c.notTransferCredit === true &&
+          !c.ndMastersCredit &&
+          !c.nonDegree &&
+          !c.ndBeforeAdmission &&
+          c.pool === 'regular' &&
+          c.ineligibleReason === undefined,
       )
         ? ['Notre Dame coursework you took as an undergraduate counts toward the 60 and the 24, but not here: these nine are graduate credits earned at Notre Dame — in the Ph.D., or in your Notre Dame MSCSE, which the Graduate School treats as the same graduate program (§4.2)']
         : undefined,
@@ -442,8 +452,16 @@ function seminarRow(ctx: Ctx): RequirementResult {
       // 2026-09-12) — unlike §4.4.1 core knowledge, which only asks "passed".
       // A seminar entry the allocator refused (an unrecognised duplicate, a
       // lapsed Incomplete) does not satisfy it either (policy review 2026-10-03).
-      const passedEntry = entries.find((c) => passesCreditFloor(c.entry.grade) && isPassed(c.entry.grade) && c.ineligibleReason === undefined);
-      const ip = entries.some((c) => isInProgress(c.entry.grade) && !c.incompleteLapsed);
+      // A seminar is a credit requirement ("two credits"): a registration whose
+      // credit a cap refused — the semester's maximum — has not met it, though
+      // it passed (credit-transfer review 2026-10-28, #69: its line read "not
+      // counted" beside "done").
+      const counts = (c: (typeof entries)[number]): boolean => {
+        const a = ctx.alloc.perCourse.find((p) => p.course === c);
+        return a === undefined || a.countedRegular + a.countedOther > 0;
+      };
+      const passedEntry = entries.find((c) => passesCreditFloor(c.entry.grade) && isPassed(c.entry.grade) && c.ineligibleReason === undefined && counts(c));
+      const ip = entries.some((c) => isInProgress(c.entry.grade) && !c.incompleteLapsed && counts(c));
       if (passedEntry) {
         satisfied.push(id);
         passedIn.push(passedEntry.entry.term);

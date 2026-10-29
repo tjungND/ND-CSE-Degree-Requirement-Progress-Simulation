@@ -7,7 +7,7 @@ import type { DeadlineInfo, DetailPart, RequirementResult, Status } from '../typ
 import type { Ctx } from './context.ts';
 import { BASIC_GROUP, defendedBelowGpaNote, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { usableGpa } from '../ranges.ts';
-import { noteOf, joinedDetail, heldForMissingParams, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalRegularIds, thresholdRow, timeLimitDate, timeLimitRow, titleCount, type Completion } from './context.ts';
+import { noteOf, joinedDetail, heldForMissingParams, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalCourseIds, thresholdRow, timeLimitDate, timeLimitRow, titleCount, type Completion } from './context.ts';
 import { candidacyFormSentence } from './phd.ts';
 import { fullTimeTermRecords, graduateLevelParts } from './residency.ts';
 import { transferRow } from './transfer.ts';
@@ -28,7 +28,6 @@ const REGULAR_QUOTE =
 
 export function mscseRows(ctx: Ctx): RequirementResult[] {
   const rows: RequirementResult[] = [];
-  const provisionalRegular = provisionalRegularIds(ctx);
 
   // §3.2: "The graduate school requires a total of thirty (30) credits of
   // courses and research for the M.S. degree." Only passed courses count
@@ -48,7 +47,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
       section: '§3.2',
       quote:
         'The graduate school requires a total of thirty (30) credits of courses and research for the M.S. degree.',
-      provisionalCourses: provisionalRegular,
+      provisionalCourses: provisionalCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
     }),
   );
 
@@ -70,7 +69,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
       requiredKey: 'ms_regular_credits_min',
       section: '§3.2',
       quote: REGULAR_QUOTE,
-      provisionalCourses: provisionalRegular,
+      provisionalCourses: provisionalCourseIds(ctx, (p) => p.countedRegular),
     }),
   );
 

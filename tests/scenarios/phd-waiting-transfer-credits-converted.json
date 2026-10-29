@@ -1,0 +1,60 @@
+{
+  "name": "phd-waiting-transfer-credits-converted",
+  "description": "Credit-transfer review 2026-10-28 (#66): an unreviewed quarter-system course (4 quarter hours = 2.64 Notre Dame credits). The §5.2 card read “Waiting for the DGS: CSE 202 (4 credits)” beside its own meter “2.64 more pending review” and the course line’s 2.64. It now says 2.64.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "universities": [
+        {
+          "university": "UNIVERSITY OF CALIFORNIA, SAN DIEGO",
+          "credit_system": "quarter"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 202",
+        "title": "CSE 202",
+        "credits": 4,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of California, San Diego",
+        "degreeLevel": "masters"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "Waiting for the DGS: CSE 202 (2.64 credits)"
+      ]
+    }
+  }
+}

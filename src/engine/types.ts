@@ -787,6 +787,10 @@ export interface CourseLine {
    * 2026-10-28): two registrations of one course in one term share an id
    * and a term. */
   entryIndex?: number;
+  /** The credits the caps let count (anywhere), and why the rest does not,
+   * when a cap admitted only part — for the processing request's table
+   * (credit-transfer review 2026-10-28, #36). */
+  part?: { counted: number; whole: number; rest: string };
   text: string;
   /** Every requirement row this course feeds, in report order (DGS request
    * 2026-09-08). One course routinely serves several — a 60000-level course
