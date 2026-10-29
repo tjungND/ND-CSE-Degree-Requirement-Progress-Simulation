@@ -167,8 +167,22 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // Credit the Notre Dame record already shows as accepted is recorded by
     // definition (P3-import-1, Option 1; DGS 2026-10-05): when every counted
     // transfer course is such credit, nothing is left for the tick to confirm.
-    const countedTransfers = transfers.filter((c) => !c.superseded && c.approvalPending === undefined && c.ineligibleReason === undefined);
-    const onRecord = countedTransfers.filter((c) => c.ndPosting !== undefined);
+    // What the caps admitted of a course — the part the request submits.
+    const admitted = (c: (typeof transfers)[number]): number => {
+      const a = ctx.alloc.perCourse.find((p) => p.course === c);
+      return a === undefined ? 0 : a.countedRegular + a.countedOther - (a.overCapToTotal ?? 0);
+    };
+    // …not a course the caps admitted nothing of: the request never submits
+    // it, so the tick never covers it, and the row read "in progress" for good
+    // (review of the fixes, 2026-10-29 — as before batch 7).
+    const countedTransfers = transfers.filter((c) => !c.superseded && c.approvalPending === undefined && c.ineligibleReason === undefined && (c.ndPosting !== undefined || admitted(c) > 0));
+    // …the posted credit the caps let count, as its line says (review of the
+    // fixes, 2026-10-29: a posted course over the cap was listed as counting).
+    const countsAnywhere = (c: (typeof transfers)[number]): boolean => {
+      const a = ctx.alloc.perCourse.find((p) => p.course === c);
+      return a !== undefined && a.countedRegular + a.countedOther > 0;
+    };
+    const onRecord = countedTransfers.filter((c) => c.ndPosting !== undefined && countsAnywhere(c));
     // Each counted transfer on the record or ticked as recorded — a transfer
     // decided after the tick is not (credit-transfer review 2026-10-28, #31).
     const recorded =
@@ -226,7 +240,7 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     const upper = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
     // Two earlier programs (P3-prior-programs-3; DGS 2026-10-07: option (3)):
     // the case, named once, before its courses.
-    const programs = ctx.classified.some((c) => c.twoPrograms === true) ? earlierTransferPrograms(ctx.classified, ctx.entry) : [];
+    const programs = ctx.classified.some((c) => c.twoPrograms === true) ? earlierTransferPrograms(ctx.classified, ctx.entry, ctx.student) : [];
     if (programs.length >= 2)
       parts.push(`Transfer credit from ${programs.length} earlier graduate programs: ${programs.slice(0, -1).join(', ')} and ${programs[programs.length - 1]}`, {
         note: 'The Academic Code and §5.2 state a transfer allowance after a finished program and one after an unfinished one, but not how two programs’ allowances combine, so every course from them waits for the DGS (Academic Code §4.6); the review request asks',
@@ -286,20 +300,22 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // Admin still records it, so the row says which courses to send — not
     // one a cap left no credit of (DGS 2026-10-27: TELE 5600, over the
     // non-CSE nine, is not submitted; its own line above says why).
-    const admitted = (c: (typeof transfers)[number]): number => {
-      const a = ctx.alloc.perCourse.find((p) => p.course === c);
-      return a === undefined ? 0 : a.countedRegular + a.countedOther - (a.overCapToTotal ?? 0);
-    };
     const approvedForAll = transfers.filter((c) => !c.superseded && c.transferable === 'yes' && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && admitted(c) > 0);
+    // Each course says whether it is recorded, and the processing note goes
+    // with a line holding one that is not — the tick covers courses one by one
+    // (review of the fixes, 2026-10-29: a ticked course read as still to send).
+    const unrecorded = (c: (typeof transfers)[number]): boolean => !transferRecordedFor(ctx.student, c.entry);
+    const named = (list: typeof transfers): string =>
+      list.map((c) => (recorded || unrecorded(c) ? c.entry.courseId : `${c.entry.courseId} (recorded by the Grad Admin, as you ticked)`)).join(', ');
     if (approvedForAll.length > 0) {
-      parts.push(`Approved by the DGS in the course rules: ${approvedForAll.map((c) => c.entry.courseId).join(', ')}${recorded ? ' — recorded by the Grad Admin, as you ticked under Approvals (§5.2)' : ''}`, ...(recorded ? [] : [{ note: upper(processWhen) }]));
+      parts.push(`Approved by the DGS in the course rules: ${named(approvedForAll)}${recorded ? ' — recorded by the Grad Admin, as you ticked under Approvals (§5.2)' : ''}`, ...(recorded || !approvedForAll.some(unrecorded) ? [] : [{ note: upper(processWhen) }]));
     }
     // A case-by-case course the student ticked as approved counts and goes in
     // the request too, so the card names it (credit-transfer review
     // 2026-10-28, #51 — it appeared nowhere on the card).
     const approvedForMe = transfers.filter((c) => !c.superseded && needsApproval(c.transferable) && c.tickApproved === true && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && admitted(c) > 0);
     if (approvedForMe.length > 0) {
-      parts.push(`Approved by the DGS for you, as you ticked: ${approvedForMe.map((c) => c.entry.courseId).join(', ')}${recorded ? ' — recorded by the Grad Admin, as you ticked under Approvals (§5.2)' : ''}`, ...(recorded || approvedForAll.length > 0 ? [] : [{ note: upper(processWhen) }]));
+      parts.push(`Approved by the DGS for you, as you ticked: ${named(approvedForMe)}${recorded ? ' — recorded by the Grad Admin, as you ticked under Approvals (§5.2)' : ''}`, ...(recorded || approvedForAll.some(unrecorded) || !approvedForMe.some(unrecorded) ? [] : [{ note: upper(processWhen) }]));
     }
     if (pending.length === 0 && counted > 0 && !recorded) {
       parts.push({ note: 'Final once the Graduate School has approved the transfer and the Grad Admin has recorded it (§5.2, criterion 5) — then tick “The Graduate School approved my transfer credit” under Approvals' });

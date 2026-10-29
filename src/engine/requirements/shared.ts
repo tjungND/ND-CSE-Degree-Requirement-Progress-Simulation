@@ -7,7 +7,7 @@ import type { DetailPart, RequirementResult, Student } from '../types.ts';
 import { GRADE_POINTS, passesCreditFloor } from '../grades.ts';
 import { isNotreDameInstitution } from '../../data/external.ts';
 import type { Ctx } from './context.ts';
-import { DUAL_DEGREE_SHARED_CREDITS_MAX } from '../allocate.ts';
+import { DUAL_DEGREE_SHARED_CREDITS_MAX, bachelorsSixSpent } from '../allocate.ts';
 import { capRow, gpaMinText, joinedDetail, missingParamDetail } from './context.ts';
 
 /** The first group's heading. Since 2026-10-27 it also holds each program's
@@ -409,8 +409,10 @@ export function approvalsRow(ctx: Ctx): RequirementResult {
   // count (DGS 2026-09-13) — so it is not listed here either, unless the
   // request asks about it for another reason (#27).
   const stillWithDgs = new Set<object>(coursesNeedingDgsReviewFor(ctx.classified, ctx.student).map((p) => p.course));
+  // …nor a course the bachelor's used once the six are spent: no approval can
+  // make it count (review of the fixes, 2026-10-29).
   const pending = ctx.classified.filter(
-    (c) => !c.superseded && c.pool !== 'none' && ((c.approvalPending !== undefined && passesCreditFloor(c.entry.grade)) || stillWithDgs.has(c)),
+    (c) => !c.superseded && c.pool !== 'none' && ((c.approvalPending !== undefined && passesCreditFloor(c.entry.grade) && !bachelorsSixSpent(c, ctx.student)) || stillWithDgs.has(c)),
   );
   // §3.2/§4.2: "All courses taken by a student must have the approval of their
   // advisor." — self-attested via the plan-of-study checkbox (decision Q21).

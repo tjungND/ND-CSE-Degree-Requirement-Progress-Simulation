@@ -27,7 +27,7 @@ import { earlierDegreesState, forgetReadings, mergeReading, readBackgroundFromNd
 import { el, inactiveButton, PREVIEW_OPEN_NOTE, SIMULATION_IMPORT_NOTE } from './dom.ts';
 import { plural } from './email-html.ts';
 import { ndRowLabel } from './external-upload.ts';
-import { markPosted, postingOf, stripNdPostings, twinOfBlockRow } from './nd-posted.ts';
+import { markPosted, pairBlockRows, postingOf, stripNdPostings } from './nd-posted.ts';
 import { BROWSER_TOO_OLD_FOR_PDFS, browserTooOldForPdfs } from './pdf-support.ts';
 import { deriveNdMasters, derivePriorMs, hasPriorGraduateStudy, priorNdDegreeLevel, reclassifyNotreDameCourses } from './prior-nd.ts';
 import type { RefusedValues } from './refusals.ts';
@@ -67,6 +67,9 @@ export interface NdPreview {
   courses: ParsedCourse[];
   selected: boolean[];
   duplicate: boolean[];
+  /** The row of another transcript each transfer-block row pairs with, by
+   * index (`pairBlockRows`) — read as the Add will read the record. */
+  twins: (CourseEntry | undefined)[];
   /** The transcript's graduate-level cumulative GPA (2026-09-05 — never
    * the undergraduate one on a combined transcript). */
   gpa?: number;
@@ -237,13 +240,17 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
       // An earlier Notre Dame import is replaced by this one (UI review item
       // 13; DGS 2026-10-09: option (b)), so its rows are not "already entered".
       const kept = { ...args.student, courses: args.student.courses.filter((row) => row.fromNdTranscript !== true) };
+      // The pairing the Add makes, once it has taken the earlier import's
+      // marks off (takeNdImport): one row per posting.
+      const pairs = pairBlockRows(kept.courses.map((row) => (row.ndPosted === undefined ? row : { ...row, ndPosted: undefined })), parsed.courses);
+      const twins = parsed.courses.map((c) => pairs.get(c));
       const duplicate = parsed.courses.map(
-        (c) =>
+        (c, i) =>
           kept.courses.some((s) => s.courseId === c.courseId && termIndex(s.term) === termIndex(c.term)) ||
           // (c): a transfer-block row is already entered when another
           // transcript brought the same course from the same university, in
           // whatever term that transcript dates it (P3-import-1, 2026-10-05).
-          twinOfBlockRow(kept, c) !== undefined,
+          twins[i] !== undefined,
       );
       // The entry term read from the transcript (2026-09-05) is applied
       // unless the student unticks it in the preview. Pre-entry Notre Dame
@@ -304,6 +311,7 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
         courses: parsed.courses,
         selected: parsed.courses.map((_, i) => !duplicate[i] && !irrelevantPrior[i]),
         duplicate,
+        twins,
         gpa: transcriptGpa,
         undergraduateGpa: inRange(parsed.cumulativeGpaByLevel?.undergraduate, GPA_RANGE) ? parsed.cumulativeGpaByLevel?.undergraduate : undefined,
         programGpa: earlierGraduateWork && inRange(programGpa, GPA_RANGE) ? programGpa : undefined,
@@ -639,7 +647,7 @@ export function ndTranscriptPreviewBlock(args: NdUploadArgs): HTMLElement {
     const prior = c.origin === 'nd' && beforeStart(c);
     // The early-start summer (P3-chg-other-1): dated before the entry term, yet this program's.
     const earlyStart = c.origin === 'nd' && isEarlyStartCourse({ term: c.term, registeredLevel: c.level }, startFacts);
-    const twin = twinOfBlockRow(args.student, c);
+    const twin = tp.twins[i];
     const note = tp.duplicate[i]
       ? twin
         ? `already entered from your ${twin.institution ?? 'other'} transcript (${termLabel(twin.term)}) — kept as one course, marked as accepted on your Notre Dame record`
@@ -823,9 +831,12 @@ function applyNdPreview(tp: NdPreview, args: NdUploadArgs): void {
       s.bachelorsAwardedInferred = { how: bs.how };
       bachelorsSet = bs.term;
     }
+    // Each posting's row of another transcript, one row per posting (review
+    // of the fixes, 2026-10-29: a second posting of one course number was lost).
+    const twins = pairBlockRows(s.courses, tp.courses);
     for (const c of picked) {
       // Ticked by hand though another transcript brought it: still one course (c).
-      if (c.origin === 'transfer' && twinOfBlockRow(s, c) !== undefined) continue;
+      if (c.origin === 'transfer' && twins.has(c)) continue;
       const entryCourse: CourseEntry = {
         courseId: c.courseId,
         title: c.title,
@@ -849,11 +860,7 @@ function applyNdPreview(tp: NdPreview, args: NdUploadArgs): void {
     // (c): a block row whose course another transcript already brought is not
     // added twice — that row carries the Notre Dame record's acceptance
     // instead (condition 2), ticked or not, since it is a fact about it.
-    for (const c of tp.courses) {
-      if (c.origin !== 'transfer') continue;
-      const twin = twinOfBlockRow(s, c);
-      if (twin && twin.ndPosted === undefined) markPosted(twin, postingOf(c), s.entryTerm);
-    }
+    for (const [c, twin] of twins) markPosted(twin, postingOf(c), s.entryTerm);
     // A Notre Dame master's degree awarded BEFORE this program is
     // one the student already holds (DGS 2026-09-09) — §4.5's
     // along-the-way MSCSE is then not something to earn, and the

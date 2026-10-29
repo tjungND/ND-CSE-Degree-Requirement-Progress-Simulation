@@ -394,7 +394,19 @@ export function actionItems(report: AuditReport, transfers?: AdvisorTransfers): 
   const seminar = byId.get('phd.seminar');
   if (seminar && isOpen(seminar.status)) {
     const notYet = [...textOf(seminar).matchAll(/([A-Z]{2,5} \d{5}): not yet/g)].map((m) => m[1]);
-    out.student.push(notYet.length > 0 ? `Take ${notYet.join(' and ')} — the research seminar ${section(seminar)}.` : `Complete the research seminar credits ${section(seminar)}.`);
+    // A seminar taken but refused by a semester's maximum is not retaken: its
+    // remedy is the overload tick or a corrected row (review of the fix, 2026-10-29).
+    // Only a semester's maximum has the overload for its remedy, one per
+    // semester; another cap's refusal goes to the DGS (review of the fixes, 2026-10-29).
+    const refused = [...textOf(seminar).matchAll(/([A-Z]{2,5} \d{5}): taken ([A-Z][a-z]+ \d{4}), not counted( — [^.]*?maximum for [A-Z][a-z]+ \d{4})?/g)].map((m) => ({ id: m[1]!, term: m[2]!, byMaximum: m[3] !== undefined }));
+    const overloads = refused.filter((r) => r.byMaximum);
+    const others = refused.filter((r) => !r.byMaximum);
+    const terms = [...new Set(overloads.map((r) => r.term))];
+    if (overloads.length > 0)
+      out.student.push(`Tick the credit overload approved for ${terms.join(' and ')}, or correct ${terms.length === 1 ? "that semester's" : "those semesters'"} rows — ${overloads.map((r) => r.id).join(' and ')} ${overloads.length === 1 ? 'is' : 'are'} not counted (Academic Code §3.8).`);
+    if (others.length > 0) out.student.push(`Ask the DGS about ${others.map((r) => `${r.id} (taken ${r.term})`).join(' and ')} — taken but not counted, so the research seminar is not met ${section(seminar)}.`);
+    if (notYet.length > 0 || refused.length === 0)
+      out.student.push(notYet.length > 0 ? `Take ${notYet.join(' and ')} — the research seminar ${section(seminar)}.` : `Complete the research seminar credits ${section(seminar)}.`);
   } else if (seminar?.status === 'needs_dgs_review' && seminar.completedLate) {
     // Passed after the first year: the DGS confirms it (P4-phd-2).
     out.dgs.push(`Confirm my research seminar taken after the first year ${section(seminar)}.`);

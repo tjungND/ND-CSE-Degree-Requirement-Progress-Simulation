@@ -45,6 +45,47 @@ export function sameUniversity(a: string | undefined, b: string | undefined): bo
   return within(x, y) || within(y, x);
 }
 
+/** The schools whose bare name means the flagship campus (DGS 2026-09-12:
+ * Purdue, Michigan and Washington are deliberately not systems), and that
+ * campus's place, as a transcript may add it. */
+const FLAGSHIP_PLACES: Record<string, string> = {
+  'purdue university': 'west lafayette',
+  'university of michigan': 'ann arbor',
+  'university of washington': 'seattle',
+};
+
+/** One school, for counting a student's earlier programs: the same name once
+ * folded, or a flagship's bare name and that name with its campus's place
+ * ("Purdue University" and "Purdue University West Lafayette"). Stricter than
+ * sameUniversity, which pairs a block row with its twin only by course
+ * number as well: one name inside the other is also "Indiana University" and
+ * "Indiana University of Pennsylvania", or "Purdue University" and "Purdue
+ * University Fort Wayne" — two schools, which the two-programs hold must see
+ * (review of the fix, 2026-10-29; DECISIONS 2026-10-08). */
+export function oneSchool(a: string | undefined, b: string | undefined): boolean {
+  const x = normalizeUniversity(a ?? '');
+  const y = normalizeUniversity(b ?? '');
+  if (x === '' || y === '') return false;
+  if (x === y) return true;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  // Record words a transcript's header adds, before or after the name, are
+  // never a campus: "GEORGIA INSTITUTE OF TECHNOLOGY OFFICIAL DOCUMENT
+  // INFORMATION" is Georgia Tech's name on the sheet (CLAUDE.md), and was
+  // counted as a second school (review of the fixes, 2026-10-29).
+  const onlyRecordWords = (words: string): boolean => {
+    const list = words.split(' ');
+    return list.every((w) => RECORD_WORDS.has(w) || w === 'of' || w === 'the' || w === 'and') && list.some((w) => RECORD_WORDS.has(w));
+  };
+  if (long.endsWith(` ${short}`) && onlyRecordWords(long.slice(0, -short.length - 1))) return true;
+  if (!long.startsWith(`${short} `)) return false;
+  const rest = long.slice(short.length + 1);
+  return onlyRecordWords(rest) || FLAGSHIP_PLACES[short] === rest.replace(/^(?:at|in) /, '');
+}
+
+/** Words of a transcript's own header, as the reader meets them beside a
+ * school's name (stripRecordWords in src/transcript/external.ts). */
+const RECORD_WORDS = new Set(['official', 'unofficial', 'electronic', 'academic', 'student', 'transcript', 'transcripts', 'record', 'records', 'document', 'documents', 'information', 'copy', 'office', 'registrar', 'page']);
+
 /** Two transfer rows that are one course: the same course number from the same
  * other university, whatever term each transcript dates it (P3-import-1 (c)). */
 export function sameTransferCourse(a: CourseEntry, b: CourseEntry): boolean {
@@ -88,6 +129,9 @@ export function pairedBlockRows(courses: readonly CourseEntry[]): Map<CourseEntr
  * A retake counted as well, and the totals changed with row order
  * (credit-transfer review 2026-10-28, #22). */
 export function preferredTwin(rows: readonly CourseEntry[]): CourseEntry | undefined {
-  const rank = (c: CourseEntry): number => (c.grade !== 'S' && meetsGradeFloor(c.grade, 'B') ? 0 : c.grade === 'S' ? 1 : 2);
-  return [...rows].sort((a, b) => rank(a) - rank(b) || compareTerm(b.term, a.term))[0];
+  return [...rows].sort((a, b) => acceptanceRank(a) - acceptanceRank(b) || compareTerm(b.term, a.term))[0];
+}
+/** preferredTwin's order: a letter grade of B or better, then an S, then the rest. */
+export function acceptanceRank(c: CourseEntry): number {
+  return c.grade !== 'S' && meetsGradeFloor(c.grade, 'B') ? 0 : c.grade === 'S' ? 1 : 2;
 }

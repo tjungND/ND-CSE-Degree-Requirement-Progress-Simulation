@@ -4,7 +4,7 @@
 import { transferRecordedFor } from './transfer-recorded.ts';
 import { undergraduateGraduateCourseworkFlagFor } from './review.ts';
 import type { Rules } from '../data/types.ts';
-import { BS_SHARED_CREDITS_MAX, DUAL_DEGREE_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, allocate, classify, conferralWindow, levelOf, decidedCaseByCase, heldByRecord, longInterruptionReadmission, mscseSeparation, overMaxTerms, registrationCaps, spentOnBachelorsAndMasters, type CapId, type CapSpec, type CourseMark } from './allocate.ts';
+import { BS_SHARED_CREDITS_MAX, DUAL_DEGREE_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, allocate, bachelorsSixSpent, classify, conferralWindow, levelOf, decidedCaseByCase, heldByRecord, longInterruptionReadmission, mscseSeparation, overMaxTerms, registrationCaps, spentOnBachelorsAndMasters, type CapId, type CapSpec, type ClassifiedCourse, type CourseMark } from './allocate.ts';
 import { specialTracks } from './tracks.ts';
 import { decisionWording, decisionWordingDeep } from './decider.ts';
 import { beforeProgramStart } from './early-start.ts';
@@ -21,7 +21,7 @@ import { extensionReviewFlag } from './requirements/context.ts';
 import { ADMISSION_DEADLINE_SEMESTER, eighthSemester, phdRows, phdTimeLimitRow, qualifierPriorRulesEligible, readmissionGapCounted } from './requirements/phd.ts';
 import { msMilestoneDeadlines, phdMilestoneDeadlines } from './requirements/milestone-deadlines.ts';
 import { exactCredits, formatCredits } from './credits.ts';
-import { GRADE_POINTS, isAudit, isInProgress, isPassed, meetsGradeFloor } from './grades.ts';
+import { GRADE_POINTS, isAudit, isInProgress, isPassed, meetsGradeFloor, passesCreditFloor } from './grades.ts';
 
 /** Requirement id ↔ plan-inventory mapping (docs/DECISIONS.md, plan §1):
  *   shared.gpa=S1  shared.advisor=S2  shared.approvals=advisory
@@ -803,8 +803,22 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     if (!list.some((x) => x.id === row.id)) list.push({ id: row.id, title: row.shortTitle ?? row.title, long: row.title, when });
     feeds.set(courseId, list);
   };
+  // A credit row that lists its registrations is read by registration: each
+  // one's list is its own allocation's (review of the fixes, 2026-10-29).
+  const feedsOfEntry = new Map<number, { id: string; title: string; long: string; when: 'now' | 'later' }[]>();
+  const noteEntry = (index: number, row: RequirementResult, when: 'now' | 'later'): void => {
+    const list = feedsOfEntry.get(index) ?? [];
+    if (!list.some((x) => x.id === row.id)) list.push({ id: row.id, title: row.shortTitle ?? row.title, long: row.title, when });
+    feedsOfEntry.set(index, list);
+  };
+  const rowOrder = new Map(rows.map((r, i) => [r.id, i]));
   for (const r of rows) {
     if (r.informational || r.status === 'not_applicable') continue;
+    if (r.satisfiedByEntries !== undefined || r.pendingByEntries !== undefined) {
+      for (const i of r.satisfiedByEntries ?? []) noteEntry(i, r, 'now');
+      for (const i of r.pendingByEntries ?? []) noteEntry(i, r, 'later');
+      continue;
+    }
     for (const id of r.satisfiedBy ?? []) note(id, r, 'now');
     for (const id of r.pendingBy ?? []) note(id, r, 'later');
   }
@@ -852,7 +866,20 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     // (credit-transfer review 2026-10-28, #21: the Fall research semester read
     // "Counts toward: 60 total credits" from the Spring one).
     const notYet = p.mark === 'in_progress' || p.mark === 'pending';
-    const counts = (aLiveSibling ? [] : (feeds.get(id) ?? [])).map((x) => (notYet && x.when === 'now' ? { ...x, when: 'later' as const } : x));
+    // …except a §4.4.1 core area the course passes by itself: core knowledge
+    // asks only "passed", whatever its credit waits for (review of the fix,
+    // 2026-10-29: a waiting CSE 50502 read "Will count toward: Core" beside a
+    // core card it satisfies).
+    // Its OWN area only — the core rows name course ids, so a transfer
+    // numbered like a Notre Dame course read "Counts toward" the area its
+    // namesake satisfies (review of the fixes, 2026-10-29).
+    const ownArea = p.course.entry.origin === 'nd' || isNotreDameInstitution(p.course.entry.institution) ? p.course.rule?.coreArea : (p.course.external?.satisfiesCoreArea ?? undefined);
+    const passesCoreItself = (rowId: string): boolean =>
+      ownArea !== undefined && rowId === `phd.qualifier.core.${ownArea}` && ((isPassed(p.course.entry.grade) && !isInProgress(p.course.entry.grade)) || p.course.ndPosting !== undefined);
+    const own = entryIndex.has(p.course.entry) ? (feedsOfEntry.get(entryIndex.get(p.course.entry)!) ?? []) : [];
+    const counts = [...own, ...(aLiveSibling ? [] : (feeds.get(id) ?? []))]
+      .sort((a, b) => (rowOrder.get(a.id) ?? 0) - (rowOrder.get(b.id) ?? 0))
+      .map((x) => (notYet && x.when === 'now' && !passesCoreItself(x.id) ? { ...x, when: 'later' as const } : x));
     const qualifier = p.qualifier ?? qualifierFromFeeds(p, counts);
     return {
       courseId: id,
@@ -869,7 +896,11 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
       // The tick box belongs on a course the sheet decides case by case
       // (DGS 2026-09-27), and only while the course can still count.
       // A held course's box reads the hold's own ruling (round 5, item 29 (b)).
-      ...(decidedCaseByCase(p.course, student.program) && p.course.ineligibleReason === undefined
+      // …not a course passed below C, which no ruling can make count and the
+      // review request leaves out (review of the fix, 2026-10-29); a box
+      // already ticked stays, so it can be unticked.
+      ...(decidedCaseByCase(p.course, student.program) &&
+      ((p.course.ineligibleReason === undefined && passesCreditFloor(p.course.entry.grade) && !bachelorsSixSpent(p.course, student)) || (heldByRecord(p.course) ? p.course.entry.dgsHoldApproved === true : p.course.entry.dgsApproved === true))
         ? heldByRecord(p.course)
           ? { approvable: true as const, holdRuling: true as const, ...(p.course.entry.dgsHoldApproved ? { approved: true as const } : {}) }
           : { approvable: true as const, ...(p.course.entry.dgsApproved ? { approved: true as const } : {}) }
@@ -925,8 +956,14 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
   // request asks whether it was sent in time. No count or status changes —
   // the app cannot tell a late request from one still being processed.
   const transferWindow = conferralWindow(student, today);
+  // …a course the caps admitted part of: one over a cap is not submitted
+  // (review of the fixes, 2026-10-29).
+  const admittedOf = (cc: ClassifiedCourse): number => {
+    const a = alloc.perCourse.find((p) => p.course === cc);
+    return a === undefined ? 0 : a.countedRegular + a.countedOther - (a.overCapToTotal ?? 0);
+  };
   const unrecordedTransfer = classified.some(
-    (cc) => !cc.superseded && cc.ineligibleReason === undefined && cc.caps.includes('transfer') && cc.ndPosting === undefined && cc.tier !== 'provisional' && !transferRecordedFor(student, cc.entry),
+    (cc) => !cc.superseded && cc.ineligibleReason === undefined && cc.caps.includes('transfer') && cc.ndPosting === undefined && cc.tier !== 'provisional' && !transferRecordedFor(student, cc.entry) && admittedOf(cc) > 0,
   );
   const transferRequestWindowClosed = transferWindow.closed !== undefined && unrecordedTransfer ? transferWindow.closed : undefined;
   if (transferRequestWindowClosed !== undefined)

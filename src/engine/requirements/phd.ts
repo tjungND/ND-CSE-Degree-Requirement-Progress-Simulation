@@ -1,6 +1,6 @@
 // §4 — Requirements for the Doctor of Philosophy Degree.
 // Every builder quotes the handbook sentence it implements.
-import { formatCredits } from '../credits.ts';
+import { exactCredits, formatCredits } from '../credits.ts';
 import { PHD_TOTAL_CREDITS_FLOOR } from '../../data/params.ts';
 import { isNotreDameInstitution } from '../../data/external.ts';
 import { coreTitleMatchesArea } from '../core-title.ts';
@@ -12,7 +12,7 @@ import { combineAll, deadlineStatus, openDeadline } from '../status.ts';
 import { addMonthsIso, deadlineTerm, deadlineTermLabel, endOfNextSemester, endOfTerm, maxConsecutiveFullTime, nthSemester, semesterNumber, startOfTerm, termIndex, termLabel, termOfDate, compareTerm } from '../term.ts';
 import type { ConditionMark, DetailPart, Grade, RequirementResult, Status, Term, DeadlineInfo } from '../types.ts';
 import type { Ctx } from './context.ts';
-import { noteOf, capRow, heldForMissingParams, beforeForfeiture, priorRulesQualifierHeld, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalCourseIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds, titleCount, titleCountWord, gpaMinText } from './context.ts';
+import { noteOf, capRow, heldForMissingParams, beforeForfeiture, priorRulesQualifierHeld, clockShiftNote, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, courseContributions, courseFeeds, creditsReachedAt, defendGpaNote, joinedDetail, lastCompletion, missingParamDetail, provisionalCourseIds, thresholdRow, timeLimitDate, timeLimitRow, countedCourseIds, pendingCourseIds, titleCount, titleCountWord, gpaMinText } from './context.ts';
 import { fullTimeTermRecords, graduateLevelParts, longestFullTimeRun, sameTermDuplicate } from './residency.ts';
 import { advisorTttState, BASIC_GROUP, defendedBelowGpaNote, gpaText, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { transferRow } from './transfer.ts';
@@ -86,8 +86,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       title: `${titleCount(phdTotalRequired(ctx), 60)} total credits of courses and research`,
       shortTitle: `${titleCount(phdTotalRequired(ctx), 60)} total credits`,
       sums: ctx.alloc.total,
-      satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
-      pendingBy: pendingCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
+      ...courseFeeds(ctx, (p) => p.countedRegular + p.countedOther),
       contributions: courseContributions(ctx, (p) => p.countedRegular + p.countedOther),
       required: phdTotalRequired(ctx),
       requiredKey: 'phd_total_credits_min',
@@ -115,8 +114,7 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       shortTitle: `${titleCount(ctx.params.number('phd_regular_credits_min'), 24)} regular-course credits`,
       extraDetail: [`Up to ${ctx.params.number('phd_4xxxx_cse_credits_max') ?? 'a limited number of'} approved CSE 4xxxx credits may count inside these (§4.2)`],
       sums: ctx.alloc.regular,
-      satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular),
-      pendingBy: pendingCourseIds(ctx, (p) => p.countedRegular),
+      ...courseFeeds(ctx, (p) => p.countedRegular),
       contributions: courseContributions(ctx, (p) => p.countedRegular),
       required: ctx.params.number('phd_regular_credits_min'),
       requiredKey: 'phd_regular_credits_min',
@@ -193,9 +191,8 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
       title: `At least ${titleCount(ctx.params.number('phd_nd_credits_min'), 9)} credits of regular courses taken at Notre Dame`,
       shortTitle: `${titleCount(ctx.params.number('phd_nd_credits_min'), 9)} regular credits at ND`,
       sums: ctx.alloc.ndRegular,
-      pendingBy: pendingCourseIds(ctx, (p) => p.ndRegularCredits ?? 0),
+      ...courseFeeds(ctx, (p) => p.ndRegularCredits ?? 0),
       contributions: courseContributions(ctx, (p) => p.ndRegularCredits ?? 0),
-      satisfiedBy: countedCourseIds(ctx, (p) => p.ndRegularCredits ?? 0),
       required: ctx.params.number('phd_nd_credits_min'),
       requiredKey: 'phd_nd_credits_min',
       section: '§4.2',
@@ -259,7 +256,10 @@ export function phdRows(ctx: Ctx): RequirementResult[] {
                   : `${formatCredits(spent)} of the ${formatCredits(base)} credits were used by the courses you said counted toward both your bachelor’s degree and your MSCSE, so ${formatCredits(base - spent)} ${base - spent === 1 ? 'credit' : 'credits'} can still count toward both your bachelor’s degree and the Ph.D.`,
               ]
             : []),
-          'The Graduate School’s answer to the department, through the DGS, 2026-09-22 — Academic Code §4.6 writes the six-credit exception for an integrated bachelor’s/master’s program only, so each such course waits for the DGS’s confirmation',
+          // Once the six are spent, nothing waits for a confirmation (review of the fixes, 2026-10-29).
+          base - spent <= 0
+            ? 'The Graduate School’s answer to the department, through the DGS, 2026-09-22 — Academic Code §4.6 writes the six-credit exception for an integrated bachelor’s/master’s program only'
+            : 'The Graduate School’s answer to the department, through the DGS, 2026-09-22 — Academic Code §4.6 writes the six-credit exception for an integrated bachelor’s/master’s program only, so each such course waits for the DGS’s confirmation',
         ],
       }),
     );
@@ -445,6 +445,8 @@ function seminarRow(ctx: Ctx): RequirementResult {
     // (Academic Code §5.5; P3-ac-5a-3, DGS 2026-10-05) waits for the DGS, as
     // its credits do on the credit rows.
     const fromBeforeGap: string[] = [];
+    const refused: (typeof ctx.classified)[number][] = [];
+    const byMaximum = (c: (typeof ctx.classified)[number]): boolean => (ctx.alloc.perCourse.find((p) => p.course === c)?.boundCaps ?? []).some((id) => id.startsWith('term:'));
     const states = wanted.map((id) => {
       const entries = ctx.classified.filter((c) => !c.superseded && c.entry.courseId === id);
       // §4.2 names this a credit requirement (2 credits), so a passed grade
@@ -469,8 +471,19 @@ function seminarRow(ctx: Ctx): RequirementResult {
       }
       // The semester it was taken (DGS 2026-09-22, for the advisor summary):
       // "CSE 63801: done (Fall 2026)".
-      const taken = passedEntry ?? entries.find((c) => isInProgress(c.entry.grade));
-      parts.push(`${id}: ${passedEntry ? 'done' : ip ? 'in progress' : 'not yet'}${taken ? ` (${termLabel(taken.entry.term)})` : ''}`);
+      const taken = passedEntry ?? entries.find((c) => isInProgress(c.entry.grade) && counts(c));
+      // Taken — passed or in progress — but its credit refused by a cap (the
+      // semester's maximum): said as such, never "not yet", and the remedy is
+      // that cap's, not retaking it (review of the fix, 2026-10-29).
+      const refusedEntry =
+        passedEntry || ip
+          ? undefined
+          : entries.find((c) => passesCreditFloor(c.entry.grade) && (isPassed(c.entry.grade) || (isInProgress(c.entry.grade) && !c.incompleteLapsed)) && c.ineligibleReason === undefined && !counts(c));
+      if (refusedEntry) {
+        const reason = ctx.alloc.perCourse.find((p) => p.course === refusedEntry)?.excludedReason;
+        refused.push(refusedEntry);
+        parts.push(`${id}: taken ${termLabel(refusedEntry.entry.term)}, not counted${reason ? ` — ${reason}` : ''}`);
+      } else parts.push(`${id}: ${passedEntry ? 'done' : ip ? 'in progress' : 'not yet'}${taken ? ` (${termLabel(taken.entry.term)})` : ''}`);
       return passedEntry ? 'met' : ip ? 'in_progress' : 'unmet';
     });
     const transferNote: DetailPart[] =
@@ -496,7 +509,22 @@ function seminarRow(ctx: Ctx): RequirementResult {
     } else if (ctx.today > dueDate) {
       status = 'unmet';
       deadline = { date: dueDate, approx: true, state: 'overdue', label: `Overdue — was due by ${dueLabel} (approximate)` };
-      parts.push({ note: '§4.2 requires both seminars in the first year of the program; talk to the DGS about taking the missing one' }, ...transferNote);
+      parts.push(
+        {
+          note:
+            refused.length > 0 && states.filter((x) => x === 'unmet').length === refused.length
+              ? `§4.2 requires both seminars in the first year of the program; ${refused.map((c) => c.entry.courseId).join(' and ')} ${refused.length === 1 ? 'was' : 'were'} taken but not counted — ${
+                  // The overload is the remedy only when a semester's maximum
+                  // refused it — not the non-degree twelve or another cap
+                  // (review of the fixes, 2026-10-29) — and for each such semester.
+                  refused.every(byMaximum)
+                    ? `if a credit overload was approved for you in ${[...new Set(refused.map((c) => termLabel(c.entry.term)))].join(' and ')}, tick it under Approvals you already have; otherwise check ${new Set(refused.map((c) => termLabel(c.entry.term))).size === 1 ? 'that semester' : 'those semesters'} for a duplicate row or a wrong credit value (Academic Code §3.8)`
+                    : 'talk to the DGS about it'
+                }`
+              : '§4.2 requires both seminars in the first year of the program; talk to the DGS about taking the missing one',
+        },
+        ...transferNote,
+      );
     } else {
       status = states.every((x) => x !== 'unmet') ? 'in_progress' : 'unmet';
       deadline = openDeadline(dueDate, ctx.today, `Due by ${dueLabel} (approximate)`);
@@ -957,8 +985,11 @@ function coreRows(ctx: Ctx): RequirementResult[] {
     };
     for (const c of ctx.classified) {
       if (c.superseded) continue;
-      if (c.interrupted && isPassed(c.entry.grade) && c.rule?.coreArea === area.code) {
-        forfeited ??= c.entry.courseId;
+      // …from another university too, by its ExternalCourses core area (review
+      // of the fixes, 2026-10-29: the row read Met).
+      const elsewhere = c.entry.origin !== 'nd' && !isNotreDameInstitution(c.entry.institution);
+      if (c.interrupted && (isPassed(c.entry.grade) || (elsewhere && c.ndPosting !== undefined)) && (elsewhere ? c.external?.satisfiesCoreArea : c.rule?.coreArea) === area.code) {
+        forfeited ??= elsewhere ? `${c.entry.courseId} (${c.entry.institution ?? c.external?.university})` : c.entry.courseId;
         continue;
       }
       if (c.entry.origin === 'nd') {
@@ -1754,7 +1785,9 @@ function oceReadiness(ctx: Ctx, rows: RequirementResult[]): OceReadiness {
     item('not_yet', 'Regular-course credits: cannot be checked — the rules sheet is missing phd_regular_credits_min');
   } else {
     const definite = ctx.alloc.regular.definite;
-    const need = regularMin - definite;
+    // On the credits' own grid (review of the fix, 2026-10-29: batch 1 left
+    // these sums raw, and 8.999999999999998 read short of 9).
+    const need = exactCredits(regularMin - definite);
     if (need <= 0) item('met', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete (transferred regular-course credits count)`);
     else {
       const inProgress = ctx.alloc.perCourse
@@ -1764,7 +1797,7 @@ function oceReadiness(ctx: Ctx, rows: RequirementResult[]): OceReadiness {
       let last: Term | undefined;
       for (const p of inProgress) {
         if (counted >= need) break;
-        counted += p.countedRegular;
+        counted = exactCredits(counted + p.countedRegular);
         last = p.course.entry.term;
       }
       const ipText = counted > 0 ? `, ${formatCredits(counted)} in progress` : '';
@@ -1778,13 +1811,13 @@ function oceReadiness(ctx: Ctx, rows: RequirementResult[]): OceReadiness {
       const pending = waitingRegular.credits;
       const credits = (n: number) => `${formatCredits(n)} more regular-course ${n === 1 ? 'credit' : 'credits'}`;
       if (counted < need) {
-        const more = need - counted;
+        const more = exactCredits(need - counted);
         if (pending > 0 && pending >= more) {
           missing.push(`${credits(more)} (${waitingRegular.satisfiable(more)})`);
           item('waiting', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${waitingRegular.waiting} — ${formatCredits(more)} more needed unless ${waitingRegular.unless} (transferred regular-course credits count)`);
         } else if (pending > 0) {
           missing.push(`${credits(more)} (${waitingRegular.satisfiable(more)})`);
-          item('not_yet', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${waitingRegular.waiting} — ${formatCredits(more)} more needed, ${formatCredits(more - pending)} if ${waitingRegular.unless} (transferred regular-course credits count)`);
+          item('not_yet', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText}, ${waitingRegular.waiting} — ${formatCredits(more)} more needed, ${formatCredits(exactCredits(more - pending))} if ${waitingRegular.unless} (transferred regular-course credits count)`);
         } else {
           missing.push(credits(more));
           item('not_yet', `Regular-course credits: ${formatCredits(definite)} of ${regularMin} complete${ipText} — ${formatCredits(more)} more needed (transferred regular-course credits count)`);
@@ -1957,7 +1990,7 @@ function pendingRegular(alloc: Ctx['alloc'], withIds = true): { credits: number;
   const pend = alloc.perCourse.filter((p) => !p.course.superseded && p.course.tier === 'provisional' && p.countedRegular > 0);
   const split = (list: typeof pend) => {
     const idList = [...new Set(list.map((p) => p.course.entry.courseId))];
-    return { credits: list.reduce((n, p) => n + p.countedRegular, 0), ids: idList.join(', '), idList };
+    return { credits: exactCredits(list.reduce((n, p) => n + p.countedRegular, 0)), ids: idList.join(', '), idList };
   };
   const dgs = split(pend.filter((p) => p.course.dualPlanOnly !== true));
   const plan = split(pend.filter((p) => p.course.dualPlanOnly === true));
@@ -1978,14 +2011,14 @@ function pendingRegular(alloc: Ctx['alloc'], withIds = true): { credits: number;
   const planBy = by(plan, 'the Graduate School approves your dual-degree plan of study');
   const satisfiable = (more: number): string => {
     const both = dgs.credits > 0 && plan.credits > 0;
-    if (dgs.credits + plan.credits >= more)
+    if (exactCredits(dgs.credits + plan.credits) >= more)
       // One credit is "it" (round 5, item 22; DGS 2026-10-14).
       return `${Math.abs(more - 1) < 1e-9 ? 'it' : 'all of them'} can be satisfied by ${both ? `${dgsBy}, and by ${planBy}` : dgs.credits > 0 ? dgsBy : planBy}`;
     return both
       ? `${formatCredits(dgs.credits)} of them can be satisfied by ${dgsBy}, and ${formatCredits(plan.credits)} by ${planBy}`
       : `${formatCredits(dgs.credits + plan.credits)} of them can be satisfied by ${dgs.credits > 0 ? dgsBy : planBy}`;
   };
-  return { credits: dgs.credits + plan.credits, waiting, unless, satisfiable };
+  return { credits: exactCredits(dgs.credits + plan.credits), waiting, unless, satisfiable };
 }
 
 /** "; a course shared with your other degree …" — the policy sentence's
@@ -2386,7 +2419,7 @@ function candidacyAdmissionRow(ctx: Ctx, merged: { oce: RequirementResult; rcr: 
         // "somehow state that … can be satisfied with the transferred
         // regular-course credits").
         text: `Coursework: ${formatCredits(definite)} of ${regularMin} regular-course credits complete${ip > 0 && definite < regularMin ? `, ${formatCredits(ip)} in progress` : ''}${pending > 0 && definite < regularMin ? `, ${waitingRegular.waiting}` : ''} (transferred regular-course credits count)`,
-        mark: definite >= regularMin ? 'met' : definite + ip >= regularMin ? 'in_progress' : definite + ip + pending >= regularMin ? 'waiting' : 'not_yet',
+        mark: definite >= regularMin ? 'met' : exactCredits(definite + ip) >= regularMin ? 'in_progress' : exactCredits(definite + ip + pending) >= regularMin ? 'waiting' : 'not_yet',
       });
     }
     if (gpaMin === undefined) conditions.push({ text: `Cumulative GPA: cannot be checked — the rules sheet is missing 'gpa_min'`, mark: 'not_yet' });

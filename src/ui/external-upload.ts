@@ -19,7 +19,7 @@ import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { creditSystemFactor, findExternalRule, isNotreDameInstitution } from '../data/external.ts';
 import { backgroundQuestions, completeBackground, describeBackground, openBackgroundDialog, priorSlotsFor, priorSlotsForDraft } from './background.ts';
 import { answerBackground, confirmDraft, earlierDegreesState, forgetReadings, mergeReading, restoreEarlierDegrees, type ReadingResult, readBackgroundFromPriorBachelors, readBackgroundFromPriorGraduate } from './background-read.ts';
-import { preferredTwin, sameTransferCourse, sameUniversity } from '../engine/nd-posting.ts';
+import { sameUniversity } from '../engine/nd-posting.ts';
 import { CORE_TITLE_RE } from '../engine/core-title.ts';
 import { priorNdUndergraduateCanCount } from '../engine/allocate.ts';
 import type { Rules } from '../data/types.ts';
@@ -31,7 +31,7 @@ import { FIELD_WORD } from './provenance.ts'; // the one field-word map (W9)
 import type { CourseEntry, Grade, ImportedField, Program, Season, Student, Term } from '../engine/types.ts';
 import type { ExternalCourseCandidate, ExternalParseResult } from '../transcript/external.ts';
 import { prefillLevelsByTerm } from '../transcript/level-prefill.ts';
-import { absorbBlockRow, blockRowBack, blockRowFor } from './nd-posted.ts';
+import { absorbBlockRow, blockRowBack, blockRowFor, pairBlockRows } from './nd-posted.ts';
 import { BROWSER_TOO_OLD_FOR_PDFS, browserTooOldForPdfs } from './pdf-support.ts';
 import { reclassifyNotreDameCourses } from './prior-nd.ts';
 import { unfinishedPriorLabel } from './program-history.ts';
@@ -1998,11 +1998,9 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       // carrying that acceptance (P3-import-1 (c), 2026-10-05) — the attempt
       // the Graduate School could have accepted when this transcript lists
       // the course twice (credit-transfer review 2026-10-28, #22).
-      for (const row of added) {
-        const block = blockRowFor(s, row);
-        if (block === undefined || preferredTwin(added.filter((x) => sameTransferCourse(x, block))) !== row) continue;
-        if (absorbBlockRow(s, row)) merged += 1;
-      }
+      // One row per posting (review of the fixes, 2026-10-29).
+      const blocks = s.courses.filter((c) => c.fromNdTranscript === true && c.origin === 'transfer');
+      for (const [block, row] of pairBlockRows(added, blocks)) if (absorbBlockRow(s, row, block)) merged += 1;
       // What this transcript settles of the earlier-degrees answer
       // (DGS 2026-10-08, Option 1): a bachelor's there, or a graduate
       // degree there — finished when it says it was conferred, at the

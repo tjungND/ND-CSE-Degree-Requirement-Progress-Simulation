@@ -1390,7 +1390,7 @@
     "phd.timeLimit": "in_progress [upcoming]",
     "phd.transfer": "not_applicable",
     "shared.advisor": "unmet",
-    "shared.approvals": "needs_dgs_review",
+    "shared.approvals": "in_progress",
     "shared.gpa": "met"
   },
   "phd-4plus1-hyphenated-notre-dame": {
@@ -5674,7 +5674,7 @@
     "phd.timeLimit": "in_progress [upcoming]",
     "phd.transfer": "not_applicable",
     "shared.advisor": "unmet",
-    "shared.approvals": "needs_dgs_review",
+    "shared.approvals": "in_progress",
     "shared.gpa": "cannot_evaluate"
   },
   "phd-two-earlier-programs": {

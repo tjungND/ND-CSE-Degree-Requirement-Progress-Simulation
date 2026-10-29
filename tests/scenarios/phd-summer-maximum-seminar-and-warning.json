@@ -1,6 +1,6 @@
 {
   "name": "phd-summer-maximum-seminar-and-warning",
-  "description": "Credit-transfer review 2026-10-28 (#69, #70): an early-start summer over Academic Code §3.8’s ten — a research seminar refused by the maximum read “not counted” on its line and “done” on the seminar card; and the warning said “so 2 credits are not counted” though the maximum’s own cut was different. The seminar counts toward its requirement only when its credit counts, and the warning names the credits the maximum itself refused.",
+  "description": "Credit-transfer review 2026-10-28 (#69, #70): an early-start summer over Academic Code §3.8’s ten — a research seminar refused by the maximum read “not counted” on its line and “done” on the seminar card; and the warning said “so 2 credits are not counted” though the maximum’s own cut was different. The seminar counts toward its requirement only when its credit counts — said as taken but not counted, with the overload tick or a corrected row as the remedy, never “not yet” (review of the fix, 2026-10-29) — and the warning names the credits the maximum itself refused.",
   "today": "2026-10-28",
   "rules": {
     "base": "default"
@@ -76,11 +76,19 @@
     "phd.seminar": {
       "status": "unmet",
       "detailIncludes": [
-        "CSE 63801: not yet"
+        "CSE 63801: taken Summer 2026, not counted — over the 10-credit summer-session maximum for Summer 2026 (Academic Code §3.8)"
       ]
     }
   },
   "expectWarnings": [
     "Summer 2026: 13 credits of courses are entered — the Graduate School allows at most 10 in the summer session (Academic Code §3.8; DGS Handbook §3.9), so 3 credits are not counted."
-  ]
+  ],
+  "expectEmailItems": {
+    "includes": [
+      "Tick the credit overload approved for Summer 2026, or correct that semester's rows — CSE 63801 is not counted (Academic Code §3.8)."
+    ],
+    "excludes": [
+      "Take CSE 63801"
+    ]
+  }
 }

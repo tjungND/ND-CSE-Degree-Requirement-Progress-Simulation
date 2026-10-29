@@ -637,6 +637,8 @@ export type DetailPart =
 
 export interface Contribution {
   courseId: string;
+  /** Which row of the record (index into `student.courses`), when it is one. */
+  entryIndex?: number;
   credits: number;
   pending?: true;
   /** Why it is pending — in progress, or waiting for a decision (UI review
@@ -772,6 +774,14 @@ export interface RequirementResult {
    * satisfies OR will satisfy). Never used by the emails, which report only
    * what is already true. */
   pendingBy?: string[];
+  /** A credit row's `satisfiedBy` and `pendingBy` by registration — indices
+   * into `student.courses`, in the same order — so each registration's
+   * "Counts toward" and the request's table follow its own allocation, not its
+   * course number's (review of the fixes, 2026-10-29: a bachelor's-only row,
+   * or a transfer numbered like a Notre Dame course, inherited "9 regular
+   * credits at ND" from its namesake). Absent on rows that list ids only. */
+  satisfiedByEntries?: number[];
+  pendingByEntries?: number[];
   /** In progress only (2026-10-05): the courses in progress this row is
    * counting on to complete — a qualifier part's course, or the
    * specialization courses the group matching relies on. The OCE gate reads

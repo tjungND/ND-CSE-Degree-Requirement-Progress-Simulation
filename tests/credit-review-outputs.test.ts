@@ -60,7 +60,7 @@ describe('#73: Next steps once the graduation semester has begun', () => {
     const rules = buildRules({ external: [{ university: 'PURDUE UNIVERSITY', course_id: 'CS 52500', course_title: 'CS 52500', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes' }] });
     const s = phdStudent({ entryTerm: fall(2022), priorMs: 'completed', bachelorsAwarded: spring(2020), background: elsewhere, graduationTerm: fall(2026), courses: [transferCourse('CS 52500', 'CS 52500', { term: fall(2021), degreeLevel: 'masters' })] });
     const report = audit(s, rules, '2026-10-28');
-    const step = nextSteps({ report, student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: 1 }).find((x) => x.key === 'processing.send');
+    const step = nextSteps({ report, student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: 1, processingTransfers: 1 }).find((x) => x.key === 'processing.send');
     assert.match(step?.text ?? '', /whether your transfer request went to the Graduate School before Fall 2026; if it did not, ask the DGS/);
   });
 });

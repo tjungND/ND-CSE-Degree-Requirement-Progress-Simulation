@@ -1,6 +1,6 @@
 {
   "name": "phd-two-degree-six-overanswered",
-  "description": "Credit-transfer review 2026-10-28 (#45, #46): answers put nine credits of Notre Dame coursework toward both the bachelor’s and the MSCSE, past the Graduate School’s six. Nothing said so; the line read “9 of its 6 credits already used”, and the card printed “the Ph.D..”. A warning now names the answers to check, the line says “all of its 6”, and no double period.",
+  "description": "Credit-transfer review 2026-10-28 (#45, #46): answers put nine credits of Notre Dame coursework toward both the bachelor’s and the MSCSE, past the Graduate School’s six. Nothing said so; the line read “9 of its 6 credits already used”, and the card printed “the Ph.D..”. A warning now names the answers to check, the line says “all of its 6”, and no double period. The ‘bs’ course, which no ruling can make count with the six spent, is not sent to the DGS (2026-10-29).",
   "today": "2026-10-28",
   "rules": {
     "base": "default"

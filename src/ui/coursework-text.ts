@@ -5,7 +5,7 @@
 import { transferRecordedFor } from '../engine/transfer-recorded.ts';
 import { isNotreDameInstitution } from '../data/external.ts';
 import type { Rules } from '../data/types.ts';
-import { BS_SHARED_CREDITS_MAX, conferralWindow, firstSemesterComplete, ownMscseStart, transferWindowClosedText } from '../engine/allocate.ts';
+import { BS_SHARED_CREDITS_MAX, conferralWindow, firstSemesterComplete, ownMscseEnd, ownMscseStart, transferWindowClosedText } from '../engine/allocate.ts';
 import { compareTerm, normalizeEntryTerm, termLabel } from '../engine/term.ts';
 import type { Student } from '../engine/types.ts';
 import { phdTotalFor } from '../engine/requirements/phd.ts';
@@ -51,12 +51,18 @@ export function transferRuleText(student: Student, rules: Rules, todayIso: strin
   // older than the Ph.D.'s window for the DGS (windowStartUnknown), so no
   // fixed cutoff is given (policy review round 5, item 12; DGS 2026-10-14).
   const mscseUndated = student.program === 'phd' && student.ndMasters !== undefined && mscseStart === undefined;
+  const mscseEnd = mscseUndated ? ownMscseEnd(student) : undefined;
   const cutoffFrom = (from: { season: Student['entryTerm']['season']; year: number }) => termLabel({ season: from.season, year: from.year - (windowYears ?? 0) });
   const window =
     windowYears === undefined
       ? 'within the years §5.2 allows (the number is missing from the rules sheet)'
       : mscseUndated
-        ? `within ${windowYears} years before your admission to the Notre Dame MSCSE — this record does not date it, so a course from before ${cutoffFrom(entry)} goes to the DGS`
+        ? // …and the MSCSE's end, when the record knows it and it is older
+          // than the Ph.D.'s window: a course after it and outside that window
+          // is refused, as its line says (review of the fixes, 2026-10-29).
+          mscseEnd !== undefined && windowYears !== undefined && compareTerm(mscseEnd, { season: entry.season, year: entry.year - windowYears }) < 0
+          ? `within ${windowYears} years before your admission to the Notre Dame MSCSE, or while you were enrolled in it — this record does not date the admission, so a course from before ${cutoffFrom(entry)} goes to the DGS if it is from ${termLabel(mscseEnd)} or earlier, and does not count if it is later`
+          : `within ${windowYears} years before your admission to the Notre Dame MSCSE — this record does not date it, so a course from before ${cutoffFrom(entry)} goes to the DGS`
         : `within ${windowYears} years before ${fromMscse ? 'your admission to the Notre Dame MSCSE' : 'you entered'} (${cutoffFrom(fromMscse ? mscseStart! : entry)} or later)`;
   const grade = floor === undefined ? 'with the grade §5.2 requires (missing from the rules sheet)' : `with a grade of ${floor} or better (the DGS decides pass/fail grades)`;
   // The timing as the course lines say it (allocate.ts processWhen): recorded,

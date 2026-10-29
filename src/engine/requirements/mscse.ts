@@ -7,7 +7,7 @@ import type { DeadlineInfo, DetailPart, RequirementResult, Status } from '../typ
 import type { Ctx } from './context.ts';
 import { BASIC_GROUP, defendedBelowGpaNote, msCandidacyApplicationRow, otherDegreeCapRow } from './shared.ts';
 import { usableGpa } from '../ranges.ts';
-import { noteOf, joinedDetail, heldForMissingParams, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalCourseIds, thresholdRow, timeLimitDate, timeLimitRow, titleCount, type Completion } from './context.ts';
+import { noteOf, joinedDetail, heldForMissingParams, capRow, beforeForfeiture, FORFEIT_FACT, FORFEIT_NOTE, defenseRegistrationNote, countedCourseIds, courseContributions, courseFeeds, creditsReachedAt, defendGpaNote, lastCompletion, pendingCourseIds, missingParamDetail, provisionalCourseIds, thresholdRow, timeLimitDate, timeLimitRow, titleCount, type Completion } from './context.ts';
 import { candidacyFormSentence } from './phd.ts';
 import { fullTimeTermRecords, graduateLevelParts } from './residency.ts';
 import { transferRow } from './transfer.ts';
@@ -39,8 +39,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
       title: `${titleCount(ctx.params.number('ms_total_credits_min'), 30)} total credits of courses and research`,
       shortTitle: `${titleCount(ctx.params.number('ms_total_credits_min'), 30)} total credits`,
       sums: ctx.alloc.total,
-      satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
-      pendingBy: pendingCourseIds(ctx, (p) => p.countedRegular + p.countedOther),
+      ...courseFeeds(ctx, (p) => p.countedRegular + p.countedOther),
       contributions: courseContributions(ctx, (p) => p.countedRegular + p.countedOther),
       required: ctx.params.number('ms_total_credits_min'),
       requiredKey: 'ms_total_credits_min',
@@ -62,8 +61,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
       title: `${titleCount(ctx.params.number('ms_regular_credits_min'), 24)} credit hours of regular courses`,
       shortTitle: `${titleCount(ctx.params.number('ms_regular_credits_min'), 24)} regular-course credits`,
       sums: ctx.alloc.regular,
-      satisfiedBy: countedCourseIds(ctx, (p) => p.countedRegular),
-      pendingBy: pendingCourseIds(ctx, (p) => p.countedRegular),
+      ...courseFeeds(ctx, (p) => p.countedRegular),
       contributions: courseContributions(ctx, (p) => p.countedRegular),
       required: ctx.params.number('ms_regular_credits_min'),
       requiredKey: 'ms_regular_credits_min',
@@ -83,8 +81,7 @@ export function mscseRows(ctx: Ctx): RequirementResult[] {
       title: `${titleCount(ctx.params.number('ms_project_credits_min'), 6)} credit hours of M.S. project or thesis direction`,
       shortTitle: `Project/thesis (${titleCount(ctx.params.number('ms_project_credits_min'), 6)} cr)`,
       sums: ctx.alloc.project,
-      satisfiedBy: countedCourseIds(ctx, (p) => (p.course.pool === 'project' ? p.countedOther : 0)),
-      pendingBy: pendingCourseIds(ctx, (p) => (p.course.pool === 'project' ? p.countedOther : 0)),
+      ...courseFeeds(ctx, (p) => (p.course.pool === 'project' ? p.countedOther : 0)),
       contributions: courseContributions(ctx, (p) => (p.course.pool === 'project' ? p.countedOther : 0)),
       required: ctx.params.number('ms_project_credits_min'),
       requiredKey: 'ms_project_credits_min',

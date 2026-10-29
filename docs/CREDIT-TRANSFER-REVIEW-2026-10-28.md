@@ -93,6 +93,68 @@ student-facing wording is W-CL583–W-CL603 in docs/WORDING-REVIEW.md.
 | 72 | low | both | The line of a case-by-case or unreviewed transfer held for a §5.2 reason names no hold: '[ticked] waiting for the DGS — would count … if approved' | batch 7 (010f542) |
 | 73 | low | both | Next steps still say 'Send the processing request (N items) — the Grad Admin records it' after the graduation semester began, while the request, card, warning and email ask whether it was sent in time | batch 8 (3fd25a8) |
 
+## Second verification (2026-10-29)
+
+Each of the 74 fixes was re-checked against the code by a second workflow (67 agents: one re-check per
+batch, an allocator sweep of 572,563 generated records for invariants, fill order and monotonicity,
+and two independent checks of every problem found). 42 problems were confirmed — side effects of the
+batches or parts of a fix they missed. Their fixes were then checked once more: every reproduction
+re-run against the fixed code, plus an independent review of the change (8 agents). That final check
+found seven faults in the fixes themselves and older problems beside them; all are fixed and pinned in
+tests/review-fixes-outputs.test.ts and tests/review-fixes-round2.test.ts. Three problems are left as
+they are (“not changed”). The decisions are the DECISIONS rows “A second verification of the review’s
+fixes” and “A final check of the review’s fixes”; the wording is W-CL604–W-CL622.
+
+| C | severity | what was wrong | now |
+|---|---|---|---|
+| 0 | medium | Candidacy/OCE cards added waiting credits raw: “9 more needed, 0 if the DGS approves them” read not yet | exact six-decimal sums (0 of 1,122 orderings wrong) |
+| 1 | high | “CSC I0400” (City College) read as subject CSCI, counting as CSE | the subject takes no letter of the number |
+| 2 | low | “18CS53” lost its subject | a leading number is the course number |
+| 3 | high | #4 in part: posted credit outside CSE lost §5.2’s cap to untransferred CSE courses | posted credit takes its caps first in every tier; the card no longer lists posted credit the cap refused |
+| 4 | low | #28 in part: a candidate’s “would count … if approved” amount is read from today’s fill order | not changed (the line says “would”) |
+| 5 | low | #32 in part: the same, when another cap binds | not changed |
+| 6 | low | #71 in part: “(Academic Code §2.3; §4.2)” — the page read §4.2 as the Code’s | “(Academic Code §2.3; CSE §4.2)”; Next steps keep the bracket whole |
+| 7 | medium | The order search took seconds on a non-CSE master’s plus Notre Dame non-CSE courses; the final check found an over-maximum semester ran the page out of memory | a bounded search: milliseconds, exact on 6,150 records |
+| 8 | high | An overloaded semester cut the research course before a non-CSE course that could only add to the 60 | that course waits behind total-only credit, read when it is taken |
+| 9 | high | The Notre Dame-only pass read an overloaded summer differently from the main pass | both passes fill the same way |
+| 10 | low | A candidate line named the nine but cited only §5.2 | “(§4.2; §5.2)” / “(§3.2; §5.2)” |
+| 11 | high | #23 in part: posted credit from a course taken during the Notre Dame MSCSE made a second earlier program | taken while enrolled, it is no earlier program |
+| 12 | high | #18’s nested-name rule merged two different schools into one earlier program; its fix then split Georgia Tech’s header-word name from its plain name | a flagship and its campus, or a name plus a transcript’s header words, is one school |
+| 13 | low | Two postings of one course number: the second block row stayed (and, Notre Dame transcript second, was lost); the fix first put a posting on a C attempt by title | one posting per row; an attempt the Graduate School could accept first, then title |
+| 14 | medium | “Counts toward” was keyed by course number: a bachelor’s-only row or a same-numbered transfer inherited the nine, and a core area | each registration’s own allocation and its own core area |
+| 15 | low | #27 in part: a below-C course was offered the DGS box; a 4+1 one was still sent to the DGS | no box, not sent |
+| 16 | low | #55 in part: the request’s table printed a Purdue “CSE 60641” under the nine at Notre Dame | the row each registration counts |
+| 17 | high | #61 in part: same-grade same-term rows counted by entry order | grade, import, credits, the DGS tick, then title |
+| 18 | high | The retake rule kept an attempt this degree cannot count over a live retake | the attempt that earns here (see the question below) |
+| 19 | medium | A waiting course lost the core area it passes by itself | core knowledge asks only “passed” |
+| 20 | medium | Same-term duplicates of a bachelor’s-used course lost their warning | warned again, once, accurately |
+| 21 | medium | #6 in part: the window’s end for an MSCSE holder; the §5.2 paragraph then contradicted the lines | both read the MSCSE’s end |
+| 22 | medium | #7 in part: posted or unposted credit held by §5.5 was not asked, then had no box | asked, with the hold’s box |
+| 23 | medium | #15 in part: held own-MSCSE courses were not asked; a 4+1 senior-year MSCSE row escaped the hold | asked and held |
+| 24 | low | #40 in part: a held MSCSE course said “counts in full” | never beside a hold |
+| 25 | high | #43 in part: a 4+1 MSCSE holder with no award term counted senior-year rows toward a third degree | the line asks for the award term; the MSCSE’s start is not read from those rows |
+| 26 | low | A course taken during the MSCSE read “after you entered” | “while you were enrolled in your Notre Dame MSCSE” |
+| 27 | low | An in-progress `yes` transfer, ticked recorded, read a garbled line | “no final grade yet (§5.2 needs a B or better)” |
+| 28 | low | A held line dropped every note | the posting’s note, or the recorded tick’s, stays; a held area elsewhere waits for the DGS |
+| 29 | medium | #26 in part: a blank verdict cell not asked in every variant | always asked |
+| 30 | low | #72 in part: a candidate’s line named no two-programs, lapsed-Incomplete or readmission hold | every hold named |
+| 31 | medium | The advisor email asked to submit a transfer already ticked recorded | only those still to submit; the card marks each recorded course |
+| 32 | low | #11 in part: a spill also cut by the semester maximum | fixed |
+| 33 | low | #36 in part: the request’s table printed a spilled course’s whole credit toward the 24 and the nine | “24 regular-course credits: 3 of the 4” |
+| 34 | medium | #44 in part: a spent six still sent a course to the DGS | not sent |
+| 35 | low | #59 in part: “two programs” for three | count-free |
+| 36 | medium | The review request asked a double-count question no ruling can grant; another approval on the same course still sent it | not asked, no box, no approvals line |
+| 37 | low | #65 in part: posted credit without a row got no paste-ready row | asked as needing a row |
+| 38 | low | #68 in part: diagnostics for a rejected value in the retired `credit_system` column | not changed (the column is gone from the live sheet) |
+| 39 | low | #73 in part: the waiting step ignored the closed window; the fix then asked for any course from elsewhere | asked when a transfer the request will submit waits |
+| 40 | low | The processing step asked about a transfer the request does not carry; a course over a cap kept the §5.2 card in progress after the tick | asked only when the request carries one; the card counts what the caps admitted |
+| 41 | medium | A seminar a semester’s maximum refused read as never taken; the fix then gave the overload remedy for any cap | taken and refused, with each semester’s overload — or the DGS for another cap |
+
+**The moved verdicts** (`tests/verdicts.json`). `phd-4plus1-double-count-used` and
+`phd-two-degree-six-overanswered` · shared.approvals: needs_dgs_review → in_progress — the six shared
+credits are already spent on the bachelor’s and the MSCSE, so no DGS ruling can grant the double count
+the review request used to ask for (C36); what is left is the advisor’s approval.
+
 ## Questions for the DGS (not changed)
 
 1. **One thesis-titled transfer course, two verdicts: an ExternalCourses `yes` counts toward the 24 until the Graduate School posts it, then toward the 60 only**

@@ -19,7 +19,7 @@
 // Dame or at their previous institution" — undergraduate or graduate — once
 // the DGS confirms the course. §5.2 criterion 5: "the transfer is recommended
 // by the DGS and approved by the Graduate School."
-import { BS_SHARED_CREDITS_MAX, spentOnBachelorsAndMasters } from './allocate.ts';
+import { BS_SHARED_CREDITS_MAX, bachelorsSixSpent, spentOnBachelorsAndMasters } from './allocate.ts';
 import { termIndex } from './term.ts';
 import { isNotreDameInstitution, needsApproval } from '../data/external.ts';
 import type { Rules } from '../data/types.ts';
@@ -27,6 +27,7 @@ import { classify, levelOf, type ClassifiedCourse } from './allocate.ts';
 import { decisionWording, needsCourseApproval } from './decider.ts';
 import { CORE_TITLE_RE } from './core-title.ts';
 import { passesCreditFloor } from './grades.ts';
+import { transferRecordedFor } from './transfer-recorded.ts';
 import type { Student } from './types.ts';
 
 /** What the review request asks the DGS to do about one course (DGS
@@ -72,6 +73,11 @@ export interface PendingDgsReview {
    * `ask` keeps only what the Courses tab still needs (a row, when the course
    * is not listed there). */
   transferRow?: { decide: string[]; reason: string };
+  /** The DGS's answer decides a §5.2 transfer that the Grad Admin request then
+   * submits — not a core area, a sheet cell, a hold, credit already on the
+   * Notre Dame record, or a course with no final grade yet. Next steps ask the
+   * late-request question only for these (review of the fixes, 2026-10-29). */
+  decidesTransfer?: true;
 }
 
 /** What the "Ask the DGS to review" card's chip and its copy button both say
@@ -248,10 +254,19 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
     // Prior Notre Dame coursework whose Courses-tab row names a core area is
     // decided for §4.4.1 already (2026-09-05) — no ruling to ask for.
     const coreDecidedByCoursesTab = fromNotreDame && c.rule?.coreArea !== undefined;
+    // …and, passed below C, it earns no credit (Academic Code §4.3), as a course
+    // in the program does not (DGS 2026-09-13): only a core area could still be
+    // asked (review of the fixes, 2026-10-29 — a 4+1 course graded C- was sent
+    // for its UG→GR move with no box to record the answer).
+    if (fromNotreDame && !passesCreditFloor(c.entry.grade) && !c.incompleteLapsed && !(qualifierApplies && c.rule === undefined && coreTitle(c))) continue;
+    if (fromNotreDame && bachelorsSixSpent(c, student) && !(qualifierApplies && c.rule === undefined && coreTitle(c))) continue;
     // What no sheet verdict can settle, so the DGS is asked for THIS student
     // whatever the row says (policy review 2026-10-03): a pass/fail transfer
     // grade, a course taken elsewhere after admission, a lapsed Incomplete,
     // credit from before a readmission after five years or more.
+    // A transfer already recorded says so to the DGS ruling on it (review of the fixes, 2026-10-29).
+    const recordedHere = c.ndPosting === undefined && c.caps.includes('transfer') && transferRecordedFor(student, c.entry);
+    const RECORDED = ' — the Grad Admin has already recorded it, as I ticked';
     const heldAsks = [
       ...(c.passFailGrade ? ['decide whether this S (pass/fail) course transfers — it cannot show the B §5.2 requires'] : []),
       ...(c.afterAdmission ? ['confirm the department and the Graduate School approved this course before I took it (taken after admission, DGS Handbook §3.14)'] : []),
@@ -261,14 +276,17 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
             : 'decide whether this course transfers, and how much — I had no earlier graduate program, and the Academic Code states no transfer allowance for that case (Academic Code §4.6)']
         : []),
       // P3-prior-programs-3 (3): two earlier programs; the DGS decides how their allowances combine.
-      ...(c.twoPrograms ? ['decide how the transfer allowances of my two earlier graduate programs combine — §5.2 states one after a finished program and one after an unfinished one, not for both (Academic Code §4.6)'] : []),
+      // Count-free: there may be more than two (review of the fix, 2026-10-29).
+      ...(c.twoPrograms ? ['decide how the transfer allowances of my earlier graduate programs combine — §5.2 states one after a finished program and one after an unfinished one, not for several (Academic Code §4.6)'] : []),
       // P3-prior-programs-4 (b): the window runs from the MSCSE admission, which the record does not date.
       ...(c.windowStartUnknown ? ['confirm this course falls within five years before my admission to the Notre Dame MSCSE (§5.2) — it is more than five years before my Ph.D. entry'] : []),
       ...(c.cseUnknown ? [IS_CSE] : []),
       ...(c.incompleteLapsed ? ['confirm whether the Graduate School extended my Incomplete, or the grade was posted (Academic Code §4.4)'] : []),
       // Another university's Incomplete (P3-ac-4-1; DGS 2026-10-05: held for DGS review).
       ...(c.outsideIncomplete ? ['decide this course once its final grade is posted — it is graded I (Incomplete) at my previous university, so it cannot show the B that §5.2 requires yet'] : []),
-      ...(c.interrupted ? [c.mscseSeparated ? 'rule on the credit from my Notre Dame MSCSE, which ended five years or more before I entered the Ph.D., and request the Graduate School’s approval (Academic Code §5.5)' : 'rule on the credit from before my readmission (Academic Code §5.5)'] : []),
+      ...(c.interrupted ? [`${c.mscseSeparated ? 'rule on the credit from my Notre Dame MSCSE, which ended five years or more before I entered the Ph.D., and request the Graduate School’s approval (Academic Code §5.5)' : 'rule on the credit from before my readmission (Academic Code §5.5)'}${recordedHere ? RECORDED : ''}`] : []),
+      // A shorter readmission's hold on the student's own MSCSE courses (review of the fix, 2026-10-29).
+      ...(c.beforeReadmission ? [`confirm the credit from before my readmission still counts (DGS Handbook §3.3)${recordedHere ? RECORDED : ''}`] : []),
     ];
 
     // Credit the Notre Dame record already shows as accepted (P3-import-1;
@@ -299,15 +317,22 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
           // ExternalCourses row asks for the row, with a paste-ready one
           // (credit-transfer review 2026-10-28, #65).
           needsRow: c.external === undefined && (c.cseUnknown === true || coreOpen),
-          replyNeeded: c.ndPostingHeld !== undefined,
+          // A record-level hold on posted credit is asked as its ruling too —
+          // a readmission after five years or more, or a shorter one (review
+          // of the fix, 2026-10-29: the §5.2 card said "the review request
+          // asks" while it asked nothing).
+          replyNeeded: c.ndPostingHeld !== undefined || c.interrupted === true || c.beforeReadmission === true,
           decide: [
             ...(c.ndPostingHeld !== undefined ? ['confirm this credit, already accepted on my Notre Dame record, counts toward this degree (I tick the box on the course when you do)'] : []),
+            ...(c.interrupted ? ['rule on the credit from before my readmission (Academic Code §5.5) — it is already accepted on my Notre Dame record'] : []),
+            ...(c.beforeReadmission ? ['confirm the credit from before my readmission still counts (DGS Handbook §3.3) — it is already accepted on my Notre Dame record'] : []),
             ...(c.cseUnknown ? [IS_CSE] : []),
             ...(coreOpen ? [CORE] : []),
           ],
         },
         reason: c.approvalPending,
-        unlisted: false,
+        // Asked for its row: it has none yet (review of the fix, 2026-10-29).
+        unlisted: c.external === undefined && (c.cseUnknown === true || coreOpen),
       });
       continue;
     }
@@ -353,7 +378,8 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
           ...(coreUndecided ? [CORE] : []),
         ],
       };
-      (fromNotreDame ? priorNd : external).push({ course: c, kind: fromNotreDame ? 'priorNd' : 'external', reason, unlisted: false, ask });
+      const submits = transferUndecided && !held && c.caps.includes('transfer') && c.ndPosting === undefined && c.notTransferCredit !== true && c.entry.grade !== 'IP';
+      (fromNotreDame ? priorNd : external).push({ course: c, kind: fromNotreDame ? 'priorNd' : 'external', reason, unlisted: false, ask, ...(submits ? { decidesTransfer: true as const } : {}) });
       continue;
     }
 
@@ -432,15 +458,13 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
           : transferRow
             ? []
             : bachelors
-              ? needsApprovalOnTop
-                ? // What the line waits on (P3-fourplusone-5): the allowance
-                  // below the 60000 level, or the row's case-by-case
-                  // approval; an unlisted row's questions are the row's.
-                  c.caps.includes('fourk')
-                  ? ['approve it for me (the allowance for courses below the 60000 level)']
-                  : caseByCaseRow
-                    ? ['approve it for me — the course rules say case by case']
-                    : []
+              ? // What the line waits on (P3-fourplusone-5): the allowance
+                // below the 60000 level, or the row's case-by-case approval —
+                // both only on a case-by-case row; a blank row is the sheet's
+                // question, an unlisted row's questions are the row's (review
+                // of the fix, 2026-10-29).
+                needsApprovalOnTop && caseByCaseRow
+                ? [c.caps.includes('fourk') ? 'approve it for me (the allowance for courses below the 60000 level)' : 'approve it for me — the course rules say case by case']
                 : []
               : c.ndMastersCredit
                 ? needsApprovalOnTop && caseByCaseRow
@@ -455,7 +479,7 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
         ask: {
           needsRow: c.rule === undefined,
           replyNeeded: recommendation.length > 0,
-          decide: [...(c.rule === undefined ? [COUNTS, ...(qualifierApplies ? [CORE, GROUP] : [])] : blankRow && recommendation.length === 0 ? [`${COUNTS} — the row is blank`] : []), ...recommendation],
+          decide: [...(c.rule === undefined ? [COUNTS, ...(qualifierApplies ? [CORE, GROUP] : [])] : blankRow ? [`${COUNTS} — the row is blank`] : []), ...recommendation],
         },
         reason:
           `taken at Notre Dame before entering the program (${bachelors ? 'undergraduate' : c.ndMastersCredit ? 'MSCSE' : c.nonDegree ? 'non-degree' : 'graduate'}) — ` +
@@ -480,6 +504,7 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
         ...(transferRow
           ? { transferRow: { decide: [TRANSFERABLE], reason: 'graduate course from my earlier Notre Dame program — §5.2 applies; no transfer decision recorded yet' } }
           : {}),
+        ...((transferRow || recommendation.includes('recommend the transfer credit for me (§5.2)')) && c.entry.grade !== 'IP' && c.ndPosting === undefined ? { decidesTransfer: true as const } : {}),
       });
     } else {
       external.push({
@@ -490,6 +515,7 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
           replyNeeded: heldAsks.length > 0 && !bachelors,
           decide: [...(!bachelors && c.ineligibleReason === undefined ? [TRANSFERABLE] : []), ...(!bachelors ? heldAsks : []), ...(keyword ? [CORE] : [])],
         },
+        ...(!bachelors && c.ineligibleReason === undefined && heldAsks.length === 0 && c.caps.includes('transfer') && c.entry.grade !== 'IP' ? { decidesTransfer: true as const } : {}),
         reason: bachelors
           ? 'not in the course rules yet; the title suggests a §4.4.1 core area'
           : c.ineligibleReason !== undefined

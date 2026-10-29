@@ -136,7 +136,17 @@ export function subjectCodes(courseId: string): string[] {
   const numbered = /^\s*\d{1,2}\s*:\s*(\d{3})\s*:\s*\d{3}\s*$/.exec(courseId);
   if (numbered) return [numbered[1]!];
   const id = courseId.toUpperCase();
-  const prefix = /^[^0-9]*/.exec(id)![0];
+  // A leading scheme year or level before the letters is not the subject's
+  // end: VTU "18CS53", KCL "7CCSMML" (review of the fix, 2026-10-29 — it read
+  // as no subject).
+  const body = id.replace(/^\s*\d+(?=\s*[A-Z])/, '');
+  let prefix = /^[^0-9]*/.exec(body)![0];
+  // One or two letters glued to the course number after a separate subject
+  // word belong to the number: City College "CSC I0400" is subject CSC, not
+  // CSCI (review of the fix, 2026-10-29). Written without a lookbehind, which
+  // Safari before 16.4 cannot compile.
+  const glued = /\s([A-Z]{1,2})$/.exec(prefix);
+  if (glued && /[A-Z]/.test(prefix.slice(0, glued.index))) prefix = prefix.slice(0, glued.index + 1);
   const parts = prefix.split(/[^A-Z]+/).filter((p) => p !== '');
   const out = parts.length > 0 ? [parts.join(''), parts[0]!, parts[parts.length - 1]!] : [];
   const dotted = /^\s*[A-Z]{1,4}\.(\d{3})\.\d{3}/.exec(id);

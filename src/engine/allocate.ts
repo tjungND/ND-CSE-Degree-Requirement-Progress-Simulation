@@ -21,7 +21,7 @@ import { isEarlyStartCourse } from './early-start.ts';
 import { transferRecordedFor } from './transfer-recorded.ts';
 import { addDaysIso, addYearsIso, compareTerm, endOfTerm, normalizeEntryTerm, semesterNumber, shiftTermYears, startOfTerm, termIndex, termLabel, termOfDate } from './term.ts';
 import type { Attestations, CourseEntry, Grade, NdPosting, Program, Student, Term } from './types.ts';
-import { ndPostingOf, pairedBlockRows, sameTransferCourse, sameUniversity } from './nd-posting.ts';
+import { ndPostingOf, oneSchool, pairedBlockRows, sameTransferCourse } from './nd-posting.ts';
 import { isCovidCohort } from './requirements/context.ts';
 
 /** `nondegree` (2026-10-03): Academic Code §2.3 — "No more than 12 credit hours
@@ -657,7 +657,26 @@ export function isOwnMscseCoursework(student: Student, c: CourseEntry): boolean 
   // separation (credit-transfer review 2026-10-28, #9).
   if (c.origin === 'nd' && isEarlyStartCourse(c, student)) return false;
   const awarded = student.bachelorsAwarded;
-  return awarded === undefined || compareTerm(c.term, awarded) > 0 || c.countedToward === 'mscse' || c.countedToward === 'both';
+  // With a Notre Dame bachelor's and no award term, a row from before the
+  // Ph.D. may be the bachelor's: only the student's answer places it (review
+  // of the fixes, 2026-10-29 — the MSCSE's start was read from such a row, and
+  // a course elsewhere "while you were enrolled in your Notre Dame MSCSE").
+  const ndBachelors = student.background?.bachelors === 'nd-cse' || student.background?.bachelors === 'nd-other' || student.integratedBsMs === true;
+  if (awarded === undefined) return !ndBachelors || c.countedToward === 'mscse' || c.countedToward === 'both';
+  return compareTerm(c.term, awarded) > 0 || c.countedToward === 'mscse' || c.countedToward === 'both';
+}
+
+/** Taken elsewhere after admission to the graduate program: at or after the
+ * entry term, or while enrolled in the student's own Notre Dame MSCSE — the
+ * admission §5.2's window counts from (credit-transfer review 2026-10-28,
+ * #39). One test for an un-posted course's hold and for posted credit's place
+ * among the earlier programs (review of the fix, 2026-10-29). */
+export function takenAfterAdmission(student: Student, entry: Term, term: Term): boolean {
+  if (compareTerm(term, entry) >= 0) return true;
+  const start = ownMscseStart(student);
+  if (start === undefined || compareTerm(start, entry) >= 0) return false;
+  const end = ownMscseEnd(student);
+  return compareTerm(term, start) >= 0 && (end === undefined || compareTerm(term, end) <= 0);
 }
 
 /** When the student's own Notre Dame MSCSE ended: its award term, or else its
@@ -701,7 +720,7 @@ function drawsOnTransferAllowance(cc: ClassifiedCourse): boolean {
 /** The earlier graduate programs those courses come from, by university as
  * the record names it (folded, so "Purdue University" and "PURDUE UNIV" are
  * one) — an earlier Notre Dame program is one of them (P3-prior-programs-3). */
-export function earlierTransferPrograms(classified: readonly ClassifiedCourse[], entry?: Term): string[] {
+export function earlierTransferPrograms(classified: readonly ClassifiedCourse[], entry?: Term, student?: Student): string[] {
   const programs: { name: string; label: string }[] = [];
   for (const cc of classified) {
     if (!drawsOnTransferAllowance(cc)) continue;
@@ -710,14 +729,14 @@ export function earlierTransferPrograms(classified: readonly ClassifiedCourse[],
     // posting's) — is a course taken after admission, not an earlier program
     // (P4-transfer-3 (a); credit-transfer review 2026-10-28, #23: posting a
     // summer course turned a finished master's into two programs).
-    if (entry !== undefined && cc.ndPosting !== undefined && cc.entry.fromNdTranscript !== true && compareTerm(cc.entry.term, entry) >= 0) continue;
+    if (entry !== undefined && cc.ndPosting !== undefined && cc.entry.fromNdTranscript !== true && (student !== undefined ? takenAfterAdmission(student, entry, cc.entry.term) : compareTerm(cc.entry.term, entry) >= 0)) continue;
     const name = cc.entry.institution ?? '';
     if (normalizeUniversity(name) === '') continue;
     const nd = isNotreDameInstitution(name);
     // One school however its transcripts spell it ("Purdue University" and
-    // "Purdue University West Lafayette" — sameUniversity, as the Notre Dame
-    // import pairs them; #18).
-    if (programs.some((p) => (nd ? p.name === 'NOTRE DAME' : p.name !== 'NOTRE DAME' && sameUniversity(p.name, name)))) continue;
+    // "Purdue University West Lafayette", #18) — but two schools whose names
+    // nest are two (oneSchool, not the import's looser sameUniversity).
+    if (programs.some((p) => (nd ? p.name === 'NOTRE DAME' : p.name !== 'NOTRE DAME' && oneSchool(p.name, name)))) continue;
     programs.push({ name: nd ? 'NOTRE DAME' : name, label: nd ? 'an earlier Notre Dame program' : name });
   }
   return programs.map((p) => p.label);
@@ -780,7 +799,10 @@ export function mscseSeparation(student: Student): Term | undefined {
 export function decidedCaseByCase(c: ClassifiedCourse, program: Program): boolean {
   // Credit on the Notre Dame record the DGS confirms for this student (P3-import-1, 2026-10-05).
   if (c.ndPostingHeld !== undefined) return true;
-  if (c.entry.origin === 'transfer' && !isNotreDameInstitution(c.entry.institution)) return needsApproval(c.transferable);
+  // …and its record-level hold too, as for a Notre Dame course: the review
+  // request asks the DGS to rule on it, and the box is where the student
+  // records the answer (review of the fixes, 2026-10-29 — there was none).
+  if (c.entry.origin === 'transfer' && !isNotreDameInstitution(c.entry.institution)) return needsApproval(c.transferable) || c.dgsHoldTicked === true || c.beforeReadmission === true || c.interrupted === true;
   // A §5.2 candidate from an earlier Notre Dame program (policy review round
   // 3, P3-dh-10-2; DGS 2026-10-06: "Apply the suggested handling"): its
   // transfer verdict is its ExternalCourses row, so a `dgs_approval` there is
@@ -941,7 +963,17 @@ export function classify(student: Student, rules: Rules, today?: string): {
     // same term is said here — it read nothing and counted twice
     // (credit-transfer review 2026-10-28, #62).
     if (group.every((c) => c.origin === 'nd' || isNotreDameInstitution(c.institution))) {
-      if ((ruleOf(group[0]!)?.courseType ?? 'regular') !== 'regular')
+      // The retake rule below takes a regular course's rows when every one is
+      // an attempt at this degree; one used for the bachelor's is not, and a
+      // seminar, research or independent course is counted per row — said here
+      // (review of the fix, 2026-10-29).
+      const attemptHere = (c: CourseEntry): boolean => c.origin === 'nd' || c.countedToward !== 'bs';
+      // Two or more of this degree's attempts among them count once, and the
+      // retake rule says so: the rows are not all "counted separately" (review
+      // of the fixes, 2026-10-29).
+      if ((ruleOf(group[0]!)?.courseType ?? 'regular') === 'regular' && !group.every(attemptHere) && group.filter(attemptHere).length >= 2)
+        warnings.push(`${group[0]!.courseId} is entered ${group.length} times for ${termLabel(group[0]!.term)}, with different answers about which degrees it counted toward — if it is one registration, remove the duplicates.`);
+      else if ((ruleOf(group[0]!)?.courseType ?? 'regular') !== 'regular' || !group.every(attemptHere))
         warnings.push(`${group[0]!.courseId} is entered ${group.length} times for ${termLabel(group[0]!.term)}. Each row is counted separately — if it is one registration, remove the duplicate.`);
       continue;
     }
@@ -964,6 +996,10 @@ export function classify(student: Student, rules: Rules, today?: string): {
     if (group.length < 2) continue;
     for (const c of group) grouped.add(c);
     if (new Set(group.map((c) => termIndex(c.term))).size < 2) continue;
+    // Each row with its own acceptance on the Notre Dame record: the Graduate
+    // School took them as separate courses — two topics courses under one
+    // number — so there is no duplicate to remove (review of the fixes, 2026-10-29).
+    if (group.every((c) => c.ndPosted !== undefined)) continue;
     warnings.push(
       `${a.courseId} from ${a.institution} is entered ${group.length} times (${group.map((c) => termLabel(c.term)).join(', ')}). Each row is counted separately, so its credit may be counted twice — if it is one course, remove the duplicate.`,
     );
@@ -1057,8 +1093,10 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // The program's own earlier courses include the student's own Notre Dame
   // MSCSE's — one graduate program with the Ph.D. (Graduate School,
   // 2026-10-03; credit-transfer review 2026-10-28, #15).
+  // …and a 4+1's senior-year course counted toward that MSCSE, as the
+  // separation's hold reads it (review of the fixes, 2026-10-29).
   const beforeShortReadmission = (c: CourseEntry): boolean =>
-    readmitted !== undefined && !longInterruption && (c.origin === 'nd' || isOwnMscseCoursework(student, c)) && compareTerm(c.term, readmitted) < 0;
+    readmitted !== undefined && !longInterruption && (c.origin === 'nd' || heldWithSeparatedMscse(student, c)) && compareTerm(c.term, readmitted) < 0;
   // The Notre Dame MSCSE five years or more before the Ph.D. (DGS 2026-10-06):
   // every one of its courses waits for the DGS and the Graduate School.
   const separatedSince = mscseSeparation(student);
@@ -1089,7 +1127,21 @@ export function classify(student: Student, rules: Rules, today?: string): {
     c.origin === 'nd' || (c.origin === 'transfer' && isNotreDameInstitution(c.institution) && c.countedToward !== 'bs');
   // Within one term the best grade last, so a same-term duplicate is decided
   // by its grade, not by which row was entered last (#61).
-  const attemptOrder = [...sorted].sort((a, b) => compareTerm(a.term, b.term) || a.courseId.localeCompare(b.courseId) || (GRADE_POINTS[a.grade] ?? (isPassed(a.grade) ? 3 : -1)) - (GRADE_POINTS[b.grade] ?? (isPassed(b.grade) ? 3 : -1)));
+  // Then the transcript's own row over a hand-typed one, then more credits:
+  // never entry order (review of the fix, 2026-10-29).
+  const gradeKey = (c: CourseEntry): number => GRADE_POINTS[c.grade] ?? (isPassed(c.grade) ? 3 : -1);
+  const attemptOrder = [...sorted].sort(
+    (a, b) =>
+      compareTerm(a.term, b.term) ||
+      a.courseId.localeCompare(b.courseId) ||
+      gradeKey(a) - gradeKey(b) ||
+      Number(a.imported !== undefined || a.fromNdTranscript === true) - Number(b.imported !== undefined || b.fromNdTranscript === true) ||
+      a.credits - b.credits ||
+      // …then the row the DGS ticked, then its title: the same record gives the
+      // same verdict whatever the row order (review of the fixes, 2026-10-29).
+      Number(a.dgsApproved === true) - Number(b.dgsApproved === true) ||
+      (a.title ?? '').localeCompare(b.title ?? ''),
+  );
   for (const c of attemptOrder) {
     if (!notreDameAttempt(c)) continue;
     const type = ruleOf(c)?.courseType ?? 'regular';
@@ -1111,8 +1163,14 @@ export function classify(student: Student, rules: Rules, today?: string): {
     // counted" and threw the in-progress credit away with it, which also
     // starved §4.5's candidacy-readiness gate. Between two FINAL grades the
     // §4.4.2 rule is unchanged: the retake grade replaces, whatever it is.
+    // …and so does one an earlier degree already used: on the Ph.D., an
+    // earlier Notre Dame attempt counted toward both the bachelor's and the
+    // MSCSE cannot count here, so a live retake is the attempt that can
+    // (review of the fix, 2026-10-29: it read "the Spring 2025 attempt … is
+    // the one counted" beside that attempt's own "not counted").
+    const earnsHere = (a: CourseEntry): boolean => passesCreditFloor(a.grade) && !(program === 'phd' && a.origin === 'transfer' && a.countedToward === 'both');
     const counted =
-      lastPassing !== undefined && (passesCreditFloor(lastPassing.grade) || inProgress.length === 0)
+      lastPassing !== undefined && (earnsHere(lastPassing) || inProgress.length === 0)
         ? lastPassing
         : inProgress.length > 0
           ? inProgress[inProgress.length - 1]!
@@ -1167,14 +1225,21 @@ export function classify(student: Student, rules: Rules, today?: string): {
       incompleteDue === undefined
         ? {}
         : { incompleteDue, ...(incompleteLapsed ? { incompleteLapsed: true as const } : {}), ...(inGraduationTerm ? { incompleteInGraduationTerm: true as const } : {}), ...(cohortI ? { incompleteCohortNote: true as const } : {}) };
+    // A transfer course's hold, for its line while it is a candidate too
+    // (review of the fixes, 2026-10-29: these holds were named only on a `yes`
+    // course's line).
+    const holding = (cc: ClassifiedCourse, hold: string): { transferHold?: string } =>
+      cc.caps.includes('transfer') ? { transferHold: [hold, ...(cc.transferHold !== undefined ? [cc.transferHold] : [])].join('; ') } : {};
     const withIncomplete = (cc: ClassifiedCourse): ClassifiedCourse => {
       if (incompleteDue === undefined || cc.ineligibleReason !== undefined) return { ...cc, ...incompleteNote };
       if (!incompleteLapsed) return { ...cc, ...incompleteNote };
+      const hold = `Incomplete (I) past its deadline (about ${incompleteDue}) — it became an F unless the Graduate School extended it (Academic Code §4.4)${cohortI ? `; for students enrolled in Spring 2020, Academic Code Appendix A.1 may give 60 days instead of 30` : ''}; the DGS confirms`;
       return {
         ...cc,
         ...incompleteNote,
+        ...holding(cc, hold),
         tier: 'provisional',
-        approvalPending: `Incomplete (I) past its deadline (about ${incompleteDue}) — it became an F unless the Graduate School extended it (Academic Code §4.4)${cohortI ? `; for students enrolled in Spring 2020, Academic Code Appendix A.1 may give 60 days instead of 30` : ''}; the DGS confirms${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
+        approvalPending: `${hold}${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
       };
     };
     // A dual-degree student's course that also counts toward the other
@@ -1199,9 +1264,14 @@ export function classify(student: Student, rules: Rules, today?: string): {
     // A held course is not approved for processing: its line names the hold,
     // not "send the Grad Admin the processing request" (credit-transfer
     // review 2026-10-28, #7 — as the two-programs hold already does).
+    // Only the instruction goes: credit already on the Notre Dame record still
+    // says so, which the DGS needs for the ruling (review of the fix, 2026-10-29).
     const held = (cc: ClassifiedCourse): ClassifiedCourse => {
       const { approvedNote: _a, ...rest } = cc;
-      return rest;
+      if (cc.ndPosting !== undefined) return { ...rest, approvedNote: `transfer credit on your Notre Dame record (posted ${termLabel(cc.ndPosting.term)}) — accepted by the Graduate School` };
+      // …and a transfer ticked as recorded, which the DGS's ruling is about
+      // (review of the fixes, 2026-10-29).
+      return cc.caps.includes('transfer') && transferRecordedFor(student, cc.entry) ? { ...rest, approvedNote: 'recorded by the Grad Admin, as you ticked under Approvals (§5.2)' } : rest;
     };
     const withInterruption = (cc: ClassifiedCourse): ClassifiedCourse => {
       // The hold's own ruling, not a case-by-case approval (round 5, item 29 (b)).
@@ -1212,28 +1282,34 @@ export function classify(student: Student, rules: Rules, today?: string): {
         if (interruptedCourse(c)) return ticked(cc, `taken before an interruption of five years or more — the DGS and the Graduate School confirmed it stands, as you ticked on the course (Academic Code §5.5)`);
       }
       if (beforeShortReadmission(c) && cc.ineligibleReason === undefined) {
+        const hold = `taken before your readmission (${termLabel(readmitted!)}) — the program may reject some or all past credits (DGS Handbook §3.3); the DGS confirms`;
         return {
           ...held(cc),
+          ...holding(cc, hold),
           beforeReadmission: true,
           tier: 'provisional',
-          approvalPending: `taken before your readmission (${termLabel(readmitted!)}) — the program may reject some or all past credits (DGS Handbook §3.3); the DGS confirms${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
+          approvalPending: `${hold}${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
         };
       }
       if (separatedSince !== undefined && !interruptedCourse(c) && heldWithSeparatedMscse(student, c) && cc.ineligibleReason === undefined) {
+        const hold = `from your Notre Dame MSCSE, which ended in ${termLabel(separatedSince)}, five years or more before you entered the Ph.D. in ${termLabel(entry)} — a separation that long may forfeit its credit (Academic Code §5.5), so it counts as Ph.D. coursework once the DGS reviews it and the Graduate School approves`;
         return {
           ...held(cc),
+          ...holding(cc, hold),
           interrupted: true,
           mscseSeparated: true,
           tier: 'provisional',
-          approvalPending: `from your Notre Dame MSCSE, which ended in ${termLabel(separatedSince)}, five years or more before you entered the Ph.D. in ${termLabel(entry)} — a separation that long may forfeit its credit (Academic Code §5.5), so it counts as Ph.D. coursework once the DGS reviews it and the Graduate School approves${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
+          approvalPending: `${hold}${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
         };
       }
       if (!interruptedCourse(c) || cc.ineligibleReason !== undefined) return cc;
+      const hold = `taken before an interruption of five years or more (readmitted ${termLabel(readmitted!)}) — Academic Code §5.5 forfeits the credit unless the DGS and the Graduate School rule otherwise`;
       return {
         ...held(cc),
+        ...holding(cc, hold),
         interrupted: true,
         tier: 'provisional',
-        approvalPending: `taken before an interruption of five years or more (readmitted ${termLabel(readmitted!)}) — Academic Code §5.5 forfeits the credit unless the DGS and the Graduate School rule otherwise${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
+        approvalPending: `${hold}${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
       };
     };
     return withSharedDegree(withInterruption(withIncomplete(classifyOne(c, rule, grade, base))));
@@ -1249,7 +1325,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // allowance come from two programs (two universities, or an earlier Notre
   // Dame program and a school elsewhere), every such course waits for the DGS
   // rather than one answer's cap being applied to both (never guess).
-  const programs = earlierTransferPrograms(classified, entry);
+  const programs = earlierTransferPrograms(classified, entry, student);
   if (programs.length < 2) return { classified, warnings, staleInProgress };
   const list = programs.length === 2 ? `${programs[0]} and ${programs[1]}` : `${programs.slice(0, -1).join(', ')} and ${programs[programs.length - 1]}`;
   return {
@@ -1263,6 +1339,8 @@ export function classify(student: Student, rules: Rules, today?: string): {
         ...rest,
         twoPrograms: true as const,
         tier: 'provisional',
+        // The hold, for a candidate's line too (review of the fix, 2026-10-29: it named none).
+        transferHold: [`from one of ${programs.length === 2 ? 'two' : programs.length} earlier graduate programs on your record (${list}) — the DGS decides how their allowances combine`, ...(cc.transferHold !== undefined ? [cc.transferHold] : [])].join('; '),
         // The count the §5.2 card names (#59: three programs read "one of two").
         approvalPending: `from one of ${programs.length === 2 ? 'two' : programs.length} earlier graduate programs on your record (${list}) — §5.2 states a transfer allowance after a finished program and one after an unfinished one, but not how two programs’ allowances combine, so the DGS decides${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
       };
@@ -1823,6 +1901,24 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // non-CSE allowances, exactly as for the same course taken in the program.
   // A course the sheet does not list is counted provisionally and sent for
   // review, as any unlisted Notre Dame course is (never guess).
+  // …but with a Notre Dame bachelor's and no award term set, a Notre Dame
+  // course from before the Ph.D. may be the bachelor's (a 4+1's senior year)
+  // as well as the MSCSE's, and only the award term tells — so the line asks
+  // for it, as without the MSCSE (review of the fix, 2026-10-29; batch 6 (h)).
+  if (
+    program === 'phd' &&
+    isNotreDameInstitution(c.institution) &&
+    student.ndMasters !== undefined &&
+    student.bachelorsAwarded === undefined &&
+    c.degreeLevel !== 'bachelors' &&
+    (student.background?.bachelors === 'nd-cse' || student.background?.bachelors === 'nd-other' || student.integratedBsMs === true)
+  ) {
+    return {
+      ...extBase,
+      notTransferCredit: true,
+      ineligibleReason: `not counted yet — set the semester your bachelor’s degree was awarded, under Your standing: your Notre Dame MSCSE’s courses count toward the Ph.D., and coursework from before the bachelor’s counts only if the bachelor’s did not use it, so this page cannot tell which courses those are until it knows when you graduated${coreNote}`,
+    };
+  }
   if (program === 'phd' && isNotreDameInstitution(c.institution) && student.ndMasters !== undefined) {
     const shape = rule ? priorNdShape(c.courseId, rule, program, c.dgsApproved === true) : undefined;
     const isProject = (shape !== undefined && !('ineligibleReason' in shape) && shape.pool === 'project') || rule?.courseType === 'project' || isMsProjectCourse(c.courseId);
@@ -1935,17 +2031,20 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // outside the Ph.D.'s window is held for the DGS, never refused.
   const mscseStart = ownMscseStart(student);
   const windowFrom = mscseStart !== undefined && compareTerm(mscseStart, entry) < 0 ? mscseStart : entry;
-  const windowStartUnknown =
-    windowYears !== undefined && program === 'phd' && student.ndMasters !== undefined && mscseStart === undefined && compareTerm(c.term, shiftTermYears(entry, -windowYears)) < 0;
   // Academic Code §4.6 criterion 3: "within a five-year period prior to
   // admission to a graduate degree program at Notre Dame or while enrolled in
   // a graduate degree program at Notre Dame". From the MSCSE admission the
   // window runs to the MSCSE's end; a course after that and more than five
   // years before the Ph.D. is neither (credit-transfer review 2026-10-28, #6:
   // the window had no upper bound, so such a course counted and was submitted).
-  const mscseEnd = windowFrom !== entry ? ownMscseEnd(student) : undefined;
+  // The end is known from the award term even when no MSCSE course dates the
+  // start (review of the fix, 2026-10-29).
+  const mscseEnd = program === 'phd' && student.ndMasters !== undefined ? ownMscseEnd(student) : undefined;
   const inPhdWindow = windowYears === undefined || compareTerm(c.term, shiftTermYears(entry, -windowYears)) >= 0;
   const afterMscse = mscseEnd !== undefined && compareTerm(c.term, mscseEnd) > 0 && !inPhdWindow;
+  // The MSCSE start unknown: a course outside the Ph.D.'s window — and not
+  // after the MSCSE ended — is held for the DGS, never refused (P3-prior-programs-4 (b)).
+  const windowStartUnknown = windowYears !== undefined && program === 'phd' && student.ndMasters !== undefined && mscseStart === undefined && !inPhdWindow && !afterMscse;
   if (windowYears !== undefined && !windowStartUnknown && (compareTerm(c.term, shiftTermYears(windowFrom, -windowYears)) < 0 || afterMscse)) {
     return {
       ...extBase,
@@ -2018,8 +2117,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // elsewhere while enrolled in it: the window counts from the MSCSE
   // admission, so the advance approval does too (credit-transfer review
   // 2026-10-28, #39 — it counted outright and went to the Grad Admin).
-  const duringMscse = mscseStart !== undefined && compareTerm(c.term, mscseStart) >= 0 && (mscseEnd === undefined || compareTerm(c.term, mscseEnd) <= 0);
-  const afterAdmission = !fromNd && (compareTerm(c.term, entry) >= 0 || duringMscse);
+  const afterAdmission = !fromNd && takenAfterAdmission(student, entry, c.term);
   // — no earlier graduate program at all (DGS 2026-10-03: "route such courses
   //   to DGS review"): the Code's §4.6 names an allowance for an unfinished
   //   program and for a completed one, and nothing for graduate courses taken
@@ -2053,7 +2151,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
         ]
       : []),
     ...(passFail ? [`graded S (pass/fail), which cannot show the ${transferFloor} that §5.2 requires — the DGS decides whether it transfers`] : []),
-    ...(afterAdmission ? [`taken ${termLabel(c.term)}, after you entered — a course taken elsewhere after admission needs the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14); the DGS confirms it was approved`] : []),
+    ...(afterAdmission ? [`taken ${termLabel(c.term)}, ${compareTerm(c.term, entry) >= 0 ? 'after you entered' : 'while you were enrolled in your Notre Dame MSCSE'} — a course taken elsewhere after admission needs the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14); the DGS confirms it was approved`] : []),
   ];
   // A university with no ExternalCourses row has no credit system on
   // record, so its credits are shown as the transcript prints them. Say
@@ -2110,13 +2208,17 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // §5.2 card does (policy review round 3, P3-import-5).
   // The conferral semester named, or the window said closed (P3-import-4 (b)).
   const window = conferralWindow(student, env.today);
+  // A course with no final grade yet waits for it before it is sent (credit-
+  // transfer review 2026-10-28, #19) — said inside each branch that sends it,
+  // never in front of "recorded" (review of the fix, 2026-10-29).
+  const noGradeYet = grade === 'IP' ? 'once its final grade (B or better, §5.2) is in, ' : '';
   const processWhen = transferRecordedFor(student, c)
     ? 'recorded by the Grad Admin, as you ticked under Approvals (§5.2)'
     : window.closed !== undefined
-      ? transferWindowClosedText(window.closed)
+      ? `${grade === 'IP' ? 'no final grade yet (§5.2 needs a B or better); ' : ''}${transferWindowClosedText(window.closed)}`
       : firstSemesterDone
-        ? `send the Grad Admin the processing request to have it recorded — ${window.before} (§5.2)`
-        : `send the Grad Admin the processing request once your first semester is complete — the Graduate School considers transfer requests only then, and ${window.before} (§5.2)`;
+        ? `${noGradeYet}send the Grad Admin the processing request to have it recorded — ${window.before} (§5.2)`
+        : `${noGradeYet}send the Grad Admin the processing request once your first semester is complete — the Graduate School considers transfer requests only then, and ${window.before} (§5.2)`;
   return {
     ...extBase,
     reviewed,
@@ -2136,9 +2238,9 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     // No final grade yet (IP at the other university): counted as in progress,
     // and sent only once its grade — B or better — is in (credit-transfer
     // review 2026-10-28, #19; the Grad Admin request leaves it out until then).
-    ...(settled && approvedForAll && !attested ? { approvedNote: `approved by the DGS in the course rules — ${grade === 'IP' ? 'once its final grade (B or better, §5.2) is in, ' : ''}${processWhen}${coreNote}${projectNote}` } : {}),
+    ...(settled && approvedForAll && !attested ? { approvedNote: `approved by the DGS in the course rules — ${processWhen}${coreNote}${projectNote}` } : {}),
     // The tick settled a case-by-case course: say so, and what to do next (2026-10-03).
-    ...(settled && attested ? { approvedNote: `approved by the DGS for you, as you ticked on the course (the course rules say case by case; the DGS office holds the record) (§5.2) — ${grade === 'IP' ? 'once its final grade (B or better, §5.2) is in, ' : ''}${processWhen}${coreNote}${projectNote}` } : {}),
+    ...(settled && attested ? { approvedNote: `approved by the DGS for you, as you ticked on the course (the course rules say case by case; the DGS office holds the record) (§5.2) — ${processWhen}${coreNote}${projectNote}` } : {}),
     // §5.2 "pro-rata" for non-semester systems: the DGS's fixed value for
     // this course wins; otherwise a quarter university's credits are
     // converted from what the transcript prints (DGS 2026-09-08), which is
@@ -2513,7 +2615,11 @@ function classifyPriorNdUndergraduate(
   // School treats the CSE MSCSE and Ph.D. as one graduate program (DGS
   // 2026-10-03), so it counts in full; 'neither' was extra and counts in full.
   const sharedWithBachelors: CapId[] = bsShare === 'both' || (program === 'phd' && spent === 'bs') ? ['sharedbs'] : [];
-  const bsPhdAsked = program === 'phd' && spent === 'bs';
+  // Not once the six are spent on the bachelor's and the MSCSE: no ruling can
+  // make it count, so nothing is asked (the course is still refused by the
+  // allowance, its line says why; review of the fix, 2026-10-29 — the review
+  // request kept an item with nothing to decide).
+  const bsPhdAsked = program === 'phd' && spent === 'bs' && spentOnBachelorsAndMasters(student) < BS_SHARED_CREDITS_MAX;
   const bsPhdDoubleCount =
     bsPhdAsked && !ticked
       ? 'the Graduate School’s 2026-09-22 answer to the department allows the sharing, but the Academic Code does not yet state it (Academic Code §4.6 writes the six-credit exception for an integrated bachelor’s/master’s program) — the DGS confirms'
@@ -2569,6 +2675,14 @@ function classifyPriorNdUndergraduate(
  * School's two-degree allowance before the Ph.D. began (2026-09-22). Read off
  * the record, not the classification: the answer is the fact, whatever else
  * the course's line says. */
+/** A Ph.D. student's course the bachelor's degree used, once the six shared
+ * credits are spent on the bachelor's and the MSCSE: no ruling can make it
+ * count toward the Ph.D. too, so it is neither asked about nor given a box
+ * (#44; review of the fixes, 2026-10-29 — another approval on it still sent
+ * it to the DGS with nothing to decide). */
+export function bachelorsSixSpent(cc: ClassifiedCourse, student: Student): boolean {
+  return student.program === 'phd' && cc.caps.includes('sharedbs') && cc.entry.countedToward === 'bs' && spentOnBachelorsAndMasters(student) >= BS_SHARED_CREDITS_MAX;
+}
 export function spentOnBachelorsAndMasters(student: Student): number {
   return student.courses
     .filter((c) => c.origin === 'transfer' && c.countedToward === 'both' && isNotreDameInstitution(c.institution))
@@ -2715,7 +2829,11 @@ export function allocate(
    * 2026 (§4.2; Academic Code §3.8)" — each cap's own source (#71). */
   const overCaps = (ids: CapId[]): string => {
     const sections = [...new Set(ids.map((id) => capById.get(id)?.section ?? '').filter((x) => x !== ''))];
-    return `over the ${ids.map(capLabel).join(' and ')} (${sections.join('; ')})`;
+    // A CSE section after a Graduate School one names its document — bare, the
+    // page reads it as the Code's (citations.ts; "Academic Code §4.4; CSE
+    // §5.1" — review of the fixes, 2026-10-29).
+    const named = sections.map((s, i) => (i > 0 && s.startsWith('§') && !sections[i - 1]!.startsWith('§') ? `CSE ${s}` : s));
+    return `over the ${ids.map(capLabel).join(' and ')} (${named.join('; ')})`;
   };
 
   const take = (cc: ClassifiedCourse) => {
@@ -2782,7 +2900,15 @@ export function allocate(
     // limits it is named (#32).
     const transferCandidate =
       unreviewedCandidateOf(cc) || (heldYesOf(cc) && excluded > 0 && unknownCap === undefined)
-        ? { capLimit: capById.get('transfer')?.limit, ...(boundCaps.some((id) => id !== 'transfer') ? { limitedBy: boundCaps.filter((id) => id !== 'transfer').map(capLabel).join(' and ') } : {}) }
+        ? (() => {
+            const limiting = boundCaps.filter((id) => id !== 'transfer');
+            // The line cites the cap it names beside §5.2 — the nine is §4.2's
+            // (§3.2's) (review of the fixes, 2026-10-29): CSE sections first, so
+            // a bare one is not read as the Code's (citations.ts).
+            const named = [...limiting, ...(counted === 0 && cc.caps.includes('noncse') ? ['noncse' as CapId] : [])].map(section).filter((x) => x !== '');
+            const cites = [...new Set([...named.filter((x) => x.startsWith('§')), '§5.2', ...named.filter((x) => !x.startsWith('§'))])];
+            return { capLimit: capById.get('transfer')?.limit, ...(limiting.length > 0 ? { limitedBy: limiting.map(capLabel).join(' and ') } : {}), cites };
+          })()
         : undefined;
     allocations.set(cc, {
       course: cc,
@@ -2846,9 +2972,22 @@ export function allocate(
     // outside CSE, or a posted thesis, still losing its room).
     for (const cc of inTier.filter((c) => c.bsShare !== 'both' && c.ndPosting !== undefined)) take(cc);
     const rest = inTier.filter((c) => c.bsShare !== 'both' && c.ndPosting === undefined);
+    // …ranked by the credit, not the pool: on the Ph.D. a regular course
+    // outside CSE whose nine is already spent can only spill into the total,
+    // so it is total-only credit and does not take a semester's room ahead of
+    // a research course, whose credit also feeds the MSCSE along the way
+    // (review of the fix, 2026-10-29).
+    const spillOnly = (c: ClassifiedCourse): boolean => opts.nonCseSpillsToTotal === true && c.caps.includes('noncse') && (capRoom.get('noncse') ?? 0) <= 0;
     const feedsRequirement = (c: ClassifiedCourse): boolean =>
-      c.pool === 'regular' || c.pool === 'project' || (c.pool === 'seminar' && (opts.seminarCourseIds ?? []).includes(c.entry.courseId.toUpperCase().replace(/\s+/g, ' ')));
-    for (const group of [rest.filter(feedsRequirement), rest.filter((c) => !feedsRequirement(c))]) {
+      !spillOnly(c) && (c.pool === 'regular' || c.pool === 'project' || (c.pool === 'seminar' && (opts.seminarCourseIds ?? []).includes(c.entry.courseId.toUpperCase().replace(/\s+/g, ' '))));
+    // A non-CSE course the nine has no room left for adds to the 60 alone, so
+    // it waits behind total-only credit — the research course that also feeds
+    // the MSCSE along the way — for a semester's maximum. Read when it is
+    // taken: the nine is often spent by the same tier's courses (review of the
+    // fixes, 2026-10-29: spillOnly, read at the tier's start, missed them).
+    const waitsAsTotalOnly: ClassifiedCourse[] = [];
+    const nowSpillOnly = (c: ClassifiedCourse): boolean => opts.nonCseSpillsToTotal === true && c.caps.includes('noncse') && c.caps.some((id) => id !== 'noncse') && (capRoom.get('noncse') ?? 0) <= 0;
+    for (const [g, group] of [rest.filter(feedsRequirement), rest.filter((c) => !feedsRequirement(c))].entries()) {
       // Transfer courses fill the non-CSE allowance first (DGS 2026-10-28:
       // "Fill the transfer courses first … strictly better for the
       // students"): a transfer credit the allowance refuses counts toward
@@ -2861,8 +3000,12 @@ export function allocate(
       const singles = group.filter((c) => c.caps.length <= 1 && !yieldsToTransfer(c)).sort(precedence);
       const multis = group.filter((c) => c.caps.length > 1 || yieldsToTransfer(c)).sort(precedence);
       for (const cc of singles) take(cc);
-      for (const cc of bestMultiOrder(multis, new Map(capRoom), plan)) take(cc);
+      for (const cc of bestMultiOrder(multis, new Map(capRoom), plan)) {
+        if (g === 0 && nowSpillOnly(cc)) waitsAsTotalOnly.push(cc);
+        else take(cc);
+      }
     }
+    for (const cc of waitsAsTotalOnly) take(cc);
   }
 
   // Ineligible courses still get a line — pool === 'none', or a passed grade
@@ -2979,26 +3122,58 @@ function bestMultiOrder(
   type Score = { counted: number; total: number };
   const beats = (a: Score, b: Score): boolean => a.counted > b.counted || (a.counted === b.counted && a.total > b.total);
   const memo = new Map<string, { score: Score; order: number[] }>();
+  // A bound on the work, whatever the record (review of the fixes, 2026-10-29:
+  // an over-maximum semester with Notre Dame courses outside CSE beside many
+  // non-CSE transfers ran the browser out of memory). Past it, the rest of the
+  // search takes the courses in their order — the same verdict every time.
+  let work = 0;
+  const WORK_LIMIT = 200_000;
+  const inOrder = (remaining: number[], rooms: number[]): { score: Score; order: number[] } => {
+    let counted = 0;
+    let total = 0;
+    const r = rooms.slice();
+    for (const i of remaining) {
+      const cc = multis[i]!;
+      const t = plan(cc, (id) => r[capIndex.get(id)!]!);
+      for (const id of cc.caps) r[capIndex.get(id)!] = exactCredits(r[capIndex.get(id)!]! - (id === 'noncse' ? t.counted : t.counted + t.spill));
+      counted = exactCredits(counted + t.counted);
+      total = exactCredits(total + t.counted + t.spill);
+    }
+    return { score: { counted, total }, order: [...remaining] };
+  };
   /** The best score obtainable from `remaining`, and the first order that
    * gets there. `rooms` is this state's room per cap, in capIds order. */
-  const solve = (remaining: number[], rooms: number[]): { score: Score; order: number[] } => {
-    if (remaining.length === 0) return { score: { counted: 0, total: 0 }, order: [] };
+  const solve = (all: number[], rooms: number[]): { score: Score; order: number[] } => {
+    if (all.length === 0) return { score: { counted: 0, total: 0 }, order: [] };
+    // What each course would take at the rooms as they stand. Rooms only fall
+    // as courses are taken, and what a course counts — and counts anywhere, its
+    // spill included — never rises as they fall: a course that takes nothing
+    // now takes nothing later, so it goes last and out of the state.
+    const nowAll = all.map((i) => ({ i, t: plan(multis[i]!, (id) => rooms[capIndex.get(id)!]!) }));
+    const remaining = nowAll.filter((x) => x.t.counted + x.t.spill > 0).map((x) => x.i);
+    const idle = nowAll.filter((x) => x.t.counted + x.t.spill <= 0).map((x) => x.i);
+    if (remaining.length === 0) return { score: { counted: 0, total: 0 }, order: idle };
     const key = remaining.join(',') + '|' + rooms.join(',');
     const hit = memo.get(key);
-    if (hit) return hit;
+    if (hit) return { score: hit.score, order: [...hit.order, ...idle] };
+    if (++work > WORK_LIMIT) return (({ score, order }) => ({ score, order: [...order, ...idle] }))(inOrder(remaining, rooms));
     let best: { score: Score; order: number[] } | undefined;
-    // An optimistic ceiling for the whole state: what each remaining course
-    // would take at the rooms as they stand. Rooms only fall as courses are
-    // taken, and what a course counts — and counts anywhere, its spill
-    // included — never rises as they fall, so no order can beat the sum. (A
-    // ceiling of every course's full credits never pruned once an untransferred
-    // course could not spill, and twenty two-cap courses took seconds — review
-    // of the fix, 2026-10-29.)
-    const now = remaining.map((i) => plan(multis[i]!, (id) => rooms[capIndex.get(id)!]!));
-    const ceiling: Score = {
-      counted: exactCredits(now.reduce((sum, t) => sum + t.counted, 0)),
-      total: exactCredits(now.reduce((sum, t) => sum + t.counted + t.spill, 0)),
-    };
+    // An optimistic ceiling for the whole state: no order beats the sum of what
+    // each course takes now — nor, cap by cap, a cap's room plus what the
+    // courses NOT drawing on it take (a semester's maximum shared by every
+    // course was counted once per course, and the search never pruned —
+    // review of the fixes, 2026-10-29). (A ceiling of every course's full
+    // credits never pruned once an untransferred course could not spill, and
+    // twenty two-cap courses took seconds — review of the fix, 2026-10-29.)
+    const now = remaining.map((i) => ({ cc: multis[i]!, t: nowAll.find((x) => x.i === i)!.t }));
+    let counted = now.reduce((sum, x) => sum + x.t.counted, 0);
+    let total = now.reduce((sum, x) => sum + x.t.counted + x.t.spill, 0);
+    for (const [k, id] of capIds.entries()) {
+      const outside = now.filter((x) => !x.cc.caps.includes(id));
+      counted = Math.min(counted, rooms[k]! + outside.reduce((sum, x) => sum + x.t.counted, 0));
+      if (id !== 'noncse') total = Math.min(total, rooms[k]! + outside.reduce((sum, x) => sum + x.t.counted + x.t.spill, 0));
+    }
+    const ceiling: Score = { counted: exactCredits(counted), total: exactCredits(total) };
     for (let p = 0; p < remaining.length; p++) {
       if (best && !beats(ceiling, best.score)) break; // no child can strictly beat it
       const i = remaining[p]!;
@@ -3018,7 +3193,7 @@ function bestMultiOrder(
     // No room anywhere: every remaining course counts zero, in array order.
     const result = best ?? { score: { counted: 0, total: 0 }, order: [...remaining] };
     memo.set(key, result);
-    return result;
+    return { score: result.score, order: [...result.order, ...idle] };
   };
   const { order } = solve(
     multis.map((_, i) => i),
@@ -3067,7 +3242,7 @@ function buildExplanationText(
   counted: number,
   excluded: number,
   excludedReason?: string,
-  transferCandidate?: { capLimit: number | undefined; limitedBy?: string },
+  transferCandidate?: { capLimit: number | undefined; limitedBy?: string; cites?: string[] },
   /** A cap this course draws on whose limit the Parameters tab is missing:
    * amber and honest, never the red "over the cap" (2026-09-09). */
   capLimitMissing?: boolean,
@@ -3126,7 +3301,7 @@ function buildExplanationText(
     // held `yes` course (#60) says its whole pending reason, which carries
     // every hold on it.
     const heldYes = cc.transferable === 'yes' && cc.approvalPending !== undefined;
-    const holdNote = heldYes ? `; ${cc.approvalPending!.replace(/^waiting for the DGS — /, '')}` : cc.transferHold !== undefined && !cc.outsideIncomplete ? `; ${cc.transferHold}` : '';
+    const holdNote = heldYes ? `; ${cc.approvalPending!.replace(/^waiting for the DGS — /, '')}` : cc.transferHold !== undefined ? `; ${cc.transferHold}` : '';
     return {
       // A Notre Dame course here is one from the student's EARLIER Notre Dame
       // program (red-team wording table, 2026-09-12): say so, since its
@@ -3135,7 +3310,7 @@ function buildExplanationText(
       // (clarity review 2026-09-26): what is being waited for, then what the
       // course would do. "Candidate" is the DGS's word for it; the §5.2
       // paragraph above the group says it once.
-      explanation: `waiting for the DGS — ${fate}${isNotreDameInstitution(cc.entry.institution) ? ' — a course from your earlier Notre Dame program' : ''} (§5.2)${heldYes ? '' : incompleteNote}${holdNote}${creditNote}${heldYes ? '' : coreNote}`,
+      explanation: `waiting for the DGS — ${fate}${isNotreDameInstitution(cc.entry.institution) ? ' — a course from your earlier Notre Dame program' : ''} (${(transferCandidate.cites ?? ['§5.2']).join('; ')})${heldYes || cc.transferHold !== undefined ? '' : incompleteNote}${holdNote}${creditNote}${heldYes ? '' : coreNote}`,
       mark: 'pending',
     };
   }
@@ -3241,10 +3416,11 @@ function buildExplanationText(
       // Separated by five years or more (DGS 2026-10-06): the pending reason
       // says why it waits, so the line names only the degree.
       // The reason is said once, in the group's intro (UI review, 2026-10-08).
-      parts.push(cc.mscseSeparated ? 'counted toward your MSCSE' : 'counted toward your MSCSE — counts in full as Ph.D. coursework');
+      parts.push(cc.mscseSeparated ? 'counted toward your MSCSE' : `counted toward your MSCSE — ${cc.approvalPending !== undefined || cc.interrupted || cc.beforeReadmission ? '' : 'counts in full as '}Ph.D. coursework`);
     // "counts in full" only when nothing is still to be approved: a plain
     // bachelor's course or an unverified UG→GR move says why it waits instead
-    // (policy review 2026-10-03).
+    // (policy review 2026-10-03) — on the MSCSE lines above too, a lapsed
+    // Incomplete or any other hold (review of the fixes, 2026-10-29).
     else if (cc.entry.countedToward === 'neither' && cc.entry.origin === 'transfer') parts.push(cc.approvalPending ? 'not used by an earlier degree' : 'not used by an earlier degree — counts in full');
     // Separated by five years or more (DGS 2026-10-06): the pending reason
     // carries the MSCSE and the rule; only a project or thesis adds its pool.
@@ -3255,7 +3431,7 @@ function buildExplanationText(
     // once, in the group's intro above the rows (UI review, 2026-10-08).
     // Held by an interruption of five years or more, the line never promises
     // full credit beside "§5.5 forfeits it" (credit-transfer review 2026-10-28, #40).
-    else if (cc.ndMastersCredit) parts.push(`from your Notre Dame MSCSE — ${cc.interrupted || cc.beforeReadmission ? '' : 'counts in full as '}Ph.D. coursework (not transfer credit)${cc.pool === 'total_only' ? '; a master’s project or thesis is not a regular course, so it counts toward the total credits only (§4.2)' : ''}`);
+    else if (cc.ndMastersCredit) parts.push(`from your Notre Dame MSCSE — ${cc.approvalPending !== undefined || cc.interrupted || cc.beforeReadmission ? '' : 'counts in full as '}Ph.D. coursework (not transfer credit)${cc.pool === 'total_only' ? '; a master’s project or thesis is not a regular course, so it counts toward the total credits only (§4.2)' : ''}`);
     // The rule, not a computed date (policy review round 3, P3-cross-doc-4; DGS
     // 2026-10-06: "Apply the suggested handling"): the 30 days are the
     // student's and the 14 after them the instructor's (Academic Code §4.4:

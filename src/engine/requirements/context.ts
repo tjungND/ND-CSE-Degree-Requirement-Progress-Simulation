@@ -532,6 +532,9 @@ export function thresholdRow(args: {
   satisfiedBy?: string[];
   /** The courses whose credits will count here once passed/approved (2026-09-08). */
   pendingBy?: string[];
+  /** The same two lists by registration — `courseFeeds`. */
+  satisfiedByEntries?: number[];
+  pendingByEntries?: number[];
   /** Which courses contribute, and how much (2026-09-22) — `courseContributions`. */
   contributions?: Contribution[];
 }): RequirementResult {
@@ -577,6 +580,8 @@ export function thresholdRow(args: {
     citation: { section: args.section, quote: args.quote },
     ...(args.satisfiedBy && args.satisfiedBy.length > 0 ? { satisfiedBy: args.satisfiedBy } : {}),
     ...(args.pendingBy && args.pendingBy.length > 0 ? { pendingBy: args.pendingBy } : {}),
+    ...(args.satisfiedByEntries !== undefined ? { satisfiedByEntries: args.satisfiedByEntries } : {}),
+    ...(args.pendingByEntries !== undefined ? { pendingByEntries: args.pendingByEntries } : {}),
     ...(args.contributions && args.contributions.length > 0 ? { contributions: args.contributions } : {}),
   };
 }
@@ -591,13 +596,27 @@ export function countedCourseIds(ctx: Ctx, pick: (p: CourseAllocation) => number
     .map((p) => p.course.entry.courseId);
 }
 
+/** A credit row's courses both ways (`satisfiedBy`/`pendingBy` and their
+ * `…Entries`): by course id, which the request and the emails name, and by
+ * registration, which each course line reads (review of the fixes,
+ * 2026-10-29). The registrations are left out when one is not a row of the
+ * record — the course lines then read the ids, as before. */
+export function courseFeeds(ctx: Ctx, pick: (p: CourseAllocation) => number): { satisfiedBy: string[]; pendingBy: string[]; satisfiedByEntries?: number[]; pendingByEntries?: number[] } {
+  const live = ctx.alloc.perCourse.filter((p) => pick(p) > 0 && !p.course.superseded);
+  const done = live.filter((p) => p.course.tier === 'definite');
+  const waiting = live.filter((p) => p.course.tier !== 'definite');
+  const index = (p: CourseAllocation): number => ctx.student.courses.indexOf(p.course.entry);
+  const ids = { satisfiedBy: done.map((p) => p.course.entry.courseId), pendingBy: waiting.map((p) => p.course.entry.courseId) };
+  return live.every((p) => index(p) >= 0) ? { ...ids, satisfiedByEntries: done.map(index), pendingByEntries: waiting.map(index) } : ids;
+}
+
 /** Every course that contributes to a row by `pick`, with the credits it
  * contributes; a course still to be passed or approved is `pending` (DGS
  * 2026-09-22: the report folds these behind "Courses counted"). */
 export function courseContributions(ctx: Ctx, pick: (p: CourseAllocation) => number): Contribution[] {
   return ctx.alloc.perCourse
     .filter((p) => pick(p) > 0 && !p.course.superseded)
-    .map((p) => ({ courseId: p.course.entry.courseId, credits: pick(p), ...(p.course.tier === 'definite' ? {} : { pending: true as const, kind: p.course.tier === 'in_progress' ? ('in_progress' as const) : p.course.dualPlanOnly ? ('plan' as const) : ('waiting' as const) }) }));
+    .map((p) => ({ courseId: p.course.entry.courseId, ...(ctx.student.courses.indexOf(p.course.entry) >= 0 ? { entryIndex: ctx.student.courses.indexOf(p.course.entry) } : {}), credits: pick(p), ...(p.course.tier === 'definite' ? {} : { pending: true as const, kind: p.course.tier === 'in_progress' ? ('in_progress' as const) : p.course.dualPlanOnly ? ('plan' as const) : ('waiting' as const) }) }));
 }
 
 /** The same courses, but the ones still to be passed or approved (2026-09-08):

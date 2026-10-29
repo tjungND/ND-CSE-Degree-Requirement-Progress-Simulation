@@ -29,7 +29,7 @@ describe('two earlier graduate programs (P3-prior-programs-3)', () => {
     const { classified } = classify(s, rules, '2026-10-07');
     assert.deepEqual(classified.filter((c) => c.twoPrograms).map((c) => c.entry.courseId).sort(), ['CS 5004', 'CSCI 567']);
     assert.ok(classified.filter((c) => c.twoPrograms).every((c) => c.tier === 'provisional' && c.approvedNote === undefined));
-    const asks = coursesNeedingDgsReview(s, rules, '2026-10-07').filter((p) => /decide how the transfer allowances of my two earlier graduate programs combine/.test(JSON.stringify(p)));
+    const asks = coursesNeedingDgsReview(s, rules, '2026-10-07').filter((p) => /decide how the transfer allowances of my earlier graduate programs combine/.test(JSON.stringify(p)));
     assert.equal(asks.length, 2);
     assert.equal(audit(s, rules, '2026-10-07').requirements.find((r) => r.id === 'phd.transfer')!.status, 'needs_dgs_review');
   });

@@ -225,6 +225,19 @@ function metTable(r: RequirementResult, student: Student, countedEntries?: (cour
   const byId = new Map<string, CourseEntry>();
   for (const c of student.courses) byId.set(c.courseId, c);
   const ids = r.satisfiedBy ?? [];
+  // A credit row names its registrations: each listed row is the one it
+  // counted (review of the fixes, 2026-10-29 — a Purdue course numbered like
+  // a Notre Dame one printed under "9 regular credits at ND").
+  const own = r.satisfiedByEntries?.length === ids.length ? r.satisfiedByEntries.map((i) => student.courses[i]) : undefined;
+  if (ids.length > 0 && own !== undefined && own.every((c, k) => c !== undefined && c.courseId === ids[k])) {
+    const entries = own as CourseEntry[];
+    return {
+      heading,
+      columns: COURSE_COLUMNS,
+      rows: entries.map((c) => [c.courseId, c.title ?? '', formatCredits(c.credits), c.grade, termLabel(c.term), c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university')]),
+      entries,
+    };
+  }
   if (ids.length > 0 && ids.every((id) => byId.has(id))) {
     // The k-th time an id is listed is the k-th counted registration of it
     // (2026-10-11: CSE 68901 taken in two semesters printed one row twice).
@@ -346,7 +359,13 @@ function countedCourses(standing: StandingTable[], report: AuditReport, student:
       const linePart = report.courseLines.find((l) => l.entryIndex !== undefined && l.entryIndex === index)?.part;
       const capCounted = capFor(report, student, c) ?? (linePart !== undefined ? { counted: linePart.counted, restOver: linePart.rest } : undefined);
       const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c), capCounted, report.transferCap), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
-      if (!row.countsToward.includes(label)) row.countsToward.push(label);
+      // A row the course feeds with less than the credits cell prints — the
+      // nine sending the rest of a Notre Dame course to the 60 alone (review
+      // of the fixes, 2026-10-29) — says how much.
+      const printed = capCounted?.counted ?? classifiedOf(c)?.effectiveCredits ?? c.credits;
+      const amount = index >= 0 ? r?.contributions?.find((x) => x.entryIndex === index)?.credits : undefined;
+      const named = amount !== undefined && amount < printed - 1e-9 ? `${label}: ${formatCredits(amount)} of the ${formatCredits(printed)}` : label;
+      if (!row.countsToward.includes(named)) row.countsToward.push(named);
       out.set(key, row);
       termOf.set(key, c.term);
     }
@@ -374,6 +393,19 @@ function overCapText(cap: number | undefined, cutBy?: string, cutUnknown?: true)
 export function partReason(t: ProcessingTransfer, transferCap: number | undefined): string {
   if (t.cappedCredits === undefined) return '';
   return withoutCitations(`the rest ${t.cutBy ?? `over the ${transferCap !== undefined ? `${formatCredits(transferCap)}-credit ` : ''}transfer cap`}`);
+}
+/** The advisor email's transfer list (P3-emails-1): the courses the request
+ * still submits — not one ticked as recorded (review of the fixes,
+ * 2026-10-29: a recorded course was listed to send) — each with the part a cap
+ * admitted when a cap cut the rest (DGS 2026-10-27). */
+export function advisorTransferList(items: Pick<ProcessingItems, 'transfers' | 'transferCap'>): { courses: string[]; recorded: boolean } {
+  const unrecorded = items.transfers.filter((t) => t.recorded !== true);
+  return {
+    courses: unrecorded.map((t) =>
+      t.cappedCredits !== undefined ? `${t.courseId} (${formatCredits(t.cappedCredits)} of its ${formatCredits(t.ndCredits ?? t.credits)} ${(t.ndCredits ?? t.credits) === 1 ? 'credit' : 'credits'}; ${partReason(t, items.transferCap)})` : t.courseId,
+    ),
+    recorded: items.transfers.length > 0 && unrecorded.length === 0,
+  };
 }
 export function transferAmount(t: ProcessingTransfer): string {
   const whole = t.ndCredits ?? t.credits;

@@ -7,7 +7,7 @@
 // the dial and in the phone summary. Every "DGS" here is a bare token so the
 // page's ADGS rewrite applies on the M.S. tab.
 import { termLabel } from '../engine/term.ts';
-import type { AuditReport, CourseLine, Student } from '../engine/types.ts';
+import type { AuditReport, CourseLine, Student, Term } from '../engine/types.ts';
 import { completeBackground } from './background.ts';
 import { plural } from './email-html.ts'; // the one plural (W9, 2026-10-22): this file had a copy
 
@@ -39,9 +39,17 @@ export interface NextStepsInput {
   /** Courses the DGS still has to act on — the review card's list, split
    * (DGS 2026-09-27): not in the course rules yet (the DGS enters them),
    * or listed as case by case (the DGS decides for this student). */
-  review: { unlisted: number; caseByCase: number; /** Every course in it is earlier coursework (from before this program). */ earlierOnly?: boolean };
+  review: { unlisted: number; caseByCase: number; /** Every course in it is earlier coursework (from before this program). */ earlierOnly?: boolean; /** How many of them the DGS's answer makes a transfer the processing request submits (`decidesTransfer`). */ transfers?: number };
   /** Items the Grad Admin could process now — the processing request's count. */
   processingCount: number;
+  /** Transfer courses in that request still to submit — not ticked as
+   * recorded. The closed-window question is asked only when there is one
+   * (review of the fixes, 2026-10-29: a request carrying no transfer was
+   * said to ask about one). */
+  processingTransfers?: number;
+  /** The semester the student plans to graduate in, once it has begun —
+   * §5.2's window for a transfer request has closed (`conferralWindow`). */
+  transferWindowClosed?: Term;
   /** Courses waiting for the student's answer — which degrees they already
    * counted toward (UI review, 2026-10-08). */
   needsAnswer?: string[];
@@ -97,7 +105,9 @@ export const GRADUATION_SEMESTER_STEP =
 /** The reason after "not counted — ", cut at the first semicolon: the line's
  * own words, never re-summarised. */
 function reasonOf(line: CourseLine): string {
-  const m = /^not counted(?: yet)? — ([^;]+)/.exec(line.text);
+  // Up to the first semicolon outside brackets — "(Academic Code §2.3; CSE
+  // §4.2)" stays whole (review of the fixes, 2026-10-29).
+  const m = /^not counted(?: yet)? — ((?:[^;()]|\([^()]*\))+)/.exec(line.text);
   return m ? m[1]!.trim() : 'see its line';
 }
 
@@ -288,18 +298,27 @@ export function nextSteps(input: NextStepsInput): NextStep[] {
     steps.push({ key: 'thesis.topic', text: 'Propose your thesis topic, with your advisor’s approval, for the program’s approval (Academic Code §6.1.7).', href: '#milestones', covers: ['ms.thesis.topic'] });
   // 4. After the DGS answers; and what the Grad Admin can already record.
   const approvals = report.requirements.find((r) => r.id === 'shared.approvals');
-  if (!waitsForEarlierDegrees && (approvals?.status === 'needs_dgs_review' || reviewCount > 0)) steps.push({ key: 'review.wait', waiting: true, text: 'When the DGS answers, come back to this page — it reads the latest course rules — and tick the box next to each course approved for you; then send the processing request, and the Grad Admin records it.', href: '#grad-admin', covers: ['shared.approvals'] });
-  // Once the semester of graduation has begun, the step asks what the request,
+  // Once the semester of graduation has begun, the steps ask what the request,
   // the card, the warning and the email ask (credit-transfer review
-  // 2026-10-28, #73; P4-transfer-1).
-  const closed = report.transferRequestWindowClosed;
+  // 2026-10-28, #73; P4-transfer-1) — when the request they point to carries a
+  // transfer: one the DGS is still deciding, or one to submit now (review of
+  // the fixes, 2026-10-29).
+  const askWindow = (term: Term | undefined): string | undefined =>
+    term === undefined ? undefined : `it asks the Grad Admin whether your transfer request went to the Graduate School before ${termLabel(term)}; if it did not, ask the DGS.`;
+  const reviewWindow = (input.review.transfers ?? 0) > 0 ? askWindow(input.transferWindowClosed) : undefined;
+  if (!waitsForEarlierDegrees && (approvals?.status === 'needs_dgs_review' || reviewCount > 0))
+    steps.push({
+      key: 'review.wait',
+      waiting: true,
+      text: `When the DGS answers, come back to this page — it reads the latest course rules — and tick the box next to each course approved for you; then send the processing request${reviewWindow !== undefined ? ` — ${reviewWindow}` : ', and the Grad Admin records it.'}`,
+      href: '#grad-admin',
+      covers: ['shared.approvals'],
+    });
+  const processingWindow = (input.processingTransfers ?? 0) > 0 ? askWindow(report.transferRequestWindowClosed) : undefined;
   if (processingCount > 0)
     steps.push({
       key: 'processing.send',
-      text:
-        closed !== undefined
-          ? `Send the processing request (${plural(processingCount, 'item')}) — it asks the Grad Admin whether your transfer request went to the Graduate School before ${termLabel(closed)}; if it did not, ask the DGS.`
-          : `Send the processing request (${plural(processingCount, 'item')}) — the Grad Admin records it.`,
+      text: `Send the processing request (${plural(processingCount, 'item')}) — ${processingWindow ?? 'the Grad Admin records it.'}`,
       href: '#grad-admin',
     });
   // The master's candidacy application, once its conditions are in hand

@@ -5,11 +5,10 @@ import type { NotreDameNow } from '../data/clock.ts';
 import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { findExternalRule, isNotreDameInstitution } from '../data/external.ts';
 import { CORE_TITLE_RE } from '../engine/core-title.ts';
-import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, firstSemesterComplete, mscseSeparation, ndUndergraduateCounting, overMaxTerms, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
+import { BS_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, classify, conferralWindow, firstSemesterComplete, mscseSeparation, ndUndergraduateCounting, overMaxTerms, priorNdUndergraduateCanCount, type ClassifiedCourse } from '../engine/allocate.ts';
 import { ndPostingOf } from '../engine/nd-posting.ts';
 import { fullTimeRecordsFrom, summerFullTimeFloor } from '../engine/requirements/residency.ts';
 import { compareTerm, normalizeEntryTerm, seasonName, semesterSeq, termIndex, termLabel, termOfDate, termShort } from '../engine/term.ts';
-import { formatCredits } from '../engine/credits.ts';
 import type { Rules } from '../data/types.ts';
 import { coursesNeedingDgsReviewFor } from '../engine/review.ts';
 import { shortName } from '../engine/short-names.ts';
@@ -72,7 +71,7 @@ import { sectionRef } from './section-ref.ts';
 import { createFocusKeeper } from './focus-keeper.ts';
 import { type RefusedValues, applyRefusals, rangedNumber } from './refusals.ts';
 import { createToasts } from './toasts.ts';
-import { gradAdminRequest, partReason, processingItems } from './grad-admin-request.ts';
+import { advisorTransferList, gradAdminRequest, processingItems } from './grad-admin-request.ts';
 import { transferKey } from '../engine/transfer-recorded.ts';
 import { buildCombinedReviewRequest, reviewRequestCourses } from './review-request.ts'; // the DGS review request's builder — its own small module since W3 (2026-10-22), no longer the transcript parser's tail
 import { priorStudyLabel, programHistory } from './program-history.ts';
@@ -735,8 +734,10 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         report,
         student,
         needsAnswer,
-        review: { unlisted: pending.filter((p) => p.unlisted).length, caseByCase: pending.filter((p) => !p.unlisted).length, earlierOnly: pending.length > 0 && pending.every((p) => p.kind !== 'nd') },
+        review: { unlisted: pending.filter((p) => p.unlisted).length, caseByCase: pending.filter((p) => !p.unlisted).length, earlierOnly: pending.length > 0 && pending.every((p) => p.kind !== 'nd'), transfers: pending.filter((p) => p.decidesTransfer === true).length },
         processingCount: gaRequest.items.count,
+        processingTransfers: gaRequest.items.transfers.filter((t) => t.recorded !== true).length,
+        ...(conferralWindow(student, todayIso()).closed !== undefined ? { transferWindowClosed: conferralWindow(student, todayIso()).closed } : {}),
         simulation: simulation !== undefined, // the sending steps fold into one "nothing is sent" step (D7)
       }),
       nearest: nearestDeadline(report),
@@ -3141,10 +3142,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           // of a course that transfers when a cap cut the rest (DGS 2026-10-27).
           // The render's own classification, read against today (credit-
           // transfer review 2026-10-28, #53: a lapsed Incomplete was listed).
-          const toProcess = processingItems(report, student, rules, classify(student, rules, todayIso()).classified);
-          const transfers = toProcess.transfers.map((t) =>
-            t.cappedCredits !== undefined ? `${t.courseId} (${formatCredits(t.cappedCredits)} of its ${formatCredits(t.ndCredits ?? t.credits)} ${(t.ndCredits ?? t.credits) === 1 ? 'credit' : 'credits'}; ${partReason(t, toProcess.transferCap)})` : t.courseId,
-          );
+          const toProcess = advisorTransferList(processingItems(report, student, rules, classify(student, rules, todayIso()).classified));
           const built = advisorSummary(report, {
             todayIso: todayIso(),
             entryTerm: termLabel(student.entryTerm),
@@ -3153,7 +3151,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             advisors,
             history: programHistory(student),
             unofficialNote: unofficialTranscriptNote(student.courses, 'advisor', deciderTitle(student.program)),
-            transfers: { courses: transfers, recorded: toProcess.transfers.length > 0 && toProcess.transfers.every((t) => t.recorded === true), firstSemesterDone: firstSemesterComplete(student, normalizeEntryTerm(student.entryTerm).term, todayIso()).done },
+            transfers: { ...toProcess, firstSemesterDone: firstSemesterComplete(student, normalizeEntryTerm(student.entryTerm).term, todayIso()).done },
             qualifierFrom: qualifierTransferTerm(),
             stamp: checkedWithLine(stamp),
             sources: sourcesLine(student),

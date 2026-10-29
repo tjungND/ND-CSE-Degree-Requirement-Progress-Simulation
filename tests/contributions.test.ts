@@ -18,9 +18,9 @@ describe('course contributions on credit rows (DGS 2026-09-22)', () => {
   const byId = (list: { courseId: string }[] | undefined) => [...(list ?? [])].sort((a, b) => a.courseId.localeCompare(b.courseId));
   it('the total-credit row names every counted course with its credits, and the in-progress one as pending', () => {
     assert.deepEqual(byId(row('phd.credits.total').contributions), [
-      { courseId: 'CSE 60111', credits: 3, pending: true, kind: 'in_progress' },
-      { courseId: 'CSE 60641', credits: 3 },
-      { courseId: 'CSE 63801', credits: 1 },
+      { courseId: 'CSE 60111', entryIndex: 2, credits: 3, pending: true, kind: 'in_progress' },
+      { courseId: 'CSE 60641', entryIndex: 0, credits: 3 },
+      { courseId: 'CSE 63801', entryIndex: 1, credits: 1 },
     ]);
   });
   it('the regular-course row leaves the seminar out', () => {
