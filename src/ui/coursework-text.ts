@@ -2,6 +2,8 @@
 // them (policy review round 5, item 36; DGS 2026-10-14): the §5.2 paragraph
 // above each earlier program's courses and the transfer-limit helpers it
 // shares with the card.
+import { transferRecordedFor } from '../engine/transfer-recorded.ts';
+import { isNotreDameInstitution } from '../data/external.ts';
 import type { Rules } from '../data/types.ts';
 import { BS_SHARED_CREDITS_MAX, conferralWindow, firstSemesterComplete, ownMscseStart, transferWindowClosedText } from '../engine/allocate.ts';
 import { compareTerm, normalizeEntryTerm, termLabel } from '../engine/term.ts';
@@ -66,7 +68,10 @@ export function transferRuleText(student: Student, rules: Rules, todayIso: strin
   const conferral = conferralWindow(student, todayIso);
   const firstSemester = firstSemesterComplete(student, entry, todayIso);
   const timing =
-    student.attestations.transferRecorded === true
+    // Every transfer on the record ticked as recorded (per transfer since
+    // the credit-transfer review, 2026-10-28, #31).
+    student.courses.some((c) => transferRecordedFor(student, c)) &&
+    student.courses.filter((c) => c.origin === 'transfer' && !isNotreDameInstitution(c.institution) && c.degreeLevel !== 'bachelors' && c.fromNdTranscript !== true).every((c) => transferRecordedFor(student, c))
       ? 'the Grad Admin recorded your transfer credit, as you ticked under Approvals (§5.2).'
       : conferral.closed !== undefined
         ? `${transferWindowClosedText(conferral.closed)}.`

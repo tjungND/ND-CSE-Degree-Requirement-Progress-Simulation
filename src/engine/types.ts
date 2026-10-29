@@ -305,6 +305,11 @@ export interface Attestations {
    * §5.2 row stays "approved by the DGS — Graduate School approval pending";
    * the credits themselves count as the DGS's `yes` or tick decided. */
   transferRecorded?: boolean;
+  /** The transfers that tick covers (transfer-recorded.ts `transferKey`): the
+   * ones the Grad Admin request asked to submit when it was ticked
+   * (credit-transfer review 2026-10-28, #31). Absent on a file ticked before
+   * — the tick then covers every transfer. */
+  transferRecordedCourses?: string[];
   /** The Graduate School extended the degree's time limit — dissertation
    * completion status after the eighth year (Academic Code §6.2.6.1: "for up
    * to two semesters"; DGS Handbook §3.19: one year, renewable once) or an

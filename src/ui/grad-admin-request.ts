@@ -28,6 +28,7 @@ import { termLabel } from '../engine/term.ts';
 import type { AuditReport, CourseEntry, Milestones, RequirementResult, Student } from '../engine/types.ts';
 import { shortenAfterFirst } from './first-mention.ts';
 import { decisionWording } from '../engine/decider.ts';
+import { transferRecordedFor } from '../engine/transfer-recorded.ts';
 import { gpaText } from '../engine/requirements/shared.ts';
 import { ACTION_HEADING, DO_NOT_MODIFY_MARKER, EDITABLE_MARKER, MARKER_DIVIDER, STUDENT_LINE, esc, htmlRequirementBlock, plural, programLabel, programShort, studentLineHtml, textRequirementBlock, unofficialTranscriptNote, type StandingColor, upperHeading } from './email-html.ts';
 import type { ProgramHistory } from './program-history.ts';
@@ -107,6 +108,10 @@ export interface ProcessingTransfer {
   /** `cutBy` is a limit missing from the rules sheet: the course cannot be
    * checked yet — not submitted, and not "over" anything. */
   cutUnknown?: true;
+  /** The student ticked this transfer as recorded by the Grad Admin
+   * (transfer-recorded.ts; credit-transfer review 2026-10-28, #31): it goes
+   * along for the record, not as an action. */
+  recorded?: true;
   /** Where the row came from (src/ui/provenance.ts; DGS 2026-10-11, item 6). */
   source: string;
   /** Read from a transcript marked unofficial: not for official processing
@@ -435,6 +440,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
       ...(cap?.restOver !== undefined && counted !== undefined && counted < whole ? { cutBy: cap.restOver, ...(cap.restUnknown ? { cutUnknown: true as const } : {}) } : {}),
       source: sourceOf(c.entry).text,
       ...(c.entry.fromUnofficialTranscript === true ? { unofficial: true as const } : {}),
+      ...(transferRecordedFor(student, c.entry) ? { recorded: true as const } : {}),
       overCap: counted === 0,
       };
     });
@@ -515,7 +521,9 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   // eForm) — policy review 2026-10-04, P1-page-text-ui-3; DGS: "Apply the
   // suggested fix". So the Grad Admin is asked to submit the request, and to
   // check the record only once the student says the Graduate School approved it.
-  const recorded = student.attestations.transferRecorded === true;
+  // Per transfer: one ticked as recorded goes along for the record; one
+  // decided after the tick is still to submit (#31).
+  const recorded = transfers.some((t) => t.recorded === true);
   // Once the semester the student graduates in has begun (P3-import-4 (b)):
   // §5.2 considers a request only before it, so the item asks whether it was
   // sent in time rather than asking for it now; the warning sends the student
@@ -530,7 +538,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   };
   // Transfer credit is a major event until the student ticks it recorded
   // (DGS 2026-10-15): then it goes along for the record, nothing to do.
-  const toProcess = recorded ? [] : transfers;
+  const toProcess = transfers.filter((t) => t.recorded !== true);
   // The numbered actions are the major events only (DGS 2026-10-15): a
   // milestone date and the standing are below the line, for the record —
   // each date is the evidence under its requirement — never an action.
@@ -632,7 +640,7 @@ export function gradAdminRequest(
   // (app.ts needsTranscripts).
   // The official transcript goes from the registrar straight to the Graduate
   // School (DGS 2026-10-04, P1-page-text-ui-5); the attached PDFs are copies.
-  const attached = items.transfers.length > 0 && student.attestations.transferRecorded !== true ? 'Attached: copies of my transcripts (PDF); the official transcripts go directly from each university’s registrar to the Graduate School' : '';
+  const attached = items.transfers.some((t) => t.recorded !== true) ? 'Attached: copies of my transcripts (PDF); the official transcripts go directly from each university’s registrar to the Graduate School' : '';
   // Which imported transcripts were unofficial copies (DGS 2026-10-03) —
   // not for official processing (DGS 2026-10-16).
   const unofficial = unofficialTranscriptNote(student.courses, 'gradAdmin');
@@ -680,14 +688,17 @@ export function gradAdminRequest(
   if ((report.staffChecks ?? []).length > 0) {
     sections.push({ heading: 'Please check before processing', lines: report.staffChecks! });
   }
-  const pre = items.transfers.filter((t) => t.state === 'pre-approved');
-  const approved = items.transfers.filter((t) => t.state === 'approved');
+  const pre = items.transfers.filter((t) => t.state === 'pre-approved' && t.recorded !== true);
+  const approved = items.transfers.filter((t) => t.state === 'approved' && t.recorded !== true);
   // Recommended by the DGS, approved by the Graduate School (2026-10-04,
   // P1-page-text-ui-3): the sections say which step is asked for.
-  if (student.attestations.transferRecorded === true && items.transfers.length > 0) {
-    // Nothing to do: on the record, as the student ticked — for the record (DGS 2026-10-15).
-    sections.push({ heading: 'Transfer credit the Graduate School approved (§5.2) — on my record, as I ticked', columns: TRANSFER_COLUMNS, table: items.transfers.map(transferRow) });
-  } else {
+  // Nothing to do for those ticked as recorded: on the record, as the
+  // student ticked — for the record (DGS 2026-10-15); the rest are still to
+  // submit (#31).
+  const recordedTransfers = items.transfers.filter((t) => t.recorded === true);
+  if (recordedTransfers.length > 0)
+    sections.push({ heading: 'Transfer credit the Graduate School approved (§5.2) — on my record, as I ticked', columns: TRANSFER_COLUMNS, table: recordedTransfers.map(transferRow) });
+  if (items.transfers.some((t) => t.recorded !== true)) {
     // Once the semester of graduation has begun the window has closed, and the
     // action above asks whether the request was sent in time; the heading says
     // the same (policy review round 4, P4-transfer-1; DGS 2026-10-12).

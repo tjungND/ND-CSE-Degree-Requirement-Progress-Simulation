@@ -1,0 +1,67 @@
+{
+  "name": "phd-held-candidate-line-names-its-hold",
+  "description": "Credit-transfer review 2026-10-28 (#72): a case-by-case Purdue course graded S, which cannot show §5.2’s B. Its line read only “waiting for the DGS — would count … if approved (§5.2)”, the same with its box ticked — the hold, which no tick releases, was named on the §5.2 card and in the review request but not on the line. The line names it now.",
+  "today": "2026-10-29",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 52500",
+          "course_title": "CS 52500",
+          "transferable_PhD": "dgs_approval",
+          "transferable_MSCSE": "dgs_approval",
+          "is_cse": "yes"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 52500",
+        "title": "CS 52500",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters",
+        "dgsApproved": true
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "needs_dgs_review"
+    }
+  },
+  "expectCourseLines": {
+    "CS 52500": [
+      "if approved (§5.2); graded S (pass/fail), which cannot show the B that §5.2 requires"
+    ]
+  }
+}

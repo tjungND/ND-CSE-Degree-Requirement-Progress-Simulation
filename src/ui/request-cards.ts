@@ -199,7 +199,8 @@ export function askGradAdminCard(args: RequestCardArgs, built: ReturnType<typeof
   // appear only when a transfer is in it (trim review 2026-09-18, P-45).
   // …and only while that credit is still to submit: transfer credit the
   // student ticked as recorded goes along for the record (DGS 2026-10-15).
-  const needsTranscripts = built.items.transfers.length > 0 && student.attestations.transferRecorded !== true;
+  // (Per transfer since the credit-transfer review, 2026-10-28, #31.)
+  const needsTranscripts = built.items.transfers.some((t) => t.recorded !== true);
   // Transfer credit to submit from a transcript marked unofficial waits for
   // the official one (DGS 2026-10-16: "an unofficial transcript will not be
   // accepted for official processing").

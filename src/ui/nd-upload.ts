@@ -27,7 +27,7 @@ import { earlierDegreesState, forgetReadings, mergeReading, readBackgroundFromNd
 import { el, inactiveButton, PREVIEW_OPEN_NOTE, SIMULATION_IMPORT_NOTE } from './dom.ts';
 import { plural } from './email-html.ts';
 import { ndRowLabel } from './external-upload.ts';
-import { postingOf, stripNdPostings, twinOfBlockRow } from './nd-posted.ts';
+import { markPosted, postingOf, stripNdPostings, twinOfBlockRow } from './nd-posted.ts';
 import { BROWSER_TOO_OLD_FOR_PDFS, browserTooOldForPdfs } from './pdf-support.ts';
 import { deriveNdMasters, derivePriorMs, hasPriorGraduateStudy, priorNdDegreeLevel, reclassifyNotreDameCourses } from './prior-nd.ts';
 import type { RefusedValues } from './refusals.ts';
@@ -852,7 +852,7 @@ function applyNdPreview(tp: NdPreview, args: NdUploadArgs): void {
     for (const c of tp.courses) {
       if (c.origin !== 'transfer') continue;
       const twin = twinOfBlockRow(s, c);
-      if (twin && twin.ndPosted === undefined) twin.ndPosted = postingOf(c);
+      if (twin && twin.ndPosted === undefined) markPosted(twin, postingOf(c), s.entryTerm);
     }
     // A Notre Dame master's degree awarded BEFORE this program is
     // one the student already holds (DGS 2026-09-09) — §4.5's

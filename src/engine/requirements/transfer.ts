@@ -13,6 +13,7 @@ import type { DetailPart, RequirementResult, Status } from '../types.ts';
 import type { Ctx } from './context.ts';
 import { conferralWindow, earlierTransferPrograms, firstSemesterComplete, outsideIncompleteNote, transferWindowClosedText } from '../allocate.ts';
 import { joinedDetail, missingParamDetail, countedCourseIds } from './context.ts';
+import { transferRecordedFor } from '../transfer-recorded.ts';
 
 /** The Parameters keys of the sheet-set caps (the non-CSE nine, the
  * below-60000 six) that a transfer course draws on and the sheet does not
@@ -168,7 +169,11 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // transfer course is such credit, nothing is left for the tick to confirm.
     const countedTransfers = transfers.filter((c) => !c.superseded && c.approvalPending === undefined && c.ineligibleReason === undefined);
     const onRecord = countedTransfers.filter((c) => c.ndPosting !== undefined);
-    const recorded = ctx.student.attestations.transferRecorded === true || (onRecord.length > 0 && onRecord.length === countedTransfers.length);
+    // Each counted transfer on the record or ticked as recorded — a transfer
+    // decided after the tick is not (credit-transfer review 2026-10-28, #31).
+    const recorded =
+      (countedTransfers.length === 0 && ctx.student.attestations.transferRecorded === true) ||
+      (countedTransfers.length > 0 && countedTransfers.every((c) => c.ndPosting !== undefined || transferRecordedFor(ctx.student, c.entry)));
     status = pending.length === 0
       ? counted > 0
         ? recorded

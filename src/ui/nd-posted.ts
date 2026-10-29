@@ -10,7 +10,8 @@
 // row carrying a mark turns back into the Notre Dame record's block row).
 // Pure functions over the record, so the rules have tests of their own.
 import { preferredTwin, sameTransferCourse } from '../engine/nd-posting.ts';
-import type { CourseEntry, NdPosting, Student } from '../engine/types.ts';
+import { compareTerm, normalizeEntryTerm } from '../engine/term.ts';
+import type { CourseEntry, NdPosting, Student, Term } from '../engine/types.ts';
 import type { ParsedCourse } from '../transcript/parse.ts';
 
 /** The acceptance a Notre Dame transfer-block row records. */
@@ -31,6 +32,19 @@ export function twinOfBlockRow(student: Pick<Student, 'courses'>, block: Pick<Pa
   // The attempt the Graduate School could have accepted, when the other
   // transcript lists the course twice (credit-transfer review 2026-10-28, #22).
   return preferredTwin(student.courses.filter((c) => c.fromNdTranscript !== true && sameTransferCourse(c, probe)));
+}
+
+/** The Notre Dame record's acceptance put on the other transcript's row of the
+ * course. A tick given before the posting answered the course's case-by-case
+ * verdict, not the posting's own question — posted before this program, or at
+ * a level the record does not show — so it goes, and the posting asks its
+ * question (round 5, item 29 (b): one tick never answers two questions;
+ * credit-transfer review 2026-10-28, #29). Once posted, the verdict no longer
+ * matters: posted credit counts as posted. */
+export function markPosted(twin: CourseEntry, posting: NdPosting, entryTerm: Term): void {
+  twin.ndPosted = posting;
+  const held = posting.level === undefined || compareTerm(posting.term, normalizeEntryTerm(entryTerm).term) < 0;
+  if (held && twin.dgsApproved === true) delete twin.dgsApproved;
 }
 
 /** The Notre Dame import's own block row that a course from another

@@ -1,6 +1,7 @@
 // The engine's only entry point: audit(student, rules, today) → AuditReport.
 // Pure by contract (CLAUDE.md): no DOM, no fetch, no Date.now() — "today" is an
 // argument so tests are deterministic.
+import { transferRecordedFor } from './transfer-recorded.ts';
 import { undergraduateGraduateCourseworkFlagFor } from './review.ts';
 import type { Rules } from '../data/types.ts';
 import { BS_SHARED_CREDITS_MAX, DUAL_DEGREE_SHARED_CREDITS_MAX, NON_DEGREE_CREDITS_MAX, allocate, classify, conferralWindow, levelOf, decidedCaseByCase, heldByRecord, longInterruptionReadmission, mscseSeparation, overMaxTerms, registrationCaps, spentOnBachelorsAndMasters, type CapSpec, type CourseMark } from './allocate.ts';
@@ -900,9 +901,9 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
   // request asks whether it was sent in time. No count or status changes —
   // the app cannot tell a late request from one still being processed.
   const transferWindow = conferralWindow(student, today);
-  const unrecordedTransfer =
-    student.attestations.transferRecorded !== true &&
-    classified.some((cc) => !cc.superseded && cc.ineligibleReason === undefined && cc.caps.includes('transfer') && cc.ndPosting === undefined && cc.tier !== 'provisional');
+  const unrecordedTransfer = classified.some(
+    (cc) => !cc.superseded && cc.ineligibleReason === undefined && cc.caps.includes('transfer') && cc.ndPosting === undefined && cc.tier !== 'provisional' && !transferRecordedFor(student, cc.entry),
+  );
   const transferRequestWindowClosed = transferWindow.closed !== undefined && unrecordedTransfer ? transferWindow.closed : undefined;
   if (transferRequestWindowClosed !== undefined)
     warnings.push(`You plan to graduate in ${termLabel(transferRequestWindowClosed)}; §5.2 considers a transfer request only before that semester — if yours was not sent before then, ask the DGS.`);

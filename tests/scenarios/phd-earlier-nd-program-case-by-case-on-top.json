@@ -1,0 +1,106 @@
+{
+  "name": "phd-earlier-nd-program-case-by-case-on-top",
+  "description": "Credit-transfer review 2026-10-28 (#30): an earlier Notre Dame master’s in another department; CSE 40567 and a mathematics course are case by case in the Courses tab (§4.2’s approval for a course below the 60000 level and one outside CSE), and the ExternalCourses tab says `yes` to their transfer. They counted outright and were submitted, an unticked approval box beside “counts”. The Courses-tab verdict still applies on top (2026-09-09): they wait for the advisor’s and the DGS’s approval until ticked.",
+  "today": "2026-10-29",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "courses": [
+        {
+          "course_id": "CSE 60876",
+          "set": {
+            "course_id": "MATH 60850",
+            "title": "Math Methods",
+            "counts_toward_phd": "dgs_approval",
+            "category_group": "",
+            "core_area": ""
+          }
+        }
+      ],
+      "external": [
+        {
+          "university": "UNIVERSITY OF NOTRE DAME",
+          "course_id": "CSE 40567",
+          "course_title": "CSE 40567",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes"
+        },
+        {
+          "university": "UNIVERSITY OF NOTRE DAME",
+          "course_id": "MATH 60850",
+          "course_title": "MATH 60850",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 40567",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "MATH 60850",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-other",
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "0 of 24 credits complete. 6 pending review/approval."
+      ]
+    },
+    "phd.cap.fourk": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "needs approval: CSE 40567"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 40567": [
+      "waiting for the DGS",
+      "needs advisor + DGS approval per the course rules"
+    ]
+  }
+}

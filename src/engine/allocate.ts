@@ -18,6 +18,7 @@ import { GRADES, GRADE_POINTS, isAudit, isInProgress, isPassed, isWithdrawn, mee
 import type { Tier, TierSums } from './status.ts';
 import { ZERO_SUMS } from './status.ts';
 import { isEarlyStartCourse } from './early-start.ts';
+import { transferRecordedFor } from './transfer-recorded.ts';
 import { addDaysIso, addYearsIso, compareTerm, endOfTerm, normalizeEntryTerm, semesterNumber, shiftTermYears, startOfTerm, termIndex, termLabel, termOfDate } from './term.ts';
 import type { Attestations, CourseEntry, Grade, NdPosting, Program, Student, Term } from './types.ts';
 import { ndPostingOf, pairedBlockRows, sameTransferCourse, sameUniversity } from './nd-posting.ts';
@@ -143,6 +144,10 @@ export type Pool = 'regular' | 'project' | 'seminar' | 'total_only' | 'none';
 
 export interface ClassifiedCourse {
   entry: CourseEntry;
+  /** What a §5.2 hold the sheet cannot settle waits for (an S grade, taken
+   * after admission, no earlier program, …), for the line of a course still a
+   * candidate — it named no hold (credit-transfer review 2026-10-28, #72). */
+  transferHold?: string;
   rule?: RuleCourse;
   pool: Pool;
   ineligibleReason?: string; // when pool === 'none'
@@ -2079,7 +2084,13 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // the course is held for the DGS instead of counting as CSE by default.
   const cseUnknown = !fromNd && isCse === undefined;
   if (cseUnknown) heldForDgs.push('the course rules do not say whether this is a CSE course (no is_cse cell on its row, and no cse_subject_codes list) — §4.2’s nine-credit non-CSE allowance depends on it; the DGS decides');
-  const settled = (attested || approvedForAll) && heldForDgs.length === 0;
+  // An earlier Notre Dame course keeps its Courses-tab verdict on top of the
+  // transfer verdict (2026-09-09): a case-by-case row — §4.2's approval for a
+  // course below the 60000 level or outside CSE — still needs its tick,
+  // whatever ExternalCourses says (credit-transfer review 2026-10-28, #30: it
+  // counted outright and was submitted, an unticked box beside "counts").
+  const shapeApproval = shape !== undefined && !('ineligibleReason' in shape) ? shape.approvalPending : undefined;
+  const settled = (attested || approvedForAll) && heldForDgs.length === 0 && shapeApproval === undefined;
   // The Graduate School considers a transfer request "only after a student has
   // successfully completed one semester" (DGS Handbook §3.14) and the CSE
   // handbook adds "before the semester in which the graduate degree is
@@ -2093,7 +2104,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // §5.2 card does (policy review round 3, P3-import-5).
   // The conferral semester named, or the window said closed (P3-import-4 (b)).
   const window = conferralWindow(student, env.today);
-  const processWhen = student.attestations.transferRecorded === true
+  const processWhen = transferRecordedFor(student, c)
     ? 'recorded by the Grad Admin, as you ticked under Approvals (§5.2)'
     : window.closed !== undefined
       ? transferWindowClosedText(window.closed)
@@ -2112,6 +2123,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     ...(cseUnknown ? { cseUnknown: true as const } : {}),
     ...(creditsAsPrinted ? { creditsAsPrinted: true as const } : {}),
     ...(settled && attested ? { tickApproved: true as const } : {}),
+    ...(heldForDgs.length > 0 ? { transferHold: heldForDgs.join('; ') } : {}),
     pool: transferPool,
     caps: ['transfer', ...(shape?.caps ?? []), ...nonCseCap],
     tier: tierFor(grade, !settled),
@@ -2131,7 +2143,9 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
       : {}),
     approvalPending: settled
       ? undefined
-      : heldForDgs.length > 0
+      : shapeApproval !== undefined && heldForDgs.length === 0 && (attested || approvedForAll)
+        ? `waiting for the DGS — ${shapeApproval} (${program === 'mscse' ? '§3.2' : '§4.2'})${coreNote}${projectNote}`
+        : heldForDgs.length > 0
         ? `waiting for the DGS — ${heldForDgs.join('; ')}${attested || approvedForAll ? '' : needsApproval(transferable) ? '; the course rules also say case by case (§5.2)' : external ? '' : fromNd && rule !== undefined ? '; no transfer decision recorded yet — send the review request so the DGS can enter it' : '; not in the course rules yet — send the review request so the DGS can enter it'}${coreNote}${projectNote}`
         : // `dgs_approval` / `adgs_approval` (DGS 2026-09-08, split by
           // program 2026-09-09): the sheet has looked at the course and
@@ -3071,6 +3085,9 @@ function buildExplanationText(
     const creditNote = cc.creditsAsPrinted ? `; ${'credits as your transcript prints them — the DGS converts quarter, trimester or other units (§5.2 pro-rata)'}` : '';
     // An Incomplete from another university says so on its own line (P3-ac-4-1, 2026-10-05).
     const incompleteNote = cc.outsideIncomplete ? `; ${outsideIncompleteNote(cc.entry)} — the DGS decides once the grade is final` : '';
+    // Any other §5.2 hold, said as the transfer card and the review request
+    // say it (#72): a ticked box beside "if approved" was left unexplained.
+    const holdNote = cc.transferHold !== undefined && !cc.outsideIncomplete ? `; ${cc.transferHold}` : '';
     return {
       // A Notre Dame course here is one from the student's EARLIER Notre Dame
       // program (red-team wording table, 2026-09-12): say so, since its
@@ -3079,7 +3096,7 @@ function buildExplanationText(
       // (clarity review 2026-09-26): what is being waited for, then what the
       // course would do. "Candidate" is the DGS's word for it; the §5.2
       // paragraph above the group says it once.
-      explanation: `waiting for the DGS — ${fate}${isNotreDameInstitution(cc.entry.institution) ? ' — a course from your earlier Notre Dame program' : ''} (§5.2)${incompleteNote}${creditNote}${coreNote}`,
+      explanation: `waiting for the DGS — ${fate}${isNotreDameInstitution(cc.entry.institution) ? ' — a course from your earlier Notre Dame program' : ''} (§5.2)${incompleteNote}${holdNote}${creditNote}${coreNote}`,
       mark: 'pending',
     };
   }

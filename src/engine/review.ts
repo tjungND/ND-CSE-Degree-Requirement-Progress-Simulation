@@ -411,6 +411,13 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
       // transfer decision is an ExternalCourses row under UNIVERSITY OF NOTRE
       // DAME, asked for as a row — not an email reply the page cannot record.
       const transferRow = policyAsks.length === 0 && !bachelors && !c.ndMastersCredit && c.ineligibleReason === undefined && c.caps.includes('transfer') && c.external === undefined;
+      // "Case by case" only when the row says so: a blank verdict is a sheet
+      // question (list A), as for a course taken in the program, and an
+      // unlisted course's questions are its row's (credit-transfer review
+      // 2026-10-28, #26 — both were asked "the course rules say case by case").
+      const verdict = student.program === 'mscse' ? c.rule?.countsTowardMscse : c.rule?.countsTowardPhd;
+      const caseByCaseRow = needsCourseApproval(verdict);
+      const blankRow = c.rule !== undefined && verdict === undefined && needsApprovalOnTop;
       const recommendation =
         policyAsks.length > 0
           ? policyAsks
@@ -423,12 +430,12 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
                   // approval; an unlisted row's questions are the row's.
                   c.caps.includes('fourk')
                   ? ['approve it for me (the allowance for courses below the 60000 level)']
-                  : c.rule !== undefined
+                  : caseByCaseRow
                     ? ['approve it for me — the course rules say case by case']
                     : []
                 : []
               : c.ndMastersCredit
-                ? needsApprovalOnTop
+                ? needsApprovalOnTop && caseByCaseRow
                   ? ['approve it for me — the course rules say case by case']
                   : []
                 : c.ineligibleReason === undefined
@@ -440,7 +447,7 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
         ask: {
           needsRow: c.rule === undefined,
           replyNeeded: recommendation.length > 0,
-          decide: [...(c.rule === undefined ? [COUNTS, ...(qualifierApplies ? [CORE, GROUP] : [])] : []), ...recommendation],
+          decide: [...(c.rule === undefined ? [COUNTS, ...(qualifierApplies ? [CORE, GROUP] : [])] : blankRow && recommendation.length === 0 ? [`${COUNTS} — the row is blank`] : []), ...recommendation],
         },
         reason:
           `taken at Notre Dame before entering the program (${bachelors ? 'undergraduate' : c.ndMastersCredit ? 'MSCSE' : c.nonDegree ? 'non-degree' : 'graduate'}) — ` +

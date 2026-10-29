@@ -73,6 +73,7 @@ import { createFocusKeeper } from './focus-keeper.ts';
 import { type RefusedValues, applyRefusals, rangedNumber } from './refusals.ts';
 import { createToasts } from './toasts.ts';
 import { gradAdminRequest, partReason, processingItems } from './grad-admin-request.ts';
+import { transferKey } from '../engine/transfer-recorded.ts';
 import { buildCombinedReviewRequest, reviewRequestCourses } from './review-request.ts'; // the DGS review request's builder — its own small module since W3 (2026-10-22), no longer the transcript parser's tail
 import { priorStudyLabel, programHistory } from './program-history.ts';
 import { ndUndergraduateClause, notFinishedSentence, totalCreditsWord, transferRuleText } from './coursework-text.ts';
@@ -2967,7 +2968,22 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // the Grad Admin has processed the transfer (policy review 2026-10-03);
     // shown only while the record has transfer courses.
     if (classified.some((c) => c.entry.origin === 'transfer' && c.caps.includes('transfer'))) {
-      card.append(attestation('The Graduate School approved my transfer credit and the Grad Admin recorded it (§5.2)', a.transferRecorded, (v, s) => (s.attestations.transferRecorded = v)));
+      // The tick covers the transfers the processing request asks to submit
+      // now; one decided later is still to submit (credit-transfer review
+      // 2026-10-28, #31).
+      card.append(
+        attestation('The Graduate School approved my transfer credit and the Grad Admin recorded it (§5.2)', a.transferRecorded, (v, s) => {
+          s.attestations.transferRecorded = v;
+          if (v) {
+            const covered = new Set(s.attestations.transferRecordedCourses ?? []);
+            for (const t of processingItems(report, student, rules, classified).transfers) {
+              const entry = student.courses.find((c) => c.courseId === t.courseId && c.institution === t.institution && termLabel(c.term) === t.termText);
+              if (entry) covered.add(transferKey(entry));
+            }
+            s.attestations.transferRecordedCourses = [...covered];
+          } else delete s.attestations.transferRecordedCourses;
+        }),
+      );
     }
     // Academic Code §3.8's semester maximum (2026-10-03): a semester over it —
     // or one already ticked — offers the overload tick, behind a selector that
@@ -3123,7 +3139,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           const advisors = [student.milestones.advisorName, student.milestones.advisorName2].filter((n): n is string => !!n);
           // The processing request's transfer list (P3-emails-1), with the part
           // of a course that transfers when a cap cut the rest (DGS 2026-10-27).
-          const toProcess = processingItems(report, student, rules);
+          // The render's own classification, read against today (credit-
+          // transfer review 2026-10-28, #53: a lapsed Incomplete was listed).
+          const toProcess = processingItems(report, student, rules, classify(student, rules, todayIso()).classified);
           const transfers = toProcess.transfers.map((t) =>
             t.cappedCredits !== undefined ? `${t.courseId} (${formatCredits(t.cappedCredits)} of its ${formatCredits(t.ndCredits ?? t.credits)} ${(t.ndCredits ?? t.credits) === 1 ? 'credit' : 'credits'}; ${partReason(t, toProcess.transferCap)})` : t.courseId,
           );
@@ -3135,7 +3153,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             advisors,
             history: programHistory(student),
             unofficialNote: unofficialTranscriptNote(student.courses, 'advisor', deciderTitle(student.program)),
-            transfers: { courses: transfers, recorded: student.attestations.transferRecorded === true, firstSemesterDone: firstSemesterComplete(student, normalizeEntryTerm(student.entryTerm).term, todayIso()).done },
+            transfers: { courses: transfers, recorded: toProcess.transfers.length > 0 && toProcess.transfers.every((t) => t.recorded === true), firstSemesterDone: firstSemesterComplete(student, normalizeEntryTerm(student.entryTerm).term, todayIso()).done },
             qualifierFrom: qualifierTransferTerm(),
             stamp: checkedWithLine(stamp),
             sources: sourcesLine(student),

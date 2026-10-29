@@ -2,6 +2,8 @@
 // (DGS-requested, 2026-08-31) so a student can move between devices/browsers.
 // Nothing ever leaves the browser (CLAUDE.md).
 import type { SavedStamp } from './stamp.ts';
+import { canonicalCourseId } from '../data/assemble.ts';
+import { isNotreDameInstitution } from '../data/external.ts';
 import { formatDateLong } from '../data/rules-date.ts';
 import { COURSE_CREDITS_RANGE, GPA_RANGE, inRange, rangeRefusal } from '../engine/ranges.ts';
 import { IMPORTED_FIELDS, type CourseEntry, type Season, type Student, type Term } from '../engine/types.ts';
@@ -183,9 +185,13 @@ export type Refusal = { key: string; text: string; message: string };
  * ninety with it — and `loadLocal()` reads the same code, where throwing would
  * silently discard everything already on the device. */
 /** Files from before 2026-09-27 recorded the DGS's approvals as three
- * record-level boxes. Each ticked box is mapped onto every course it covered
- * (the engine honours the mark only on a course the sheet decides case by
- * case, so nothing counts that did not before) and the box is cleared. */
+ * record-level boxes. Each ticked box is mapped onto the courses the engine
+ * of that day honoured it for, and the box is cleared — so nothing counts
+ * that did not before (credit-transfer review 2026-10-28, #10: the mapping
+ * also ticked another university's courses, and own-MSCSE and 4+1 rows, that
+ * no box ever covered, and read only "CSE" written one way and "Notre Dame"
+ * spelled one way). Where a course cannot be told apart, nothing is ticked —
+ * as round 5 (item 29 (b)) did. */
 function migrateApprovalBoxes(d: { courses: Record<string, unknown>[]; attestations?: Record<string, unknown> }): void {
   const old = d.attestations;
   if (!old) return;
@@ -194,12 +200,18 @@ function migrateApprovalBoxes(d: { courses: Record<string, unknown>[]; attestati
   const transfer = old['transferApproved'] === true;
   if (!fourk && !noncse && !transfer) return;
   for (const c of d.courses) {
-    const id = String(c['courseId'] ?? '');
+    const id = canonicalCourseId(String(c['courseId'] ?? ''));
     const level = Number(/\b(\d)\d{4}\b/.exec(id)?.[1]);
-    const cse = /^CSE\b/.test(id);
-    const fromNd = c['origin'] === 'nd' || /notre dame/i.test(String(c['institution'] ?? ''));
-    const graduateTransfer = c['origin'] === 'transfer' && c['degreeLevel'] !== 'bachelors';
-    if ((fourk && fromNd && cse && (level === 4 || level === 5)) || (noncse && !cse) || (transfer && graduateTransfer)) c['dgsApproved'] = true;
+    const cse = id.split(' ')[0] === 'CSE';
+    const fromNd = c['origin'] === 'nd' || isNotreDameInstitution(String(c['institution'] ?? ''));
+    // The transfer box covered §5.2 candidates from another university.
+    const graduateTransfer = c['origin'] === 'transfer' && c['degreeLevel'] !== 'bachelors' && !fromNd;
+    // The non-CSE box cleared the Courses tab's case-by-case verdict of a
+    // Notre Dame course outside CSE, never another university's transfer —
+    // nor an undergraduate-career row, whose tick now also answers the
+    // questions only such a row asks (DGS 2026-10-08).
+    const undergraduateRow = c['degreeLevel'] === 'bachelors' || c['registeredLevel'] === 'undergraduate';
+    if ((fourk && fromNd && cse && (level === 4 || level === 5)) || (noncse && fromNd && !cse && !undergraduateRow) || (transfer && graduateTransfer)) c['dgsApproved'] = true;
   }
   delete old['dgsApproved4xxxx'];
   delete old['dgsApprovedNonCse'];
@@ -218,6 +230,9 @@ function migrateExtensionBox(attestations: Record<string, unknown> | undefined):
   const n = attestations['qualifierExtensionSemesters'];
   if (n !== undefined && !(typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 20)) delete attestations['qualifierExtensionSemesters'];
   if (attestations['transferRecorded'] !== undefined && typeof attestations['transferRecorded'] !== 'boolean') delete attestations['transferRecorded'];
+  // The transfers that tick covers (credit-transfer review 2026-10-28, #31).
+  const covered = attestations['transferRecordedCourses'];
+  if (covered !== undefined && !(Array.isArray(covered) && covered.every((k) => typeof k === 'string'))) delete attestations['transferRecordedCourses'];
   if (attestations['dualPlanApproved'] !== undefined && typeof attestations['dualPlanApproved'] !== 'boolean') delete attestations['dualPlanApproved'];
   for (const k of ['examsBeforeInterruptionStand', 'oceConfirmedByDgs', 'wantsMsAlongTheWay']) if (attestations[k] !== undefined && typeof attestations[k] !== 'boolean') delete attestations[k];
 }
