@@ -8,6 +8,7 @@ import { audit } from '../src/engine/audit.ts';
 import type { CourseEntry, Grade, Student } from '../src/engine/types.ts';
 import { OCE_FULL } from '../src/ui/first-mention.ts';
 import { gradAdminRequest, processingItems, selfCheckFileName } from '../src/ui/grad-admin-request.ts';
+import { whyFor } from '../src/ui/email-why.ts';
 import { buildRules, loadScenario } from './helpers.ts';
 import { ndCourse, phdStudent, transferCourse } from './helpers/student.ts';
 
@@ -41,8 +42,17 @@ describe('re-voicing for an email from the student', () => {
   it('“your transfer” reads “my transfer”', () => {
     const s = student({ background: { bachelors: 'elsewhere', graduate: 'nd-mscse-transfer', transferredTerm: { season: 'spring', year: 2027 } } });
     const built = build(s);
-    assert.match(built.text, /The first year is counted from my transfer into the Ph\.D\. in Spring 2027/);
+    // The transfer note is a { note } — folded behind "Relevant Policies" on
+    // the card — so the request's standing leaves it out (facts only, DGS
+    // 2026-10-28); the deadline it explains still counts from the transfer.
+    assert.match(built.text, /\n\[OVERDUE\] 2 credits of Research Seminar in year one\n    !! DEADLINE PASSED: Overdue — was due by the end of Fall 2027 — the first year \(approximate\)\n    Progress: CSE 63801: not yet\. CSE 63802: not yet\.\n/);
+    assert.doesNotMatch(built.text, /The first year is counted from/);
     assert.doesNotMatch(built.text, /\byour transfer\b/);
+    // The re-voicing itself, where the note is still said (whyFor with its
+    // notes — the advisor summary's).
+    const seminar = audit(s, rules, opts.todayIso).requirements.find((r) => r.id === 'phd.seminar')!;
+    assert.match(whyFor(seminar), /The first year is counted from my transfer into the Ph\.D\. in Spring 2027\./);
+    assert.doesNotMatch(whyFor(seminar), /\byour transfer\b/);
   });
 });
 
@@ -87,7 +97,8 @@ describe('processingItems', () => {
     assert.match(items.forTheRecord!, /^Also in the request, for the record: 2 milestone dates and your standing — \d+ requirements met, 2 overdue, \d+ in progress, 1 not started\.$/);
     assert.deepEqual(items.standing.map((t) => t.color).filter((c, i, a) => a.indexOf(c) === i), ['red', 'green', 'amber', 'grey'], 'overdue first, then the page’s colours (grey: the dissertation submission, "Not started", since 2026-10-03)');
     assert.ok(!items.standing.some((t) => /Transfer credit from prior/.test(t.heading)), 'the transfer row is the transfer sections’ business');
-    assert.match(items.lines[0]!, /^CS 50300 \(Purdue University\) — transfer credit recommended by the DGS in the course rules, to be submitted to the Graduate School \(§5\.2\)$/);
+    // The credits to transfer said outright (DGS 2026-10-28); the card's line keeps its §.
+    assert.match(items.lines[0]!, /^CS 50300 \(Purdue University\) — transfer 3 credits, recommended by the DGS in the course rules, to be submitted to the Graduate School \(§5\.2\)$/);
     // The DGS recommends, the Graduate School approves (policy review
     // 2026-10-04, P1-page-text-ui-3): once the student ticks it approved and
     // recorded, nothing is left to process — it goes along for the record
@@ -98,7 +109,8 @@ describe('processingItems', () => {
     assert.ok(!after.lines.some((l) => /CS 50300/.test(l)) && !after.actions.some((x) => /CS 50300/.test(x)));
     assert.match(after.forTheRecord!, /^Also in the request, for the record: 2 milestone dates, the transfer credit already on your record and your standing — /);
     const afterText = gradAdminRequest(audit(ticked, rules, opts.todayIso), ticked, rules, opts).text;
-    assert.match(afterText, /\nTRANSFER CREDIT THE GRADUATE SCHOOL APPROVED \(§5\.2\) — ON MY RECORD, AS I TICKED\n/);
+    // No handbook sections in the request (DGS 2026-10-28).
+    assert.match(afterText, /\nTRANSFER CREDIT THE GRADUATE SCHOOL APPROVED — ON MY RECORD, AS I TICKED\n/);
     assert.doesNotMatch(afterText, /Attached: copies of my transcripts/);
     const headings = items.met.map((t) => t.heading);
     assert.ok(headings.includes('Cumulative GPA of at least 3.0 (§2.2)'), JSON.stringify(headings));
@@ -152,49 +164,61 @@ describe('gradAdminRequest', () => {
     const built = build(student());
     assert.equal(built.subject, 'Processing request (degree self-check) — Ph.D., entered Fall 2026');
     assert.match(built.text, /^Subject: Processing request \(degree self-check\) — Ph\.D\., entered Fall 2026\n\nDear Grad Admin,\n\n/);
-    assert.match(built.text, /The DGS, in cc, decides eligibility; this request is only for processing what has already been decided\./);
+    // One sentence, then the standing as short bullets (DGS 2026-10-28).
+    assert.match(built.text, /\n\nCould you process the items below for my degree record\? The DGS \(in cc\) decides eligibility; this request is only for processing\.\n- Program: Ph\.D\., entered Fall 2026\n- Prior study: completed prior M\.S\. or Ph\.D\.\n- GPA: 3\.50\n- Courses: 11 with no recorded source \(entered before October 11, 2026\)\n- Milestone dates and ticked approvals: my own entries\n/);
+    assert.doesNotMatch(built.text, /My standing from the CSE degree self-check tool|My courses:/);
     // The same skeleton as the other emails (DGS 2026-09-28): the student
     // line, then the numbered actions above the sign-off.
     assert.match(built.text, /\n\nDear Grad Admin,\n\nStudent: \[your name, netID and NDID\]\n\nCould you process/);
     assert.match(
       built.text,
     // (4 met and 5 in progress since 2026-10-04: the OCE and the RCR training show inside admission to candidacy.)
-      /\nAttached: copies of my transcripts as PDFs\. The official transcripts are to be sent directly to the Graduate School by each university’s registrar\.\n\nACTION REQUESTED\n1\. Submit the Transfer of Credits request to the Graduate School for CS 50300 Operating Systems \(Purdue University, Fall 2024, 3 credits\) — recommended by the DGS in the course rules \(§5\.2\)\.\n2\. Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet \(§4\.4\)\.\n\nThank you!\n\n\(You may edit anything above this line\)\n-{10,}\n\(DO NOT MODIFY ANYTHING BELOW THIS LINE\)\n\nTRANSFER CREDIT TO SUBMIT TO THE GRADUATE SCHOOL/,
+    // The credits to transfer said outright, no handbook sections (DGS 2026-10-28).
+      /\n- Attached: copies of my transcripts \(PDF\); the official transcripts go directly from each university’s registrar to the Graduate School\n- Checked with the CSE degree self-check on May 1, 2029\n\nACTION REQUESTED\n1\. Submit the Transfer of Credits request to the Graduate School for CS 50300 Operating Systems \(Purdue University, Fall 2024\) — transfer 3 credits; recommended by the DGS in the course rules\.\n2\. Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet\.\n\nThank you!\n\n\(You may edit anything above this line\)\n-{10,}\n\(DO NOT MODIFY ANYTHING BELOW THIS LINE\)\n\nTRANSFER CREDIT TO SUBMIT TO THE GRADUATE SCHOOL — RECOMMENDED/,
     );
     // ONE course table, each course with every requirement it feeds (DGS 2026-09-28).
-    assert.match(built.text, /\nCOURSES COUNTED SO FAR\nCourse\tTitle\tCredits\tGrade\tTerm\tWhere\tCounts toward\tSource\nCS 50300\tOperating Systems\t3\tA\tFall 2024\tPurdue University\t60 total credits \(§4\.2\); 24 regular-course credits \(§4\.2\)\tsource not recorded \(entered before October 11, 2026\)\nCSE 60111\t\t3\tA\tFall 2026\tNotre Dame\t60 total credits \(§4\.2\); 24 regular-course credits \(§4\.2\); 9 regular credits at ND \(§4\.2\)\tsource not recorded \(entered before October 11, 2026\)\n/);
+    assert.match(built.text, /\nCOURSES COUNTED SO FAR\nCourse\tTitle\tCredits\tGrade\tTerm\tWhere\tCounts toward\tSource\nCS 50300\tOperating Systems\t3\tA\tFall 2024\tPurdue University\t60 total credits; 24 regular-course credits\tsource not recorded \(entered before October 11, 2026\)\nCSE 60111\t\t3\tA\tFall 2026\tNotre Dame\t60 total credits; 24 regular-course credits; 9 regular credits at ND\tsource not recorded \(entered before October 11, 2026\)\n/);
     assert.equal((built.text.match(/CSE 60876\t/g) ?? []).length, 1, 'a course prints once, not under every row it feeds');
-    assert.match(built.text, /\nTRANSFER CREDIT TO SUBMIT TO THE GRADUATE SCHOOL \(§5\.2\) — RECOMMENDED BY THE DGS IN THE COURSE RULES\nUniversity\tCourse\tTitle\tCredits\tND credits\tGrade\tTerm\tSource\nPurdue University\tCS 50300\tOperating Systems\t3\t\tA\tFall 2024\tsource not recorded \(entered before October 11, 2026\)\n/);
+    // "ND credits" always holds the credits to transfer (DGS 2026-10-28: never empty).
+    assert.match(built.text, /\nTRANSFER CREDIT TO SUBMIT TO THE GRADUATE SCHOOL — RECOMMENDED BY THE DGS IN THE COURSE RULES\nUniversity\tCourse\tTitle\tCredits\tND credits\tGrade\tTerm\tSource\nPurdue University\tCS 50300\tOperating Systems\t3\t3\tA\tFall 2024\tsource not recorded \(entered before October 11, 2026\)\n/);
     // The standing list (DGS 2026-09-28): a [WORD] tag per row in plain text.
     // The seminar row leads the overdue rows since 2026-10-04 (P1-sheet-9: the first year is a requirement).
-    assert.match(built.text, /\nMY STANDING, REQUIREMENT BY REQUIREMENT\n- \d+ requirements met, 2 overdue, \d+ in progress, 1 not started\.\n\n\[OVERDUE\] 2 credits of Research Seminar in year one \(§4\.2\)\n    !! DEADLINE PASSED: Overdue — was due by the end of Spring 2027 — the first year \(approximate\)\n/);
-    assert.match(built.text, /\n\[OVERDUE\] Qualifying examination — all components \(§4\.4\)\n    !! DEADLINE PASSED: Overdue — was due by the end of Spring 2028 \(approximate\)\n/);
+    assert.match(built.text, /\nMY STANDING, REQUIREMENT BY REQUIREMENT\n- \d+ requirements met, 2 overdue, \d+ in progress, 1 not started\.\n\n\[OVERDUE\] 2 credits of Research Seminar in year one\n    !! DEADLINE PASSED: Overdue — was due by the end of Spring 2027 — the first year \(approximate\)\n/);
+    assert.match(built.text, /\n\[OVERDUE\] Qualifying examination — all components\n    !! DEADLINE PASSED: Overdue — was due by the end of Spring 2028 \(approximate\)\n/);
     // Lines, not filler tables (DGS 2026-09-28): what meets a row, or its progress re-voiced for an email.
-    assert.match(built.text, /\n\[MET\] Cumulative GPA of at least 3\.0 \(§2\.2\)\n    Evidence: cumulative GPA 3\.50\.\n/);
-    assert.match(built.text, /\n\[MET\] Under continuous advisor supervision \(§2\.3\)\n    Evidence: advisor Prof\. Example; date 2026-09-10, as I entered it\.\n/);
+    assert.match(built.text, /\n\[MET\] Cumulative GPA of at least 3\.0\n    Evidence: cumulative GPA 3\.50\.\n/);
+    assert.match(built.text, /\n\[MET\] Under continuous advisor supervision\n    Evidence: advisor Prof\. Example; date 2026-09-10, as I entered it\.\n/);
     // The OCE inside admission to candidacy since 2026-10-04 (one card, DGS).
-    assert.match(built.text, /\n\[IN PROGRESS\] Admitted to doctoral candidacy \(Academic Code §6\.2\.9\)\n[^\n]*\n    Progress: OCE: passed 2029-04-01\./, 'the full OCE name went to the action list, its first mention');
-    assert.match(built.text, /\n\[MET\] At least 9 credits of regular courses taken at Notre Dame \(§4\.2\)\n    Evidence: CSE 60111, CSE 60641, [^\n]*CSE 60876 \(in the course table above\)\.\n/);
-    // The seminar row is Overdue since 2026-10-04 (P1-sheet-9); the second-person re-voicing is checked below with a transfer student.
-    assert.match(built.text, /\n\[OVERDUE\] 2 credits of Research Seminar in year one \(§4\.2\)\n    !! DEADLINE PASSED: Overdue — was due by the end of Spring 2027 — the first year \(approximate\)\n    Progress: CSE 63801: not yet\. CSE 63802: not yet\. §4\.2 requires both seminars in the first year of the program; talk to the DGS about taking the missing one\.\n/);
-    assert.match(built.text, /\n\[IN PROGRESS\] Dissertation defense passed \(§4\.7\)\n    Progress: Not yet passed[^\n]*\n/);
-    assert.match(built.text, /\n\[IN PROGRESS\] All requirements complete within 8 years \(§4\.3\)\n    Deadline: Due before Fall 2034 — 8 years after entry \(approximate\)\n\n/, 'a far deadline is stated, not highlighted; no empty progress table');
+    assert.match(built.text, /\n\[IN PROGRESS\] Admitted to doctoral candidacy\n[^\n]*\n    Progress: OCE: passed 2029-04-01\./, 'the full OCE name went to the action list, its first mention');
+    assert.match(built.text, /\n\[MET\] At least 9 credits of regular courses taken at Notre Dame\n    Evidence: CSE 60111, CSE 60641, [^\n]*CSE 60876 \(in the course table above\)\.\n/);
+    // The seminar row is Overdue since 2026-10-04 (P1-sheet-9); the second-person re-voicing is checked above with a transfer student.
+    // Its facts only (DGS 2026-10-28): the note ("§4.2 requires both seminars …") is the card's Relevant Policies.
+    assert.match(built.text, /\n\[OVERDUE\] 2 credits of Research Seminar in year one\n    !! DEADLINE PASSED: Overdue — was due by the end of Spring 2027 — the first year \(approximate\)\n    Progress: CSE 63801: not yet\. CSE 63802: not yet\.\n/);
+    assert.doesNotMatch(built.text, /requires both seminars in the first year|talk to the DGS about taking the missing one/);
+    assert.match(built.text, /\n\[IN PROGRESS\] Dissertation defense passed\n    Progress: Not yet passed\.\n/);
+    assert.doesNotMatch(built.text, /Three votes of four/, 'a note, left out of the standing');
+    assert.match(built.text, /\n\[IN PROGRESS\] All requirements complete within 8 years\n    Deadline: Due before Fall 2034 — 8 years after entry \(approximate\)\n\n/, 'a far deadline is stated, not highlighted; no empty progress table');
+    // No handbook section anywhere in the request (DGS 2026-10-28), in either flavour.
+    assert.doesNotMatch(built.text, /§/);
+    assert.doesNotMatch(built.html, /§/);
     assert.match(built.text, /\nGenerated by the CSE degree self-check tool \(alpha version under testing; informational only — every decision rests with the DGS\)\.\n$/);
     assert.ok(!/audit/i.test(built.text.replace(/cse-degree-audit-\w+\.json/g, '')), 'never the word "audit" (the saved file’s name aside)');
     assert.doesNotMatch(built.text, /CS 59000|CS 77777/);
     assert.equal(built.text.split(/oral candidacy exam \(oce\)/i).length - 1, 1, 'the full OCE name once');
     assert.match(built.html, /<p>Dear Grad Admin,<\/p>/);
     assert.match(built.html, /<strong>Attached: copies of my transcripts/);
+    // HTML: the intro a paragraph, the standing a list, the attachments in bold (DGS 2026-10-28).
+    assert.match(built.html, /<p>Could you process the items below for my degree record\? The DGS \(in cc\) decides eligibility; this request is only for processing\.<\/p><ul><li>Program: Ph\.D\., entered Fall 2026<\/li><li>Prior study: completed prior M\.S\. or Ph\.D\.<\/li><li>GPA: 3\.50<\/li><li>Courses: 11 with no recorded source \(entered before October 11, 2026\)<\/li><li>Milestone dates and ticked approvals: my own entries<\/li><li><strong>Attached: copies of my transcripts \(PDF\); the official transcripts go directly from each university’s registrar to the Graduate School<\/strong><\/li><li>Checked with the CSE degree self-check on May 1, 2029<\/li><\/ul><p><strong>Action requested<\/strong><\/p>/);
     assert.match(built.html, /<p><strong>\(You may edit anything above this line\)<\/strong><\/p><hr><p><strong>\(DO NOT MODIFY ANYTHING BELOW THIS LINE\)<\/strong><\/p>/);
     assert.match(built.html, /<table border="1" cellspacing="0" cellpadding="4"><tr><th>University<\/th><th>Course<\/th>/);
     assert.match(built.html, /<td>Purdue University<\/td><td>CS 50300<\/td><td>Operating Systems<\/td>/);
     // HTML: the page's pill colours inline (mail clients keep no stylesheet).
     // One bordered block per requirement (DGS 2026-09-28, evening), the evidence inside it.
-    assert.match(built.html, /<div style="[^"]*border-left:4px solid #10693f;background:#f7f8fa"><p style="margin:0"><span style="[^"]*background:#e4f2ea;color:#10693f">Met<\/span> <strong>Cumulative GPA of at least 3\.0<\/strong> \(§2\.2\)<\/p><p style="margin:4px 0 0">Evidence: cumulative GPA 3\.50\.<\/p><\/div>/);
+    assert.match(built.html, /<div style="[^"]*border-left:4px solid #10693f;background:#f7f8fa"><p style="margin:0"><span style="[^"]*background:#e4f2ea;color:#10693f">Met<\/span> <strong>Cumulative GPA of at least 3\.0<\/strong><\/p><p style="margin:4px 0 0">Evidence: cumulative GPA 3\.50\.<\/p><\/div>/);
     assert.match(built.html, /<p>Dear Grad Admin,<\/p><p>Student: <strong>\[your name, netID and NDID\]<\/strong><\/p>/);
     assert.match(built.html, /<p><strong>Action requested<\/strong><\/p><ol><li>Submit the Transfer of Credits request to the Graduate School for CS 50300/);
     assert.match(built.html, /<tr><th>Course<\/th><th>Title<\/th><th>Credits<\/th><th>Grade<\/th><th>Term<\/th><th>Where<\/th><th>Counts toward<\/th><th>Source<\/th><\/tr>/);
-    assert.match(built.html, /<span style="[^"]*background:#fbe9e7;color:#a81e14">Overdue<\/span> <strong>Qualifying examination[^<]*<\/strong> \(§4\.4\)<\/p><p style="[^"]*background:#fbe9e7[^"]*"><strong>Deadline passed:<\/strong> Overdue — was due by the end of Spring 2028 \(approximate\)<\/p>/);
+    assert.match(built.html, /<span style="[^"]*background:#fbe9e7;color:#a81e14">Overdue<\/span> <strong>Qualifying examination[^<]*<\/strong><\/p><p style="[^"]*background:#fbe9e7[^"]*"><strong>Deadline passed:<\/strong> Overdue — was due by the end of Spring 2028 \(approximate\)<\/p>/);
     assert.match(built.html, /<span style="[^"]*background:#fbeedd;color:#8e5108">In progress<\/span>/);
     assert.equal(selfCheckFileName('mscse', '2026-10-21'), 'cse-degree-audit-mscse-2026-10-21.json'); // the day checked in the name (U24)
   });
@@ -210,7 +234,7 @@ describe('gradAdminRequest', () => {
     assert.deepEqual(built.items.actions, [], 'nothing to ask the Grad Admin to do');
     // (the GPA row is met, so the standing list still follows the marker)
     assert.match(built.text, /\(DO NOT MODIFY ANYTHING BELOW THIS LINE\)\n\nMY STANDING, REQUIREMENT BY REQUIREMENT\n- 1 requirement met, 2 overdue, \d+ in progress, 3 not started\.\n\n\[OVERDUE\]/);
-    assert.match(built.text, /\n\[NOT STARTED\] Dissertation defense passed \(§4\.7\)\n/);
+    assert.match(built.text, /\n\[NOT STARTED\] Dissertation defense passed\n/);
     assert.match(built.html, /<span style="[^"]*background:#eef0f3;color:#5a6472">Not started<\/span>/);
   });
 });
@@ -223,7 +247,11 @@ describe('the master’s candidacy item past the MSCSE’s time limit (policy re
     const r = buildRules(sc.rules?.patch);
     const report = audit(sc.student, r, sc.today);
     const req = gradAdminRequest(report, sc.student, r, { ...opts, todayIso: sc.today });
-    assert.match(req.text, /Initiate my Application for Admission to Master’s Degree Candidacy \(Academic Code §6\.1\.6\) — the self-check shows a 3\.0 GPA and 30 credits, counting this semester’s \(DGS Handbook §3\.21\.1\) — the MSCSE’s time limit \(§3\.3\) passed at the start of Fall 2026 \(approximate\); an extension is the Graduate School’s to grant\./);
+    // The item (the page card's) keeps its sections; the request prints it
+    // without them (DGS 2026-10-28: "No need to refer to handbook sections").
+    assert.ok(req.items.actions.some((x) => /^Initiate my Application for Admission to Master’s Degree Candidacy \(Academic Code §6\.1\.6\) — the self-check shows a 3\.0 GPA and 30 credits, counting this semester’s \(DGS Handbook §3\.21\.1\) — the MSCSE’s time limit \(§3\.3\) passed at the start of Fall 2026 \(approximate\); an extension is the Graduate School’s to grant\.$/.test(x)), JSON.stringify(req.items.actions));
+    assert.match(req.text, /\n1\. Initiate my Application for Admission to Master’s Degree Candidacy — the self-check shows a 3\.0 GPA and 30 credits, counting this semester’s — the MSCSE’s time limit passed at the start of Fall 2026 \(approximate\); an extension is the Graduate School’s to grant\.\n/);
+    assert.doesNotMatch(req.text, /§/);
     assert.ok(actionItems(report).gradAdmin.some((x) => /Master’s Degree Candidacy .*time limit \(§3\.3\) passed at the start of Fall 2026/.test(x)));
   });
   // A record whose candidacy item IS printed (round 5, item 36: the old record
@@ -235,7 +263,7 @@ describe('the master’s candidacy item past the MSCSE’s time limit (policy re
     const { text, items } = gradAdminRequest(report, sc.student, r, opts);
     assert.equal(items.msCandidacyDue, true);
     assert.match(text, /Initiate my Application for Admission to Master’s Degree Candidacy/);
-    assert.doesNotMatch(text, /time limit \(§3\.3\) passed/);
+    assert.doesNotMatch(text, /time limit passed/);
   });
 });
 

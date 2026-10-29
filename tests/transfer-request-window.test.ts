@@ -75,7 +75,11 @@ describe('the advisor email and the request heading, by the same window (P4-tran
     const { text, items } = gradAdminRequest(r, student(), rules, { todayIso: '2026-10-05', entryTerm: 'Fall 2025', priorStudy: 'Completed prior M.S. or Ph.D.', gpa: 3.6 });
     // The text flavour upper-cases section headings.
     assert.doesNotMatch(text, /Transfer credit to submit to the Graduate School/i);
-    assert.match(text, /Transfer credit — was the request sent to the Graduate School before Fall 2026, the semester I plan to graduate in\? \(§5\.2\) — recommended by the (A)?DGS in the course rules/i);
-    assert.ok(items.lines.some((l) => /^COMPSCI 589 \(University of Massachusetts Amherst\) — transfer credit recommended by the (A)?DGS in the course rules — was the request sent before Fall 2026, the semester I plan to graduate in\? \(§5\.2\)/.test(l)), JSON.stringify(items.lines));
+    // No handbook sections in the request (DGS 2026-10-28).
+    assert.match(text, /\nTransfer credit — was the request sent to the Graduate School before Fall 2026, the semester I plan to graduate in\? — recommended by the (A)?DGS in the course rules\n/i);
+    // …and the action says how many credits (DGS 2026-10-28).
+    assert.match(text, /\n1\. Check whether the Transfer of Credits request was sent before Fall 2026, the semester I plan to graduate in, for COMPSCI 589 Machine Learning \(University of Massachusetts Amherst, Fall 2024\) — transfer 3 credits; recommended by the (A)?DGS in the course rules\.\n/);
+    // The card's line keeps its section.
+    assert.ok(items.lines.some((l) => /^COMPSCI 589 \(University of Massachusetts Amherst\) — transfer 3 credits, recommended by the (A)?DGS in the course rules — was the request sent before Fall 2026, the semester I plan to graduate in\? \(§5\.2\)$/.test(l)), JSON.stringify(items.lines));
   });
 });

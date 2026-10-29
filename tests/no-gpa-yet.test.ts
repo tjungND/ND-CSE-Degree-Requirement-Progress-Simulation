@@ -121,8 +121,9 @@ describe('the GPA card in the first semester, before any grade', () => {
     assert.match(email.text, /; no GPA yet\./);
     assert.doesNotMatch(email.text, /cumulative GPA not entered yet|Report my cumulative GPA/);
     const request = gradAdminRequest(report, s, rules, { todayIso: '2026-10-14', entryTerm: 'Fall 2026', priorStudy: 'No prior graduate degree' });
-    assert.match(request.text, /; no GPA yet\./);
-    assert.doesNotMatch(request.text, /cumulative GPA not entered yet/);
+    // The opening's GPA bullet (DGS 2026-10-28): "none yet", not "not entered yet".
+    assert.match(request.text, /\n- GPA: none yet\n/);
+    assert.doesNotMatch(request.text, /cumulative GPA not entered yet|GPA: not entered yet/);
     const gpaLine = request.items.standing.find((t) => /^Cumulative GPA/.test(t.heading));
     assert.deepEqual(gpaLine?.lines, ['Progress: No GPA yet.']);
   });

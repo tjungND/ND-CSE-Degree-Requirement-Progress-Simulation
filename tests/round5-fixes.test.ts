@@ -228,7 +228,7 @@ describe('11: a course the §5.2 cap counts in part', () => {
     const report = audit(s, r, '2025-03-01');
     const rows = gradAdminRequest(report, s, r, { todayIso: '2025-03-01', entryTerm: 'Fall 2024', priorStudy: 'x' }).items.courses;
     assert.equal(rows.find((c) => c.courseId === 'CS 50300')?.credits, '4');
-    assert.equal(rows.find((c) => c.courseId === 'CS 58000')?.credits, '2 of 4 (the rest over the §5.2 transfer cap)');
+    assert.equal(rows.find((c) => c.courseId === 'CS 58000')?.credits, '2 of 4 (the rest over the 6-credit transfer cap)');
   });
   // Verification, transfer-1: a cap other than §5.2's that cuts the course is
   // the one the table names, and the request does not call it over §5.2's.
@@ -264,7 +264,13 @@ describe('11: a course the §5.2 cap counts in part', () => {
     assert.equal(ma?.cappedCredits, 1);
     assert.match(ma?.cutBy ?? '', /^over the 3-credit non-CSE cap \(§3\.2\)$/);
     const action = req.items.actions.find((a) => a.includes('MA 52000')) ?? '';
-    assert.match(action, /\(Purdue University, Spring 2023, 3 credits — 1 of them to transfer, the rest over the 3-credit non-CSE cap \(§3\.2\)\) — recommended by the DGS in the course rules \(§5\.2\)\.$/);
+    // The credits to transfer said outright (DGS 2026-10-28: "explicitly state
+    // how many credits need to be transferred"); the cap that cut the rest is
+    // named in the course table, without its section in the request.
+    assert.match(action, /^Submit the Transfer of Credits request to the Graduate School for MA 52000 Analysis \(Purdue University, Spring 2023\) — transfer 1 of its 3 credits; recommended by the DGS in the course rules \(§5\.2\)\.$/);
+    assert.match(req.text, /\nPurdue University\tMA 52000\tAnalysis\t3\t1\tA\tSpring 2023\t/, 'ND credits: the 1 to transfer');
+    assert.match(req.text, /\nMA 52000\tAnalysis\t1 of 3 \(the rest over the 3-credit non-CSE cap\)\tA\tSpring 2023\t/);
+    assert.doesNotMatch(req.text, /§5\.2/);
   });
 });
 

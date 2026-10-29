@@ -52,7 +52,8 @@ describe('credit over the §5.2 cap is not submitted (P3-prior-programs-5)', () 
     assert.equal(items.transfers.reduce((n, x) => n + (x.cappedCredits ?? x.credits), 0), 9);
     assert.equal(items.transfersOverCap.length, 1);
     const { text } = gradAdminRequest(report, s, rules, { todayIso: '2026-03-01', entryTerm: 'Fall 2025', priorStudy: 'Completed prior M.S. or Ph.D.' });
-    assert.match(text, /Not submitted — over the §5\.2 transfer cap of 9 credits/i);
+    assert.match(text, /Not submitted — over the 9-credit transfer cap/i); // no section in the request (DGS 2026-10-28)
+    assert.doesNotMatch(text, /§/);
     assert.match(text, /the DGS may choose which courses fill it|the ADGS may choose which courses fill it/);
   });
 });

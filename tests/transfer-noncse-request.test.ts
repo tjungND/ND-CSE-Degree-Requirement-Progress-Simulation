@@ -85,16 +85,22 @@ describe('transfer credit past the non-CSE nine is not transferred (DGS 2026-10-
     ]);
     assert.equal(submitted.reduce((sum, [, c]) => sum + (c as number), 0), 17);
     const info = items.actions.find((a) => a.includes('INFO 6205')) ?? '';
-    assert.match(info, /\(Northeastern University, Spring 2025, 4 credits — 1 of them to transfer, the rest over the 9-credit non-CSE cap \(§4\.2\)\) — recommended by the DGS in the course rules \(§5\.2\)\.$/);
+    // The credits to transfer said outright (DGS 2026-10-28: "explicitly state
+    // how many credits need to be transferred"); the cap that cut the rest is
+    // named in the course table.
+    assert.match(info, /\(Northeastern University, Spring 2025\) — transfer 1 of its 4 credits; recommended by the DGS in the course rules \(§5\.2\)\.$/);
+    // Every action says its credits — the 17, not the full 24.
+    assert.deepEqual(items.actions.map((a) => / — transfer (\d+)(?: of its \d+)? credits?; /.exec(a)?.[1]), ['4', '4', '1', '4', '4']);
     assert.ok(!items.actions.some((a) => a.includes('TELE 5600')));
     assert.deepEqual(items.transfersOverCap.map((t) => [t.courseId, t.cutBy]), [['TELE 5600', 'over the 9-credit non-CSE cap (§4.2)']]);
   });
 
   it('the request prints a "Not submitted" section for TELE 5600 under the cap that cut it', () => {
     const { text } = gradAdminRequest(report, student, rules, { todayIso: TODAY, entryTerm: 'Fall 2026', priorStudy: 'x' });
-    assert.match(text, /^NOT SUBMITTED — OVER THE 9-CREDIT NON-CSE CAP \(§4\.2\)$/m);
+    // The cap named, without its section (DGS 2026-10-28).
+    assert.match(text, /^NOT SUBMITTED — OVER THE 9-CREDIT NON-CSE CAP$/m);
     assert.match(text, /TELE 5600 \(Northeastern University, Spring 2026\) — which courses fill it is the self-check’s choice, not a ruling; the DGS may choose\./);
-    assert.doesNotMatch(text, /NOT SUBMITTED — OVER THE §5\.2 TRANSFER CAP/);
+    assert.doesNotMatch(text, /NOT SUBMITTED — OVER THE \d+-CREDIT TRANSFER CAP/);
   });
 });
 
@@ -128,7 +134,8 @@ describe('around the change: credit already posted, a missing limit', () => {
     const req = gradAdminRequest(audit(s, r, TODAY), s, r, { todayIso: TODAY, entryTerm: 'Fall 2025', priorStudy: 'x' });
     assert.deepEqual(req.items.transfersOverCap.map((t) => [t.courseId, t.cutUnknown]), [['STAT 60200', true]]);
     assert.match(req.text, /^NOT SUBMITTED — CANNOT BE CHECKED YET$/m);
-    assert.match(req.text, /STAT 60200 \(Purdue University, Fall 2024\) — the rules sheet does not say what the .+ is, so this course cannot be counted yet — ask the DGS to fill it in \(§4\.2\)\./);
+    // No handbook section in the request (DGS 2026-10-28).
+    assert.match(req.text, /\n- STAT 60200 \(Purdue University, Fall 2024\) — the rules sheet does not say what the .+ is, so this course cannot be counted yet — ask the DGS to fill it in\.\n/);
     assert.doesNotMatch(req.text, /the DGS may choose/);
   });
 });

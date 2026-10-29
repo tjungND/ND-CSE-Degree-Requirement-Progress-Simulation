@@ -105,7 +105,8 @@ describe('the Application for Admission to Master’s Degree Candidacy (Academic
     assert.ok(!items.actions.some((a) => a.startsWith('Record the milestone')));
     assert.equal(items.count, 0);
     const text = gradAdminRequest(audit(s, rules, '2027-03-01'), s, rules, { todayIso: '2027-03-01', entryTerm: 'Fall 2025', priorStudy: 'None' }).text;
-    assert.match(text, /\nMILESTONE DATES, FOR THE RECORD\n(?:- [^\n]*\n)*- Application for Admission to Master’s Degree Candidacy submitted: 2027-02-20, as I entered it \(Academic Code §6\.1\.6\)\n/);
+    // No handbook section beside the date (DGS 2026-10-28).
+    assert.match(text, /\nMILESTONE DATES, FOR THE RECORD\n(?:- [^\n]*\n)*- Application for Admission to Master’s Degree Candidacy submitted: 2027-02-20, as I entered it\n/);
   });
   it('not before its conditions: short of 30 credits, or below a 3.0 GPA', () => {
     assert.equal(row(ms({ courses: REGULAR.slice(0, 4).map((id) => ndCourse(id, { term: fall(2025) })) }), 'shared.msCandidacy'), undefined);
@@ -124,8 +125,10 @@ describe('the Application for Admission to Master’s Degree Candidacy (Academic
     // P3-cse-3-2 (DGS 2026-10-07): "This app's checking is equivalent to the
     // DGS review" (§3.1) — met goes straight to the Grad Admin.
     assert.match(row(s, 'phd.msAlongTheWay')!.detail, /This self-check is the DGS’s review of the award \(§3\.1\), so with every requirement met the Grad Admin processes it with no further DGS step; it is in the processing request \(§4\.5\)/);
-    const { text } = gradAdminRequest(audit(s, rules, '2026-10-04'), s, rules, { todayIso: '2026-10-04', entryTerm: 'Fall 2024', priorStudy: 'None', gpa: 3.6 });
-    assert.match(text, /Process the MSCSE along the way — the self-check, which is the DGS’s review of the award \(§3\.1\), shows its requirements met \(§4\.5\)\./);
+    const { text, items } = gradAdminRequest(audit(s, rules, '2026-10-04'), s, rules, { todayIso: '2026-10-04', entryTerm: 'Fall 2024', priorStudy: 'None', gpa: 3.6 });
+    // The request prints it without handbook sections (DGS 2026-10-28); the item keeps them.
+    assert.match(text, /\n\d\. Process the MSCSE along the way — the self-check, which is the DGS’s review of the award, shows its requirements met\.\n/);
+    assert.ok(items.actions.includes('Process the MSCSE along the way — the self-check, which is the DGS’s review of the award (§3.1), shows its requirements met (§4.5).'), JSON.stringify(items.actions));
     const r = row(s, 'shared.msCandidacy')!;
     assert.equal(r.status, 'unmet');
     assert.match(r.title, /MSCSE along the way/);

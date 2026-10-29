@@ -29,7 +29,8 @@ describe('the Grad Admin request, major events only (DGS 2026-10-15)', () => {
     assert.deepEqual(items.actions, []);
     assert.match(items.forTheRecord!, /^Also in the request, for the record: 1 milestone date and your standing — /);
     // Sent along with a later request, the date is there, for the record.
-    assert.match(text, /\nMILESTONE DATES, FOR THE RECORD\n- Advisor identified: 2026-10-01, as I entered it \(§2\.3\)\n/);
+    // The date alone, no handbook section beside it (DGS 2026-10-28).
+    assert.match(text, /\nMILESTONE DATES, FOR THE RECORD\n- Advisor identified: 2026-10-01, as I entered it\n/);
     assert.doesNotMatch(text, /Record the milestone|Keep my standing/);
     const steps = nextSteps({ report: audit(s, rules, today), student: s, review: { unlisted: 0, caseByCase: 0 }, processingCount: items.count });
     assert.ok(!steps.some((st) => /^Send the processing request/.test(st.text)), 'no “send the processing request” step');
@@ -45,7 +46,14 @@ describe('the Grad Admin request, major events only (DGS 2026-10-15)', () => {
       const { items, text } = build(s);
       assert.equal(items.count, 0, program);
       assert.deepEqual(items.actions, [], program);
-      for (const m of items.milestones) assert.ok(text.includes(`: ${m.date}, as I entered it (${m.section})`), `${program}: ${m.label}`);
+      // Each date as I entered it, with no handbook section beside it (DGS
+      // 2026-10-28) — the raw item keeps its section; only the rendered
+      // request drops it.
+      for (const m of items.milestones) {
+        assert.ok(text.includes(`: ${m.date}, as I entered it\n`), `${program}: ${m.label}`);
+        assert.match(m.section, /§/, `${program}: ${m.label}`);
+      }
+      assert.doesNotMatch(text, /§/, program);
       assert.equal(items.milestones.length, Object.keys(dated).length, program);
     }
   });

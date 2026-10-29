@@ -1,6 +1,8 @@
 # Where things stand (kept current by every session — read after CLAUDE.md and docs/CLAUDE-HANDOFF.md)
 
-Last updated: 2026-10-28 (the two 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+Last updated: 2026-10-28 (the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+
+2026-10-28 (DGS: the Grad Admin request — credits to transfer, bullets, no sections; one commit): **the request says how many credits to transfer and drops every § reference.** The “ND credits” column always holds the credits to transfer and each action says “— transfer 1 of its 4 credits;” (`transferAmount`); the opening is a sentence and short bullets (W-CL579); `withoutCitations` strips every section as the text and HTML are drawn (the raw `items.actions`/`items.lines` keep theirs for the page card); the standing's Progress lines keep the facts only (`whyFor(r, false, true)`). W-CL579–W-CL581.
 
 2026-10-28 (DGS 2026-10-27: “fold these (under the OCE card) into one core knowledge requirement, just like the specialization”; one commit): **the candidacy card lists core knowledge as one condition** — “Core knowledge: done”, or “Core knowledge: 1 of 3 areas done — Algorithms: in progress (…), Computer Architecture: no course yet”, marked by the area furthest behind (W-CL577); an overdue area with a course in progress no longer reads “no course yet” (W-CL578). DECISIONS 2026-10-27; tests/condition-marks.test.ts.
 

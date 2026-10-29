@@ -42,7 +42,8 @@ describe('an I in the graduation semester (P3-dh-3.1-3.13-3)', () => {
   });
   it('the processing request says the same', () => {
     const { text } = gradAdminRequest(report, s, rules, { todayIso: TODAY, entryTerm: 'Fall 2025', priorStudy: 'None' });
-    assert.match(text, /I plan to graduate in Fall 2026, but CSE 60876 is graded I in that semester — the degree is conferred only with no I grades in it, so I will have the grade made final first \(DGS Handbook §3\.23\.1\)/);
+    // No handbook sections in the request (DGS 2026-10-28).
+    assert.match(text, /\nSEMESTER OF GRADUATION\n- I plan to graduate in Fall 2026, but CSE 60876 is graded I in that semester — the degree is conferred only with no I grades in it, so I will have the grade made final first\.\n/);
     assert.doesNotMatch(text, /I am registered for it/);
   });
   it('the I’s own line says it (the optional (3))', () => {

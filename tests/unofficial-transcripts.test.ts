@@ -101,8 +101,13 @@ describe('the three emails carry the warning', () => {
 
   it('Grad Admin request: after the "Attached:" line, in text and HTML', () => {
     const built = gradAdminRequest(report, student, rules, opts);
-    assert.ok(built.text.includes(`Attached: copies of my transcripts as PDFs. The official transcripts are to be sent directly to the Graduate School by each university’s registrar.\n${note}\n`), built.text.slice(0, 900));
-    assert.ok(built.html.includes(`<strong>${note.replace(/’/g, '’')}</strong>`) || built.html.includes(note.replace(/&/g, '&amp;')), 'HTML carries the note');
+    // Bullets since DGS 2026-10-28: the note is the one after "Attached:", its
+    // closing "(§5.2)." dropped with every handbook section.
+    const attached = 'Attached: copies of my transcripts (PDF); the official transcripts go directly from each university’s registrar to the Graduate School';
+    const bullet = note.replace(/ \(§5\.2\)\.$/, '');
+    assert.notEqual(bullet, note, 'the note ends with its section');
+    assert.ok(built.text.includes(`\n- ${attached}\n- ${bullet}\n`), built.text.slice(0, 900));
+    assert.ok(built.html.includes(`<li><strong>${attached}</strong></li><li><strong>${bullet}</strong></li>`), 'HTML carries the note, bold, after the Attached bullet');
   });
   it('Grad Admin request: the transfer from the unofficial copy is marked (DGS 2026-10-16)', () => {
     const built = gradAdminRequest(report, student, rules, opts);

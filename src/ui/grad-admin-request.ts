@@ -29,14 +29,15 @@ import type { AuditReport, CourseEntry, Milestones, RequirementResult, Student }
 import { shortenAfterFirst } from './first-mention.ts';
 import { decisionWording } from '../engine/decider.ts';
 import { gpaText } from '../engine/requirements/shared.ts';
-import { ACTION_HEADING, DO_NOT_MODIFY_MARKER, EDITABLE_MARKER, MARKER_DIVIDER, STUDENT_LINE, esc, htmlRequirementBlock, plural, programLabel, studentLineHtml, textRequirementBlock, unofficialTranscriptNote, type StandingColor, upperHeading } from './email-html.ts';
+import { ACTION_HEADING, DO_NOT_MODIFY_MARKER, EDITABLE_MARKER, MARKER_DIVIDER, STUDENT_LINE, esc, htmlRequirementBlock, plural, programLabel, programShort, studentLineHtml, textRequirementBlock, unofficialTranscriptNote, type StandingColor, upperHeading } from './email-html.ts';
 import type { ProgramHistory } from './program-history.ts';
 import { formatYmdLong } from './handbook.ts';
 import { allRequirementsMet } from './next-steps.ts';
 import { deadlineAlert, isNotStarted, standingColor, scoredRows, statusWord } from './report.ts';
 import { msLimitPassedClause, whyFor } from './email-why.ts'; // not advisor-summary.ts, which loads at its button's click (2026-10-26)
 import { compareTerm } from '../engine/term.ts';
-import { sourceOf, sourcesLine } from './provenance.ts';
+import { courseSources, hasOwnStatements, sourceOf } from './provenance.ts';
+import { withoutCitations } from './citations.ts';
 import { ndPostingOf } from '../engine/nd-posting.ts';
 
 export { selfCheckFileName } from './state.ts';
@@ -272,8 +273,9 @@ function standingTable(r: RequirementResult, student: Student, countedEntries?: 
   // whose only progress would be its status word says nothing.
   const courseIds = table.columns === COURSE_COLUMNS ? table.rows.map((row) => row[0]!) : [];
   // The detail re-voiced for an email from the student (advisor-summary.ts
-  // whyFor: "you" → "I", page instructions dropped).
-  const why = whyFor(r);
+  // whyFor: "you" → "I", page instructions dropped) — its facts only, as the
+  // card shows them first (DGS 2026-10-28: "there are too many texts").
+  const why = whyFor(r, false, true);
   const lines: string[] = [];
   if (courseIds.length > 0) lines.push(`${lead}: ${met ? '' : why ? `${why} ` : ''}${courseIds.join(', ')} (in the course table above).`);
   else if (table.columns[0] === 'What') {
@@ -296,14 +298,14 @@ function standingTable(r: RequirementResult, student: Student, countedEntries?: 
  * the Notre Dame record, which is finished credit, not "in progress", as the
  * coursework table prints it (policy review round 4, P4-transfer-6; DGS
  * 2026-10-12; DGS Handbook §3.14: credits are reported in semester hours). */
-function creditsCell(c: CourseEntry, cc: ClassifiedCourse | undefined, capCounted?: { counted: number; restOver?: string }): string {
+function creditsCell(c: CourseEntry, cc: ClassifiedCourse | undefined, capCounted?: { counted: number; restOver?: string }, transferCap?: number): string {
   const whole = cc?.effectiveCredits ?? c.credits;
   const converted = Math.abs(whole - c.credits) >= 1e-9 ? `${formatCredits(c.credits)}${cc?.convertedFrom ? ` ${cc.convertedFrom}` : ''} credits on the transcript` : '';
   // A course the §5.2 cap admits only in part prints the part it counts, as
   // the request's own totals do (round 5, item 11; DGS 2026-10-14) — naming
   // the cap that cut it, which is not always §5.2's (verification, transfer-1).
   if (capCounted !== undefined && capCounted.counted < whole - 1e-9)
-    return `${formatCredits(capCounted.counted)} of ${formatCredits(whole)} (${converted ? `${converted}; ` : ''}the rest ${capCounted.restOver ?? 'over the §5.2 transfer cap'})`;
+    return `${formatCredits(capCounted.counted)} of ${formatCredits(whole)} (${converted ? `${converted}; ` : ''}the rest ${capCounted.restOver ?? `over the ${transferCap !== undefined ? `${formatCredits(transferCap)}-credit ` : ''}transfer cap`})`;
   return converted ? `${formatCredits(whole)} (${converted})` : formatCredits(c.credits);
 }
 function gradeCell(c: CourseEntry): string {
@@ -323,7 +325,7 @@ function countedCourses(standing: StandingTable[], report: AuditReport, student:
     for (const c of t.courseEntries) {
       const key = `${c.courseId}|${c.institution ?? ''}|${termLabel(c.term)}`;
       const capCounted = report.transferCredits?.find((x) => x.courseId === c.courseId && x.institution === c.institution && compareTerm(x.term, c.term) === 0);
-      const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c), capCounted), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
+      const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c), capCounted, report.transferCap), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
       if (!row.countsToward.includes(label)) row.countsToward.push(label);
       out.set(key, row);
       termOf.set(key, c.term);
@@ -341,10 +343,16 @@ function overCapText(cap: number | undefined, cutBy?: string, cutUnknown?: true)
   if (cutUnknown) return `not submitted: ${cutBy}`;
   return `not submitted: ${cutBy ?? `over the §5.2 transfer cap${cap !== undefined ? ` of ${formatCredits(cap)} credits` : ''}`}; the DGS may choose which courses fill it`;
 }
-/** The part of a course that transfers, after its credits (W-CL271; W-CL571). */
-function partText(t: ProcessingTransfer): string {
-  if (t.cappedCredits === undefined) return '';
-  return t.cutBy !== undefined ? ` — ${formatCredits(t.cappedCredits)} of them to transfer, the rest ${t.cutBy}` : ` — ${formatCredits(t.cappedCredits)} of them within the §5.2 cap`;
+/** How many credits of a course to transfer, said outright (DGS 2026-10-28:
+ * "explicitly state how many credits need to be transferred"): "4 credits",
+ * "1 of its 4 credits", "3.3 Notre Dame credits (5 on the transcript)". The
+ * cap that cut the rest is named under "Courses counted so far". */
+export function transferAmount(t: ProcessingTransfer): string {
+  const whole = t.ndCredits ?? t.credits;
+  const n = t.cappedCredits ?? whole;
+  const converted = t.ndCredits !== undefined && t.ndCredits !== t.credits;
+  const unit = (n < whole ? whole : n) === 1 ? 'credit' : 'credits';
+  return `${formatCredits(n)}${n < whole ? ` of its ${formatCredits(whole)}` : ''} ${converted ? 'Notre Dame ' : ''}${unit}${converted ? ` (${formatCredits(t.credits)} on the transcript)` : ''}`;
 }
 
 /** `classified` — the engine's classification of the student's courses, when
@@ -498,7 +506,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   const actions = [
     ...toProcess.map(
       (t) =>
-        `${closedWindow !== undefined ? 'Check whether the Transfer of Credits request was sent before ' + termLabel(closedWindow) + ', the semester I plan to graduate in, for' : 'Submit the Transfer of Credits request to the Graduate School for'} ${t.courseId}${t.title ? ` ${t.title}` : ''} (${t.institution ?? 'another university'}, ${t.termText}, ${formatCredits(t.credits)} credits${t.ndCredits !== undefined && t.ndCredits !== t.credits ? ` = ${formatCredits(t.ndCredits)} Notre Dame credits` : ''}${partText(t)}) — ${recommendedBy(t)} (§5.2).`,
+        `${closedWindow !== undefined ? 'Check whether the Transfer of Credits request was sent before ' + termLabel(closedWindow) + ', the semester I plan to graduate in, for' : 'Submit the Transfer of Credits request to the Graduate School for'} ${t.courseId}${t.title ? ` ${t.title}` : ''} (${t.institution ?? 'another university'}, ${t.termText}) — transfer ${transferAmount(t)}; ${recommendedBy(t)} (§5.2).`,
     ),
     ...(qualifierFormDue ? ['Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet (§4.4).'] : []),
     ...(msAlongTheWay ? ['Process the MSCSE along the way — the self-check, which is the DGS’s review of the award (§3.1), shows its requirements met (§4.5).'] : []),
@@ -511,7 +519,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   const lines = [
     ...toProcess.map(
       (t) =>
-        `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — transfer credit ${closedWindow !== undefined ? `${recommendedBy(t)} — was the request sent before ${termLabel(closedWindow)}, the semester I plan to graduate in? (§5.2)` : `${recommendedBy(t)}, to be submitted to the Graduate School (§5.2)`}${t.cappedCredits !== undefined ? `, ${formatCredits(t.cappedCredits)} ${t.cappedCredits === 1 ? 'credit' : 'credits'} of it ${t.cutBy !== undefined ? `to transfer — the rest ${t.cutBy}` : 'within the cap'}` : ''}`,
+        `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — transfer ${transferAmount(t)}, ${closedWindow !== undefined ? `${recommendedBy(t)} — was the request sent before ${termLabel(closedWindow)}, the semester I plan to graduate in? (§5.2)` : `${recommendedBy(t)}, to be submitted to the Graduate School (§5.2)`}`,
     ),
     ...transfersOverCap.map((t) => `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — ${overCapText(report.transferCap, t.cutBy, t.cutUnknown)}`),
     ...(qualifierFormDue ? ['Qualifier completion form — not filed yet (§4.4)'] : []),
@@ -574,18 +582,16 @@ export function gradAdminRequest(
   classified?: readonly ClassifiedCourse[],
 ): { subject: string; text: string; html: string; items: ProcessingItems } {
   const items = processingItems(report, student, rules, classified);
+  // No handbook sections anywhere in the request (DGS 2026-10-28: "Grad Admin
+  // is familiar with the handbook. No need to refer to handbook sections").
+  const bare = (s: string): string => withoutCitations(s);
   const subject = `Processing request (degree self-check) — ${opts.history?.compact ?? `${programLabel(report.program).replace(/ \(Handbook §\d\)$/, '')}, entered ${opts.entryTerm}`}`;
   const asOf = formatYmdLong(opts.todayIso.slice(0, 10)) ?? opts.todayIso.slice(0, 10);
   // Mid-sentence, lower-cased — not an acronym ("MSCSE at Notre Dame …", P3-prior-programs-6).
   const prior = /^[A-Z]{2}/.test(opts.priorStudy) ? opts.priorStudy : opts.priorStudy.charAt(0).toLowerCase() + opts.priorStudy.slice(1);
   // "in cc" said once, in the intro; the closing's "The DGS is in cc." repeated
   // the Cc line the mail client shows (trim review 2026-09-18, P-12).
-  const intro =
-    'Could you process the items below for my degree record? The DGS, in cc, decides eligibility; this request is only for processing what has already been decided.';
-  const standing =
-    `My standing from the CSE degree self-check tool, as of ${asOf}: ${programLabel(report.program)}; entered ${opts.entryTerm}; ${prior}; ` +
-    // The first semester, no grade yet: no GPA exists (DGS 2026-10-14).
-    `${report.noGpaYet ? 'no GPA yet' : `cumulative GPA ${opts.gpa !== undefined ? gpaText(opts.gpa) : 'not entered yet'}`}.`;
+  const intro = 'Could you process the items below for my degree record? The DGS (in cc) decides eligibility; this request is only for processing.';
   // (The self-check file is no longer attached — DGS 2026-09-15.) The
   // "whichever apply" hedge instructs the student and lives in the dialog step
   // (trim review 2026-09-18, P-14). Asked for only when there is transfer
@@ -595,7 +601,7 @@ export function gradAdminRequest(
   // (app.ts needsTranscripts).
   // The official transcript goes from the registrar straight to the Graduate
   // School (DGS 2026-10-04, P1-page-text-ui-5); the attached PDFs are copies.
-  const attached = items.transfers.length > 0 && student.attestations.transferRecorded !== true ? 'Attached: copies of my transcripts as PDFs. The official transcripts are to be sent directly to the Graduate School by each university’s registrar.' : '';
+  const attached = items.transfers.length > 0 && student.attestations.transferRecorded !== true ? 'Attached: copies of my transcripts (PDF); the official transcripts go directly from each university’s registrar to the Graduate School' : '';
   // Which imported transcripts were unofficial copies (DGS 2026-10-03) —
   // not for official processing (DGS 2026-10-16).
   const unofficial = unofficialTranscriptNote(student.courses, 'gradAdmin');
@@ -603,10 +609,25 @@ export function gradAdminRequest(
   // "Informational only" is not true of the MSCSE along the way (P3-cse-3-2):
   // when the request carries that award, the closing says so (DGS 2026-10-11, item 6).
   const closing = items.msAlongTheWay
-    ? 'Generated by the CSE degree self-check tool (alpha version under testing; informational only — every decision rests with the DGS — except the MSCSE along the way above, for which this self-check is the DGS’s own review, §3.1).'
+    ? 'Generated by the CSE degree self-check tool (alpha version under testing; informational only — every decision rests with the DGS — except the MSCSE along the way above, for which this self-check is the DGS’s own review).'
     : 'Generated by the CSE degree self-check tool (alpha version under testing; informational only — every decision rests with the DGS).';
-  // Where the courses came from; milestone dates and ticks are the student's own (item 6).
-  const sources = sourcesLine(student) ?? '';
+  // The opening as short bullets (DGS 2026-10-28: "there are too many texts
+  // … turn [it] to short bullet points"): the standing, where the courses
+  // came from (item 6 — milestone dates and ticks are the student's own), the
+  // attachments; `strong` as before for what the Grad Admin must not miss.
+  const sources = courseSources(student);
+  const bullets: { text: string; strong?: true }[] = [
+    { text: `Program: ${programShort(report.program)}, entered ${opts.entryTerm}` },
+    ...(earlier ? [{ text: earlier.replace(/\.$/, '') }] : []),
+    { text: `Prior study: ${prior}` },
+    // The first semester, no grade yet: no GPA exists (DGS 2026-10-14).
+    { text: `GPA: ${report.noGpaYet ? 'none yet' : opts.gpa !== undefined ? gpaText(opts.gpa) : 'not entered yet'}` },
+    ...(sources !== undefined ? [{ text: `Courses: ${sources}` }] : []),
+    ...(hasOwnStatements(student) ? [{ text: 'Milestone dates and ticked approvals: my own entries' }] : []),
+    ...(attached ? [{ text: attached, strong: true as const }] : []),
+    ...(unofficial ? [{ text: unofficial.replace(/\.$/, ''), strong: true as const }] : []),
+    { text: `Checked with the CSE degree self-check on ${asOf}` },
+  ].map((b) => ({ ...b, text: bare(b.text) }));
 
   const TRANSFER_COLUMNS = ['University', 'Course', 'Title', 'Credits', 'ND credits', 'Grade', 'Term', 'Source'];
   const transferRow = (t: ProcessingTransfer): string[] => [
@@ -614,7 +635,8 @@ export function gradAdminRequest(
     t.courseId,
     t.title ?? '',
     String(t.credits),
-    `${t.ndCredits !== undefined ? formatCredits(t.ndCredits) : ''}${t.cappedCredits !== undefined ? `${t.ndCredits !== undefined ? ' — ' : ''}${formatCredits(t.cappedCredits)} ${t.cutBy !== undefined ? `to transfer (the rest ${t.cutBy})` : 'within the §5.2 cap'}` : ''}`,
+    // Always the credits to transfer (DGS 2026-10-28: "Do not leave them empty").
+    formatCredits(t.cappedCredits ?? t.ndCredits ?? t.credits),
     t.grade,
     t.termText,
     t.source,
@@ -662,7 +684,7 @@ export function gradAdminRequest(
     sections.push(
       cutBy === ''
         ? {
-            heading: `Not submitted — over the §5.2 transfer cap${items.transferCap !== undefined ? ` of ${formatCredits(items.transferCap)} credits` : ''}`,
+            heading: `Not submitted — over the ${items.transferCap !== undefined ? `${formatCredits(items.transferCap)}-credit ` : ''}transfer cap`,
             lines: [`${named} — the self-check filled the cap in term order, which is not a ruling; the DGS may choose which courses fill it.`],
           }
         : group[0]!.cutUnknown
@@ -767,17 +789,17 @@ export function gradAdminRequest(
   };
   const textSection = (s: Section): string =>
     (s.badge
-      ? `${textRequirementBlock({ word: s.badge.word, ...split(s.heading), lines: s.plain, deadline: s.deadline ? { text: s.deadline.text, alert: s.deadline.alert } : undefined })}\n`
-      : `${upperHeading(s.heading)}\n`) +
-    (s.table && s.columns ? `${s.table.length > 0 && s.badge ? '    ' : ''}${s.columns.join('\t')}\n${s.table.map((r) => `${s.badge ? '    ' : ''}${r.join('\t')}`).join('\n')}\n` : '') +
-    (s.lines && s.lines.length > 0 ? s.lines.map((l) => `- ${l}`).join('\n') + '\n' : '') +
+      ? `${textRequirementBlock({ word: s.badge.word, title: split(s.heading).title, section: '', lines: s.plain?.map(bare), deadline: s.deadline ? { text: s.deadline.text, alert: s.deadline.alert } : undefined })}\n`
+      : `${upperHeading(bare(s.heading))}\n`) +
+    (s.table && s.columns ? `${s.table.length > 0 && s.badge ? '    ' : ''}${s.columns.join('\t')}\n${s.table.map((r) => `${s.badge ? '    ' : ''}${r.map(bare).join('\t')}`).join('\n')}\n` : '') +
+    (s.lines && s.lines.length > 0 ? s.lines.map((l) => `- ${bare(l)}`).join('\n') + '\n' : '') +
     '\n';
   // The same skeleton as the other two emails (DGS 2026-09-28): the student
   // line, the intro and standing, the numbered actions, the sign-off; the
   // tables below the line.
-  const actionsText = items.actions.length > 0 ? `${ACTION_HEADING.toUpperCase()}\n${items.actions.map((a, i) => `${i + 1}. ${a}`).join('\n')}\n\n` : '';
+  const actionsText = items.actions.length > 0 ? `${ACTION_HEADING.toUpperCase()}\n${items.actions.map((a, i) => `${i + 1}. ${bare(a)}`).join('\n')}\n\n` : '';
   const text =
-    `Subject: ${subject}\n\nDear Grad Admin,\n\n${STUDENT_LINE}\n\n${intro}\n${standing}\n${sources ? `${sources}\n` : ''}${earlier ? `${earlier}\n` : ''}${attached ? `${attached}\n` : ''}${unofficial ? `${unofficial}\n` : ''}\n${actionsText}Thank you!\n\n` +
+    `Subject: ${subject}\n\nDear Grad Admin,\n\n${STUDENT_LINE}\n\n${intro}\n${bullets.map((b) => `- ${b.text}`).join('\n')}\n\n${actionsText}Thank you!\n\n` +
     `${EDITABLE_MARKER}\n${MARKER_DIVIDER}\n${DO_NOT_MODIFY_MARKER}\n\n` +
     (sections.length > 0 ? sections.map(textSection).join('') : 'Nothing to process yet.\n\n') +
     `${closing}\n${opts.stamp ? `${opts.stamp}\n` : ''}`;
@@ -785,17 +807,17 @@ export function gradAdminRequest(
   // ---- HTML ----
   const htmlTable = (columns: string[], rows: string[][]): string =>
     `<table border="1" cellspacing="0" cellpadding="4"><tr>${columns.map((h) => `<th>${esc(h)}</th>`).join('')}</tr>` +
-    rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('') +
+    rows.map((r) => `<tr>${r.map((c) => `<td>${esc(bare(c))}</td>`).join('')}</tr>`).join('') +
     '</table>';
   // The badge and the deadline box are the shared style (email-html.ts).
   const htmlSection = (s: Section): string =>
     (s.badge
-      ? htmlRequirementBlock({ word: s.badge.word, color: s.badge.color, ...split(s.heading), lines: s.plain, deadline: s.deadline ? { text: s.deadline.text, alert: s.deadline.alert } : undefined }).replace(/<\/div>$/, (s.table && s.columns ? htmlTable(s.columns, s.table) : '') + '</div>')
-      : `<p><strong>${esc(s.heading)}</strong></p>` + (s.table && s.columns ? htmlTable(s.columns, s.table) : '')) +
-    (s.lines ? `<ul>${s.lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : '');
-  const actionsHtml = items.actions.length > 0 ? `<p><strong>${esc(ACTION_HEADING)}</strong></p><ol>${items.actions.map((a) => `<li>${esc(a)}</li>`).join('')}</ol>` : '';
+      ? htmlRequirementBlock({ word: s.badge.word, color: s.badge.color, title: split(s.heading).title, section: '', lines: s.plain?.map(bare), deadline: s.deadline ? { text: s.deadline.text, alert: s.deadline.alert } : undefined }).replace(/<\/div>$/, (s.table && s.columns ? htmlTable(s.columns, s.table) : '') + '</div>')
+      : `<p><strong>${esc(bare(s.heading))}</strong></p>` + (s.table && s.columns ? htmlTable(s.columns, s.table) : '')) +
+    (s.lines ? `<ul>${s.lines.map((l) => `<li>${esc(bare(l))}</li>`).join('')}</ul>` : '');
+  const actionsHtml = items.actions.length > 0 ? `<p><strong>${esc(ACTION_HEADING)}</strong></p><ol>${items.actions.map((a) => `<li>${esc(bare(a))}</li>`).join('')}</ol>` : '';
   const html =
-    `<p>Subject: ${esc(subject)}</p><p>Dear Grad Admin,</p>${studentLineHtml()}<p>${esc(intro)}<br>${esc(standing)}${sources ? `<br>${esc(sources)}` : ''}${earlier ? `<br>${esc(earlier)}` : ''}${attached ? `<br><strong>${esc(attached)}</strong>` : ''}${unofficial ? `<br><strong>${esc(unofficial)}</strong>` : ''}</p>${actionsHtml}<p>Thank you!</p>` +
+    `<p>Subject: ${esc(subject)}</p><p>Dear Grad Admin,</p>${studentLineHtml()}<p>${esc(intro)}</p><ul>${bullets.map((b) => `<li>${b.strong ? `<strong>${esc(b.text)}</strong>` : esc(b.text)}</li>`).join('')}</ul>${actionsHtml}<p>Thank you!</p>` +
     `<p><strong>${esc(EDITABLE_MARKER)}</strong></p><hr><p><strong>${esc(DO_NOT_MODIFY_MARKER)}</strong></p>` +
     (sections.length > 0 ? sections.map(htmlSection).join('') : '<p>Nothing to process yet.</p>') +
     `<p>${esc(closing)}</p>${opts.stamp ? `<p>${esc(opts.stamp)}</p>` : ''}`;

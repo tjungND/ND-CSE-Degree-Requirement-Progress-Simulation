@@ -33,10 +33,12 @@ export function msLimitPassedClause(report: AuditReport): string {
  * advisor: one "why" string of short sentences (each statement capitalized,
  * period-separated — the engine's own joining style); empty when nothing is
  * left to say (the deadline phrase then stands alone). `firstStatementOnly`
- * keeps just the leading statement. */
-export function whyFor(r: RequirementResult, firstStatementOnly = false): string {
+ * keeps just the leading statement; `factsOnly` leaves out every note — what
+ * the card folds behind "Relevant Policies" (the Grad Admin request, DGS
+ * 2026-10-28: "there are too many texts"). */
+export function whyFor(r: RequirementResult, firstStatementOnly = false, factsOnly = false): string {
   // A page-only policy note stays on the card (2026-10-05).
-  const parts = r.detailParts?.filter((p) => !(typeof p === 'object' && 'note' in p && p.pageOnly));
+  const parts = r.detailParts?.filter((p) => !(typeof p === 'object' && 'note' in p && (p.pageOnly || factsOnly)));
   const statements = (parts ? parts.map((p) => flatten(p, r)) : splitStatements(r.detail))
     .map((s) => withoutPageForm(s.trim()).replace(/\.$/, ''))
     .filter((s) => s.length > 0)
@@ -150,6 +152,8 @@ export function firstPerson(statement: string): string {
   // (round 5, item 27; DGS 2026-10-14: "I were" in 16 scenarios' emails).
   return statement
     .replace(/\b[Yy]ou and your advisor\b/g, 'my advisor and I')
+    .replace(/\byourself\b/g, 'myself')
+    .replace(/\bYourself\b/g, 'Myself')
     .replace(/\b[Yy]ou were\b/g, 'I was')
     // "you" after a preposition is the object: "approved by the DGS for you",
     // "applies to you", "set it for you" → "me".

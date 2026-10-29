@@ -43,6 +43,16 @@ export function sourceOf(c: CourseEntry): { kind: SourceKind; text: string } {
  * empty record. */
 export function sourcesLine(student: Student): string | undefined {
   if (student.courses.length === 0 && !hasOwnStatements(student)) return undefined;
+  const sources = courseSources(student);
+  const courses = sources !== undefined ? `My courses: ${sources}.` : '';
+  const own = hasOwnStatements(student) ? 'The milestone dates and the approvals I ticked are my own entries.' : '';
+  return [courses, own].filter(Boolean).join(' ');
+}
+
+/** Where the courses came from, counted: "5 imported from my Notre Dame
+ * transcript; 10 imported from my master’s transcript" — or undefined with no
+ * course. The Grad Admin request's bullet (DGS 2026-10-28) and `sourcesLine`. */
+export function courseSources(student: Student): string | undefined {
   const counts = new Map<string, number>();
   const bump = (k: string): void => void counts.set(k, (counts.get(k) ?? 0) + 1);
   for (const c of student.courses) {
@@ -53,13 +63,11 @@ export function sourcesLine(student: Student): string | undefined {
     else bump('with no recorded source (entered before October 11, 2026)');
   }
   const parts = [...counts].map(([what, n]) => `${n} ${what}`);
-  const courses = parts.length > 0 ? `My courses: ${parts.join('; ')}.` : '';
-  const own = hasOwnStatements(student) ? 'The milestone dates and the approvals I ticked are my own entries.' : '';
-  return [courses, own].filter(Boolean).join(' ');
+  return parts.length > 0 ? parts.join('; ') : undefined;
 }
 
 /** Any milestone date, or any approval the student ticked. */
-function hasOwnStatements(student: Student): boolean {
+export function hasOwnStatements(student: Student): boolean {
   const m = student.milestones as Record<string, unknown>;
   const dated = Object.entries(m).some(([k, v]) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && k !== 'advisorName' && k !== 'advisorName2');
   return dated || student.courses.some((c) => c.dgsApproved === true) || student.attestations.transferRecorded === true;

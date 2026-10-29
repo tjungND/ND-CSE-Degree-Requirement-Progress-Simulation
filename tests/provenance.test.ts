@@ -85,12 +85,15 @@ describe('the emails', () => {
 
   it('the processing request labels each course and says the dates and ticks are the student’s own', () => {
     const n = student.courses.length;
-    assert.ok(ga.text.includes(`\nMy courses: 1 typed by me; ${n - 1} imported from my Notre Dame transcript. The milestone dates and the approvals I ticked are my own entries.\n`), ga.text.slice(0, 900));
+    // The opening's bullets (DGS 2026-10-28: short bullet points).
+    assert.ok(ga.text.includes(`\n- Courses: 1 typed by me; ${n - 1} imported from my Notre Dame transcript\n- Milestone dates and ticked approvals: my own entries\n`), ga.text.slice(0, 900));
+    assert.doesNotMatch(ga.text, /My courses:/);
     assert.match(ga.text, /\nCourse\tTitle\tCredits\tGrade\tTerm\tWhere\tCounts toward\tSource\n/);
     assert.match(ga.text, /\ttyped by me\n/);
     assert.match(ga.text, /\timported from my Notre Dame transcript\n/);
     // The date goes along under its requirement, as the student entered it (DGS 2026-10-15: not an action).
-    assert.match(ga.text, /\nMILESTONE DATES, FOR THE RECORD\n(?:- [^\n]*\n)*- (?:Oral Candidacy Exam \(OCE\)|OCE) passed: 2023-11-15, as I entered it \(§4\.5\)\n/);
+    // No handbook section beside it (DGS 2026-10-28).
+    assert.match(ga.text, /\nMILESTONE DATES, FOR THE RECORD\n(?:- [^\n]*\n)*- (?:Oral Candidacy Exam \(OCE\)|OCE) passed: 2023-11-15, as I entered it\n/);
     assert.doesNotMatch(ga.text, /Record the milestone/);
   });
 
@@ -99,7 +102,8 @@ describe('the emails', () => {
     // The one major event on this record (DGS 2026-10-15): its milestones are dated, its applications made.
     assert.equal(ga.items.count, 1);
     assert.deepEqual(ga.items.actions.map((a) => a.slice(0, 40)), ['Process the MSCSE along the way — the se']);
-    assert.match(ga.text, /informational only — every decision rests with the DGS — except the MSCSE along the way above, for which this self-check is the DGS’s own review, §3\.1\)\.\n/);
+    // The closing names no section (DGS 2026-10-28).
+    assert.match(ga.text, /informational only — every decision rests with the DGS — except the MSCSE along the way above, for which this self-check is the DGS’s own review\)\.\n/);
     // Without the award in the request, the closing is the sentence as before
     // (the ADGS's on the MSCSE tab — the page's own DGS→ADGS rewrite).
     const msc = allScenarios().find((s) => s.name === 'life-mscse-thesis-finished')!;

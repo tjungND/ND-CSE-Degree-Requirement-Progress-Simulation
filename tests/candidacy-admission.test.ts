@@ -89,10 +89,14 @@ describe('every condition met, not yet admitted', () => {
     assert.ok(items.student.some((t) => /^Apply for admission to doctoral candidacy through the Grad Admin by the end of Spring 2030 \(Academic Code §6\.2\.9\)\.$/.test(t)), JSON.stringify(items.student));
     assert.ok(items.gradAdmin.includes('Submit my Application for Admission to Doctoral Candidacy to the Graduate School (DGS Handbook §3.22.3).'), JSON.stringify(items.gradAdmin));
     const { text } = gradAdminRequest(report, s, rules, { todayIso: today, entryTerm: 'Fall 2026', priorStudy: 'None', gpa: 3.6 });
-    assert.match(text, /\d\. Initiate my Application for Admission to Doctoral Candidacy — the self-check shows every condition met \(DGS Handbook §3\.22\.3\)\.\n/);
-    assert.match(text, /ADMISSION TO DOCTORAL CANDIDACY \(ACADEMIC CODE §6\.2\.9\)\n/i);
+    // No handbook sections in the request (DGS 2026-10-28).
+    assert.match(text, /\d\. Initiate my Application for Admission to Doctoral Candidacy — the self-check shows every condition met\.\n/);
+    assert.match(text, /\nADMISSION TO DOCTORAL CANDIDACY\n/);
+    assert.doesNotMatch(text, /§/);
     // A major event: it makes the Grad Admin button active (DGS 2026-10-15).
     const { items: ga } = gradAdminRequest(report, s, rules, { todayIso: today, entryTerm: 'Fall 2026', priorStudy: 'None', gpa: 3.6 });
+    // The item itself keeps its section (it feeds the page card).
+    assert.ok(ga.actions.includes('Initiate my Application for Admission to Doctoral Candidacy — the self-check shows every condition met (DGS Handbook §3.22.3).'), JSON.stringify(ga.actions));
     assert.equal(ga.candidacyApplicationDue, true);
     assert.ok(ga.count >= 1 && ga.lines.some((l) => l.startsWith('Application for Admission to Doctoral Candidacy')), JSON.stringify(ga.lines));
   });

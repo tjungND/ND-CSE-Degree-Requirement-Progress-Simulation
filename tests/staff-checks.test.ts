@@ -82,11 +82,16 @@ describe('the review and processing requests carry the checks for a student’s 
     // First below the line, before the transfer tables.
     assert.match(text, /\(DO NOT MODIFY ANYTHING BELOW THIS LINE\)\n\nPLEASE CHECK BEFORE PROCESSING\n- /);
     assert.match(text, /\n- ECE 4804 \(Georgia Institute of Technology\): the course rules let it transfer, but its number looks like an undergraduate course/);
-    assert.match(text, /\n- CS 8903 \(Georgia Institute of Technology\) “Special Problems”: the course rules let it transfer, and it counts toward the regular-course credits, but its title suggests independent study, research or a seminar, which are not regular courses \(§4\.2\)\./);
-    // The Graduate School's own rows keep their section (it printed "()" until 2026-10-04).
+    // No handbook sections in the request (DGS 2026-10-28): the check's own
+    // "(§4.2)" is dropped, the sentence after it kept.
+    assert.match(text, /\n- CS 8903 \(Georgia Institute of Technology\) “Special Problems”: the course rules let it transfer, and it counts toward the regular-course credits, but its title suggests independent study, research or a seminar, which are not regular courses\. Check it, and correct its ExternalCourses row if so\.\n/);
+    assert.match(text, /\n- ECE 4804 \(Georgia Institute of Technology\): the course rules let it transfer, but its number looks like an undergraduate course — only graduate courses transfer\. Check that it is the graduate version, and correct its ExternalCourses row if not\.\n/);
+    // The Graduate School's own rows print their title alone now — and never
+    // an empty bracket (one printed "()" until 2026-10-04).
     // (The RCR training's own line merged into admission to candidacy on 2026-10-04.)
-    assert.match(text, /\[NOT STARTED\] Admitted to doctoral candidacy \(Academic Code §6\.2\.9\)\n/);
+    assert.match(text, /\n\[NOT STARTED\] Admitted to doctoral candidacy\n/);
     assert.doesNotMatch(text, /\(\)/);
+    assert.doesNotMatch(text, /§/);
   });
 
   it('an undergraduate number on a case-by-case or an unlisted course is flagged too, worded for the decision still to come', () => {
