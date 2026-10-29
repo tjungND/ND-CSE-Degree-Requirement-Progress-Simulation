@@ -100,10 +100,12 @@ batch, an allocator sweep of 572,563 generated records for invariants, fill orde
 and two independent checks of every problem found). 42 problems were confirmed — side effects of the
 batches or parts of a fix they missed. Their fixes were then checked once more: every reproduction
 re-run against the fixed code, plus an independent review of the change (8 agents). That final check
-found seven faults in the fixes themselves and older problems beside them; all are fixed and pinned in
-tests/review-fixes-outputs.test.ts and tests/review-fixes-round2.test.ts. Three problems are left as
-they are (“not changed”). The decisions are the DECISIONS rows “A second verification of the review’s
-fixes” and “A final check of the review’s fixes”; the wording is W-CL604–W-CL622.
+found seven faults in the fixes themselves and older problems beside them; a last check before shipping
+(a differential sweep of 28,000 generated records against the previous commit, and two reviews) found three
+more in those fixes. All are fixed and pinned in tests/review-fixes-outputs.test.ts,
+tests/review-fixes-round2.test.ts and tests/review-fixes-round3.test.ts. Three problems are left as they
+are (“not changed”). The decisions are the DECISIONS rows “A second verification of the review’s fixes”,
+“A final check of the review’s fixes” and “The last check before shipping”; the wording is W-CL604–W-CL625.
 
 | C | severity | what was wrong | now |
 |---|---|---|---|
@@ -114,17 +116,17 @@ fixes” and “A final check of the review’s fixes”; the wording is W-CL604
 | 4 | low | #28 in part: a candidate’s “would count … if approved” amount is read from today’s fill order | not changed (the line says “would”) |
 | 5 | low | #32 in part: the same, when another cap binds | not changed |
 | 6 | low | #71 in part: “(Academic Code §2.3; §4.2)” — the page read §4.2 as the Code’s | “(Academic Code §2.3; CSE §4.2)”; Next steps keep the bracket whole |
-| 7 | medium | The order search took seconds on a non-CSE master’s plus Notre Dame non-CSE courses; the final check found an over-maximum semester ran the page out of memory | a bounded search: milliseconds, exact on 6,150 records |
-| 8 | high | An overloaded semester cut the research course before a non-CSE course that could only add to the 60 | that course waits behind total-only credit, read when it is taken |
+| 7 | medium | The order search took seconds on a non-CSE master’s plus Notre Dame non-CSE courses; then an over-maximum semester ran the page out of memory, and twenty one-credit transfers took five seconds | identical courses share one search state; bounded; milliseconds; exact on 6,150 records |
+| 8 | high | An overloaded semester cut the research course before a non-CSE course that could only add to the 60 | that course waits behind total-only credit when neither pass can count it as regular credit; both passes refuse the same course (a question for the DGS remains) |
 | 9 | high | The Notre Dame-only pass read an overloaded summer differently from the main pass | both passes fill the same way |
 | 10 | low | A candidate line named the nine but cited only §5.2 | “(§4.2; §5.2)” / “(§3.2; §5.2)” |
 | 11 | high | #23 in part: posted credit from a course taken during the Notre Dame MSCSE made a second earlier program | taken while enrolled, it is no earlier program |
 | 12 | high | #18’s nested-name rule merged two different schools into one earlier program; its fix then split Georgia Tech’s header-word name from its plain name | a flagship and its campus, or a name plus a transcript’s header words, is one school |
-| 13 | low | Two postings of one course number: the second block row stayed (and, Notre Dame transcript second, was lost); the fix first put a posting on a C attempt by title | one posting per row; an attempt the Graduate School could accept first, then title |
+| 13 | low | Two postings of one course number: the second block row stayed (and, Notre Dame transcript second, was lost); later fixes put a posting on a C attempt, then swapped two topics courses | one posting per row: by title when every row is posted, an acceptable attempt first when there are retakes |
 | 14 | medium | “Counts toward” was keyed by course number: a bachelor’s-only row or a same-numbered transfer inherited the nine, and a core area | each registration’s own allocation and its own core area |
 | 15 | low | #27 in part: a below-C course was offered the DGS box; a 4+1 one was still sent to the DGS | no box, not sent |
 | 16 | low | #55 in part: the request’s table printed a Purdue “CSE 60641” under the nine at Notre Dame | the row each registration counts |
-| 17 | high | #61 in part: same-grade same-term rows counted by entry order | grade, import, credits, the DGS tick, then title |
+| 17 | high | #61 in part: same-grade same-term rows counted by entry order | the row this degree can count, then grade, import, credits, the DGS’s ticks, then title |
 | 18 | high | The retake rule kept an attempt this degree cannot count over a live retake | the attempt that earns here (see the question below) |
 | 19 | medium | A waiting course lost the core area it passes by itself | core knowledge asks only “passed” |
 | 20 | medium | Same-term duplicates of a bachelor’s-used course lost their warning | warned again, once, accurately |
@@ -132,7 +134,7 @@ fixes” and “A final check of the review’s fixes”; the wording is W-CL604
 | 22 | medium | #7 in part: posted or unposted credit held by §5.5 was not asked, then had no box | asked, with the hold’s box |
 | 23 | medium | #15 in part: held own-MSCSE courses were not asked; a 4+1 senior-year MSCSE row escaped the hold | asked and held |
 | 24 | low | #40 in part: a held MSCSE course said “counts in full” | never beside a hold |
-| 25 | high | #43 in part: a 4+1 MSCSE holder with no award term counted senior-year rows toward a third degree | the line asks for the award term; the MSCSE’s start is not read from those rows |
+| 25 | high | #43 in part: a 4+1 MSCSE holder with no award term counted senior-year rows toward a third degree | an unanswered row asks for the award term; an answered one is placed by its answer |
 | 26 | low | A course taken during the MSCSE read “after you entered” | “while you were enrolled in your Notre Dame MSCSE” |
 | 27 | low | An in-progress `yes` transfer, ticked recorded, read a garbled line | “no final grade yet (§5.2 needs a B or better)” |
 | 28 | low | A held line dropped every note | the posting’s note, or the recorded tick’s, stays; a held area elsewhere waits for the DGS |

@@ -63,23 +63,30 @@ const FLAGSHIP_PLACES: Record<string, string> = {
  * University Fort Wayne" — two schools, which the two-programs hold must see
  * (review of the fix, 2026-10-29; DECISIONS 2026-10-08). */
 export function oneSchool(a: string | undefined, b: string | undefined): boolean {
-  const x = normalizeUniversity(a ?? '');
-  const y = normalizeUniversity(b ?? '');
-  if (x === '' || y === '') return false;
-  if (x === y) return true;
-  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
   // Record words a transcript's header adds, before or after the name, are
   // never a campus: "GEORGIA INSTITUTE OF TECHNOLOGY OFFICIAL DOCUMENT
   // INFORMATION" is Georgia Tech's name on the sheet (CLAUDE.md), and was
-  // counted as a second school (review of the fixes, 2026-10-29).
-  const onlyRecordWords = (words: string): boolean => {
-    const list = words.split(' ');
-    return list.every((w) => RECORD_WORDS.has(w) || w === 'of' || w === 'the' || w === 'and') && list.some((w) => RECORD_WORDS.has(w));
+  // counted as a second school (review of the fixes, 2026-10-29) — so they go
+  // first, and a flagship's campus is read on what is left (a final check of
+  // the fixes, the same day).
+  const strip = (name: string): string => {
+    const words = normalizeUniversity(name).split(' ').filter((w) => w !== '');
+    const filler = (w: string): boolean => RECORD_WORDS.has(w) || w === 'of' || w === 'the' || w === 'and';
+    let start = 0;
+    let end = words.length;
+    while (end > start && filler(words[end - 1]!)) end -= 1;
+    while (start < end && filler(words[start]!)) start += 1;
+    const kept = words.slice(start, end);
+    // A name of filler words alone is not stripped to nothing.
+    return kept.length > 0 && words.slice(0, start).concat(words.slice(end)).some((w) => RECORD_WORDS.has(w)) ? kept.join(' ') : words.join(' ');
   };
-  if (long.endsWith(` ${short}`) && onlyRecordWords(long.slice(0, -short.length - 1))) return true;
+  const x = strip(a ?? '');
+  const y = strip(b ?? '');
+  if (x === '' || y === '') return false;
+  if (x === y) return true;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
   if (!long.startsWith(`${short} `)) return false;
-  const rest = long.slice(short.length + 1);
-  return onlyRecordWords(rest) || FLAGSHIP_PLACES[short] === rest.replace(/^(?:at|in) /, '');
+  return FLAGSHIP_PLACES[short] === long.slice(short.length + 1).replace(/^(?:at|in) /, '');
 }
 
 /** Words of a transcript's own header, as the reader meets them beside a

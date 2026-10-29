@@ -26,7 +26,7 @@ import type { Rules } from '../data/types.ts';
 import { classify, levelOf, type ClassifiedCourse } from './allocate.ts';
 import { decisionWording, needsCourseApproval } from './decider.ts';
 import { CORE_TITLE_RE } from './core-title.ts';
-import { passesCreditFloor } from './grades.ts';
+import { isPassed, passesCreditFloor } from './grades.ts';
 import { transferRecordedFor } from './transfer-recorded.ts';
 import type { Student } from './types.ts';
 
@@ -259,7 +259,21 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
     // asked (review of the fixes, 2026-10-29 — a 4+1 course graded C- was sent
     // for its UG→GR move with no box to record the answer).
     if (fromNotreDame && !passesCreditFloor(c.entry.grade) && !c.incompleteLapsed && !(qualifierApplies && c.rule === undefined && coreTitle(c))) continue;
-    if (fromNotreDame && bachelorsSixSpent(c, student) && !(qualifierApplies && c.rule === undefined && coreTitle(c))) continue;
+    // …and a course the bachelor's used once the six are spent counts toward
+    // no Ph.D. credit, so only what still can is asked: an unlisted course's
+    // core area and specialization group, through its row (a final check of
+    // the fixes, 2026-10-29 — its group could never be asked).
+    if (fromNotreDame && bachelorsSixSpent(c, student)) {
+      if (qualifierApplies && c.rule === undefined && isPassed(c.entry.grade))
+        priorNd.push({
+          course: c,
+          kind: 'priorNd',
+          ask: { needsRow: true, replyNeeded: false, decide: [CORE, GROUP] },
+          reason: 'taken at Notre Dame before entering the program (undergraduate) — not in the course rules yet; with the six shared credits spent it cannot count toward the Ph.D.’s credits, but its §4.4.1 core area and §4.4.2 group still can',
+          unlisted: true,
+        });
+      continue;
+    }
     // What no sheet verdict can settle, so the DGS is asked for THIS student
     // whatever the row says (policy review 2026-10-03): a pass/fail transfer
     // grade, a course taken elsewhere after admission, a lapsed Incomplete,

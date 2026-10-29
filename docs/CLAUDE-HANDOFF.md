@@ -1826,13 +1826,17 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   Notre Dame's catalogue wherever a row is filed (`notreDameAttempt`), and same-term duplicates are
   decided by grade. (7) The "transfer recorded" tick covers a list of transfers
   (`transfer-recorded.ts`): use `transferRecordedFor(student, entry)`, never the attestation alone.
-  (8) `bestMultiOrder` is exact but bounded (final check, 2026-10-29): a course that takes nothing at
-  a state's rooms leaves the state (rooms only fall), the ceiling bounds every shared cap by its room
-  plus what the courses not drawing on it take, and past 200,000 states the rest go in their order —
+  (8) `bestMultiOrder` is exact but bounded (final check, 2026-10-29): courses plan() cannot tell
+  apart are one TYPE (a state is how many of each remain; the first of a type goes first), a course
+  that takes nothing at a state's rooms leaves the state (rooms only fall), the ceiling bounds every
+  shared cap by its room plus what the courses not drawing on it take (and the nine bounds the total
+  of the types that cannot spill), and past 20,000 states the rest go in their order —
   `tests/review-multi-order-blowup.test.ts` has the shapes that ran the page out of memory. Any new
   cap must keep "what a course takes never rises as rooms fall", or the pruning is wrong. (9) In the
   requirement group, a non-CSE course the nine has no room for AT ITS TURN waits for the total-only
-  group (`waitsAsTotalOnly`), so research keeps a semester's maximum. (10) A review item that can
+  group (`waitsAsTotalOnly`), so research keeps a semester's maximum — unless the Notre Dame-only pass,
+  which now runs FIRST (`ndPass`), counts it as regular credit: then it keeps its turn, and both passes
+  refuse the same course. (10) A review item that can
   become a submitted transfer carries `decidesTransfer`; Next steps count only those.
 
 ## The policy-compliance review's changes (2026-10-03) — what a later session must know

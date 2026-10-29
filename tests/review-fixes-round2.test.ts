@@ -141,7 +141,7 @@ describe('a course from another university held by a readmission', () => {
 describe('the §5.2 paragraph and an MSCSE that ended before the Ph.D.’s window', () => {
   it('says a course after the MSCSE and outside that window does not count, as its line says', () => {
     const s = phdStudent({ entryTerm: fall(2026), priorMs: 'completed', ndMasters: { term: spring(2014) }, bachelorsAwarded: spring(2012), background: { bachelors: 'elsewhere', graduate: 'nd-mscse', alsoElsewhere: true, finished: true } as never });
-    assert.match(transferRuleText(s, buildRules(), TODAY, false), /goes to the DGS if it is from Spring 2014 or earlier, and does not count if it is later/);
+    assert.match(transferRuleText(s, buildRules(), TODAY, false), /goes to the DGS if it is from Spring 2014 or earlier, and does not count if it is later\)/);
   });
 });
 

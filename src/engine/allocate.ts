@@ -224,9 +224,11 @@ export interface ClassifiedCourse {
   /** A transfer graded S (pass): a pass/fail mark cannot show the B §5.2
    * criterion 4 requires, so the course waits for the DGS (DGS 2026-10-03). */
   passFailGrade?: true;
-  /** A course from another university dated at or after the entry term: the
-   * Graduate School requires the department's and its own approval BEFORE
-   * such a course is taken (DGS Handbook §3.14) — the DGS confirms. */
+  /** A course from another university taken after admission — at or after
+   * the entry term, or while the student was enrolled in their own Notre Dame
+   * MSCSE (takenAfterAdmission): the Graduate School requires the
+   * department's and its own approval BEFORE such a course is taken (DGS
+   * Handbook §3.14) — the DGS confirms. */
   afterAdmission?: true;
   /** A course from another university on the record of a student with NO
    * earlier graduate program: the Academic Code states a transfer allowance
@@ -656,14 +658,12 @@ export function isOwnMscseCoursework(student: Student, c: CourseEntry): boolean 
   // MSCSE's, it dated the MSCSE to that summer and erased a five-year
   // separation (credit-transfer review 2026-10-28, #9).
   if (c.origin === 'nd' && isEarlyStartCourse(c, student)) return false;
+  // With no award term every such row is read as the MSCSE's, so its
+  // separation and the courses taken elsewhere during it stay held; the row
+  // itself asks for the award term (a final check of the fixes, 2026-10-29,
+  // reverted a narrower reading that let both holds go).
   const awarded = student.bachelorsAwarded;
-  // With a Notre Dame bachelor's and no award term, a row from before the
-  // Ph.D. may be the bachelor's: only the student's answer places it (review
-  // of the fixes, 2026-10-29 — the MSCSE's start was read from such a row, and
-  // a course elsewhere "while you were enrolled in your Notre Dame MSCSE").
-  const ndBachelors = student.background?.bachelors === 'nd-cse' || student.background?.bachelors === 'nd-other' || student.integratedBsMs === true;
-  if (awarded === undefined) return !ndBachelors || c.countedToward === 'mscse' || c.countedToward === 'both';
-  return compareTerm(c.term, awarded) > 0 || c.countedToward === 'mscse' || c.countedToward === 'both';
+  return awarded === undefined || compareTerm(c.term, awarded) > 0 || c.countedToward === 'mscse' || c.countedToward === 'both';
 }
 
 /** Taken elsewhere after admission to the graduate program: at or after the
@@ -949,6 +949,10 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // almost always one course entered twice (an import plus a hand-added row),
   // and every other suspect-entry path in this file says something.
   const sameTerm = new Map<string, CourseEntry[]>();
+  // A course whose duplicate group is warned with its mixed answers, so the
+  // retake rule's own warning below is not said beside it (a final check of
+  // the fixes, 2026-10-29: "3 times" and "2 times — its credits count once").
+  const mixedAnswers = new Set<string>();
   for (const c of student.courses) {
     const key = `${canonicalCourseId(c.courseId)}|${termIndex(c.term)}`;
     const group = sameTerm.get(key);
@@ -971,8 +975,10 @@ export function classify(student: Student, rules: Rules, today?: string): {
       // Two or more of this degree's attempts among them count once, and the
       // retake rule says so: the rows are not all "counted separately" (review
       // of the fixes, 2026-10-29).
-      if ((ruleOf(group[0]!)?.courseType ?? 'regular') === 'regular' && !group.every(attemptHere) && group.filter(attemptHere).length >= 2)
+      if ((ruleOf(group[0]!)?.courseType ?? 'regular') === 'regular' && !group.every(attemptHere) && group.filter(attemptHere).length >= 2) {
         warnings.push(`${group[0]!.courseId} is entered ${group.length} times for ${termLabel(group[0]!.term)}, with different answers about which degrees it counted toward — if it is one registration, remove the duplicates.`);
+        mixedAnswers.add(group[0]!.courseId);
+      }
       else if ((ruleOf(group[0]!)?.courseType ?? 'regular') !== 'regular' || !group.every(attemptHere))
         warnings.push(`${group[0]!.courseId} is entered ${group.length} times for ${termLabel(group[0]!.term)}. Each row is counted separately — if it is one registration, remove the duplicate.`);
       continue;
@@ -1140,6 +1146,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
       // …then the row the DGS ticked, then its title: the same record gives the
       // same verdict whatever the row order (review of the fixes, 2026-10-29).
       Number(a.dgsApproved === true) - Number(b.dgsApproved === true) ||
+      Number(a.dgsHoldApproved === true) - Number(b.dgsHoldApproved === true) ||
       (a.title ?? '').localeCompare(b.title ?? ''),
   );
   for (const c of attemptOrder) {
@@ -1150,11 +1157,26 @@ export function classify(student: Student, rules: Rules, today?: string): {
     list.push(c);
     byId.set(c.courseId, list);
   }
+  // An attempt an earlier degree used — on the Ph.D., one answered as counted
+  // toward both the bachelor's and the MSCSE, or a bachelor's-years row not
+  // answered yet — cannot count here. Of two rows of ONE semester (a
+  // duplicate, not a retake), the one that can is "the one counted", whatever
+  // the row order (review of the fixes, 2026-10-29: a ticked row answered
+  // "both" beat its twin that counts); a later retake still replaces an
+  // earlier attempt, as the last passing grade does.
+  const usableHere = (a: CourseEntry): boolean =>
+    !(
+      program === 'phd' &&
+      a.origin === 'transfer' &&
+      (a.countedToward === 'both' || (a.countedToward === undefined && (a.degreeLevel === 'bachelors' || (student.bachelorsAwarded !== undefined && compareTerm(a.term, student.bachelorsAwarded) <= 0))))
+    );
   for (const [id, attempts] of byId) {
     if (attempts.length < 2) continue;
     const passing = attempts.filter((a) => isPassed(a.grade));
     const inProgress = attempts.filter((a) => isInProgress(a.grade));
-    const lastPassing = passing[passing.length - 1];
+    const last = passing[passing.length - 1];
+    const twinHere = last === undefined || usableHere(last) ? undefined : passing.filter((a) => termIndex(a.term) === termIndex(last.term) && usableHere(a)).pop();
+    const lastPassing = twinHere ?? last;
     // A LIVE retake wins over a passed attempt that earns no credit — C- or D
     // since the 2026-09-12 floor (red-team 2026-09-13). The student is sitting
     // the course again for exactly the credit that grade cannot give, which is
@@ -1168,15 +1190,17 @@ export function classify(student: Student, rules: Rules, today?: string): {
     // MSCSE cannot count here, so a live retake is the attempt that can
     // (review of the fix, 2026-10-29: it read "the Spring 2025 attempt … is
     // the one counted" beside that attempt's own "not counted").
-    const earnsHere = (a: CourseEntry): boolean => passesCreditFloor(a.grade) && !(program === 'phd' && a.origin === 'transfer' && a.countedToward === 'both');
+    const earnsHere = (a: CourseEntry): boolean => passesCreditFloor(a.grade) && usableHere(a);
     const counted =
       lastPassing !== undefined && (earnsHere(lastPassing) || inProgress.length === 0)
         ? lastPassing
         : inProgress.length > 0
           ? inProgress[inProgress.length - 1]!
           : attempts[attempts.length - 1]!; // all failed → last one (earns nothing anyway)
-    for (const a of attempts) if (a !== counted) supersededSet.add(a);
-    warnings.push(`${id} is entered ${attempts.length} times — its credits count once.`);
+    // A failed attempt beside one that earns nothing here keeps its own line
+    // ("failed — earns no credit"), not "the … attempt is the one counted".
+    for (const a of attempts) if (a !== counted && (earnsHere(counted) || isPassed(a.grade) || isInProgress(a.grade))) supersededSet.add(a);
+    if (!mixedAnswers.has(id) || new Set(attempts.map((a) => termIndex(a.term))).size > 1) warnings.push(`${id} is entered ${attempts.length} times — its credits count once.`);
   }
 
   const classified: ClassifiedCourse[] = sorted.map((c): ClassifiedCourse => {
@@ -1911,6 +1935,9 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     student.ndMasters !== undefined &&
     student.bachelorsAwarded === undefined &&
     c.degreeLevel !== 'bachelors' &&
+    // A row the student answered is placed by the answer (a final check of
+    // the fixes, 2026-10-29: an "MSCSE" row waited, while dating the MSCSE).
+    c.countedToward === undefined &&
     (student.background?.bachelors === 'nd-cse' || student.background?.bachelors === 'nd-other' || student.integratedBsMs === true)
   ) {
     return {
@@ -2949,6 +2976,22 @@ export function allocate(
     Number(!a.caps.includes('transfer')) - Number(!b.caps.includes('transfer')) ||
     Number(a.entry.origin !== 'nd') - Number(b.entry.origin !== 'nd');
 
+  // The Notre Dame-only pass first (the Ph.D.; see below): a non-CSE course it
+  // counts as regular credit gains something there, so the main pass does not
+  // set it behind total-only credit, and both passes give a semester's
+  // maximum to the same course (a final check of the fixes, 2026-10-29: the
+  // passes disagreed when transfers spent the nine in the main pass only; and
+  // deferring it in both cost the nine at Notre Dame in 1,562 of 28,000
+  // generated records).
+  const ndPass =
+    opts.notreDameOnly === true || opts.notreDameCounts === false
+      ? undefined
+      : allocate(
+          classified.filter((c) => c.entry.origin === 'nd' || c.ndMastersCredit === true || c.notTransferCredit === true),
+          caps,
+          { ...opts, notreDameOnly: true },
+        );
+  const regularAtNd = new Set(ndPass?.perCourse.filter((p) => p.countedRegular > 0).map((p) => p.course) ?? []);
   for (const tier of TIER_ORDER) {
     // A passed grade below C never fills a cap or counts toward a sum
     // (passesCreditFloor — DGS decision 2026-09-12, Academic Code §4.3): such
@@ -3001,7 +3044,7 @@ export function allocate(
       const multis = group.filter((c) => c.caps.length > 1 || yieldsToTransfer(c)).sort(precedence);
       for (const cc of singles) take(cc);
       for (const cc of bestMultiOrder(multis, new Map(capRoom), plan)) {
-        if (g === 0 && nowSpillOnly(cc)) waitsAsTotalOnly.push(cc);
+        if (g === 0 && nowSpillOnly(cc) && !regularAtNd.has(cc)) waitsAsTotalOnly.push(cc);
         else take(cc);
       }
     }
@@ -3048,11 +3091,7 @@ export function allocate(
   // out, a course it pushed out of the six "still counted" toward the nine
   // with no transfer on the record (review of the fix, 2026-10-29). Only the
   // courses taken here count toward the nine and the award.
-  const atNd = allocate(
-    classified.filter((c) => c.entry.origin === 'nd' || c.ndMastersCredit === true || c.notTransferCredit === true),
-    caps,
-    { ...opts, notreDameOnly: true },
-  );
+  const atNd = ndPass!;
   const ndCredits = new Map(atNd.perCourse.map((p) => [p.course, p.countedRegular]));
   for (const p of perCourse) {
     const atNotreDame = p.course.entry.origin === 'nd' || p.course.ndMastersCredit === true;
@@ -3110,7 +3149,6 @@ function bestMultiOrder(
   if (n <= 1) return multis;
   // Only the caps these courses actually draw on take part in the state.
   const capIds = [...new Set(multis.flatMap((c) => c.caps))];
-  const creditsOf = (cc: ClassifiedCourse): number => cc.effectiveCredits ?? cc.entry.credits;
   const startRooms = capIds.map((id) => roomSnapshot.get(id) ?? 0);
   const capIndex = new Map(capIds.map((id, k) => [id, k]));
   /** What an order is worth: the credits the caps admit, then — on a tie —
@@ -3121,70 +3159,112 @@ function bestMultiOrder(
    * toward the 60 and the transfer's does not. */
   type Score = { counted: number; total: number };
   const beats = (a: Score, b: Score): boolean => a.counted > b.counted || (a.counted === b.counted && a.total > b.total);
+  // Courses plan() cannot tell apart — the same caps and credits, and the
+  // same spill behaviour (probed with no room left in the nine) — are one TYPE:
+  // a state is how many of each type remain, and of two of one type the first
+  // in the list goes first, as the full search would choose on a tie (final
+  // check of the fixes, 2026-10-29: twenty one-credit transfers outside CSE
+  // took five seconds as twenty different courses).
+  const roomsOf = (rooms: number[]) => (id: CapId): number => rooms[capIndex.get(id)!]!;
+  const probe = (cc: ClassifiedCourse): string => {
+    const t = plan(cc, (id) => (id === 'noncse' ? 0 : 1e9));
+    return `${[...cc.caps].sort().join('+')}|${cc.effectiveCredits ?? cc.entry.credits}|${t.counted}|${t.spill}|${t.excluded}`;
+  };
+  const typeKeys = new Map<string, number>();
+  const typeOf = multis.map((cc) => {
+    const key = probe(cc);
+    if (!typeKeys.has(key)) typeKeys.set(key, typeKeys.size);
+    return typeKeys.get(key)!;
+  });
+  const sample = [...typeKeys.values()].map((t) => multis[typeOf.indexOf(t)]!);
+  const drawsOn = sample.map((cc) => capIds.map((id) => cc.caps.includes(id)));
+  // Spill never draws on the nine, so a type that cannot spill is bounded by it.
+  const spills = sample.map((cc) => plan(cc, (id) => (id === 'noncse' ? 0 : 1e9)).spill > 0);
   const memo = new Map<string, { score: Score; order: number[] }>();
   // A bound on the work, whatever the record (review of the fixes, 2026-10-29:
   // an over-maximum semester with Notre Dame courses outside CSE beside many
   // non-CSE transfers ran the browser out of memory). Past it, the rest of the
   // search takes the courses in their order — the same verdict every time.
   let work = 0;
-  const WORK_LIMIT = 200_000;
+  const WORK_LIMIT = 20_000;
+  const charge = (r: number[], cc: ClassifiedCourse, t: CapPlan): void => {
+    for (const id of cc.caps) r[capIndex.get(id)!] = exactCredits(r[capIndex.get(id)!]! - (id === 'noncse' ? t.counted : t.counted + t.spill));
+  };
   const inOrder = (remaining: number[], rooms: number[]): { score: Score; order: number[] } => {
     let counted = 0;
     let total = 0;
     const r = rooms.slice();
     for (const i of remaining) {
-      const cc = multis[i]!;
-      const t = plan(cc, (id) => r[capIndex.get(id)!]!);
-      for (const id of cc.caps) r[capIndex.get(id)!] = exactCredits(r[capIndex.get(id)!]! - (id === 'noncse' ? t.counted : t.counted + t.spill));
+      const t = plan(multis[i]!, roomsOf(r));
+      charge(r, multis[i]!, t);
       counted = exactCredits(counted + t.counted);
       total = exactCredits(total + t.counted + t.spill);
     }
     return { score: { counted, total }, order: [...remaining] };
   };
-  /** The best score obtainable from `remaining`, and the first order that
-   * gets there. `rooms` is this state's room per cap, in capIds order. */
+  /** The best score obtainable from `all`, and the first order that gets
+   * there. `rooms` is this state's room per cap, in capIds order. */
   const solve = (all: number[], rooms: number[]): { score: Score; order: number[] } => {
     if (all.length === 0) return { score: { counted: 0, total: 0 }, order: [] };
-    // What each course would take at the rooms as they stand. Rooms only fall
-    // as courses are taken, and what a course counts — and counts anywhere, its
-    // spill included — never rises as they fall: a course that takes nothing
-    // now takes nothing later, so it goes last and out of the state.
-    const nowAll = all.map((i) => ({ i, t: plan(multis[i]!, (id) => rooms[capIndex.get(id)!]!) }));
-    const remaining = nowAll.filter((x) => x.t.counted + x.t.spill > 0).map((x) => x.i);
-    const idle = nowAll.filter((x) => x.t.counted + x.t.spill <= 0).map((x) => x.i);
+    // What each type would take at the rooms as they stand. Rooms only fall
+    // as courses are taken, and what a course counts — and counts anywhere,
+    // its spill included — never rises as they fall: a course that takes
+    // nothing now takes nothing later, so it goes last and out of the state.
+    const nowByType = sample.map((cc) => plan(cc, roomsOf(rooms)));
+    const takes = (i: number): boolean => nowByType[typeOf[i]!]!.counted + nowByType[typeOf[i]!]!.spill > 0;
+    const remaining = all.filter(takes);
+    const idle = all.filter((i) => !takes(i));
     if (remaining.length === 0) return { score: { counted: 0, total: 0 }, order: idle };
-    const key = remaining.join(',') + '|' + rooms.join(',');
+    const count = sample.map(() => 0);
+    for (const i of remaining) count[typeOf[i]!]! += 1;
+    const key = count.join(',') + '|' + rooms.join(',');
     const hit = memo.get(key);
-    if (hit) return { score: hit.score, order: [...hit.order, ...idle] };
+    // The memo holds an order of TYPES; this state's courses of each type go
+    // in their list order.
+    const realise = (types: number[]): number[] => {
+      const queue = sample.map(() => [] as number[]);
+      for (const i of remaining) queue[typeOf[i]!]!.push(i);
+      return types.map((t) => queue[t]!.shift()!);
+    };
+    if (hit) return { score: hit.score, order: [...realise(hit.order), ...idle] };
     if (++work > WORK_LIMIT) return (({ score, order }) => ({ score, order: [...order, ...idle] }))(inOrder(remaining, rooms));
-    let best: { score: Score; order: number[] } | undefined;
-    // An optimistic ceiling for the whole state: no order beats the sum of what
-    // each course takes now — nor, cap by cap, a cap's room plus what the
+    // An optimistic ceiling for the whole state: no order beats the sum of
+    // what each course takes now — nor, cap by cap, a cap's room plus what the
     // courses NOT drawing on it take (a semester's maximum shared by every
     // course was counted once per course, and the search never pruned —
-    // review of the fixes, 2026-10-29). (A ceiling of every course's full
-    // credits never pruned once an untransferred course could not spill, and
-    // twenty two-cap courses took seconds — review of the fix, 2026-10-29.)
-    const now = remaining.map((i) => ({ cc: multis[i]!, t: nowAll.find((x) => x.i === i)!.t }));
-    let counted = now.reduce((sum, x) => sum + x.t.counted, 0);
-    let total = now.reduce((sum, x) => sum + x.t.counted + x.t.spill, 0);
-    for (const [k, id] of capIds.entries()) {
-      const outside = now.filter((x) => !x.cc.caps.includes(id));
-      counted = Math.min(counted, rooms[k]! + outside.reduce((sum, x) => sum + x.t.counted, 0));
-      if (id !== 'noncse') total = Math.min(total, rooms[k]! + outside.reduce((sum, x) => sum + x.t.counted + x.t.spill, 0));
-    }
+    // review of the fixes, 2026-10-29); for the nine, the total of the
+    // courses that cannot spill is bounded by it too.
+    let counted = 0;
+    let total = 0;
+    count.forEach((c, t) => {
+      counted += c * nowByType[t]!.counted;
+      total += c * (nowByType[t]!.counted + nowByType[t]!.spill);
+    });
+    capIds.forEach((id, k) => {
+      let outCounted = 0;
+      let outTotal = 0;
+      let unbounded = 0;
+      count.forEach((c, t) => {
+        if (!drawsOn[t]![k]) {
+          outCounted += c * nowByType[t]!.counted;
+          outTotal += c * (nowByType[t]!.counted + nowByType[t]!.spill);
+        } else if (spills[t]) unbounded += c * (nowByType[t]!.counted + nowByType[t]!.spill);
+      });
+      counted = Math.min(counted, rooms[k]! + outCounted);
+      total = Math.min(total, rooms[k]! + outTotal + (id === 'noncse' ? unbounded : 0));
+    });
     const ceiling: Score = { counted: exactCredits(counted), total: exactCredits(total) };
-    for (let p = 0; p < remaining.length; p++) {
+    let best: { score: Score; order: number[] } | undefined;
+    const tried = new Set<number>();
+    for (const i of remaining) {
       if (best && !beats(ceiling, best.score)) break; // no child can strictly beat it
-      const i = remaining[p]!;
+      if (tried.has(typeOf[i]!)) continue; // the first of each type stands for the rest
+      tried.add(typeOf[i]!);
       const cc = multis[i]!;
-      const taken = plan(cc, (id) => rooms[capIndex.get(id)!]!);
+      const taken = nowByType[typeOf[i]!]!;
       const nextRooms = rooms.slice();
-      for (const id of cc.caps) {
-        const k = capIndex.get(id)!;
-        nextRooms[k] = exactCredits(nextRooms[k]! - (id === 'noncse' ? taken.counted : taken.counted + taken.spill));
-      }
-      const sub = solve([...remaining.slice(0, p), ...remaining.slice(p + 1)], nextRooms);
+      charge(nextRooms, cc, taken);
+      const sub = solve(remaining.filter((x) => x !== i), nextRooms);
       // On the same grid as take(), so two equally good orders tie exactly
       // and the first one wins, as it should.
       const score: Score = { counted: exactCredits(taken.counted + sub.score.counted), total: exactCredits(taken.counted + taken.spill + sub.score.total) };
@@ -3192,8 +3272,8 @@ function bestMultiOrder(
     }
     // No room anywhere: every remaining course counts zero, in array order.
     const result = best ?? { score: { counted: 0, total: 0 }, order: [...remaining] };
-    memo.set(key, result);
-    return { score: result.score, order: [...result.order, ...idle] };
+    memo.set(key, { score: result.score, order: result.order.filter((i) => remaining.includes(i)).map((i) => typeOf[i]!) });
+    return { score: result.score, order: [...result.order.filter((i) => remaining.includes(i)), ...idle] };
   };
   const { order } = solve(
     multis.map((_, i) => i),

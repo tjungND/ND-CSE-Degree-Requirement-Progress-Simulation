@@ -512,16 +512,24 @@ function seminarRow(ctx: Ctx): RequirementResult {
       parts.push(
         {
           note:
-            refused.length > 0 && states.filter((x) => x === 'unmet').length === refused.length
-              ? `§4.2 requires both seminars in the first year of the program; ${refused.map((c) => c.entry.courseId).join(' and ')} ${refused.length === 1 ? 'was' : 'were'} taken but not counted — ${
-                  // The overload is the remedy only when a semester's maximum
-                  // refused it — not the non-degree twelve or another cap
-                  // (review of the fixes, 2026-10-29) — and for each such semester.
-                  refused.every(byMaximum)
-                    ? `if a credit overload was approved for you in ${[...new Set(refused.map((c) => termLabel(c.entry.term)))].join(' and ')}, tick it under Approvals you already have; otherwise check ${new Set(refused.map((c) => termLabel(c.entry.term))).size === 1 ? 'that semester' : 'those semesters'} for a duplicate row or a wrong credit value (Academic Code §3.8)`
-                    : 'talk to the DGS about it'
-                }`
-              : '§4.2 requires both seminars in the first year of the program; talk to the DGS about taking the missing one',
+            // What each missing seminar needs (a final check of the fixes,
+            // 2026-10-29: one refused and one never taken read only "talk to
+            // the DGS about taking the missing one", while the email named the
+            // overload): the overload only when a semester's maximum refused it
+            // — not the non-degree twelve or another cap — and for each such
+            // semester.
+            `§4.2 requires both seminars in the first year of the program; ${[
+              ...(states.filter((x) => x === 'unmet').length > refused.length ? ['talk to the DGS about taking the missing one'] : []),
+              ...(refused.length > 0
+                ? [
+                    `${refused.map((c) => c.entry.courseId).join(' and ')} ${refused.length === 1 ? 'was' : 'were'} taken but not counted — ${
+                      refused.every(byMaximum)
+                        ? `if a credit overload was approved for you in ${[...new Set(refused.map((c) => termLabel(c.entry.term)))].join(' and ')}, tick it under Approvals you already have; otherwise check ${new Set(refused.map((c) => termLabel(c.entry.term))).size === 1 ? 'that semester' : 'those semesters'} for a duplicate row or a wrong credit value (Academic Code §3.8)`
+                        : 'talk to the DGS about it'
+                    }`,
+                  ]
+                : []),
+            ].join('; ')}`,
         },
         ...transferNote,
       );

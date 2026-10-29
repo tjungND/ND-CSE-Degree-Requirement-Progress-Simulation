@@ -23,27 +23,43 @@ const titleKey = (t: string | undefined): string => (t ?? '').toLowerCase().repl
  * course from the same university, ONE row per posting: two postings of one
  * course number (two topics courses under it) go to two rows, and a posting
  * with no row left keeps its block row (review of the fixes, 2026-10-29: the
- * second posting was lost, or left a block row beside its course). Among the
- * free rows, an attempt the Graduate School could have accepted (#22); among
- * those, the same title first, then the same credits, then the latest. A row
- * already carrying a posting is taken. */
+ * second posting was lost, or left a block row beside its course). A row
+ * already carrying a posting is taken.
+ *
+ * Which row: when a course has at least as many postings as rows, every row
+ * is one of them, so each posting takes the row with its own title (a
+ * topics course's); when it has more rows than postings, the extra rows are
+ * retakes, and a posting takes an attempt the Graduate School could have
+ * accepted (#22) — the title, then the credits, then the latest only choose
+ * among those. Title matches go first, over all the postings, so a posting
+ * whose own row is missing never takes another's (a final check of the
+ * fixes, 2026-10-29). */
 export function pairBlockRows<B extends BlockRow>(rows: readonly CourseEntry[], blocks: readonly B[]): Map<B, CourseEntry> {
   const out = new Map<B, CourseEntry>();
   const taken = new Set<CourseEntry>();
-  for (const block of blocks) {
-    if (block.origin !== 'transfer') continue;
-    const probe = { courseId: block.courseId, institution: block.institution, origin: 'transfer' as const } as CourseEntry;
-    const free = rows.filter((c) => c.fromNdTranscript !== true && c.ndPosted === undefined && !taken.has(c) && sameTransferCourse(c, probe));
-    // An attempt the Graduate School could have accepted first, always (#22):
-    // a title or a credit count only chooses among those (review of the
-    // fixes, 2026-10-29 — a matching title put the posting on a C attempt).
-    const best = free.filter((c) => acceptanceRank(c) === Math.min(...free.map(acceptanceRank)));
-    const byTitle = best.filter((c) => titleKey(c.title) !== '' && titleKey(c.title) === titleKey(block.title));
-    const byCredits = best.filter((c) => Math.abs(c.credits - block.credits) < 1e-9);
-    const twin = preferredTwin(byTitle.length > 0 ? byTitle : byCredits.length > 0 ? byCredits : best);
-    if (twin === undefined) continue;
-    out.set(block, twin);
+  const transferBlocks = blocks.filter((b) => b.origin === 'transfer');
+  const probe = (b: B): CourseEntry => ({ courseId: b.courseId, institution: b.institution, origin: 'transfer' }) as CourseEntry;
+  const rowsOf = (b: B): CourseEntry[] => rows.filter((c) => c.fromNdTranscript !== true && c.ndPosted === undefined && sameTransferCourse(c, probe(b)));
+  // Decided once per course, before any row is taken.
+  const everyRowPosted = new Map<B, boolean>(transferBlocks.map((b) => [b, transferBlocks.filter((x) => sameTransferCourse(probe(x), probe(b))).length >= rowsOf(b).length]));
+  const sameTitle = (c: CourseEntry, b: B): boolean => titleKey(c.title) !== '' && titleKey(c.title) === titleKey(b.title);
+  const take = (b: B, twin: CourseEntry | undefined): void => {
+    if (twin === undefined) return;
+    out.set(b, twin);
     taken.add(twin);
+  };
+  // 1. Every row posted: each posting to the row with its own title.
+  for (const b of transferBlocks) if (everyRowPosted.get(b)) take(b, preferredTwin(rowsOf(b).filter((c) => !taken.has(c) && sameTitle(c, b))));
+  // 2. The rest: an acceptable attempt first when there are retakes, then the
+  // same title, the same credits, the latest.
+  for (const b of transferBlocks) {
+    if (out.has(b)) continue;
+    const free = rowsOf(b).filter((c) => !taken.has(c));
+    if (free.length === 0) continue;
+    const pool = everyRowPosted.get(b) ? free : free.filter((c) => acceptanceRank(c) === Math.min(...free.map(acceptanceRank)));
+    const byTitle = pool.filter((c) => sameTitle(c, b));
+    const byCredits = pool.filter((c) => Math.abs(c.credits - b.credits) < 1e-9);
+    take(b, preferredTwin(byTitle.length > 0 ? byTitle : byCredits.length > 0 ? byCredits : pool));
   }
   return out;
 }

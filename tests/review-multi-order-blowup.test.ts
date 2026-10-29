@@ -58,3 +58,37 @@ it('an over-maximum semester of Notre Dame non-CSE courses beside 20 non-CSE tra
   assert.ok(ms < 2000, `audit took ${ms.toFixed(0)} ms`);
   assert.match(report.requirements.find((r) => r.id === 'phd.credits.regular')!.detail, /^15 of 24 credits complete/); // the nine and two CSE courses
 });
+
+// A final check of the fixes, 2026-10-29: twenty one-credit non-CSE transfers
+// beside four Notre Dame non-CSE courses, two semesters over their maximum —
+// five seconds, with the search treating twenty interchangeable courses as
+// twenty different ones; identical courses now share one search state.
+it('16 one-credit and 4 three-credit non-CSE transfers beside overloaded semesters audit inside 2 s', () => {
+  const transfers = [...Array.from({ length: 16 }, (_, i) => ({ id: `STAT ${59000 + i}`, credits: 1 })), ...Array.from({ length: 4 }, (_, i) => ({ id: `STAT ${51100 + i}`, credits: 3 }))];
+  const nd = ['MATH 60850', 'EE 60770', 'PHYS 60762', 'ACMS 60535'];
+  const from = ['CSE 60876', 'CSE 60770', 'CSE 60762', 'CSE 60535'];
+  const rules = buildRules({
+    courses: nd.map((to, i) => ({ course_id: from[i]!, set: { course_id: to, title: to } })),
+    external: transfers.map((t) => ({ university: 'PURDUE UNIVERSITY', course_id: t.id, course_title: 'Stat', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'no', credit_system: 'semester' })),
+  });
+  const fall2025 = { season: 'fall', year: 2025 };
+  const spring2026 = { season: 'spring', year: 2026 };
+  const student = {
+    schemaVersion: 1, program: 'phd', entryTerm: fall2025, priorMs: 'completed', bachelorsAwarded: { season: 'spring', year: 2021 },
+    background: { bachelors: 'elsewhere', graduate: 'elsewhere', samePlace: false, finished: true }, milestones: {}, attestations: {},
+    courses: [
+      ...transfers.map((t, i) => ({ courseId: t.id, title: 'Stat', credits: t.credits, term: i % 2 === 0 ? { season: 'fall', year: 2022 } : { season: 'spring', year: 2023 }, grade: 'A', origin: 'transfer', institution: 'Purdue University', degreeLevel: 'masters' })),
+      ...nd.map((courseId, i) => ({ courseId, credits: 3, term: i % 2 === 0 ? fall2025 : spring2026, grade: 'A', origin: 'nd' })),
+      { courseId: 'CSE 60111', credits: 3, term: fall2025, grade: 'A', origin: 'nd' },
+      { courseId: 'CSE 60641', credits: 3, term: fall2025, grade: 'A', origin: 'nd' },
+      { courseId: 'CSE 98900', credits: 6, term: fall2025, grade: 'S', origin: 'nd' },
+      { courseId: 'CSE 60211', credits: 3, term: spring2026, grade: 'A', origin: 'nd' },
+      { courseId: 'CSE 60421', credits: 3, term: spring2026, grade: 'A', origin: 'nd' },
+      { courseId: 'CSE 98900', credits: 6, term: spring2026, grade: 'S', origin: 'nd' },
+    ],
+  };
+  const t0 = performance.now();
+  audit(student as never, rules, '2026-10-28');
+  const ms = performance.now() - t0;
+  assert.ok(ms < 2000, `audit took ${ms.toFixed(0)} ms`);
+});

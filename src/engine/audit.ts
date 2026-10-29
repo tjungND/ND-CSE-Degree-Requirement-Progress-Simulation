@@ -15,6 +15,7 @@ import { uncoveredRegistrationGaps } from './registration-gaps.ts';
 import { fullTimeTermRecords, graduateLevelFlag, sameTermDuplicate } from './requirements/residency.ts';
 import { transferCourseChecks } from '../data/course-checks.ts';
 import { isNotreDameInstitution } from '../data/external.ts';
+import { coreTitleMatchesArea } from './core-title.ts';
 import { advisorReviewFlag, advisorRow, approvalsRow, goodStandingRow, gpaRow, gpaText, noGpaYet } from './requirements/shared.ts';
 import { mscseRows, msTimeLimitRow, summerOnlyReviewFlag, thesisReadersReviewFlag } from './requirements/mscse.ts';
 import { extensionReviewFlag } from './requirements/context.ts';
@@ -877,7 +878,27 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     const passesCoreItself = (rowId: string): boolean =>
       ownArea !== undefined && rowId === `phd.qualifier.core.${ownArea}` && ((isPassed(p.course.entry.grade) && !isInProgress(p.course.entry.grade)) || p.course.ndPosting !== undefined);
     const own = entryIndex.has(p.course.entry) ? (feedsOfEntry.get(entryIndex.get(p.course.entry)!) ?? []) : [];
-    const counts = [...own, ...(aLiveSibling ? [] : (feeds.get(id) ?? []))]
+    // The rows still keyed by course id — the core areas, the specialization,
+    // §5.2 — go to a registration of a shared number only when they are its
+    // own: a transfer numbered like a Notre Dame course took that course's
+    // core area, group and transfer row, and the Notre Dame course the
+    // transfer's (a final check of the fixes, 2026-10-29). A course alone
+    // under its number reads as before.
+    const shared = alloc.perCourse.some((q) => q !== p && q.course.entry.courseId === id);
+    const fromNd = p.course.entry.origin === 'nd' || isNotreDameInstitution(p.course.entry.institution);
+    const byNumber = (aLiveSibling ? [] : (feeds.get(id) ?? [])).flatMap((x) => {
+      if (!shared) return [x];
+      if (x.id.startsWith('phd.qualifier.core.')) {
+        const area = x.id.slice('phd.qualifier.core.'.length);
+        if (ownArea === area) return [x];
+        const undecided = fromNd ? p.course.rule === undefined : p.course.external?.satisfiesCoreArea === undefined;
+        return undecided && coreTitleMatchesArea(p.course.entry.title, area) ? [{ ...x, when: 'later' as const }] : [];
+      }
+      if (x.id === 'phd.qualifier.categories') return fromNd && (p.course.rule?.categoryGroups?.length ?? 0) > 0 ? [x] : [];
+      if (x.id === 'phd.transfer' || x.id === 'ms.transfer') return p.course.caps.includes('transfer') || p.course.ndPosting !== undefined || p.course.transferOutsideCap === true ? [x] : [];
+      return [x];
+    });
+    const counts = [...own, ...byNumber]
       .sort((a, b) => (rowOrder.get(a.id) ?? 0) - (rowOrder.get(b.id) ?? 0))
       .map((x) => (notYet && x.when === 'now' && !passesCoreItself(x.id) ? { ...x, when: 'later' as const } : x));
     const qualifier = p.qualifier ?? qualifierFromFeeds(p, counts);
