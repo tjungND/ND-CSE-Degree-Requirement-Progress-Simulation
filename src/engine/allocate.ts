@@ -20,7 +20,7 @@ import { ZERO_SUMS } from './status.ts';
 import { isEarlyStartCourse } from './early-start.ts';
 import { addDaysIso, addYearsIso, compareTerm, endOfTerm, normalizeEntryTerm, semesterNumber, shiftTermYears, startOfTerm, termIndex, termLabel, termOfDate } from './term.ts';
 import type { Attestations, CourseEntry, Grade, NdPosting, Program, Student, Term } from './types.ts';
-import { ndPostingOf, pairedBlockRows, sameTransferCourse } from './nd-posting.ts';
+import { ndPostingOf, pairedBlockRows, sameTransferCourse, sameUniversity } from './nd-posting.ts';
 import { isCovidCohort } from './requirements/context.ts';
 
 /** `nondegree` (2026-10-03): Academic Code §2.3 — "No more than 12 credit hours
@@ -676,15 +676,26 @@ function drawsOnTransferAllowance(cc: ClassifiedCourse): boolean {
 /** The earlier graduate programs those courses come from, by university as
  * the record names it (folded, so "Purdue University" and "PURDUE UNIV" are
  * one) — an earlier Notre Dame program is one of them (P3-prior-programs-3). */
-export function earlierTransferPrograms(classified: readonly ClassifiedCourse[]): string[] {
-  const programs = new Map<string, string>();
+export function earlierTransferPrograms(classified: readonly ClassifiedCourse[], entry?: Term): string[] {
+  const programs: { name: string; label: string }[] = [];
   for (const cc of classified) {
     if (!drawsOnTransferAllowance(cc)) continue;
+    // Credit already posted for a course taken at or after the entry term —
+    // the other university's own row dates it (a block row's term is the
+    // posting's) — is a course taken after admission, not an earlier program
+    // (P4-transfer-3 (a); credit-transfer review 2026-10-28, #23: posting a
+    // summer course turned a finished master's into two programs).
+    if (entry !== undefined && cc.ndPosting !== undefined && cc.entry.fromNdTranscript !== true && compareTerm(cc.entry.term, entry) >= 0) continue;
     const name = cc.entry.institution ?? '';
-    const key = isNotreDameInstitution(name) ? 'NOTRE DAME' : normalizeUniversity(name);
-    if (key !== '' && !programs.has(key)) programs.set(key, isNotreDameInstitution(name) ? 'an earlier Notre Dame program' : name);
+    if (normalizeUniversity(name) === '') continue;
+    const nd = isNotreDameInstitution(name);
+    // One school however its transcripts spell it ("Purdue University" and
+    // "Purdue University West Lafayette" — sameUniversity, as the Notre Dame
+    // import pairs them; #18).
+    if (programs.some((p) => (nd ? p.name === 'NOTRE DAME' : p.name !== 'NOTRE DAME' && sameUniversity(p.name, name)))) continue;
+    programs.push({ name: nd ? 'NOTRE DAME' : name, label: nd ? 'an earlier Notre Dame program' : name });
   }
-  return [...programs.values()];
+  return programs.map((p) => p.label);
 }
 
 /** CSE §5.2's "before the semester in which the graduate degree is conferred",
@@ -792,7 +803,10 @@ export function staleInProgressTerms(courses: readonly CourseEntry[], today?: st
   if (today === undefined) return [];
   const current = termOfDate(today);
   const groups = new Map<number, StaleInProgress>();
-  const stale = courses.filter((c) => c.grade === 'IP' && compareTerm(c.term, current) < 0).sort((a, b) => compareTerm(a.term, b.term) || a.courseId.localeCompare(b.courseId));
+  // Credit already posted on the Notre Dame record is finished credit: its
+  // "IP" is only the transfer block printing no grade (P3-import-3; credit-
+  // transfer review 2026-10-28, #41), and the posting term is always past.
+  const stale = courses.filter((c) => c.grade === 'IP' && ndPostingOf(c) === undefined && compareTerm(c.term, current) < 0).sort((a, b) => compareTerm(a.term, b.term) || a.courseId.localeCompare(b.courseId));
   for (const c of stale) {
     const g = groups.get(termIndex(c.term)) ?? { term: c.term, courseIds: [], nd: false };
     if (!g.courseIds.includes(c.courseId)) g.courseIds.push(c.courseId);
@@ -1175,7 +1189,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // allowance come from two programs (two universities, or an earlier Notre
   // Dame program and a school elsewhere), every such course waits for the DGS
   // rather than one answer's cap being applied to both (never guess).
-  const programs = earlierTransferPrograms(classified);
+  const programs = earlierTransferPrograms(classified, entry);
   if (programs.length < 2) return { classified, warnings, staleInProgress };
   const list = programs.length === 2 ? `${programs[0]} and ${programs[1]}` : `${programs.slice(0, -1).join(', ')} and ${programs[programs.length - 1]}`;
   return {
@@ -1508,7 +1522,11 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // student's status when they took the course, not the course's level, so
   // a graduate-numbered course taken before the bachelor's says so on its
   // own line rather than leaving it to the group heading.
-  const suggested = external === undefined && ndCoreArea === undefined ? coreTitleSuggestion(c.title) : undefined;
+  // A row whose satisfies_core_area is blank has not decided the core area
+  // (DGS 2026-09-06: `none` decides "no"), so the title still suggests one —
+  // the review request asks the DGS about it (credit-transfer review
+  // 2026-10-28, #49).
+  const suggested = (external === undefined || external.satisfiesCoreArea === undefined) && ndCoreArea === undefined ? coreTitleSuggestion(c.title) : undefined;
   // §4.4.1 core knowledge and §4.4.2 specialization are the Ph.D.
   // qualifying examination's, and the MSCSE has no qualifier at all — so
   // an MSCSE student is told nothing about either (DGS 2026-09-11:
@@ -1677,9 +1695,17 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // (b): credit on the UNDERGRADUATE record of a combined transcript — AP,
   // College Board or community-college credit the University accepted for the
   // bachelor's — is undergraduate coursework, never graduate transfer credit.
-  if (c.degreeLevel === 'bachelors' || posting?.level === 'undergraduate') {
+  // …but credit the Notre Dame record shows as accepted GRADUATE transfer
+  // credit is that, whichever transcript row it rides on: a twin from the
+  // bachelor's record (a graduate course taken in the undergraduate years)
+  // counts as posted, not "taken as an undergraduate" (credit-transfer review
+  // 2026-10-28, #47 — it vanished while the block row's line said it was
+  // counted on that twin).
+  if ((c.degreeLevel === 'bachelors' && posting?.level !== 'graduate') || posting?.level === 'undergraduate') {
     const confirmedArea = external?.satisfiesCoreArea ? areaName(external.satisfiesCoreArea) : undefined;
-    const suggested = coreTitleSuggestion(c.title);
+    // A `none` in the sheet is the DGS's decision: no title suggestion after it
+    // (credit-transfer review 2026-10-28, #48); a blank cell is still open.
+    const suggested = external?.satisfiesCoreArea === null ? undefined : coreTitleSuggestion(c.title);
     // Two different reasons (DGS 2026-09-22). Another university's course:
     // the student's STATUS at the time — §5.2 needs graduate student status
     // (DGS 2026-09-07). A Notre Dame course reaches this branch only because

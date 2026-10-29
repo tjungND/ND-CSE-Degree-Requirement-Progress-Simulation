@@ -1,0 +1,79 @@
+{
+  "name": "phd-undergrad-core-none-decided",
+  "description": "Credit-transfer review 2026-10-28 (#48): the DGS ruled satisfies_core_area = none for Purdue CS 25000 “Computer Architecture”, yet the undergraduate course’s line still said it “may still satisfy the Computer Architecture core-knowledge requirement … once the DGS reviews it” — a review nothing would ever ask for. After `none` the line says it is not relevant to core knowledge.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 25000",
+          "course_title": "Computer Architecture",
+          "satisfies_core_area": "none",
+          "transferable_PhD": "no",
+          "transferable_MSCSE": "no",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CS 25000",
+        "title": "Computer Architecture",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "bachelors"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "none"
+    }
+  },
+  "expect": {
+    "phd.qualifier.core.architecture": {
+      "status": "unmet",
+      "detailIncludes": [
+        "No Computer Architecture course yet"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 25000": [
+      "not relevant to the core knowledge requirement"
+    ]
+  }
+}

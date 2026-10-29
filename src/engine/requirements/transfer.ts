@@ -54,7 +54,10 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
   const transfers = ctx.classified.filter(
     (c) =>
       c.entry.origin === 'transfer' &&
-      c.entry.degreeLevel !== 'bachelors' &&
+      // …except graduate credit the Notre Dame record posts from a row of the
+      // bachelor's transcript, which counts as transfer credit (credit-
+      // transfer review 2026-10-28, #47).
+      (c.entry.degreeLevel !== 'bachelors' || c.ndPosting?.level === 'graduate') &&
       c.notTransferCredit !== true &&
       (c.caps.includes('transfer') || c.pool === 'none' || c.transferOutsideCap === true),
   );
@@ -218,7 +221,7 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     const upper = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
     // Two earlier programs (P3-prior-programs-3; DGS 2026-10-07: option (3)):
     // the case, named once, before its courses.
-    const programs = ctx.classified.some((c) => c.twoPrograms === true) ? earlierTransferPrograms(ctx.classified) : [];
+    const programs = ctx.classified.some((c) => c.twoPrograms === true) ? earlierTransferPrograms(ctx.classified, ctx.entry) : [];
     if (programs.length >= 2)
       parts.push(`Transfer credit from ${programs.length} earlier graduate programs: ${programs.slice(0, -1).join(', ')} and ${programs[programs.length - 1]}`, {
         note: 'The Academic Code and §5.2 state a transfer allowance after a finished program and one after an unfinished one, but not how two programs’ allowances combine, so every course from them waits for the DGS (Academic Code §4.6); the review request asks',

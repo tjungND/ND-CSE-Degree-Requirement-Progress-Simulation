@@ -9,7 +9,7 @@
 // brought: the Notre Dame import's marks, or the other transcript's rows (a
 // row carrying a mark turns back into the Notre Dame record's block row).
 // Pure functions over the record, so the rules have tests of their own.
-import { sameTransferCourse } from '../engine/nd-posting.ts';
+import { preferredTwin, sameTransferCourse } from '../engine/nd-posting.ts';
 import type { CourseEntry, NdPosting, Student } from '../engine/types.ts';
 import type { ParsedCourse } from '../transcript/parse.ts';
 
@@ -28,7 +28,9 @@ export function postingOf(c: Pick<ParsedCourse, 'term' | 'credits' | 'level' | '
 export function twinOfBlockRow(student: Pick<Student, 'courses'>, block: Pick<ParsedCourse, 'courseId' | 'institution' | 'origin'>): CourseEntry | undefined {
   if (block.origin !== 'transfer') return undefined;
   const probe = { courseId: block.courseId, institution: block.institution, origin: 'transfer' as const } as CourseEntry;
-  return student.courses.find((c) => c.fromNdTranscript !== true && sameTransferCourse(c, probe));
+  // The attempt the Graduate School could have accepted, when the other
+  // transcript lists the course twice (credit-transfer review 2026-10-28, #22).
+  return preferredTwin(student.courses.filter((c) => c.fromNdTranscript !== true && sameTransferCourse(c, probe)));
 }
 
 /** The Notre Dame import's own block row that a course from another

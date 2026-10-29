@@ -1,0 +1,88 @@
+{
+  "name": "phd-posted-credit-not-stale-in-progress",
+  "description": "Credit-transfer review 2026-10-28 (#41): the Notre Dame transcript’s transfer block prints no grade, so a posted course reads IP — and every one triggered “Spring 2025 has ended and CS 50100 still reads In progress — set its grade.” Posted credit is finished credit (P3-import-3): no such warning.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50100",
+          "course_title": "Graduate Operating Systems",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2024
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 50100",
+        "title": "Graduate Operating Systems",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true,
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2025
+          },
+          "credits": 3,
+          "level": "graduate",
+          "institution": "Purdue University"
+        }
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "B+",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 60 credits complete"
+      ]
+    }
+  },
+  "expectNoWarnings": [
+    "still reads In progress"
+  ]
+}

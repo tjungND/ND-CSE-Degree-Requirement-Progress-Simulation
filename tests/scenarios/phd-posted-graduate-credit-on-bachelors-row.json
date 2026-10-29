@@ -1,0 +1,100 @@
+{
+  "name": "phd-posted-graduate-credit-on-bachelors-row",
+  "description": "Credit-transfer review 2026-10-28 (#47): a graduate course taken in the undergraduate years at Purdue, on the bachelor’s transcript, that the Notre Dame record shows as accepted graduate transfer credit. The bachelor’s row read “not counted — taken as an undergraduate” while the block row said its acceptance was counted on that row: the course vanished (3 of 60). The Graduate School’s posting decides: it counts as posted (6 of 60).",
+  "today": "2027-03-01",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2027
+        },
+        "grade": "IP",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CS 58000",
+        "title": "Algorithm Design",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2027
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true,
+        "ndPosted": {
+          "term": {
+            "season": "spring",
+            "year": 2027
+          },
+          "credits": 3,
+          "level": "graduate",
+          "institution": "Purdue University"
+        }
+      },
+      {
+        "courseId": "CS 58000",
+        "title": "Algorithm Design",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "bachelors"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2024
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": true,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 60 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 58000": [
+      "transfer credit on your Notre Dame record"
+    ]
+  }
+}

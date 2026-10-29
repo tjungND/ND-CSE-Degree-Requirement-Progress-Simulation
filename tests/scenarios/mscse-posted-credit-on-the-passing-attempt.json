@@ -1,0 +1,123 @@
+{
+  "name": "mscse-posted-credit-on-the-passing-attempt",
+  "description": "Credit-transfer review 2026-10-28 (#22): Purdue CS 50100 taken twice (B-, then A) and posted once on the Notre Dame record. The posting attached to the first row in the record — the B- attempt — so the A retake counted as well: 9 of 30 for one course posted once, and the totals changed with row order. The posting now sits on the attempt the Graduate School could have accepted (B or better, the latest): 6 of 30, the B- attempt “grade below B”, nothing to submit.",
+  "today": "2026-10-29",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50100",
+          "course_title": "Algorithms",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "entryTerm": {
+      "season": "spring",
+      "year": 2026
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 50100",
+        "title": "Algorithms",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2023
+        },
+        "grade": "B-",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50100",
+        "title": "Algorithms",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50100",
+        "title": "Algorithms",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2026
+        },
+        "grade": "IP",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "registeredLevel": "graduate",
+        "fromNdTranscript": true,
+        "ndPosted": {
+          "term": {
+            "season": "fall",
+            "year": 2026
+          },
+          "credits": 3,
+          "level": "graduate",
+          "institution": "Purdue University"
+        }
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "msOption": "project",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "ms.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 30 credits complete"
+      ]
+    },
+    "ms.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "6 of 24 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 50100": [
+      "transfer credit on your Notre Dame record (posted Fall 2026)"
+    ]
+  }
+}

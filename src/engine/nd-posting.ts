@@ -14,6 +14,8 @@
 // Shared by the engine (which counts the credit) and the two transcript
 // imports (which keep one row per course, whichever transcript came first).
 import { isNotreDameInstitution, normalizeCourseId, normalizeUniversity } from '../data/external.ts';
+import { meetsGradeFloor } from './grades.ts';
+import { compareTerm } from './term.ts';
 import type { CourseEntry, NdPosting } from './types.ts';
 
 /** The acceptance a transfer row carries: its own `ndPosted`, or — for a row
@@ -69,11 +71,23 @@ export function pairedBlockRows(courses: readonly CourseEntry[]): Map<CourseEntr
   const taken = new Set<CourseEntry>();
   for (const block of courses) {
     if (block.origin !== 'transfer' || block.fromNdTranscript !== true || ndPostingOf(block) === undefined) continue;
-    const twin = courses.find((o) => o !== block && !taken.has(o) && o.fromNdTranscript !== true && o.ndPosted === undefined && sameTransferCourse(o, block));
+    const twin = preferredTwin(courses.filter((o) => o !== block && !taken.has(o) && o.fromNdTranscript !== true && o.ndPosted === undefined && sameTransferCourse(o, block)));
     if (twin) {
       paired.set(block, twin);
       taken.add(twin);
     }
   }
   return paired;
+}
+
+/** The row of a course the other university lists more than once (a retake,
+ * two sections) that the Notre Dame record's acceptance belongs on: the
+ * attempt the Graduate School could have accepted — a letter grade of B or
+ * better (§5.2 criterion 4), then an S — and of those the latest. The first
+ * row in the record used to take it, so a B- attempt carried the posting, the
+ * A retake counted as well, and the totals changed with row order
+ * (credit-transfer review 2026-10-28, #22). */
+export function preferredTwin(rows: readonly CourseEntry[]): CourseEntry | undefined {
+  const rank = (c: CourseEntry): number => (c.grade !== 'S' && meetsGradeFloor(c.grade, 'B') ? 0 : c.grade === 'S' ? 1 : 2);
+  return [...rows].sort((a, b) => rank(a) - rank(b) || compareTerm(b.term, a.term))[0];
 }

@@ -960,7 +960,8 @@ function coreRows(ctx: Ctx): RequirementResult[] {
       } else if (c.external?.satisfiesCoreArea === area.code && (isPassed(c.entry.grade) || c.ndPosting !== undefined)) {
         // (Credit the Notre Dame record shows as accepted was passed, whatever
         // grade cell the transcript printed for it — P3-import-1, 2026-10-05.)
-        confirmed ??= `${c.entry.courseId} (${c.external.university})`;
+        // The record's own spelling of the school, not the sheet's capitals (#50).
+        confirmed ??= `${c.entry.courseId} (${c.entry.institution ?? c.external.university})`;
         doneIn(c.entry.term);
       } else if (isNotreDameInstitution(c.entry.institution) && c.rule?.coreArea === area.code) {
         // Prior Notre Dame coursework (2026-09-05): the Courses tab's core
@@ -970,12 +971,15 @@ function coreRows(ctx: Ctx): RequirementResult[] {
           done ??= `${c.entry.courseId} (Notre Dame, before entering the program)`;
           doneIn(c.entry.term);
         } else if (isInProgress(c.entry.grade)) ip ??= c.entry.courseId;
-      } else if (c.external === undefined && (isPassed(c.entry.grade) || c.ndPosting !== undefined) && coreTitleMatchesArea(c.entry.title, area.code)) {
+      } else if ((c.external === undefined || c.external.satisfiesCoreArea === undefined) && (isPassed(c.entry.grade) || c.ndPosting !== undefined) && coreTitleMatchesArea(c.entry.title, area.code)) {
         // Unreviewed course from a previous institution (any level — §4.4.1
         // has no §5.2 restrictions) whose title suggests this area: the DGS's
         // ruling is what decides, so the row shows "pending review"
-        // (2026-09-04). A course the DGS has already ruled on (even with no
-        // core area) is decided, never pending.
+        // (2026-09-04). A course the DGS has already ruled on for its core
+        // area — `none` included — is decided, never pending; a row whose
+        // core cell is blank is not (DGS 2026-09-06; credit-transfer review
+        // 2026-10-28, #49: it read "No … course yet" while the review request
+        // asked).
         pending ??= `${c.entry.courseId}${c.entry.institution ? ` (${c.entry.institution})` : ''}`;
       }
     }

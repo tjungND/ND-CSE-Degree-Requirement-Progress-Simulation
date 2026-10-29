@@ -240,8 +240,10 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
     // whatever level it was registered at (Academic Code §4.6, last
     // paragraph). A GR-registered 4+1 course used to be sent for a §5.2
     // recommendation (policy review round 3, P3-fourplusone-5).
+    // (Graduate credit the Notre Dame record posts from a bachelor's-transcript
+    // row is transfer credit — credit-transfer review 2026-10-28, #47.)
     const bachelors =
-      c.entry.degreeLevel === 'bachelors' || (fromNotreDame && c.notTransferCredit === true && !c.nonDegree && !c.ndBeforeAdmission && !c.ndMastersCredit);
+      (c.entry.degreeLevel === 'bachelors' && c.ndPosting?.level !== 'graduate') || (fromNotreDame && c.notTransferCredit === true && !c.nonDegree && !c.ndBeforeAdmission && !c.ndMastersCredit);
     // Prior Notre Dame coursework whose Courses-tab row names a core area is
     // decided for §4.4.1 already (2026-09-05) — no ruling to ask for.
     const coreDecidedByCoursesTab = fromNotreDame && c.rule?.coreArea !== undefined;

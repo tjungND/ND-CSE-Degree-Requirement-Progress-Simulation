@@ -19,7 +19,7 @@ import { canonicalCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { creditSystemFactor, findExternalRule, isNotreDameInstitution } from '../data/external.ts';
 import { backgroundQuestions, completeBackground, describeBackground, openBackgroundDialog, priorSlotsFor, priorSlotsForDraft } from './background.ts';
 import { answerBackground, confirmDraft, earlierDegreesState, forgetReadings, mergeReading, restoreEarlierDegrees, type ReadingResult, readBackgroundFromPriorBachelors, readBackgroundFromPriorGraduate } from './background-read.ts';
-import { sameUniversity } from '../engine/nd-posting.ts';
+import { preferredTwin, sameTransferCourse, sameUniversity } from '../engine/nd-posting.ts';
 import { CORE_TITLE_RE } from '../engine/core-title.ts';
 import { priorNdUndergraduateCanCount } from '../engine/allocate.ts';
 import type { Rules } from '../data/types.ts';
@@ -1976,13 +1976,21 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       // transcript added after the master's.
       const graduateCandidates = [...new Set(earlier.filter((c) => c.degreeLevel === 'masters' || c.degreeLevel === 'phd').map((c) => c.institution!))];
       const graduateAt = graduateCandidates.length === 1 ? graduateCandidates[0] : undefined;
+      const added: CourseEntry[] = [];
       for (const r of ready) {
         const row = courseEntryOf(r, p, university, args.todayIso ? { on: args.todayIso, app: APP_BUILD.commit } : undefined);
         if (row.degreeLevel !== 'bachelors') graduateRows += 1;
         s.courses.push(row);
-        // The same course already on the record as the Notre Dame
-        // transcript's accepted transfer credit: one course, this row,
-        // carrying that acceptance (P3-import-1 (c), 2026-10-05).
+        added.push(row);
+      }
+      // The same course already on the record as the Notre Dame
+      // transcript's accepted transfer credit: one course, this row,
+      // carrying that acceptance (P3-import-1 (c), 2026-10-05) — the attempt
+      // the Graduate School could have accepted when this transcript lists
+      // the course twice (credit-transfer review 2026-10-28, #22).
+      for (const row of added) {
+        const block = blockRowFor(s, row);
+        if (block === undefined || preferredTwin(added.filter((x) => sameTransferCourse(x, block))) !== row) continue;
         if (absorbBlockRow(s, row)) merged += 1;
       }
       // What this transcript settles of the earlier-degrees answer

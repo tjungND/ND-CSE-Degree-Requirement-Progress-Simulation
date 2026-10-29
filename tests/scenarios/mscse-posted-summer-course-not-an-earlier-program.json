@@ -1,0 +1,139 @@
+{
+  "name": "mscse-posted-summer-course-not-an-earlier-program",
+  "description": "Credit-transfer review 2026-10-28 (#23): a summer course taken elsewhere after admission (Michigan EECS 584), once posted on the Notre Dame record, counted as a second earlier graduate program — “Transfer credit from 2 earlier graduate programs” — and every approved course of the real earlier master’s (Purdue) went back to waiting for the ADGS. A course taken after admission is not an earlier program (P4-transfer-3 (a)), posted or not: the Purdue courses count and are submitted.",
+  "today": "2026-10-29",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50100",
+          "course_title": "CS 50100",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 50200",
+          "course_title": "CS 50200",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        },
+        {
+          "university": "UNIVERSITY OF MICHIGAN",
+          "course_id": "EECS 584",
+          "course_title": "EECS 584",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "mscse",
+    "entryTerm": {
+      "season": "spring",
+      "year": 2026
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 50100",
+        "title": "CS 50100",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CS 50200",
+        "title": "CS 50200",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "EECS 584",
+        "title": "EECS 584",
+        "credits": 3,
+        "term": {
+          "season": "summer",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Michigan",
+        "degreeLevel": "masters",
+        "ndPosted": {
+          "term": {
+            "season": "fall",
+            "year": 2026
+          },
+          "credits": 3,
+          "level": "graduate"
+        }
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "msOption": "project",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "ms.transfer": {
+      "status": "in_progress",
+      "detailExcludes": [
+        "earlier graduate programs"
+      ]
+    },
+    "ms.credits.total": {
+      "status": "unmet",
+      "detailIncludes": [
+        "12 of 30 credits complete"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CS 50100": [
+      "counts toward regular courses (3 cr)"
+    ]
+  }
+}

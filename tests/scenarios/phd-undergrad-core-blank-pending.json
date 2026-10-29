@@ -1,0 +1,74 @@
+{
+  "name": "phd-undergrad-core-blank-pending",
+  "description": "Credit-transfer review 2026-10-28 (#49): Purdue CS 25000 “Computer Architecture” is listed in ExternalCourses with satisfies_core_area blank — not decided (DGS 2026-09-06: `none` decides “no”). The review request asks the DGS for the core area and the course line says so, but the core-knowledge row read “No Computer Architecture course yet”. It now reads “Pending review: CS 25000 …”, as for an unlisted course.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 25000",
+          "course_title": "Computer Architecture",
+          "satisfies_core_area": "",
+          "transferable_PhD": "no",
+          "transferable_MSCSE": "no",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "none",
+    "courses": [
+      {
+        "courseId": "CS 25000",
+        "title": "Computer Architecture",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "bachelors"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2022
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "none"
+    }
+  },
+  "expect": {
+    "phd.qualifier.core.architecture": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "Pending review: CS 25000"
+      ]
+    }
+  }
+}
