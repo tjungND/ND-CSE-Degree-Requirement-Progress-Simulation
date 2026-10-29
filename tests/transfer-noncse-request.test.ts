@@ -88,9 +88,14 @@ describe('transfer credit past the non-CSE nine is not transferred (DGS 2026-10-
     // The credits to transfer said outright (DGS 2026-10-28: "explicitly state
     // how many credits need to be transferred"); the cap that cut the rest is
     // named in the course table.
-    assert.match(info, /\(Northeastern University, Spring 2025\) — transfer 1 of its 4 credits; recommended by the DGS in the course rules \(§5\.2\)\.$/);
+    // A part says why the rest does not transfer (DGS 2026-10-28).
+    assert.match(info, /\(Northeastern University, Spring 2025\) — transfer 1 of its 4 credits \(the rest over the 9-credit non-CSE cap\); recommended by the DGS in the course rules \(§5\.2\)\.$/);
     // Every action says its credits — the 17, not the full 24.
-    assert.deepEqual(items.actions.map((a) => / — transfer (\d+)(?: of its \d+)? credits?; /.exec(a)?.[1]), ['4', '4', '1', '4', '4']);
+    assert.deepEqual(items.actions.map((a) => / — transfer (\d+)(?: of its \d+)? credits?(?: \([^)]*\))?; /.exec(a)?.[1]), ['4', '4', '1', '4', '4']);
+    // The ND credits cell: the number, and for a part the same short reason.
+    const { text } = gradAdminRequest(report, student, rules, { todayIso: TODAY, entryTerm: 'Fall 2026', priorStudy: 'x' });
+    assert.match(text, /\tINFO 6205\tINFO 6205\t4\t1 \(the rest over the 9-credit non-CSE cap\)\tA\t/);
+    assert.match(text, /\tINFO 5100\tINFO 5100\t4\t4\tA\t/);
     assert.ok(!items.actions.some((a) => a.includes('TELE 5600')));
     assert.deepEqual(items.transfersOverCap.map((t) => [t.courseId, t.cutBy]), [['TELE 5600', 'over the 9-credit non-CSE cap (§4.2)']]);
   });

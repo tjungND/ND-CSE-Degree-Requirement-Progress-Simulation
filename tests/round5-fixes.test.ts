@@ -229,6 +229,9 @@ describe('11: a course the §5.2 cap counts in part', () => {
     const rows = gradAdminRequest(report, s, r, { todayIso: '2025-03-01', entryTerm: 'Fall 2024', priorStudy: 'x' }).items.courses;
     assert.equal(rows.find((c) => c.courseId === 'CS 50300')?.credits, '4');
     assert.equal(rows.find((c) => c.courseId === 'CS 58000')?.credits, '2 of 4 (the rest over the 6-credit transfer cap)');
+    // The action says the part and why (DGS 2026-10-28).
+    const actions = gradAdminRequest(report, s, r, { todayIso: '2025-03-01', entryTerm: 'Fall 2024', priorStudy: 'x' }).items.actions;
+    assert.ok(actions.some((a) => a.includes('CS 58000') && a.includes('— transfer 2 of its 4 credits (the rest over the 6-credit transfer cap);')), JSON.stringify(actions));
   });
   // Verification, transfer-1: a cap other than §5.2's that cuts the course is
   // the one the table names, and the request does not call it over §5.2's.
@@ -267,8 +270,8 @@ describe('11: a course the §5.2 cap counts in part', () => {
     // The credits to transfer said outright (DGS 2026-10-28: "explicitly state
     // how many credits need to be transferred"); the cap that cut the rest is
     // named in the course table, without its section in the request.
-    assert.match(action, /^Submit the Transfer of Credits request to the Graduate School for MA 52000 Analysis \(Purdue University, Spring 2023\) — transfer 1 of its 3 credits; recommended by the DGS in the course rules \(§5\.2\)\.$/);
-    assert.match(req.text, /\nPurdue University\tMA 52000\tAnalysis\t3\t1\tA\tSpring 2023\t/, 'ND credits: the 1 to transfer');
+    assert.match(action, /^Submit the Transfer of Credits request to the Graduate School for MA 52000 Analysis \(Purdue University, Spring 2023\) — transfer 1 of its 3 credits \(the rest over the 3-credit non-CSE cap\); recommended by the DGS in the course rules \(§5\.2\)\.$/);
+    assert.match(req.text, /\nPurdue University\tMA 52000\tAnalysis\t3\t1 \(the rest over the 3-credit non-CSE cap\)\tA\tSpring 2023\t/, 'ND credits: the 1 to transfer, and why');
     assert.match(req.text, /\nMA 52000\tAnalysis\t1 of 3 \(the rest over the 3-credit non-CSE cap\)\tA\tSpring 2023\t/);
     assert.doesNotMatch(req.text, /§5\.2/);
   });

@@ -347,6 +347,14 @@ function overCapText(cap: number | undefined, cutBy?: string, cutUnknown?: true)
  * "explicitly state how many credits need to be transferred"): "4 credits",
  * "1 of its 4 credits", "3.3 Notre Dame credits (5 on the transcript)". The
  * cap that cut the rest is named under "Courses counted so far". */
+/** Why only part of a course transfers, said beside the amount (DGS
+ * 2026-10-28: "When only partial credits are transferred, add a short
+ * explanation next to it"): "the rest over the 9-credit non-CSE cap", "the
+ * rest over the 24-credit transfer cap". Empty for a whole course. */
+export function partReason(t: ProcessingTransfer, transferCap: number | undefined): string {
+  if (t.cappedCredits === undefined) return '';
+  return withoutCitations(`the rest ${t.cutBy ?? `over the ${transferCap !== undefined ? `${formatCredits(transferCap)}-credit ` : ''}transfer cap`}`);
+}
 export function transferAmount(t: ProcessingTransfer): string {
   const whole = t.ndCredits ?? t.credits;
   const n = t.cappedCredits ?? whole;
@@ -497,6 +505,11 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   const closedWindow = report.transferRequestWindowClosed;
   // The tick is the student's own statement (DGS 2026-10-11, item 6).
   const recommendedBy = (t: ProcessingTransfer): string => (t.state === 'approved' ? 'recommended by the DGS for my case, as I ticked' : 'recommended by the DGS in the course rules');
+  // A part, with why the rest does not transfer (DGS 2026-10-28).
+  const why = (t: ProcessingTransfer): string => {
+    const reason = partReason(t, report.transferCap);
+    return reason ? ` (${reason})` : '';
+  };
   // Transfer credit is a major event until the student ticks it recorded
   // (DGS 2026-10-15): then it goes along for the record, nothing to do.
   const toProcess = recorded ? [] : transfers;
@@ -506,7 +519,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   const actions = [
     ...toProcess.map(
       (t) =>
-        `${closedWindow !== undefined ? 'Check whether the Transfer of Credits request was sent before ' + termLabel(closedWindow) + ', the semester I plan to graduate in, for' : 'Submit the Transfer of Credits request to the Graduate School for'} ${t.courseId}${t.title ? ` ${t.title}` : ''} (${t.institution ?? 'another university'}, ${t.termText}) — transfer ${transferAmount(t)}; ${recommendedBy(t)} (§5.2).`,
+        `${closedWindow !== undefined ? 'Check whether the Transfer of Credits request was sent before ' + termLabel(closedWindow) + ', the semester I plan to graduate in, for' : 'Submit the Transfer of Credits request to the Graduate School for'} ${t.courseId}${t.title ? ` ${t.title}` : ''} (${t.institution ?? 'another university'}, ${t.termText}) — transfer ${transferAmount(t)}${why(t)}; ${recommendedBy(t)} (§5.2).`,
     ),
     ...(qualifierFormDue ? ['Tell me what you need for the qualifier completion form — the qualifier’s course components are complete and the form is not filed yet (§4.4).'] : []),
     ...(msAlongTheWay ? ['Process the MSCSE along the way — the self-check, which is the DGS’s review of the award (§3.1), shows its requirements met (§4.5).'] : []),
@@ -519,7 +532,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
   const lines = [
     ...toProcess.map(
       (t) =>
-        `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — transfer ${transferAmount(t)}, ${closedWindow !== undefined ? `${recommendedBy(t)} — was the request sent before ${termLabel(closedWindow)}, the semester I plan to graduate in? (§5.2)` : `${recommendedBy(t)}, to be submitted to the Graduate School (§5.2)`}`,
+        `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — transfer ${transferAmount(t)}${why(t)}, ${closedWindow !== undefined ? `${recommendedBy(t)} — was the request sent before ${termLabel(closedWindow)}, the semester I plan to graduate in? (§5.2)` : `${recommendedBy(t)}, to be submitted to the Graduate School (§5.2)`}`,
     ),
     ...transfersOverCap.map((t) => `${t.courseId}${t.institution ? ` (${t.institution})` : ''} — ${overCapText(report.transferCap, t.cutBy, t.cutUnknown)}`),
     ...(qualifierFormDue ? ['Qualifier completion form — not filed yet (§4.4)'] : []),
@@ -636,7 +649,7 @@ export function gradAdminRequest(
     t.title ?? '',
     String(t.credits),
     // Always the credits to transfer (DGS 2026-10-28: "Do not leave them empty").
-    formatCredits(t.cappedCredits ?? t.ndCredits ?? t.credits),
+    `${formatCredits(t.cappedCredits ?? t.ndCredits ?? t.credits)}${t.cappedCredits !== undefined ? ` (${partReason(t, items.transferCap)})` : ''}`,
     t.grade,
     t.termText,
     t.source,

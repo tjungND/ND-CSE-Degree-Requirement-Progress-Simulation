@@ -72,7 +72,7 @@ import { sectionRef } from './section-ref.ts';
 import { createFocusKeeper } from './focus-keeper.ts';
 import { type RefusedValues, applyRefusals, rangedNumber } from './refusals.ts';
 import { createToasts } from './toasts.ts';
-import { gradAdminRequest, processingItems } from './grad-admin-request.ts';
+import { gradAdminRequest, partReason, processingItems } from './grad-admin-request.ts';
 import { buildCombinedReviewRequest, reviewRequestCourses } from './review-request.ts'; // the DGS review request's builder — its own small module since W3 (2026-10-22), no longer the transcript parser's tail
 import { priorStudyLabel, programHistory } from './program-history.ts';
 import { ndUndergraduateClause, notFinishedSentence, totalCreditsWord, transferRuleText } from './coursework-text.ts';
@@ -3123,8 +3123,9 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
           const advisors = [student.milestones.advisorName, student.milestones.advisorName2].filter((n): n is string => !!n);
           // The processing request's transfer list (P3-emails-1), with the part
           // of a course that transfers when a cap cut the rest (DGS 2026-10-27).
-          const transfers = processingItems(report, student, rules).transfers.map((t) =>
-            t.cappedCredits !== undefined ? `${t.courseId} (${formatCredits(t.cappedCredits)} of its ${formatCredits(t.ndCredits ?? t.credits)} ${(t.ndCredits ?? t.credits) === 1 ? 'credit' : 'credits'})` : t.courseId,
+          const toProcess = processingItems(report, student, rules);
+          const transfers = toProcess.transfers.map((t) =>
+            t.cappedCredits !== undefined ? `${t.courseId} (${formatCredits(t.cappedCredits)} of its ${formatCredits(t.ndCredits ?? t.credits)} ${(t.ndCredits ?? t.credits) === 1 ? 'credit' : 'credits'}; ${partReason(t, toProcess.transferCap)})` : t.courseId,
           );
           const built = advisorSummary(report, {
             todayIso: todayIso(),
