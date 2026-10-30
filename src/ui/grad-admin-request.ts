@@ -30,7 +30,7 @@ import { shortenAfterFirst } from './first-mention.ts';
 import { decisionWording } from '../engine/decider.ts';
 import { transferRecordedFor } from '../engine/transfer-recorded.ts';
 import { gpaText } from '../engine/requirements/shared.ts';
-import { ACTION_HEADING, DO_NOT_MODIFY_MARKER, EDITABLE_MARKER, MARKER_DIVIDER, STUDENT_LINE, esc, htmlRequirementBlock, plural, programLabel, programShort, studentLineHtml, textRequirementBlock, unofficialTranscriptNote, type StandingColor, upperHeading } from './email-html.ts';
+import { ACTION_HEADING, DO_NOT_MODIFY_MARKER, EDITABLE_MARKER, MARKER_DIVIDER, STUDENT_LINE, esc, fullerTitle, htmlRequirementBlock, plural, programLabel, programShort, studentLineHtml, textRequirementBlock, unofficialTranscriptNote, type StandingColor, upperHeading } from './email-html.ts';
 import type { ProgramHistory } from './program-history.ts';
 import { formatYmdLong } from './handbook.ts';
 import { allRequirementsMet } from './next-steps.ts';
@@ -358,7 +358,7 @@ function countedCourses(standing: StandingTable[], report: AuditReport, student:
       // transfer's does (credit-transfer review 2026-10-28, #36).
       const linePart = report.courseLines.find((l) => l.entryIndex !== undefined && l.entryIndex === index)?.part;
       const capCounted = capFor(report, student, c) ?? (linePart !== undefined ? { counted: linePart.counted, restOver: linePart.rest } : undefined);
-      const row = out.get(key) ?? { courseId: c.courseId, title: c.title ?? '', credits: creditsCell(c, classifiedOf(c), capCounted, report.transferCap), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
+      const row = out.get(key) ?? { courseId: c.courseId, title: fullerTitle(c.title, classifiedOf(c)?.rule?.title) ?? '', credits: creditsCell(c, classifiedOf(c), capCounted, report.transferCap), grade: gradeCell(c), term: termLabel(c.term), where: c.origin === 'nd' ? 'Notre Dame' : (c.institution ?? 'another university'), countsToward: [], source: sourceOf(c).text };
       // A row the course feeds with less than the credits cell prints — the
       // nine sending the rest of a Notre Dame course to the 60 alone (review
       // of the fixes, 2026-10-29) — says how much.
@@ -465,7 +465,7 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
       return {
       courseId: c.entry.courseId,
       institution: c.entry.institution,
-      title: c.entry.title ?? c.external?.title,
+      title: fullerTitle(c.entry.title, c.external?.title),
       credits: c.entry.credits,
       ndCredits: c.effectiveCredits,
       grade: c.entry.grade,

@@ -13,7 +13,7 @@ import { NOTRE_DAME_ROW_UNIVERSITY, isNotreDameInstitution, normalizeCourseId, n
 import { formatCredits } from '../engine/credits.ts';
 import type { PendingDgsReview } from '../engine/review.ts';
 import { termLabel } from '../engine/term.ts';
-import { ACTION_HEADING, DO_NOT_MODIFY_MARKER, EDITABLE_MARKER, MARKER_DIVIDER, STUDENT_LINE, esc, studentLineHtml } from './email-html.ts';
+import { ACTION_HEADING, DO_NOT_MODIFY_MARKER, EDITABLE_MARKER, MARKER_DIVIDER, STUDENT_LINE, esc, fullerTitle, studentLineHtml } from './email-html.ts';
 import { shortenAfterFirst } from './first-mention.ts';
 
 /** One unreviewed course, pre-rendered for the review request (the caller
@@ -80,7 +80,17 @@ function buildReviewRequest(opts: {
   const greeting = `Dear ${opts.decider},`;
   const sections = opts.sections.filter((s) => s.rows.length > 0);
   const groups = opts.detailGroups.filter((g) => g.rows.length > 0);
-  const pipeRow = (r: readonly string[]) => r.join(' | ');
+  // The plain-text flavour, which a mail app set to plain text — or pasting
+  // without formatting — keeps instead of the HTML table: one block per
+  // course, its facts on one line and each long cell on its own (DGS
+  // 2026-10-30: "a | b | c" rows wrapped into an unreadable run). The HTML
+  // flavour keeps the table (2026-09-06).
+  const textBlock = (r: readonly string[]): string => {
+    const h = opts.detailHeaders;
+    const facts = r.slice(2, 5).map((v, i) => (v === '' ? '' : `${h[i + 2]}: ${v}`)).filter((x) => x !== '');
+    const rest = r.slice(5).map((v, i) => (v === '' ? '' : `   ${h[i + 5]}: ${v}`)).filter((x) => x !== '');
+    return [`- ${[r[0], r[1]].filter((x) => x !== undefined && x !== '').join(' ')}`, ...(facts.length > 0 ? [`   ${facts.join(' · ')}`] : []), ...rest].join('\n');
+  };
   // The human half (greeting, context, sign-off) sits ABOVE one line; the
   // machine-readable half (tables + details) below it. Both halves are
   // marked at the line (DGS wording, 2026-09-03 and 2026-09-06): the student
@@ -106,7 +116,7 @@ function buildReviewRequest(opts: {
     `\n${actionsText}Thank you!\n\n${editable}\n${divider}\n${marker}\n\n` +
     sections.map((s) => `${s.rowsIntro}\n\n${s.rows.map((r) => r.join('\t')).join('\n')}\n\n`).join('') +
     `${opts.detailsTitle}\n\n` +
-    groups.map((g) => `${g.heading}\n${pipeRow(opts.detailHeaders)}\n${g.rows.map(pipeRow).join('\n')}`).join('\n\n') +
+    groups.map((g) => `${g.heading}\n${g.rows.map(textBlock).join('\n')}`).join('\n\n') +
     `\n${opts.stamp ? `\n${opts.stamp}\n` : ''}`;
   const html =
     `<p>${esc(`Subject: ${opts.subject}`)}</p><p>${esc(greeting)}</p>${studentLineHtml()}<p>${esc(opts.intro)}` +
@@ -161,7 +171,7 @@ export function reviewRequestCourses(
 ): { nd: PendingReviewCourse[]; external: PendingReviewCourse[] } {
   const request = (p: PendingDgsReview): PendingReviewCourse => ({
     courseId: p.course.entry.courseId,
-    title: p.course.entry.title ?? p.course.rule?.title,
+    title: fullerTitle(p.course.entry.title, p.course.rule?.title ?? p.course.external?.title),
     // The transcript's figure, with the Notre Dame credits the self-check
     // counts when they differ — a quarter or trimester conversion, or the
     // DGS's nd_credits (credit-transfer review 2026-10-28, #63).

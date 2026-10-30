@@ -197,3 +197,13 @@ describe('the DGS’s rulings of 2026-10-30', () => {
     assert.equal(audit(ruled, buildRules(), TODAY).courseLines.find((l) => l.courseId === 'CSE 60111' && l.term.year === 2026)!.mark, 'excluded');
   });
 });
+
+describe('a title cut off in the record (DGS 2026-10-30)', () => {
+  it('the emails use the course rules’ title when the record’s is its start', async () => {
+    const { fullerTitle } = await import('../src/ui/email-html.ts');
+    assert.equal(fullerTitle('Design/Analysis of', 'Design/Analysis of Algorithms'), 'Design/Analysis of Algorithms');
+    assert.equal(fullerTitle('Compilers and Language', 'Compilers and Language Design'), 'Compilers and Language Design');
+    assert.equal(fullerTitle('Topics: Security', 'Special Topics'), 'Topics: Security');
+    assert.equal(fullerTitle(undefined, 'Complexity and Algorithms'), 'Complexity and Algorithms');
+  });
+});

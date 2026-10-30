@@ -183,16 +183,17 @@ describe('the combined review request (one email for everything, 2026-09-03)', (
     assert.ok(!text.includes('\tCS 51400'), 'ruled-but-undecided external course gets no new row');
   });
 
-  it('details: one table per transcript, below the line (2026-09-06: tables, not bullet lines)', () => {
+  it('details: one table per transcript in HTML (2026-09-06); in plain text one block per course (DGS 2026-10-30)', () => {
     const { text } = built;
     assert.match(text, /Course details:/);
-    // "Please decide" (the sheet's questions) beside "Why" since 2026-09-28; a
-    // caller that passes no `ask` leaves the decide cell empty.
-    const header = 'Course | Title | Credits | Grade | Term | Please decide | Why';
-    assert.match(text, new RegExp(`Notre Dame:\\n${header.replace(/[|]/g, '\\|')}\\nMATH 60610 \\| Real Analysis I \\| 3 \\| A \\| Fall 2026 \\|  \\| not in the course rules yet\\n`));
-    assert.match(text, /Previous Master\u2019s Transcript \u2014 Purdue University:\n[^\n]*\nCS 50300 \| Operating Systems \| 3 \| A \| Fall 2023 \|  \| not yet reviewed by the DGS/u);
-    assert.match(text, /CSE 40567 \|  \| 3 \| B \| Fall 2026 \|  \| needs advisor \+ DGS approval/u);
-    assert.match(text, /CS 51400 \| .* \| 1 \| B\+ \| Fall 2024 \|  \| transferability not yet decided/u);
+    // A plain-text email keeps this flavour: "a | b | c" rows wrapped into one
+    // unreadable run, so each course is a block — its facts on one line, each
+    // long cell on its own. A caller that passes no `ask` has no decide line.
+    assert.match(text, /Notre Dame:\n- MATH 60610 Real Analysis I\n {3}Credits: 3 · Grade: A · Term: Fall 2026\n {3}Why: not in the course rules yet\n/);
+    assert.match(text, /Previous Master’s Transcript — Purdue University:\n- CS 50300 Operating Systems\n {3}Credits: 3 · Grade: A · Term: Fall 2023\n {3}Why: not yet reviewed by the DGS/u);
+    assert.match(text, /- CSE 40567\n {3}Credits: 3 · Grade: B · Term: Fall 2026\n {3}Why: needs advisor \+ DGS approval/u);
+    assert.match(text, /- CS 51400 .*\n {3}Credits: 1 · Grade: B\+ · Term: Fall 2024\n {3}Why: transferability not yet decided/u);
+    assert.doesNotMatch(text, / \| /, 'no pipe rows');
   });
 
   it('html flavor: real tables (tabs do not survive HTML email), entities escaped, one details table per transcript', () => {
@@ -228,7 +229,7 @@ describe('the combined review request (one email for everything, 2026-09-03)', (
       /\nACTION REQUESTED\nA\. Please enter or complete these in the course rules — no reply needed; the self-check reads the rules the next time I open it:\n1\. MATH 60610 Real Analysis I \(Notre Dame, Fall 2026\) — new row: counts toward the Ph\.D\.: yes \/ no \/ case by case; core area \(§4\.4\.1\), if any\n2\. CS 51400 Data Structures II \(Purdue University, Fall 2024\) — complete the row: transferable to the Ph\.D\. \(§5\.2\): yes \/ no \/ case by case — the row is blank\nB\. Please decide these for me — a reply is needed:\n3\. CSE 40567 \(Notre Dame, Fall 2026\) — approve it for me \(the allowance for courses below the 60000 level\)\n4\. STAT 51200 Applied Regression Analysis \(Purdue University, Fall 2023\) — approve the transfer for me — the course rules say case by case \(§5\.2\)\n\nThank you!\n/,
     );
     // The student is writing: the engine's "your advisor" reads "my advisor" here.
-    assert.match(r.text, /\| not in the course rules yet; a course from outside CSE also needs my advisor’s approval \(§4\.2\)\n/);
+    assert.match(r.text, /\n {3}Why: not in the course rules yet; a course from outside CSE also needs my advisor’s approval \(§4\.2\)\n/);
     assert.doesNotMatch(r.text, /your advisor/);
     assert.match(r.html, /<p>Dear DGS,<\/p><p>Student: <strong>\[your name, netID and NDID\]<\/strong><\/p>/);
     assert.match(r.html, /<p><strong>Action requested<\/strong><\/p><p>A\. Please enter or complete[^<]*<\/p><ol start="1"><li>MATH 60610 Real Analysis I/);

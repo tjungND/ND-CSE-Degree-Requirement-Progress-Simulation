@@ -178,3 +178,14 @@ export function textDeadline(text: string, alert: DeadlineAlert): string {
 export function upperHeading(heading: string): string {
   return heading.toUpperCase().replace(/ACADEMIC CODE/g, 'Academic Code').replace(/DGS HANDBOOK/g, 'DGS Handbook');
 }
+
+/** The record's title, or the course rules' when the record's is a cut-off
+ * start of it — "Design/Analysis of" for "Design/Analysis of Algorithms" (DGS
+ * 2026-10-30: two titles reached the DGS cut off). */
+export function fullerTitle(own: string | undefined, rules: string | undefined): string | undefined {
+  if (own === undefined || own.trim() === '') return rules ?? own;
+  if (rules === undefined) return own;
+  const a = own.trim().toLowerCase();
+  const b = rules.trim().toLowerCase();
+  return b.length > a.length && b.startsWith(a) ? rules.trim() : own;
+}
