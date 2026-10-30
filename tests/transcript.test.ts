@@ -46,6 +46,20 @@ describe('transcript parsing', () => {
     const spaced = parseTranscript(ND_TRANSCRIPT.map((l) => l.replace('CSE 60641 GR', 'C S E 60641 GR')));
     assert.ok(spaced.courses.some((c) => c.courseId === 'CSE 60641' && c.title === 'Graduate Operating Systems'));
   });
+  it('reads an insideND title wrapped in its cell whole, whichever way the row is laid out (DGS 2026-10-30)', async () => {
+    // Page 1: the row's other cells on the title's first line, as insideND
+    // prints it; page 2: centred against the two title lines, which puts the
+    // first line above its row. Read through pdfjs, as the browser does.
+    const { pdfToLinesNode } = await import('../scripts/dev/pdf-lines-node.mts');
+    const p = parseTranscript(await pdfToLinesNode(new URL('./fixtures/nd-insidend-wrapped-titles.pdf', import.meta.url).pathname));
+    const titles = p.courses.map((c) => `${c.courseId} ${c.title}`);
+    for (const t of ['CSE 40175 Ethical & Professional Issues', 'CSE 40243 Compilers and Language Design', 'CSE 40113 Design/Analysis of Algorithms']) assert.equal(titles.filter((x) => x === t).length, 2, titles.join(' | '));
+  });
+  it('takes back the first line of a centred title from the course above it (DGS 2026-10-30)', () => {
+    const p = parseTranscript(['University of Notre Dame', 'Unofficial Academic Transcript', 'Term: Spring Semester 2026', 'Subject   Course   Campus   Level   Title   Grade   Credit   Quality   R', 'Hours   Points',
+      'CSE 40175   Main   UG   Ethical & Professional Issues   A   3.000   12.000', 'Design/Analysis of', 'CSE 40113   Main   UG   A-   3.000   11.001', 'Algorithms', 'Term Totals (Undergraduate)']);
+    assert.deepEqual(p.courses.map((c) => c.title), ['Ethical & Professional Issues', 'Design/Analysis of Algorithms']);
+  });
   it('joins a title that Banner wrapped onto the next line (DGS 2026-09-22)', () => {
     const wrapped = ND_TRANSCRIPT.flatMap((l) => (l.startsWith('CSE 60321 GR Advanced Computer Architecture') ? ['CSE 60321 GR Advanced Computer B- 3.000 8.001 R', 'Architecture'] : [l]));
     const c = parseTranscript(wrapped).courses.find((x) => x.courseId === 'CSE 60321');

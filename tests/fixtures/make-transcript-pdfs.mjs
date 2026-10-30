@@ -461,6 +461,39 @@ writeFileSync(join(here, 'nd-insidend-transcript.pdf'), makePositionedPdf([
     return cells.map((text, c) => ({ x: xs[c], y: 760 - 11 * i, text, size: 7 }));
   }),
 ]));
+// insideND with a title too long for its column (DGS 2026-10-30): the title
+// wraps onto a second line of its cell. Page 1 prints the row's other cells on
+// the title's first line, as insideND does; page 2 centres them against the
+// two title lines, as a browser's default table layout would — the title's
+// first line then sits ABOVE its row. Invented content.
+const wrappedPage = (centred, term) => {
+  const runs = [];
+  let y = 760;
+  const line = (cells) => {
+    const xs = insideNdColumns(cells);
+    cells.forEach((text, c) => runs.push({ x: xs[c], y, text, size: 7 }));
+    y -= 11;
+  };
+  const row = (id, title1, title2, grade, hours, points) => {
+    const xs = [40, 110, 145, 175, 330, 360, 410];
+    const other = title2 && centred ? y - 4 : y;
+    [[0, id], [1, 'Main'], [2, 'UG'], [4, grade], [5, hours], [6, points]].forEach(([c, text]) => runs.push({ x: xs[c], y: other, text, size: 7 }));
+    runs.push({ x: xs[3], y, text: title1, size: 7 });
+    if (title2) runs.push({ x: xs[3], y: y - 8, text: title2, size: 7 });
+    y -= title2 ? 19 : 11;
+  };
+  ['University of Notre Dame', 'Unofficial Academic Transcript', 'INSTITUTION CREDIT', `Term: ${term}`].forEach((l) => line([l]));
+  line(['College', 'Major', 'Academic Standing']);
+  line(['College of Engineering', 'Computer Science & Engineering', 'Good Standing']);
+  line(['Subject', 'Course', 'Campus', 'Level', 'Title', 'Grade', 'Credit Hours', 'Quality Points', 'R']);
+  row('CSE 40175', 'Ethical & Professional Issues', undefined, 'A', '3.000', '12.000');
+  row('CSE 40243', 'Compilers and Language', 'Design', 'B', '3.000', '9.000');
+  row('CSE 40113', 'Design/Analysis of', 'Algorithms', 'A-', '3.000', '11.001');
+  line(['Term Totals (Undergraduate)', 'Attempt Hours', 'Passed Hours', 'Earned Hours', 'GPA Hours', 'Quality Points', 'GPA']);
+  line(['Current Term', '9.000', '9.000', '9.000', '9.000', '32.001', '3.56']);
+  return runs;
+};
+writeFileSync(join(here, 'nd-insidend-wrapped-titles.pdf'), makePositionedPdf([wrappedPage(false, 'Fall Semester 2025'), wrappedPage(true, 'Spring Semester 2026')]));
 writeFileSync(join(here, 'other-transcript.pdf'), makePdf(OTHER));
 writeFileSync(join(here, 'totals-mismatch-transcript.pdf'), makePdf(TOTALS_MISMATCH));
 writeFileSync(join(here, 'external-transcript.pdf'), makePdf(EXTERNAL));

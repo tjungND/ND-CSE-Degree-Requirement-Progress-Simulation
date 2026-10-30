@@ -148,6 +148,9 @@ const RECORD_START_RE = /^(COURSE\s+LEVEL\s*:|UNIVERSITY\s+OF\s+NOTRE\s+DAME\s+C
  * "Architecture"). Standing notes and headers that can follow a row are
  * refused by name. */
 const TITLE_CONTINUATION_RE = /^[A-Za-z][A-Za-z&'’,\-\/()]*(?: [A-Za-z&'’,\-\/()]+){0,5}$/; // no colon: "… CREDIT:" is a section header
+/** insideND's course-table header wraps "Credit Hours" and "Quality Points"
+ * onto a second line ("Hours   Points") — header words, never a title. */
+const HEADER_WORDS_ONLY_RE = /^(?:(?:SUBJECT|COURSE|CAMPUS|LEVEL|TITLE|GRADE|CREDIT|HOURS|QUALITY|POINTS|R)\s*)+$/;
 const NOT_A_CONTINUATION_RE = /^(GOOD STANDING|DEAN|HONORS?|TERM|LEVEL|COLLEGE|MAJOR|MINOR|PROGRAM|DEPARTMENT|CONTINUED|CURRENT|CUMULATIVE|INSTITUTION|TRANSFER|UNOFFICIAL|OFFICIAL|PAGE|SUBJ|COURSE|TOTALS?|EHRS|GPA|ACADEMIC|STUDENT|DEGREES?|BACHELOR|MASTER|DOCTOR|FALL|SPRING|SUMMER|UNIVERSITY|NOTRE DAME|CREDIT|RECORD|BEGINNING|END|FIRST YEAR|TRANSCRIPT|OVERALL|COURSES?|GRADUATE|UNDERGRADUATE|WEB|IN PROGRESS)\b/;
 // Banner 9's web transcript prints a Campus column ("Main") between the
 // number and the Level ("CSE 60618 Main GR Title …", 2026-09-05): one
@@ -298,6 +301,13 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
    * keep, is skipped — with a note where the student should add it by hand. */
   /** The index of the course whose row was the previous line, while its title may continue. */
   let titleOpen: number | undefined;
+  /** The previous non-empty line: whether it reads as a piece of a title, and
+   * the course it was added to as the rest of a title, if it was. A table
+   * printed with its one-line cells centred against a two-line title puts the
+   * title's FIRST line above its row (DGS 2026-10-30, a title cut off at its
+   * wrap): the row then has no title of its own, and that line is its start —
+   * taken back from the course before if it had been added there. */
+  let lastLine: { text: string; titleLike: boolean; appendedTo?: number } | undefined;
   const readNdCourseRow = (courseMatch: RegExpExecArray, rawLine: string): void => {
     expectInstitution = false;
 
@@ -437,13 +447,17 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
     }
     // Matched once per line: three guards below and the course-row reader all ask.
     const courseMatch = COURSE_HEAD_RE.exec(line);
+    const titleLike = !courseMatch && TITLE_CONTINUATION_RE.test(line) && !NOT_A_CONTINUATION_RE.test(upper) && !TERM_RE.test(line) && !HEADER_WORDS_ONLY_RE.test(upper);
+    const before = lastLine;
+    lastLine = { text: line, titleLike };
     // The line right after a course row may be the rest of its title.
     if (titleOpen !== undefined) {
       const idx = titleOpen;
       titleOpen = undefined;
-      if (!courseMatch && TITLE_CONTINUATION_RE.test(line) && !NOT_A_CONTINUATION_RE.test(upper) && !TERM_RE.test(line)) {
+      if (titleLike) {
         const c = courses[idx]!;
         c.title = c.title ? `${c.title} ${line}` : line;
+        lastLine.appendedTo = idx;
         continue;
       }
     }
@@ -684,7 +698,18 @@ export function parseTranscript(lines: string[]): ParsedTranscript {
       }
       continue;
     }
+    const count = courses.length;
     readNdCourseRow(courseMatch, rawLine);
+    // A row with no title of its own, right after a line of title words: that
+    // line is the start of its title (see `lastLine`).
+    const added = courses.length > count ? courses[courses.length - 1] : undefined;
+    if (added !== undefined && added.title === undefined && before?.titleLike) {
+      if (before.appendedTo !== undefined) {
+        const prev = courses[before.appendedTo]!;
+        prev.title = prev.title === before.text ? undefined : prev.title?.endsWith(` ${before.text}`) ? prev.title.slice(0, -before.text.length - 1) : prev.title;
+      }
+      added.title = before.text;
+    }
   }
 
   if (skipped.length > 0) {
