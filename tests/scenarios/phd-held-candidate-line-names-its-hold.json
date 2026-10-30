@@ -1,6 +1,6 @@
 {
   "name": "phd-held-candidate-line-names-its-hold",
-  "description": "Credit-transfer review 2026-10-28 (#72): a case-by-case Purdue course graded S, which cannot show §5.2’s B. Its line read only “waiting for the DGS — would count … if approved (§5.2)”, the same with its box ticked — the hold, which no tick releases, was named on the §5.2 card and in the review request but not on the line. The line names it now.",
+  "description": "Credit-transfer review 2026-10-28 (#72): a case-by-case Purdue course graded S, which cannot show §5.2’s B. Its line read only “waiting for the DGS — would count … if approved (§5.2)” — the hold was named on the §5.2 card and in the review request but not on the line. The line names it now. (Ticked, the course counts: phd-ticked-case-by-case-transfer-settles-its-hold, DGS 2026-10-30.)",
   "today": "2026-10-29",
   "rules": {
     "base": "default",
@@ -37,8 +37,7 @@
         "grade": "S",
         "origin": "transfer",
         "institution": "Purdue University",
-        "degreeLevel": "masters",
-        "dgsApproved": true
+        "degreeLevel": "masters"
       }
     ],
     "milestones": {},

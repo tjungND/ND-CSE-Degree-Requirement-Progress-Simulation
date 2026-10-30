@@ -1190,7 +1190,13 @@ export function classify(student: Student, rules: Rules, today?: string): {
     // MSCSE cannot count here, so a live retake is the attempt that can
     // (review of the fix, 2026-10-29: it read "the Spring 2025 attempt … is
     // the one counted" beside that attempt's own "not counted").
-    const earnsHere = (a: CourseEntry): boolean => passesCreditFloor(a.grade) && usableHere(a);
+    // …nor, while a live retake is under way, an attempt from before a
+    // readmission that the DGS has not ruled stands: the retake counts as in
+    // progress, and if the DGS rules the old credit stands, the old attempt
+    // counts again and the retake is the repeat (DGS 2026-10-30, question 3:
+    // option (a)).
+    const heldByReadmission = (a: CourseEntry): boolean => a.dgsHoldApproved !== true && (interruptedCourse(a) || beforeShortReadmission(a));
+    const earnsHere = (a: CourseEntry): boolean => passesCreditFloor(a.grade) && usableHere(a) && !heldByReadmission(a);
     const counted =
       lastPassing !== undefined && (earnsHere(lastPassing) || inProgress.length === 0)
         ? lastPassing
@@ -1425,7 +1431,10 @@ export function classify(student: Student, rules: Rules, today?: string): {
         // typed by hand and then imported again produces — naming the term
         // identifies neither row, so say what actually happened instead
         // (2026-09-11).
-        ineligibleReason: countedIsLater
+        ineligibleReason: countedIsLater && isInProgress(countedAttempt.grade) && c.dgsHoldApproved !== true && (interruptedCourse(c) || beforeShortReadmission(c))
+          ? // Held by a readmission, set aside for the live retake (DGS 2026-10-30, question 3).
+            `not counted — the ${termLabel(countedAttempt.term)} retake in progress counts instead: this attempt was taken before your readmission (${termLabel(readmitted!)}), so its credit is held (${interruptedCourse(c) ? 'Academic Code §5.5' : 'DGS Handbook §3.3'}); if the retake is not passed, the DGS is asked about this attempt`
+          : countedIsLater
           ? `superseded by the ${termLabel(countedAttempt.term)} retake — its credits count once${program === 'phd' && rule?.categoryGroups && rule.categoryGroups.length > 0 ? ', and for the category specialization the retake grade replaces this one (§4.4.2)' : ''}`
           : countedAttempt && compareTerm(countedAttempt.term, c.term) === 0
             ? `entered twice for ${termLabel(c.term)} — its credits count once, so this duplicate row counts nothing. Remove it if it is not a second registration`
@@ -2165,20 +2174,26 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   //   review"): no final grade yet, so §5.2's B cannot be shown, and Notre
   //   Dame's §4.4 clock is not its clock — the DGS decides once it is graded.
   const outsideIncomplete = !fromNd && grade === 'I';
+  // The tick on a case-by-case course records the DGS's whole answer to the
+  // review request, which asked about these holds too (DGS 2026-10-30,
+  // question 2: option (a) — the tick changed nothing while a hold stayed
+  // open). An Incomplete still waits for its grade, and an is_cse question is
+  // the sheet's.
+  const ruled = attested;
   const heldForDgs: string[] = [
     ...(outsideIncomplete ? [`${outsideIncompleteNote(c)} — the DGS decides once the grade is final`] : []),
-    ...(windowStartUnknown
+    ...(windowStartUnknown && !ruled
       ? [`completed more than ${windowYears} years before your Ph.D. entry (before ${termLabel(shiftTermYears(entry, -windowYears!))}) — §5.2’s five years count back from your admission to the Notre Dame MSCSE, which this record does not date (no MSCSE course on it), so the DGS confirms it falls inside them`]
       : []),
-    ...(noPriorProgram
+    ...(noPriorProgram && !ruled
       ? [
           ndMscseOnly
             ? 'taken outside any degree program at that university — your earlier graduate program is the Notre Dame MSCSE, one program with the Ph.D., and the Academic Code states a transfer allowance only for an unfinished or a completed program (Academic Code §4.6), so the DGS decides whether, and how much, transfers'
             : 'taken outside any degree program — you have no earlier graduate program on your record, and the Academic Code states a transfer allowance only for an unfinished or a completed program (Academic Code §4.6), so the DGS decides whether, and how much, transfers',
         ]
       : []),
-    ...(passFail ? [`graded S (pass/fail), which cannot show the ${transferFloor} that §5.2 requires — the DGS decides whether it transfers`] : []),
-    ...(afterAdmission ? [`taken ${termLabel(c.term)}, ${compareTerm(c.term, entry) >= 0 ? 'after you entered' : 'while you were enrolled in your Notre Dame MSCSE'} — a course taken elsewhere after admission needs the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14); the DGS confirms it was approved`] : []),
+    ...(passFail && !ruled ? [`graded S (pass/fail), which cannot show the ${transferFloor} that §5.2 requires — the DGS decides whether it transfers`] : []),
+    ...(afterAdmission && !ruled ? [`taken ${termLabel(c.term)}, ${compareTerm(c.term, entry) >= 0 ? 'after you entered' : 'while you were enrolled in your Notre Dame MSCSE'} — a course taken elsewhere after admission needs the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14); the DGS confirms it was approved`] : []),
   ];
   // A university with no ExternalCourses row has no credit system on
   // record, so its credits are shown as the transcript prints them. Say
@@ -2250,10 +2265,10 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     ...extBase,
     reviewed,
     transferable,
-    ...(passFail ? { passFailGrade: true as const } : {}),
-    ...(afterAdmission ? { afterAdmission: true as const } : {}),
-    ...(noPriorProgram ? { noPriorProgram: true as const } : {}),
-    ...(windowStartUnknown ? { windowStartUnknown: true as const } : {}),
+    ...(passFail && !ruled ? { passFailGrade: true as const } : {}),
+    ...(afterAdmission && !ruled ? { afterAdmission: true as const } : {}),
+    ...(noPriorProgram && !ruled ? { noPriorProgram: true as const } : {}),
+    ...(windowStartUnknown && !ruled ? { windowStartUnknown: true as const } : {}),
     ...(outsideIncomplete ? { outsideIncomplete: true as const } : {}),
     ...(cseUnknown ? { cseUnknown: true as const } : {}),
     ...(creditsAsPrinted ? { creditsAsPrinted: true as const } : {}),
@@ -2341,7 +2356,11 @@ function classifyPosted(env: ClassifyEnv, c: CourseEntry, extBase: ClassifiedCou
   // other similar courses do not count as regular courses" — a posted thesis
   // or independent study counts toward the total only (P4-transfer-8 (a)),
   // and the staff check names it (audit.ts).
-  const nonRegular = looksNonRegularTitle(c.title);
+  // …but not on a course whose ExternalCourses row says `yes`: the DGS's
+  // reviewed verdict decides, recorded or not, so recording a transfer never takes it off the
+  // 24 (DGS 2026-10-30, question 1: option (b)). The staff check on the row
+  // still names a research-sounding title.
+  const nonRegular = !(extBase.external !== undefined && transferableFor(extBase.external, env.program) === 'yes') && looksNonRegularTitle(c.title);
   const section = env.program === 'mscse' ? '§3.2' : '§4.2';
   const poolNote = nonRegular ? `; not a regular course — its title reads as research, independent study or a seminar (${section})` : '';
   const limitNote = noStatedLimit ? '; it counts in full — no document states a transfer limit for your record, so this page’s working limit covers only the courses the DGS still decides' : '';

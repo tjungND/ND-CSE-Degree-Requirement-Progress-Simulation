@@ -1,0 +1,70 @@
+{
+  "name": "phd-ticked-case-by-case-transfer-settles-its-hold",
+  "description": "DGS 2026-10-30 (question 2, option (a)): the tick on a case-by-case transfer records the DGS’s whole answer to the review request — here a Purdue course graded S, held because S cannot show §5.2’s B. Ticked, it counts toward the 24 and the 60 and goes to the Grad Admin as recommended by the DGS for this student; until then the tick changed nothing.",
+  "today": "2026-10-29",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "PURDUE UNIVERSITY",
+          "course_id": "CS 52500",
+          "course_title": "CS 52500",
+          "transferable_PhD": "dgs_approval",
+          "transferable_MSCSE": "dgs_approval",
+          "is_cse": "yes"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CS 52500",
+        "title": "CS 52500",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "S",
+        "origin": "transfer",
+        "institution": "Purdue University",
+        "degreeLevel": "masters",
+        "dgsApproved": true
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "elsewhere",
+      "samePlace": false,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "in_progress"
+    },
+    "phd.credits.regular": {
+      "status": "unmet"
+    }
+  },
+  "expectCourseLines": {
+    "CS 52500": [
+      "counts toward regular courses (3 cr); approved by the DGS for you, as you ticked on the course"
+    ]
+  }
+}

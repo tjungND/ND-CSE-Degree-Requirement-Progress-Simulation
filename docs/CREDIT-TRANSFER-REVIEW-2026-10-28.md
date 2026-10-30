@@ -159,9 +159,9 @@ the review request used to ask for (C36); what is left is the advisor’s approv
 
 ## Questions for the DGS (not changed)
 
-1. **One thesis-titled transfer course, two verdicts: an ExternalCourses `yes` counts toward the 24 until the Graduate School posts it, then toward the 60 only**
-2. **A case-by-case transfer that a transfer hold also holds (no earlier program, an S grade, taken after admission, an Incomplete elsewhere) shows the DGS-approval box, but ticking it changes nothing. The reply the request asks for cannot be recorded.**
-3. **The retake rule keeps an attempt held by a readmission (forfeited after five years or more) as 'the one counted' and drops the live retake**
+1. **One thesis-titled transfer course, two verdicts: an ExternalCourses `yes` counts toward the 24 until the Graduate School posts it, then toward the 60 only** — **answered 2026-10-30: (b), the sheet row decides** (DECISIONS 2026-10-30)
+2. **A case-by-case transfer that a transfer hold also holds (no earlier program, an S grade, taken after admission, an Incomplete elsewhere) shows the DGS-approval box, but ticking it changes nothing. The reply the request asks for cannot be recorded.** — **answered 2026-10-30: (a), one tick records the whole answer** (DECISIONS 2026-10-30)
+3. **The retake rule keeps an attempt held by a readmission (forfeited after five years or more) as 'the one counted' and drops the live retake** — **answered 2026-10-30: (a), the live retake counts** (DECISIONS 2026-10-30)
 4. Whether Academic Code §5.5 reaches transfer credit that qualifies for §5.2's window only through a
    Notre Dame MSCSE that ended five years or more before the Ph.D. (counted now).
 5. Whether a course taken elsewhere between the end of the Notre Dame MSCSE and the Ph.D. is “after

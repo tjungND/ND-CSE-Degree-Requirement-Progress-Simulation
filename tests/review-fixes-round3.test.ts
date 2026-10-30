@@ -178,3 +178,22 @@ describe('wording the earlier rounds added', () => {
     else assert.fail(`both seminars were not refused: ${detail}`);
   });
 });
+
+describe('the DGS’s rulings of 2026-10-30', () => {
+  it('1 (b): a thesis transfer the course rules mark `yes` stays regular credit once recorded', () => {
+    const rules = buildRules({ external: [{ university: 'PURDUE UNIVERSITY', course_id: 'CS 69800', course_title: 'Master’s Thesis Research', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes' }] });
+    const have = (posted: boolean) =>
+      regular(phdStudent({ entryTerm: fall(2025), priorMs: 'completed', bachelorsAwarded: spring(2022), background: elsewhere, courses: [transferCourse('CS 69800', 'Master’s Thesis Research', { credits: 6, term: spring(2024), degreeLevel: 'masters', ...(posted ? { ndPosted: { term: spring(2026), credits: 6, level: 'graduate' as const } } : {}) })] }), rules);
+    assert.equal(have(false), 6);
+    assert.equal(have(true), 6);
+  });
+  it('3 (a): a live retake counts over an attempt held by a readmission', () => {
+    const s = phdStudent({ entryTerm: fall(2013), bachelorsAwarded: spring(2013), readmittedTerm: fall(2022), courses: [ndCourse('CSE 60111', { term: fall(2013), grade: 'B' }), ndCourse('CSE 60641', { term: fall(2013) }), ndCourse('CSE 60535', { term: fall(2022) }), ndCourse('CSE 60111', { term: fall(2026), grade: 'IP' })] });
+    const r = audit(s, buildRules(), TODAY);
+    assert.equal(r.courseLines.find((l) => l.courseId === 'CSE 60111' && l.term.year === 2026)!.mark, 'in_progress');
+    assert.match(r.courseLines.find((l) => l.courseId === 'CSE 60111' && l.term.year === 2013)!.text, /retake in progress counts instead: this attempt was taken before your readmission \(Fall 2022\), so its credit is held \(Academic Code §5\.5\)/);
+    // Ruled to stand: the old attempt counts again, and the retake is the repeat.
+    const ruled = { ...s, courses: s.courses.map((c) => (c.term.year === 2013 && c.courseId === 'CSE 60111' ? { ...c, dgsHoldApproved: true as const } : c)) };
+    assert.equal(audit(ruled, buildRules(), TODAY).courseLines.find((l) => l.courseId === 'CSE 60111' && l.term.year === 2026)!.mark, 'excluded');
+  });
+});
