@@ -225,11 +225,24 @@ export interface ClassifiedCourse {
    * criterion 4 requires, so the course waits for the DGS (DGS 2026-10-03). */
   passFailGrade?: true;
   /** A course from another university taken after admission — at or after
-   * the entry term, or while the student was enrolled in their own Notre Dame
-   * MSCSE (takenAfterAdmission): the Graduate School requires the
-   * department's and its own approval BEFORE such a course is taken (DGS
-   * Handbook §3.14) — the DGS confirms. */
+   * the entry term, or, for a Notre Dame MSCSE holder, after the semester of
+   * the Ph.D. admission letter (admissionTiming; DGS 2026-10-30): the Graduate
+   * School requires the department's and its own approval BEFORE such a
+   * course is taken (DGS Handbook §3.14) — the DGS confirms. */
   afterAdmission?: true;
+  /** A Notre Dame MSCSE holder's course from another university taken in the
+   * semester of the Ph.D. admission letter (DGS 2026-10-30): before or after
+   * the decision is the DGS's to settle, and with it the advance approval. */
+  admissionSemester?: true;
+  /** Not counted yet: a Notre Dame MSCSE holder's course from another
+   * university taken before the Ph.D. began, on a record with no semester of
+   * the Ph.D. admission letter — the student is asked (DGS 2026-10-30). */
+  phdAdmissionUnknown?: true;
+  /** A course from another university taken while enrolled at Notre Dame — at
+   * or after the entry term, or during the student's own Notre Dame MSCSE
+   * (takenWhileEnrolled): no earlier program, whatever its hold (P4-transfer-3;
+   * credit-transfer review 2026-10-28, #23). */
+  duringNdEnrollment?: true;
   /** A course from another university on the record of a student with NO
    * earlier graduate program: the Academic Code states a transfer allowance
    * only for an unfinished (6) or a completed (9/24) program (§4.6), none for
@@ -666,17 +679,57 @@ export function isOwnMscseCoursework(student: Student, c: CourseEntry): boolean 
   return awarded === undefined || compareTerm(c.term, awarded) > 0 || c.countedToward === 'mscse' || c.countedToward === 'both';
 }
 
-/** Taken elsewhere after admission to the graduate program: at or after the
- * entry term, or while enrolled in the student's own Notre Dame MSCSE — the
- * admission §5.2's window counts from (credit-transfer review 2026-10-28,
- * #39). One test for an un-posted course's hold and for posted credit's place
- * among the earlier programs (review of the fix, 2026-10-29). */
-export function takenAfterAdmission(student: Student, entry: Term, term: Term): boolean {
+/** Taken while enrolled at Notre Dame: at or after the entry term, or during
+ * the student's own Notre Dame MSCSE (Academic Code §4.6 criterion 3: "or
+ * while enrolled in a graduate degree program at Notre Dame"). Such a course
+ * is no earlier program, posted or not (P4-transfer-3; credit-transfer review
+ * 2026-10-28, #23). Until 2026-10-30 this was also the test for "after
+ * admission" (#39); the DGS's answer to question 5 dates that from the Ph.D.
+ * admission letter instead (admissionTiming). */
+export function takenWhileEnrolled(student: Student, entry: Term, term: Term): boolean {
   if (compareTerm(term, entry) >= 0) return true;
   const start = ownMscseStart(student);
   if (start === undefined || compareTerm(start, entry) >= 0) return false;
   const end = ownMscseEnd(student);
   return compareTerm(term, start) >= 0 && (end === undefined || compareTerm(term, end) <= 0);
+}
+
+/** Where a course taken elsewhere stands to the admission DGS Handbook §3.14
+ * means: "The University requires prior approval of the department and the
+ * Graduate School for formal courses taken elsewhere and applied to the
+ * degree program after the student’s admission to Notre Dame." For Ph.D.
+ * credit that is the Ph.D. admission (DGS 2026-10-30, question 5 of the
+ * credit-transfer review: "admission to the program the credit is going
+ * into" — Academic Code §2.1 makes admission to the doctoral program a
+ * separate decision from the master's), not the Notre Dame MSCSE's.
+ *
+ * Read from the semester of the Ph.D. admission letter only for a Notre Dame
+ * MSCSE holder's course taken after the MSCSE began and before the Ph.D.
+ * began (the DGS's scope, option 1): later than that semester it is after
+ * admission; earlier, an ordinary transfer that needed no approval in advance
+ * (Academic Code §4.6); in that semester the DGS decides; with no semester
+ * given the student is asked. Every other course before the entry term is
+ * before admission, as it always was; one at or after the entry term is after. */
+export type AdmissionTiming = 'before' | 'after' | 'admission-semester' | 'unknown';
+export function admissionTiming(student: Student, entry: Term, term: Term): AdmissionTiming {
+  if (compareTerm(term, entry) >= 0) return 'after';
+  if (!betweenMscseAndPhd(student, entry, term)) return 'before';
+  const letter = student.phdAdmittedTerm;
+  if (letter === undefined) return 'unknown';
+  const order = compareTerm(term, letter);
+  return order > 0 ? 'after' : order === 0 ? 'admission-semester' : 'before';
+}
+
+/** A Ph.D. record's course dated after the student's own Notre Dame MSCSE
+ * began — or after it ended, when no MSCSE course dates its start — and before
+ * the Ph.D. entry: the courses whose place against the Ph.D. admission the
+ * semester of the admission letter decides (admissionTiming). */
+export function betweenMscseAndPhd(student: Student, entry: Term, term: Term): boolean {
+  if (student.program !== 'phd' || student.ndMasters === undefined || compareTerm(term, entry) >= 0) return false;
+  const start = ownMscseStart(student);
+  if (start !== undefined && compareTerm(start, entry) < 0 && compareTerm(term, start) >= 0) return true;
+  const end = ownMscseEnd(student);
+  return end !== undefined && compareTerm(end, entry) < 0 && compareTerm(term, end) > 0;
 }
 
 /** When the student's own Notre Dame MSCSE ended: its award term, or else its
@@ -715,7 +768,7 @@ export function heldWithSeparatedMscse(student: Student, c: CourseEntry): boolea
  * own hold, so one summer course elsewhere no longer turns a finished
  * master's into "two earlier graduate programs". */
 function drawsOnTransferAllowance(cc: ClassifiedCourse): boolean {
-  return !cc.superseded && cc.ineligibleReason === undefined && cc.noPriorProgram !== true && cc.afterAdmission !== true && cc.caps.includes('transfer') && cc.entry.degreeLevel !== 'bachelors';
+  return !cc.superseded && cc.ineligibleReason === undefined && cc.noPriorProgram !== true && cc.afterAdmission !== true && cc.duringNdEnrollment !== true && cc.caps.includes('transfer') && cc.entry.degreeLevel !== 'bachelors';
 }
 /** The earlier graduate programs those courses come from, by university as
  * the record names it (folded, so "Purdue University" and "PURDUE UNIV" are
@@ -729,7 +782,7 @@ export function earlierTransferPrograms(classified: readonly ClassifiedCourse[],
     // posting's) — is a course taken after admission, not an earlier program
     // (P4-transfer-3 (a); credit-transfer review 2026-10-28, #23: posting a
     // summer course turned a finished master's into two programs).
-    if (entry !== undefined && cc.ndPosting !== undefined && cc.entry.fromNdTranscript !== true && (student !== undefined ? takenAfterAdmission(student, entry, cc.entry.term) : compareTerm(cc.entry.term, entry) >= 0)) continue;
+    if (entry !== undefined && cc.ndPosting !== undefined && cc.entry.fromNdTranscript !== true && (student !== undefined ? takenWhileEnrolled(student, entry, cc.entry.term) : compareTerm(cc.entry.term, entry) >= 0)) continue;
     const name = cc.entry.institution ?? '';
     if (normalizeUniversity(name) === '') continue;
     const nd = isNotreDameInstitution(name);
@@ -2150,10 +2203,39 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   const fromNd = isNotreDameInstitution(c.institution);
   const passFail = grade === 'S' && transferFloor !== undefined;
   // …and, for a student who held the Notre Dame MSCSE, a course taken
-  // elsewhere while enrolled in it: the window counts from the MSCSE
-  // admission, so the advance approval does too (credit-transfer review
-  // 2026-10-28, #39 — it counted outright and went to the Grad Admin).
-  const afterAdmission = !fromNd && takenAfterAdmission(student, entry, c.term);
+  // elsewhere after the semester of the Ph.D. admission letter and before the
+  // Ph.D. began (DGS 2026-10-30, question 5: "It depends on when the student
+  // was admitted to the Ph.D., not on when the MSCSE ended"). That replaced
+  // #39's reading (credit-transfer review 2026-10-28), which dated it from the
+  // MSCSE admission and so held every course taken elsewhere during the
+  // MSCSE (DGS: "Yes", 5c).
+  const timing: AdmissionTiming = fromNd ? 'before' : admissionTiming(student, entry, c.term);
+  const whileEnrolled = !fromNd && takenWhileEnrolled(student, entry, c.term);
+  const duringMscse = whileEnrolled && compareTerm(c.term, entry) < 0;
+  const beforePhdWhere = duringMscse ? 'while you were enrolled in your Notre Dame MSCSE' : 'after your Notre Dame MSCSE and before you entered the Ph.D.';
+  // The semester of the admission letter not given: the student knows it, so
+  // the line asks for it, as an award term not given is asked (W-CL590) —
+  // unless the DGS's tick already settled the course, holds and all (DGS
+  // 2026-10-30, question 2).
+  if (timing === 'unknown' && !attested) {
+    return {
+      ...extBase,
+      transferable,
+      phdAdmissionUnknown: true,
+      ineligibleReason: `not counted yet — taken ${termLabel(c.term)}, ${beforePhdWhere}: whether it needed the department’s and the Graduate School’s approval in advance depends on whether you took it after your Ph.D. admission (DGS Handbook §3.14) — set the semester of your Ph.D. admission letter, under Your standing${coreNote}`,
+    };
+  }
+  const afterAdmission = timing === 'after';
+  const admissionSemester = timing === 'admission-semester';
+  // After the Ph.D. admission and before the Ph.D., in no Notre Dame program:
+  // outside both of the Code's windows (DGS 2026-10-30: "it wasn’t taken
+  // before admission, and the student wasn’t enrolled in any ND program at the
+  // time"), so without the approval only a Graduate School exception counts it.
+  const afterAdmissionWhere =
+    compareTerm(c.term, entry) >= 0
+      ? 'after you entered'
+      : `after your Ph.D. admission (${termLabel(student.phdAdmittedTerm ?? c.term)}), ${duringMscse ? 'while you were enrolled in your Notre Dame MSCSE' : 'before you entered the Ph.D.'}`;
+  const outsideEveryWindow = afterAdmission && compareTerm(c.term, entry) < 0 && !duringMscse;
   // — no earlier graduate program at all (DGS 2026-10-03: "route such courses
   //   to DGS review"): the Code's §4.6 names an allowance for an unfinished
   //   program and for a completed one, and nothing for graduate courses taken
@@ -2193,7 +2275,12 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
         ]
       : []),
     ...(passFail && !ruled ? [`graded S (pass/fail), which cannot show the ${transferFloor} that §5.2 requires — the DGS decides whether it transfers`] : []),
-    ...(afterAdmission && !ruled ? [`taken ${termLabel(c.term)}, ${compareTerm(c.term, entry) >= 0 ? 'after you entered' : 'while you were enrolled in your Notre Dame MSCSE'} — a course taken elsewhere after admission needs the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14); the DGS confirms it was approved`] : []),
+    ...(afterAdmission && !ruled
+      ? [`taken ${termLabel(c.term)}, ${afterAdmissionWhere} — a course taken elsewhere after admission needs the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14)${outsideEveryWindow ? '; taken while you were enrolled in no Notre Dame program, without that approval it counts only by an exception the Graduate School approves in writing' : ''}; the DGS confirms it was approved`]
+      : []),
+    ...(admissionSemester && !ruled
+      ? [`taken ${termLabel(c.term)}, the semester of your Ph.D. admission letter${duringMscse ? ', while you were enrolled in your Notre Dame MSCSE' : ''} — taken after the admission decision, it needed the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14); the DGS confirms which, and that it was approved if it had to be`]
+      : []),
   ];
   // A university with no ExternalCourses row has no credit system on
   // record, so its credits are shown as the transcript prints them. Say
@@ -2267,6 +2354,8 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     transferable,
     ...(passFail && !ruled ? { passFailGrade: true as const } : {}),
     ...(afterAdmission && !ruled ? { afterAdmission: true as const } : {}),
+    ...(admissionSemester && !ruled ? { admissionSemester: true as const } : {}),
+    ...(whileEnrolled ? { duringNdEnrollment: true as const } : {}),
     ...(noPriorProgram && !ruled ? { noPriorProgram: true as const } : {}),
     ...(windowStartUnknown && !ruled ? { windowStartUnknown: true as const } : {}),
     ...(outsideIncomplete ? { outsideIncomplete: true as const } : {}),

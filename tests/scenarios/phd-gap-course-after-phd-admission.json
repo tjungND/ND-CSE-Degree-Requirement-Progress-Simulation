@@ -1,0 +1,125 @@
+{
+  "name": "phd-gap-course-after-phd-admission",
+  "description": "DGS 2026-10-30 (credit-transfer review, question 5): the summer between a Spring 2022 MSCSE conferral and a Fall 2022 Ph.D. start, after a Spring 2022 Ph.D. admission letter. Taken after the Ph.D. admission and in no Notre Dame program, the Northeastern course needed the department’s and the Graduate School’s approval in advance (DGS Handbook §3.14); without it only a Graduate School exception, approved in writing, counts it. It waits for the DGS.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CS 5001",
+          "course_title": "CS 5001",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2022
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CS 5001",
+        "title": "CS 5001",
+        "credits": 3,
+        "term": {
+          "season": "summer",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2020
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2022
+      }
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-mscse",
+      "alsoElsewhere": true,
+      "finished": true
+    },
+    "phdAdmittedTerm": {
+      "season": "spring",
+      "year": 2022
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "Waiting for the DGS: CS 5001",
+        "Taken after admission"
+      ]
+    }
+  }
+}

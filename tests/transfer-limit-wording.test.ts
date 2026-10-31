@@ -27,10 +27,11 @@ describe('the transfer row names a working limit as one (P3-cse-5-6-1)', () => {
   });
   it('a finished Notre Dame MSCSE is an earlier program: not told it has none', () => {
     const r = transferRow(
-      phdStudent({ entryTerm: { season: 'fall', year: 2025 }, bachelorsAwarded: { season: 'spring', year: 2022 }, priorMs: 'none', ndMasters: { term: { season: 'spring', year: 2024 } }, courses: [UMASS] }),
+      phdStudent({ entryTerm: { season: 'fall', year: 2025 }, bachelorsAwarded: { season: 'spring', year: 2022 }, priorMs: 'none', ndMasters: { term: { season: 'spring', year: 2024 } }, phdAdmittedTerm: { season: 'spring', year: 2025 }, courses: [UMASS] }),
     );
     assert.doesNotMatch(r.detail, /no earlier graduate program|§5\.2’s allowance/);
     // Since 2026-10-07 (P3-prior-programs-6 (a)) the course waits for the DGS — taken in no program at that university.
+    // Taken before the Ph.D. admission letter (Spring 2025), it needed no approval in advance (DGS 2026-10-30).
     assert.match(r.detail, /^Waiting for the DGS: COMPSCI 589/);
     assert.match(r.detail, /The 6 is this page’s working limit: your earlier program is the Notre Dame MSCSE, one program with the Ph\.D\., and no document states a transfer allowance for a course taken outside a program elsewhere, so the DGS decides each course/);
   });

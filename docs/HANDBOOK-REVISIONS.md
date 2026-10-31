@@ -554,3 +554,15 @@ not the app's:
     shows the student eligible and every requirement met, that is the DGS’s review, and the Grad Admin processes the award
     directly (DGS 2026-10-07, policy review round 3, P3-cse-3-2). The next edition could say “reviewed and decided by the
     DGS through the department’s degree self-check”, so a reader does not wait for a second decision.
+31. **§5.2 — which admission makes a course “after admission”?** The Graduate School requires “prior approval of the
+    department and the Graduate School for formal courses taken elsewhere and applied to the degree program after the
+    student’s admission to Notre Dame” (DGS Handbook §3.14); CSE §5.2 does not carry the sentence. For a student who
+    finished the Notre Dame MSCSE and then entered the Ph.D., the admission could be the MSCSE’s or the Ph.D.’s. The DGS
+    ruled on 2026-10-30 that it is admission to the program the credit goes into: for Ph.D. credit, the Ph.D. admission
+    decision (the DGS cites Academic Code §2.1: admission to the doctoral program is a separate decision). A course
+    taken elsewhere after the Ph.D. offer and before matriculation needed that approval; one taken before the offer did
+    not. The app reads this from the semester of the admission letter, for a Notre Dame MSCSE holder only. §5.2 could add
+    the sentence with “admission to the Ph.D. program” written out. This is the DGS’s reading, not a Graduate School
+    ruling: confirm it with them the first time real credit depends on it. Still open: a master’s finished elsewhere
+    whose last semester ends after the Ph.D. offer. Read literally, those courses were completed after admission; the
+    app does not hold them (DGS 2026-10-30, option 1).

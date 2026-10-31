@@ -1,0 +1,120 @@
+{
+  "name": "phd-elsewhere-before-phd-admission-letter-unknown",
+  "description": "DGS 2026-10-30 (credit-transfer review, question 5; 5b): a Notre Dame MSCSE holder’s summer course at Northeastern taken before the Ph.D. began, on a record with no semester of the Ph.D. admission letter. Whether it needed approval in advance (DGS Handbook §3.14) turns on that semester, so the course is not counted yet and asks for it under Your standing; the §5.2 row is in progress, not “nothing here”.",
+  "today": "2026-10-28",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "NORTHEASTERN UNIVERSITY",
+          "course_id": "CS 5001",
+          "course_title": "CS 5001",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "credit_system": "semester"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2022
+    },
+    "priorMs": "completed",
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2020
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CS 5001",
+        "title": "CS 5001",
+        "credits": 3,
+        "term": {
+          "season": "summer",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "Northeastern University",
+        "degreeLevel": "masters"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2022
+        },
+        "grade": "A",
+        "origin": "nd"
+      }
+    ],
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2020
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2022
+      }
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-mscse",
+      "alsoElsewhere": true,
+      "finished": true
+    }
+  },
+  "expect": {
+    "phd.transfer": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "set the semester of your Ph.D. admission letter, under Your standing"
+      ]
+    }
+  }
+}

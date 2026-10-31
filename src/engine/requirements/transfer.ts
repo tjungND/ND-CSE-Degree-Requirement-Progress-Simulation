@@ -118,13 +118,15 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // pass/fail grade, a course taken elsewhere after admission, a lapsed
     // Incomplete, credit from before a readmission after five years or more.
     // The sheet's `yes` does not settle these, so they are never "approved".
-    const held = pending.filter((c) => c.passFailGrade || c.afterAdmission || c.noPriorProgram || c.windowStartUnknown || c.twoPrograms || c.cseUnknown || c.incompleteLapsed || c.outsideIncomplete || c.interrupted || c.ndPostingHeld !== undefined);
+    const held = pending.filter((c) => c.passFailGrade || c.afterAdmission || c.admissionSemester || c.noPriorProgram || c.windowStartUnknown || c.twoPrograms || c.cseUnknown || c.incompleteLapsed || c.outsideIncomplete || c.interrupted || c.ndPostingHeld !== undefined);
     const heldReason = (c: (typeof pending)[number]): string =>
       [
         // Credit on the Notre Dame record that still waits (P3-import-1, 2026-10-05).
         ...(c.ndPostingHeld !== undefined ? [`on your Notre Dame record as accepted transfer credit, but ${c.ndPostingHeld.replace('; and ', ', and ')} — the DGS confirms it counts toward this degree`] : []),
         ...(c.passFailGrade ? ['graded pass/fail, which cannot show the B §5.2 requires'] : []),
         ...(c.afterAdmission ? ['taken after admission — the department and the Graduate School must have approved it in advance (DGS Handbook §3.14)'] : []),
+        // DGS 2026-10-30, question 5.
+        ...(c.admissionSemester ? ['taken in the semester of your Ph.D. admission letter — if after the decision, the department and the Graduate School must have approved it in advance (DGS Handbook §3.14)'] : []),
         // A Notre Dame MSCSE holder's course taken in no program at that university (P3-prior-programs-6 (a), 2026-10-07).
         ...(c.noPriorProgram
           ? [ctx.student.ndMasters !== undefined
@@ -188,12 +190,18 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     const recorded =
       (countedTransfers.length === 0 && ctx.student.attestations.transferRecorded === true) ||
       (countedTransfers.length > 0 && countedTransfers.every((c) => c.ndPosting !== undefined || transferRecordedFor(ctx.student, c.entry)));
+    // A course waiting for the semester of the Ph.D. admission letter may
+    // still transfer (DGS 2026-10-30, question 5): the row is in progress,
+    // never "nothing here", and never met before the answer is in.
+    const asked = transfers.filter((c) => !c.superseded && c.phdAdmissionUnknown === true);
     status = pending.length === 0
       ? counted > 0
-        ? recorded
+        ? recorded && asked.length === 0
           ? 'met'
           : 'in_progress'
-        : 'not_applicable'
+        : asked.length > 0
+          ? 'in_progress'
+          : 'not_applicable'
         : preApproved.length === pending.length
           ? 'in_progress'
           : 'needs_dgs_review';

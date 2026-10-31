@@ -1,6 +1,6 @@
 {
   "name": "phd-elsewhere-during-nd-mscse-after-admission",
-  "description": "Credit-transfer review 2026-10-28 (#39): a summer course at Northeastern taken while enrolled in the Notre Dame MSCSE. §5.2’s window counts from the MSCSE admission, but the advance-approval hold counted from the Ph.D. entry, so the course counted outright and went to the Grad Admin. Taken after admission to the graduate program (the MSCSE’s), it needs the department’s and the Graduate School’s prior approval (DGS Handbook §3.14): it waits for the DGS.",
+  "description": "Credit-transfer review 2026-10-28 (#39), re-read by the DGS on 2026-10-30 (question 5): a summer course at Northeastern taken while enrolled in the Notre Dame MSCSE counts as taken after admission only when it came after the Ph.D. admission — here the Ph.D. admission letter is from Spring 2021, before the Summer 2021 course. Taken after admission, it needed the department’s and the Graduate School’s prior approval (DGS Handbook §3.14): it waits for the DGS.",
   "today": "2026-10-28",
   "rules": {
     "base": "default",
@@ -107,6 +107,10 @@
       "graduate": "nd-mscse",
       "alsoElsewhere": true,
       "finished": true
+    },
+    "phdAdmittedTerm": {
+      "season": "spring",
+      "year": 2021
     }
   },
   "expect": {

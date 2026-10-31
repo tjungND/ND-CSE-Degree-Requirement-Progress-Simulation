@@ -1851,7 +1851,7 @@ changed, so nobody undoes it by accident:
   `incompleteDeadline(term)` = end of term + 44 days, then `incompleteLapsed` → provisional and a
   review ask; W earns nothing but is a registration). The ND import keeps W and I rows; `SKIP_GRADES`
   is AU/V/NR/X/NG. `isInProgress` is true for IP and I.
-- **Classification flags** (`allocate.ts` `ClassifiedCourse`): `passFailGrade`, `afterAdmission`, `noPriorProgram` (priorMs 'none' + a course from another university — held for the DGS, P1-transfer-eligibility-11), `cseUnknown` (a transfer the sheet cannot place inside or outside CSE — held, P1-transfer-eligibility-23),
+- **Classification flags** (`allocate.ts` `ClassifiedCourse`): `passFailGrade`, `afterAdmission` (since 2026-10-30 read by `admissionTiming`: at or after the entry term, or — for a Notre Dame MSCSE holder's course taken after the MSCSE began and before the Ph.D. began — later than the semester of the Ph.D. admission letter, `Student.phdAdmittedTerm`; in that semester `admissionSemester`, none given `phdAdmissionUnknown` = not counted yet and Your standing asks; `duringNdEnrollment` = `takenWhileEnrolled`, which keeps such a course out of `earlierTransferPrograms` whatever its hold), `noPriorProgram` (priorMs 'none' + a course from another university — held for the DGS, P1-transfer-eligibility-11), `cseUnknown` (a transfer the sheet cannot place inside or outside CSE — held, P1-transfer-eligibility-23),
   `nonDegree`, `ugToGrUnverified`, `interrupted`, `withdrawn`, `incompleteDue`, `incompleteLapsed`.
   `classify(student, rules, today?)` — `today` matters (lapsed Incompletes, readmission); the review
   builder takes it too (`coursesNeedingDgsReview(student, rules, today?)`; the UI uses the audit's

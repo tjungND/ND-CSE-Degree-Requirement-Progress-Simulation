@@ -164,10 +164,14 @@ the review request used to ask for (C36); what is left is the advisor’s approv
 3. **The retake rule keeps an attempt held by a readmission (forfeited after five years or more) as 'the one counted' and drops the live retake** — **answered 2026-10-30: (a), the live retake counts** (DECISIONS 2026-10-30)
 4. Whether Academic Code §5.5 reaches transfer credit that qualifies for §5.2's window only through a
    Notre Dame MSCSE that ended five years or more before the Ph.D. (counted now).
+   — **answered 2026-10-30: no, it counts; no change** (DECISIONS 2026-10-30)
 5. Whether a course taken elsewhere between the end of the Notre Dame MSCSE and the Ph.D. is “after
    admission” and needs the advance approval of DGS Handbook §3.14 (not held now).
+   — **answered 2026-10-30: it depends on the Ph.D. admission; the semester of the Ph.D. admission letter decides**
+   (5a option 1, 5b, 5c yes, 5d §3.14 confirmed; DECISIONS 2026-10-30)
 6. Whether DGS Handbook §3.3 (“reject some or all past credits”, a shorter readmission) reaches credit
    already posted on the Notre Dame record (counted now).
+   — **answered 2026-10-30: (b), the time away decides — under five years it counts; no change** (DECISIONS 2026-10-30)
 7. For a separated MSCSE, which ends it when both are on the record: its award term or a later Notre Dame
    graduate course before the Ph.D. (the later course now).
 8. Johns Hopkins prints its courses school.department.course (`EN.601.433`); the subject is now read as

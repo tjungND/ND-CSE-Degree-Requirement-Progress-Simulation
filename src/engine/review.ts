@@ -284,6 +284,8 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
     const heldAsks = [
       ...(c.passFailGrade ? ['decide whether this S (pass/fail) course transfers — it cannot show the B §5.2 requires'] : []),
       ...(c.afterAdmission ? ['confirm the department and the Graduate School approved this course before I took it (taken after admission, DGS Handbook §3.14)'] : []),
+      // The semester of the Ph.D. admission letter (DGS 2026-10-30, question 5).
+      ...(c.admissionSemester ? ['decide whether I took this course after my Ph.D. admission — it is from the semester of my admission letter — and, if so, confirm the department and the Graduate School approved it before I took it (DGS Handbook §3.14)'] : []),
       ...(c.noPriorProgram
         ? [student.ndMasters !== undefined
             ? 'decide whether this course transfers, and how much — I took it outside any degree program at that university (my earlier program is the Notre Dame MSCSE), and the Academic Code states no transfer allowance for that case (Academic Code §4.6)'

@@ -532,6 +532,8 @@ export function validateStudent(data: unknown, refusals: Refusal[] = [], cleanup
     // each kept only when well-formed.
     graduationTerm: validTerm(raw['graduationTerm']) ? { season: (raw['graduationTerm'] as Term).season, year: (raw['graduationTerm'] as Term).year } : undefined,
     integratedAdmitted: validTerm(raw['integratedAdmitted']) ? { season: (raw['integratedAdmitted'] as Term).season, year: (raw['integratedAdmitted'] as Term).year } : undefined,
+    // 2026-10-30: the semester of the Ph.D. admission letter (DGS, question 5).
+    phdAdmittedTerm: validTerm(raw['phdAdmittedTerm']) ? { season: (raw['phdAdmittedTerm'] as Term).season, year: (raw['phdAdmittedTerm'] as Term).year } : undefined,
     // Approved credit overloads (Academic Code §3.8, 2026-10-03): well-formed
     // terms only; an empty or malformed list is dropped.
     creditOverloadTerms: validTermList(raw['creditOverloadTerms']),

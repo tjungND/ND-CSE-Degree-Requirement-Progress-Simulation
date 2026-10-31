@@ -160,8 +160,9 @@ describe('wording the earlier rounds added', () => {
   it('a course elsewhere during the Notre Dame MSCSE says so', () => {
     const rules = buildRules({ external: [{ university: 'PURDUE UNIVERSITY', course_id: 'CS 50300', course_title: 'Operating Systems', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes' }] });
     const ms = (id: string, term: { season: 'fall' | 'spring'; year: number }): CourseEntry => ({ courseId: id, credits: 3, term, grade: 'A', origin: 'transfer', institution: ND, degreeLevel: 'masters', registeredLevel: 'graduate' });
-    const s = phdStudent({ entryTerm: fall(2025), priorMs: 'completed', bachelorsAwarded: spring(2021), ndMasters: { term: spring(2023) }, background: { bachelors: 'elsewhere', graduate: 'nd-mscse', alsoElsewhere: true, finished: true } as never, courses: [ms('CSE 60111', fall(2021)), ms('CSE 60641', spring(2023)), transferCourse('CS 50300', 'Operating Systems', { term: spring(2022), degreeLevel: 'masters' })] });
-    assert.match(audit(s, rules, TODAY).courseLines.find((l) => l.courseId === 'CS 50300')!.text, /taken Spring 2022, while you were enrolled in your Notre Dame MSCSE/);
+    const s = phdStudent({ entryTerm: fall(2025), priorMs: 'completed', bachelorsAwarded: spring(2021), ndMasters: { term: spring(2023) }, phdAdmittedTerm: fall(2021), background: { bachelors: 'elsewhere', graduate: 'nd-mscse', alsoElsewhere: true, finished: true } as never, courses: [ms('CSE 60111', fall(2021)), ms('CSE 60641', spring(2023)), transferCourse('CS 50300', 'Operating Systems', { term: spring(2022), degreeLevel: 'masters' })] });
+    // After the Ph.D. admission letter (Fall 2021), so after admission (DGS 2026-10-30, question 5).
+    assert.match(audit(s, rules, TODAY).courseLines.find((l) => l.courseId === 'CS 50300')!.text, /taken Spring 2022, after your Ph\.D\. admission \(Fall 2021\), while you were enrolled in your Notre Dame MSCSE/);
   });
   it('a `yes` transfer with no final grade, once the graduation semester has begun', () => {
     const rules = buildRules({ external: [{ university: 'PURDUE UNIVERSITY', course_id: 'CS 52500', course_title: 'CS 52500', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes' }] });

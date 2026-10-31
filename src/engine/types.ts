@@ -541,6 +541,17 @@ export interface Student {
    * only for a student admitted before the bachelor's was awarded, and only
    * from this term on. */
   integratedAdmitted?: Term;
+  /** Ph.D. only: the semester of the student's Ph.D. admission letter (DGS
+   * 2026-10-30, question 5 of the credit-transfer review). DGS Handbook §3.14:
+   * "The University requires prior approval of the department and the
+   * Graduate School for formal courses taken elsewhere and applied to the
+   * degree program after the student’s admission to Notre Dame" — for Ph.D.
+   * credit, the Ph.D. admission. Asked only of a Notre Dame MSCSE holder with
+   * a course from another university taken after the MSCSE began and before
+   * the Ph.D. began (allocate.ts `admissionTiming`): one later than this
+   * semester needed that approval in advance, one earlier did not, one in it
+   * waits for the DGS. */
+  phdAdmittedTerm?: Term;
   /** The deadline in a probation letter, when the student is on probation
    * (Academic Code §5.7.2: "A student on probation must complete the
    * stipulations outlined in the probation letter within the required

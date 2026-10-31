@@ -1300,6 +1300,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // Milestones (UI review item 7; DGS 2026-10-09: option (b)): its effect —
     // which milestone fields show — is visible where the choice is made.
 
+    const admission = phdAdmissionField(classified);
+    if (admission) card.append(admission);
     const ftTerms = fullTimeTerms(classified);
     if (ftTerms) card.append(ftTerms);
     card.append(clockFields());
@@ -1316,6 +1318,35 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
    * semester out by a semester — Academic Code §6.2.6, §5.4; DGS Handbook §3.4,
    * §3.7.2), and a readmission after a withdrawal or a missed semester
    * (Academic Code §5.5; DGS Handbook §3.1, §3.3). */
+  /** The semester of the Ph.D. admission letter (DGS 2026-10-30, question 5 of
+   * the credit-transfer review): asked only of a Notre Dame MSCSE holder with a
+   * course from another university taken after the MSCSE began and before the
+   * Ph.D. began. It says whether the course was taken "after the student’s
+   * admission" and so needed approval in advance (DGS Handbook §3.14). Open
+   * while a course waits for it; once answered, closed with the answer in its
+   * summary line (DGS 2026-10-04). */
+  function phdAdmissionField(classified: readonly ClassifiedCourse[]): HTMLElement | null {
+    // Only when it decides something: a course whose line asks for it, or an
+    // answer on file (so it can be changed).
+    const waiting = classified.some((c) => c.phdAdmissionUnknown === true && !c.superseded);
+    const onFile = student.phdAdmittedTerm;
+    if (student.program !== 'phd' || (!waiting && onFile === undefined)) return null;
+    return rareFold(
+      'phd-admission',
+      onFile !== undefined ? `When were you admitted to the Ph.D.? — on file: ${termLabel(onFile)}` : 'When were you admitted to the Ph.D.?',
+      waiting,
+      termPicker('standing.phdAdmitted', 'Semester of your Ph.D. admission letter', onFile, ['spring', 'summer', 'fall'], (t) => update((s) => void (s.phdAdmittedTerm = t))),
+      policyFold(
+        'phd-admission',
+        el(
+          'p',
+          { class: 'hint field-hint' },
+          'A course you took at another university after your Ph.D. admission needed the department’s and the Graduate School’s approval before you took it, even before the Ph.D. began (DGS Handbook §3.14). One you took before the admission decision is an ordinary transfer (§5.2). The semester of your admission letter says which; a course from that same semester goes to the DGS.',
+        ),
+      ),
+    );
+  }
+
   /** On probation, with a deadline in the letter (Academic Code §5.7.2) — a
    * rare case (DGS 2026-10-04, policy review P2-ac-5b-6.1-3), behind a
    * selector that is open once a date is on file. The report says at the top
