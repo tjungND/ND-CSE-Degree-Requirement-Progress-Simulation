@@ -739,3 +739,4 @@ The FERPA sentence stays.
 | W-CL638 | that line, once the DGS’s ruling is ticked | taken at Notre Dame after your MSCSE was awarded — the DGS ruled it counts, as you ticked on the course (Academic Code §2.3) |
 | W-CL639 | the review request, that course | decide whether this course counts — I took it at Notre Dame after my MSCSE was awarded (Spring 2019) and before the Ph.D.; if it was in non-degree status, at most 12 such credits may count (Academic Code §2.3) |
 | W-CL640 | the Notre Dame transcript’s preview, that row | taken before Fall 2026, after your MSCSE was awarded (Spring 2019) |
+| W-CL641 | a course line, a course a semester’s maximum refused because its place went to a course a requirement still needs (DGS 2026-10-31, question 12) | not counted — over the 15-credit semester maximum for Fall 2026 (Academic Code §3.8) — the room went first to the courses your requirements still need |

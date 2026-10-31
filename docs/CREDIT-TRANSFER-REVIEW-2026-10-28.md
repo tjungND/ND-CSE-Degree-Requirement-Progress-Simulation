@@ -181,13 +181,17 @@ the review request used to ask for (C36); what is left is the advisor’s approv
    — **answered 2026-10-30: yes; the live sheet lists 601** (DECISIONS 2026-10-30)
 9. Two rows of one course number that each carry their own Notre Dame posting are no longer warned as
    duplicates. OK?
+   — **answered 2026-10-31: yes; no change** (DECISIONS 2026-10-31)
 10. A passed attempt answered “both” (bachelor's and MSCSE) no longer satisfies §4.4.1 core knowledge while
     a retake is in progress, as the pinned C- retake already reads. OK?
+    — **answered 2026-10-31: keep; no change** (DECISIONS 2026-10-31)
 11. “Indiana University” and “Indiana University Bloomington” (and UMass / UMass Amherst) are two earlier
     programs, which holds their courses. One school, like Purdue, Michigan and Washington?
+    — **answered 2026-10-31: no — both have several campuses; no change** (DECISIONS 2026-10-31)
 12. A semester over its maximum gives its room to a non-CSE course that counts as regular credit at Notre
     Dame before research, even when the regular credits are already enough and the research would complete
     the MSCSE along the way. Which should it keep?
+    — **answered 2026-10-31: the courses that complete requirements** (DECISIONS 2026-10-31; `keepWhatCompletes`)
 13. Should Academic Code §5.5's forfeiture reach a §4.4.1 core area met before a five-year interruption by a
     course that earns no credit (an undergraduate course, a B-)? It does not now.
     — **answered 2026-10-30: no, keep it as it is** (DECISIONS 2026-10-30)

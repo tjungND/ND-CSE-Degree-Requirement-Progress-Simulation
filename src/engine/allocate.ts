@@ -2890,29 +2890,141 @@ const TIER_ORDER: Tier[] = ['definite', 'in_progress', 'provisional'];
  * (tier, term, course id) order regardless of entry order, and multi-cap
  * courses get an exact best-permutation search (they are vanishingly rare —
  * after the DGS's Q5 answer every cap signature is a singleton). */
-export function allocate(
-  classified: ClassifiedCourse[],
-  caps: CapSpec[],
-  /** Where non-CSE credit the nine-credit allowance refuses goes: into the
-   * total for the Ph.D. (§4.2 scopes the nine to "the course requirement" — F1,
-   * 2026-09-12), nowhere for the MSCSE (§3.2, September 2026: the nine count
-   * "toward both the graduate school's 30-credit requirement and the
-   * department's 24-credit regular course requirement" — DGS 2026-10-03). */
-  opts: {
-    nonCseSpillsToTotal: boolean;
-    /** The courses that fill §4.2's research seminar requirement — the
-     * Ph.D.'s `phd_seminar_courses`, none on the MSCSE, which has no seminar
-     * requirement. Any other seminar-type course counts toward the total only,
-     * and its line says so (policy review 2026-10-04, P1-sheet-40: SOC 63270,
-     * and on the MSCSE CSE 63801/63802, read "the research seminar requirement"). */
-    seminarCourseIds?: readonly string[];
-    /** Count §4.2's nine at Notre Dame and the MSCSE along the way from a
-     * second pass over the Notre Dame courses alone (the Ph.D.; default on). */
-    notreDameCounts?: boolean;
-    /** This call is that second pass. */
-    notreDameOnly?: boolean;
-  } = { nonCseSpillsToTotal: true },
-): AllocationResult {
+/** Where non-CSE credit the nine-credit allowance refuses goes: into the
+ * total for the Ph.D. (§4.2 scopes the nine to "the course requirement" — F1,
+ * 2026-09-12), nowhere for the MSCSE (§3.2, September 2026: the nine count
+ * "toward both the graduate school's 30-credit requirement and the
+ * department's 24-credit regular course requirement" — DGS 2026-10-03). */
+export interface AllocateOptions {
+  nonCseSpillsToTotal: boolean;
+  /** The courses that fill §4.2's research seminar requirement — the
+   * Ph.D.'s `phd_seminar_courses`, none on the MSCSE, which has no seminar
+   * requirement. Any other seminar-type course counts toward the total only,
+   * and its line says so (policy review 2026-10-04, P1-sheet-40: SOC 63270,
+   * and on the MSCSE CSE 63801/63802, read "the research seminar requirement"). */
+  seminarCourseIds?: readonly string[];
+  /** Count §4.2's nine at Notre Dame and the MSCSE along the way from a
+   * second pass over the Notre Dame courses alone (the Ph.D.; default on). */
+  notreDameCounts?: boolean;
+  /** This call is that second pass. */
+  notreDameOnly?: boolean;
+  /** The minimums the credit requirements need, from the rules sheet: where a
+   * semester over Academic Code §3.8's maximum must leave credit uncounted,
+   * the courses that complete a requirement keep the room (DGS 2026-10-31,
+   * question 12 — keepWhatCompletes). */
+  needs?: CreditNeeds;
+  /** Courses that wait behind total-only credit for a semester's maximum,
+   * chosen by keepWhatCompletes — the same in the Notre Dame-only pass, so
+   * both passes refuse the same course. */
+  yieldTo?: ReadonlySet<ClassifiedCourse>;
+}
+
+/** The minimums the credit requirements need (a missing parameter leaves its
+ * requirement out). */
+export interface CreditNeeds {
+  /** The regular-course credits: the Ph.D.'s 24, the MSCSE's 24. */
+  regular?: number;
+  /** The total: the Ph.D.'s 60, the MSCSE's 30. */
+  total?: number;
+  /** The MSCSE's project or thesis credits. */
+  project?: number;
+  /** Regular-course credits taken at Notre Dame: §4.2's nine, and the MSCSE
+   * along the way's 24 when the student wants that award. */
+  ndRegular?: readonly number[];
+  /** Research credits taken at Notre Dame: the MSCSE along the way's 6, when
+   * the student wants that award. */
+  ndResearch?: number;
+}
+
+export function allocate(classified: ClassifiedCourse[], caps: CapSpec[], opts: AllocateOptions = { nonCseSpillsToTotal: true }): AllocationResult {
+  const first = allocateOnce(classified, caps, opts);
+  return opts.needs === undefined || opts.notreDameOnly === true ? first : keepWhatCompletes(classified, caps, opts, first);
+}
+
+const isTermCap = (id: CapId): boolean => id.startsWith('term:');
+
+/** Academic Code §3.8's maximum: "Keep the courses that complete
+ * requirements" (DGS 2026-10-31, question 12 of the credit-transfer review).
+ * Where a semester over its maximum must leave credit uncounted, the
+ * allocator's own order — regular courses before research and other
+ * total-only credit — could spend the room on a course whose requirements
+ * were already complete while one a requirement still needed went uncounted:
+ * a regular course beyond the 24 kept, the research the MSCSE along the way
+ * needed cut. So a course of such a semester may yield its place: it waits
+ * behind total-only credit, in both passes (yieldTo), when that brings more of
+ * the requirements' minimums within reach at some certainty — completed,
+ * with what is in progress, with what waits for a decision — and less of none.
+ * The best such course first, one at a time, until none helps; among equals
+ * the one that keeps the most credit, then the one last in the record's order
+ * (term, then course number) — the order in which the maximum's room fills
+ * (registrationCaps). A semester whose overload the student ticked has no cap,
+ * so nothing here applies to it. */
+function keepWhatCompletes(classified: ClassifiedCourse[], caps: CapSpec[], opts: AllocateOptions, first: AllocationResult): AllocationResult {
+  const needs = opts.needs!;
+  const yieldTo = new Set(opts.yieldTo ?? []);
+  let best = first;
+  let bestScore = needsCoverage(best, needs, opts.seminarCourseIds ?? []);
+  for (;;) {
+    const cut = new Set(best.perCourse.filter((p) => p.excluded > 0).flatMap((p) => (p.boundCaps ?? []).filter(isTermCap)));
+    if (cut.size === 0) return best;
+    let found: { result: AllocationResult; score: number[]; course: ClassifiedCourse } | undefined;
+    for (const p of [...best.perCourse].reverse()) {
+      if (yieldTo.has(p.course) || p.countedRegular + p.countedOther <= 0 || !p.course.caps.some((id) => cut.has(id))) continue;
+      const result = allocateOnce(classified, caps, { ...opts, yieldTo: new Set(yieldTo).add(p.course) });
+      const score = needsCoverage(result, needs, opts.seminarCourseIds ?? []);
+      if (!score.every((v, i) => v >= bestScore[i]! - 1e-6) || !score.some((v, i) => v > bestScore[i]! + 1e-6)) continue;
+      if (found === undefined || compareVectors([gain(score), ...kept(result)], [gain(found.score), ...kept(found.result)]) > 0) found = { result, score, course: p.course };
+    }
+    if (found === undefined) return best;
+    yieldTo.add(found.course);
+    best = found.result;
+    bestScore = found.score;
+  }
+}
+
+const gain = (score: number[]): number => score.reduce((sum, v) => sum + v, 0);
+/** The credit an allocation keeps, beyond the minimums: the total, then the
+ * regular-course credits, then those at Notre Dame, the research, the project. */
+const kept = (r: AllocationResult): number[] => [r.total, r.regular, r.ndRegular, r.ndResearch, r.project].map((s) => s.definite + s.in_progress + s.provisional);
+/** Lexicographic, on the credits' grid: positive when `a` is ahead. */
+function compareVectors(a: number[], b: number[]): number {
+  for (const [i, v] of a.entries()) if (Math.abs(v - b[i]!) > 1e-6) return v - b[i]!;
+  return 0;
+}
+
+/** How much of each requirement's minimum an allocation reaches, at three
+ * certainties — completed; with what is in progress; with what waits for a
+ * decision too — one number per requirement and certainty, so two allocations
+ * compare requirement by requirement. The research seminars count by course:
+ * each listed seminar counted is one (§4.2 asks for each). */
+function needsCoverage(r: AllocationResult, needs: CreditNeeds, seminarCourseIds: readonly string[]): number[] {
+  const levels: ((s: TierSums) => number)[] = [(s) => s.definite, (s) => s.definite + s.in_progress, (s) => s.definite + s.in_progress + s.provisional];
+  const tiersAt: Tier[][] = [['definite'], ['definite', 'in_progress'], ['definite', 'in_progress', 'provisional']];
+  const buckets: [TierSums, number | undefined][] = [
+    [r.regular, needs.regular],
+    [r.total, needs.total],
+    [r.project, needs.project],
+    ...(needs.ndRegular ?? []).map((n): [TierSums, number] => [r.ndRegular, n]),
+    [r.ndResearch, needs.ndResearch],
+  ];
+  const seminars = new Set(seminarCourseIds.map((id) => id.toUpperCase().replace(/\s+/g, ' ')));
+  const out: number[] = [];
+  for (const [i, level] of levels.entries()) {
+    for (const [sums, need] of buckets) if (need !== undefined) out.push(Math.min(level(sums), need));
+    if (seminars.size > 0) {
+      const counted = new Set(
+        r.perCourse
+          .filter((p) => tiersAt[i]!.includes(p.course.tier) && p.countedRegular + p.countedOther > 0)
+          .map((p) => p.course.entry.courseId.toUpperCase().replace(/\s+/g, ' '))
+          .filter((id) => seminars.has(id)),
+      );
+      out.push(counted.size);
+    }
+  }
+  return out;
+}
+
+function allocateOnce(classified: ClassifiedCourse[], caps: CapSpec[], opts: AllocateOptions): AllocationResult {
   const capRoom = new Map<CapId, number>();
   const capUsage: AllocationResult['capUsage'] = new Map();
   const capById = new Map<CapId, CapSpec>();
@@ -3086,7 +3198,7 @@ export function allocate(
         ? `the rules sheet does not say what the ${capLabel(unknownCap)} is, so whether it counts toward regular courses cannot be checked yet — ask the DGS to fill it in (${section(unknownCap)})`
         : `the rules sheet does not say what the ${capLabel(unknownCap)} is, so this course cannot be counted yet — ask the DGS to fill it in (${section(unknownCap)})`
       : excluded > 0 && cc.caps.length > 0
-        ? overCaps(refusedBy.length > 0 ? refusedBy : cc.caps)
+        ? `${overCaps(refusedBy.length > 0 ? refusedBy : cc.caps)}${opts.yieldTo?.has(cc) === true && refusedBy.some(isTermCap) ? ' — the room went first to the courses your requirements still need' : ''}`
         : spillReason;
     // An UNREVIEWED transfer course is a candidate, whatever the cap did with
     // it here (DGS 2026-09-06): the DGS decides which courses transfer, so
@@ -3154,7 +3266,7 @@ export function allocate(
   const ndPass =
     opts.notreDameOnly === true || opts.notreDameCounts === false
       ? undefined
-      : allocate(
+      : allocateOnce(
           classified.filter((c) => c.entry.origin === 'nd' || c.ndMastersCredit === true || c.notTransferCredit === true),
           caps,
           { ...opts, notreDameOnly: true },
@@ -3208,13 +3320,18 @@ export function allocate(
       // and on a tie keeps `precedence`. §4.2's nine at Notre Dame does not
       // depend on this order: the Notre Dame-only pass below counts it.
       const yieldsToTransfer = (c: ClassifiedCourse): boolean => opts.nonCseSpillsToTotal === true && c.caps.length === 1 && c.caps[0] === 'noncse';
-      const singles = group.filter((c) => c.caps.length <= 1 && !yieldsToTransfer(c)).sort(precedence);
-      const multis = group.filter((c) => c.caps.length > 1 || yieldsToTransfer(c)).sort(precedence);
+      // A course keepWhatCompletes chose to yield a semester's maximum waits
+      // behind total-only credit too (DGS 2026-10-31, question 12).
+      const yields = group.filter((c) => opts.yieldTo?.has(c) === true);
+      const inOrder = group.filter((c) => opts.yieldTo?.has(c) !== true);
+      const singles = inOrder.filter((c) => c.caps.length <= 1 && !yieldsToTransfer(c)).sort(precedence);
+      const multis = inOrder.filter((c) => c.caps.length > 1 || yieldsToTransfer(c)).sort(precedence);
       for (const cc of singles) take(cc);
       for (const cc of bestMultiOrder(multis, new Map(capRoom), plan)) {
         if (g === 0 && nowSpillOnly(cc) && !regularAtNd.has(cc)) waitsAsTotalOnly.push(cc);
         else take(cc);
       }
+      waitsAsTotalOnly.push(...yields);
     }
     for (const cc of waitsAsTotalOnly) take(cc);
   }

@@ -1837,7 +1837,16 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   group (`waitsAsTotalOnly`), so research keeps a semester's maximum — unless the Notre Dame-only pass,
   which now runs FIRST (`ndPass`), counts it as regular credit: then it keeps its turn, and both passes
   refuse the same course. (10) A review item that can
-  become a submitted transfer carries `decidesTransfer`; Next steps count only those.
+  become a submitted transfer carries `decidesTransfer`; Next steps count only those. (11) A semester
+  over §3.8's maximum keeps the courses that complete requirements (DGS 2026-10-31, question 12):
+  `allocate()` is now a wrapper — `allocateOnce()` is the old body — and, given `opts.needs` (the
+  sheet's minimums; audit.ts passes them, the MSCSE along the way's only when `alongTheWayWanted`),
+  `keepWhatCompletes()` tries letting each counted course of a semester whose maximum refused credit
+  yield (`opts.yieldTo`: it joins `waitsAsTotalOnly`, in both passes) and keeps a yield only when
+  `needsCoverage()` — min(sum, minimum) per requirement at three certainties, plus the listed seminars
+  counted — rises somewhere and falls nowhere; ties keep the most credit, then the course last in the
+  record's order. So no requirement is ever traded for another. The yielded course's line adds
+  W-CL641. Callers without `needs` (tests calling `allocate` directly) get the old allocation.
 
 ## The policy-compliance review's changes (2026-10-03) — what a later session must know
 

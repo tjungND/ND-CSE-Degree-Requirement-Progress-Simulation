@@ -19,7 +19,7 @@ import { coreTitleMatchesArea } from './core-title.ts';
 import { advisorReviewFlag, advisorRow, approvalsRow, goodStandingRow, gpaRow, gpaText, noGpaYet } from './requirements/shared.ts';
 import { mscseRows, msTimeLimitRow, summerOnlyReviewFlag, thesisReadersReviewFlag } from './requirements/mscse.ts';
 import { extensionReviewFlag } from './requirements/context.ts';
-import { ADMISSION_DEADLINE_SEMESTER, eighthSemester, phdRows, phdTimeLimitRow, qualifierPriorRulesEligible, readmissionGapCounted } from './requirements/phd.ts';
+import { ADMISSION_DEADLINE_SEMESTER, alongTheWayWanted, eighthSemester, phdRows, phdTimeLimitRow, qualifierPriorRulesEligible, readmissionGapCounted } from './requirements/phd.ts';
 import { msMilestoneDeadlines, phdMilestoneDeadlines } from './requirements/milestone-deadlines.ts';
 import { exactCredits, formatCredits } from './credits.ts';
 import { GRADE_POINTS, isAudit, isInProgress, isPassed, meetsGradeFloor, passesCreditFloor } from './grades.ts';
@@ -241,6 +241,18 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     // §4.2's nine at Notre Dame and the MSCSE along the way, counted from the
     // Notre Dame courses alone (credit-transfer review 2026-10-28) — Ph.D. rows.
     notreDameCounts: student.program === 'phd',
+    // A semester over §3.8's maximum keeps the courses that complete
+    // requirements (DGS 2026-10-31, question 12): the minimums they need. The
+    // MSCSE along the way's are a requirement only for a student who wants it.
+    needs:
+      student.program === 'phd'
+        ? {
+            regular: params.number('phd_regular_credits_min'),
+            total: params.number('phd_total_credits_min'),
+            ndRegular: [params.number('phd_nd_credits_min'), ...(alongTheWayWanted(student) ? [params.number('ms_regular_credits_min')] : [])].filter((n): n is number => n !== undefined),
+            ndResearch: alongTheWayWanted(student) ? params.number('ms_project_credits_min') : undefined,
+          }
+        : { regular: params.number('ms_regular_credits_min'), total: params.number('ms_total_credits_min'), project: params.number('ms_project_credits_min') },
   };
   const alloc = allocate(classified, capSpecs, allocOptions);
   // The semesters over §3.8's maximum, with the credits the maximum itself

@@ -47,7 +47,12 @@ export function sameUniversity(a: string | undefined, b: string | undefined): bo
 
 /** The schools whose bare name means the flagship campus (DGS 2026-09-12:
  * Purdue, Michigan and Washington are deliberately not systems), and that
- * campus's place, as a transcript may add it. */
+ * campus's place, as a transcript may add it. Indiana University and the
+ * University of Massachusetts are deliberately NOT here (DGS 2026-10-31,
+ * question 11 of the credit-transfer review: "IU has multiple campuses (South
+ * Bend, Indianapolis, Bloomington, etc.). U of Massachusetts also has multiple
+ * campuses (Lowell, Amherst, Dartmouth, Boston, etc.)"): their bare name and a
+ * campus's name stay two schools, and the DGS sees the courses. */
 const FLAGSHIP_PLACES: Record<string, string> = {
   'purdue university': 'west lafayette',
   'university of michigan': 'ann arbor',

@@ -71,7 +71,7 @@ describe('postings and rows', () => {
 });
 
 describe('the two passes refuse the same course for a semester’s maximum', () => {
-  it('transfers spend the nine: the course and the award read the same, and the nine keeps its regular credit', () => {
+  it('transfers spend the nine: the course and the award read the same, and the research that completes the award keeps the room', () => {
     const nd = (id: string, term: { season: 'fall' | 'spring'; year: number }, extra: Partial<CourseEntry> = {}): CourseEntry => ({ courseId: id, credits: 3, term, grade: 'A', origin: 'nd', ...extra });
     const xf = (id: string): CourseEntry => ({ courseId: id, title: 'Statistics', credits: 3, term: fall(2022), grade: 'A', origin: 'transfer', institution: 'Purdue University', degreeLevel: 'masters' });
     const rules = buildRules({
@@ -83,13 +83,17 @@ describe('the two passes refuse the same course for a semester’s maximum', () 
       courses: [xf('STAT 701'), xf('STAT 702'), xf('STAT 703'), nd('CSE 60770', fall(2025)), nd('CSE 60762', fall(2025)), nd('CSE 63801', fall(2025), { credits: 1 }), nd('CSE 60876', spring(2026)), nd('CSE 60535', spring(2026)), nd('CSE 63802', spring(2026), { credits: 1 }), nd('CSE 98900', spring(2026), { grade: 'S' }), nd('CSE 60111', fall(2026)), nd('CSE 60641', fall(2026)), nd('CSE 60321', fall(2026)), nd('CSE 60868', fall(2026)), nd('ACMS 60427', fall(2026)), nd('CSE 98900', fall(2026), { grade: 'S' })],
     } as never);
     const r = audit(s, rules, '2027-06-01');
-    // ACMS 60427 is regular credit at Notre Dame (the nine has room there), so
-    // the semester's maximum keeps it in both passes, and the research course
-    // reads cut on its line as in the award (the question of which the
-    // maximum should keep is the DGS's — DECISIONS, the last check's row).
-    assert.match(r.requirements.find((x) => x.id === 'phd.msAlongTheWay')!.detail, /3 of 6 research credits/);
-    assert.match(r.courseLines.filter((l) => l.courseId === 'CSE 98900').map((l) => l.text).join(' | '), /not counted — over the 15-credit semester maximum for Fall 2026/);
-    assert.match(r.courseLines.find((l) => l.courseId === 'ACMS 60427')!.text, /still counts toward the regular-course credits taken at Notre Dame/);
+    // The 24 regular credits at Notre Dame are complete without ACMS 60427, and
+    // the research completes the MSCSE along the way, so the research keeps the
+    // semester's room (DGS 2026-10-31, question 12: "Keep the courses that
+    // complete requirements") — in both passes: the course's line and the award
+    // read the same, and the nine keeps its regular credit.
+    assert.match(r.requirements.find((x) => x.id === 'phd.msAlongTheWay')!.detail, /24 regular-course credits and 6 research credits/);
+    assert.ok(r.courseLines.filter((l) => l.courseId === 'CSE 98900').every((l) => l.mark === 'counts'));
+    const acms = r.courseLines.find((l) => l.courseId === 'ACMS 60427')!.text;
+    assert.match(acms, /^not counted — over the 9-credit non-CSE cap and 15-credit semester maximum for Fall 2026 \(§4\.2; Academic Code §3\.8\) — the room went first to the courses your requirements still need/);
+    assert.doesNotMatch(acms, /still counts toward the regular-course credits taken at Notre Dame/);
+    assert.match(r.requirements.find((x) => x.id === 'phd.credits.nd')!.detail, /^24 credits/);
   });
 });
 
@@ -174,7 +178,11 @@ describe('wording the earlier rounds added', () => {
     const su = { season: 'summer' as const, year: 2026 };
     const fa = fall(2026);
     const s = phdStudent({ entryTerm: fall(2025), bachelorsAwarded: spring(2025), gpa: 3.8, courses: [nd('CSE 60111', su), nd('CSE 60641', su), nd('CSE 60321', su), nd('CSE 63801', su, 1, 'S'), nd('CSE 60535', su), nd('CSE 60770', fa), nd('CSE 60762', fa), nd('CSE 60876', fa), nd('CSE 60868', fa), nd('CSE 60427', fa), nd('CSE 63802', fa, 1, 'S')] });
-    const detail = audit(s, buildRules(), '2027-06-01').requirements.find((r) => r.id === 'phd.seminar')!.detail;
+    // With 30 regular credits to reach, every credit of the two semesters' room
+    // is needed for them, so neither seminar can take it (a semester's maximum
+    // keeps the courses that complete requirements and trades none for another —
+    // DGS 2026-10-31, question 12; tests/semester-maximum-completes.test.ts).
+    const detail = audit(s, buildRules({ parameters: { phd_regular_credits_min: '30' } }), '2027-06-01').requirements.find((r) => r.id === 'phd.seminar')!.detail;
     if (/CSE 63801 and CSE 63802 were taken but not counted/.test(detail)) assert.match(detail, /in Summer 2026 and Fall 2026, tick it under Approvals you already have; otherwise check those semesters/);
     else assert.fail(`both seminars were not refused: ${detail}`);
   });
