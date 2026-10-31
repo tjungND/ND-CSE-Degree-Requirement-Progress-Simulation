@@ -1,0 +1,147 @@
+{
+  "name": "phd-nd-course-after-mscse-award",
+  "description": "DGS 2026-10-31 (credit-transfer review, question 7): the Notre Dame MSCSE ends at its award — after the conferral the student is enrolled in no Notre Dame program. MSCSE awarded Spring 2019, a Notre Dame course in Fall 2021, the Ph.D. from Fall 2026. The Fall 2021 course used to count in full as MSCSE coursework and to date the MSCSE's end, under five years before the Ph.D., so no separation was found. Now the five years run from the award: the MSCSE's courses wait for the DGS and the Graduate School (Academic Code §5.5), and the Fall 2021 course is not the MSCSE's — it waits for the DGS as Notre Dame coursework from before admission (at most 12 non-degree credits, Academic Code §2.3).",
+  "today": "2026-10-31",
+  "rules": {
+    "base": "default"
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2026
+    },
+    "priorMs": "none",
+    "milestones": {},
+    "attestations": {},
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2017
+    },
+    "ndMasters": {
+      "term": {
+        "season": "spring",
+        "year": 2019
+      }
+    },
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-mscse",
+      "finished": true
+    },
+    "courses": [
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2017
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2017
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2018
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60427",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2018
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2018
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60762",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2019
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60770",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2021
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      }
+    ]
+  },
+  "expect": {
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "0 of 24 credits complete. 21 pending review/approval"
+      ]
+    },
+    "phd.transfer": {
+      "status": "not_applicable",
+      "detailIncludes": [
+        "Your Notre Dame MSCSE courses (CSE 60111, CSE 60641, CSE 60321, CSE 60427, CSE 60535, CSE 60762) are not transfer credit"
+      ]
+    },
+    "phd.qualifier.core.os": {
+      "status": "needs_dgs_review",
+      "detailIncludes": [
+        "taken before an interruption of five years or more"
+      ]
+    }
+  }
+}

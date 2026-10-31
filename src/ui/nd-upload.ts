@@ -529,6 +529,16 @@ export function ndTranscriptPreviewBlock(args: NdUploadArgs): HTMLElement {
   const startFacts = startFactsFor(entry, tp.degreesAwarded, args.student, tp.terms);
   const beforeStart = (c: ParsedCourse): boolean => beforeProgramStart({ term: c.term, registeredLevel: c.level }, startFacts);
   const priorCount = tp.courses.filter((c) => c.origin === 'nd' && beforeStart(c)).length;
+  // The MSCSE ends at its award (DGS 2026-10-31, question 7): a row after it is
+  // not the MSCSE's. The record's award term, or the transcript's own.
+  const mscseAward =
+    args.student.ndMasters === undefined
+      ? undefined
+      : (args.student.ndMasters.term ??
+        tp.degreesAwarded
+          .filter((d) => d.level === 'masters' && d.date !== undefined)
+          .map((d) => conferralTerm(d.date!))
+          .find((t) => termIndex(t) < termIndex(entry)));
   box.append(
     // The heading asks for the check a student can do — is each row read
     // right? — not for a verdict (clarity review 2026-09-26): what counts is
@@ -660,7 +670,11 @@ export function ndTranscriptPreviewBlock(args: NdUploadArgs): HTMLElement {
             ? `transfer credit accepted on your Notre Dame record (posted ${termLabel(c.term)})`
             : 'transfer credit on your Notre Dame record — the transcript does not show its level, so the DGS confirms it'
         : prior
-          ? `taken before ${termLabel(entry)}, as ${priorNdDegreeLevel({ courseId: c.courseId, registeredLevel: c.level, term: c.term }, bachelorsTermFor(tp.degreesAwarded, args.student, tp.terms)) === 'bachelors' ? 'an undergraduate' : args.student.ndMasters !== undefined ? 'an MSCSE student' : 'a graduate student'}`
+          ? priorNdDegreeLevel({ courseId: c.courseId, registeredLevel: c.level, term: c.term }, bachelorsTermFor(tp.degreesAwarded, args.student, tp.terms)) === 'bachelors'
+            ? `taken before ${termLabel(entry)}, as an undergraduate`
+            : mscseAward !== undefined && termIndex(c.term) > termIndex(mscseAward)
+              ? `taken before ${termLabel(entry)}, after your MSCSE was awarded (${termLabel(mscseAward)})`
+              : `taken before ${termLabel(entry)}, as ${args.student.ndMasters !== undefined ? 'an MSCSE student' : 'a graduate student'}`
           : earlyStart
             ? `your early start, the summer before ${termLabel(entry)} — this program’s coursework`
             : '';

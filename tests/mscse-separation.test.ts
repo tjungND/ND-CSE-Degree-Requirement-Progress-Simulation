@@ -10,7 +10,7 @@
 // student interrupts his or her program of study for five years or more."
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { mscseSeparation } from '../src/engine/allocate.ts';
+import { classify, mscseSeparation } from '../src/engine/allocate.ts';
 import { audit } from '../src/engine/audit.ts';
 import { coursesNeedingDgsReview } from '../src/engine/review.ts';
 import type { CourseEntry, Student, Term } from '../src/engine/types.ts';
@@ -111,5 +111,57 @@ describe('the qualifier chip after a separated MSCSE (P4-phd-8)', () => {
     const q = audit(s, rules, '2027-06-01').requirements.find((r) => r.id === 'phd.qualifier')!;
     assert.equal(q.status, 'needs_dgs_review');
     assert.equal(q.deadline?.label, 'Done in your Notre Dame MSCSE, five years or more before the Ph.D. — waiting for the DGS');
+  });
+});
+
+// Question 7 of the credit-transfer review (DGS 2026-10-31): the MSCSE ends at
+// its award — after the conferral "the student wasn't enrolled in any ND
+// program". A Notre Dame course dated after the award and before the Ph.D. is
+// not the MSCSE's: it does not restart the five-year clock (it did, as the
+// later of the two, until then), and it waits for the DGS as other Notre Dame
+// coursework from before admission does (DGS 2026-10-06, option (c)).
+describe('the MSCSE ends at its award (DGS 2026-10-31, question 7)', () => {
+  // The question's example: awarded Spring 2019, a Notre Dame course in Fall
+  // 2021, the Ph.D. from Fall 2026 — under five years from the course, more
+  // than five from the award.
+  const later = ms('CSE 60770', t('fall', 2021));
+  const s = student(t('spring', 2019), [...MSCSE(2019), later]);
+  const line = (x: Student, id: string) => run(x).report.courseLines?.find((l) => l.courseId === id);
+  it('the clock runs from the award, not from the later course', () => {
+    assert.deepEqual(mscseSeparation(s), t('spring', 2019));
+  });
+  it('the MSCSE’s courses wait (§5.5); the later course is not one of them', () => {
+    assert.match(line(s, 'CSE 60641')?.text ?? '', /from your Notre Dame MSCSE, which ended in Spring 2019, five years or more before you entered the Ph\.D\. in Fall 2026/);
+    const after = line(s, 'CSE 60770');
+    assert.equal(after?.mark, 'pending');
+    assert.match(after?.text ?? '', /taken at Notre Dame after your MSCSE was awarded \(Spring 2019\) and before you entered the Ph\.D\. — not MSCSE coursework, which ended with the award; if you took it as a non-degree student, at most 12 such credits may count \(Academic Code §2\.3\); the DGS decides, with the Graduate School/);
+    assert.doesNotMatch(after?.text ?? '', /from your Notre Dame MSCSE|five years or more|counts in full/);
+    const c = classify(s, rules, '2026-10-06').classified.find((x) => x.entry.courseId === 'CSE 60770')!;
+    assert.equal(c.ndBeforeAdmission, true);
+    assert.deepEqual(c.afterNdMastersAward, t('spring', 2019));
+    assert.equal(c.ndMastersCredit, undefined);
+    assert.equal(c.interrupted, undefined);
+  });
+  it('the review request asks the DGS to decide it', () => {
+    const ask = coursesNeedingDgsReview(s, rules, '2026-10-06').find((a) => a.course.entry.courseId === 'CSE 60770');
+    assert.ok(ask, 'CSE 60770 is in the review request');
+    assert.match(JSON.stringify(ask), /decide whether this course counts — I took it at Notre Dame after my MSCSE was awarded \(Spring 2019\) and before the Ph\.D\.; if it was in non-degree status, at most 12 such credits may count \(Academic Code §2\.3\)/);
+  });
+  it('ticked, the DGS’s ruling counts it', () => {
+    const ticked = student(t('spring', 2019), [...MSCSE(2019), { ...later, dgsHoldApproved: true }]);
+    const after = line(ticked, 'CSE 60770');
+    assert.equal(after?.mark, 'counts');
+    assert.match(after?.text ?? '', /taken at Notre Dame after your MSCSE was awarded — the DGS ruled it counts, as you ticked on the course \(Academic Code §2\.3\)/);
+  });
+  it('under five years from the award, the MSCSE counts in full and the later course still waits', () => {
+    const near = student(t('spring', 2022), [...MSCSE(2022), ms('CSE 60770', t('fall', 2023))]);
+    assert.equal(mscseSeparation(near), undefined);
+    assert.match(line(near, 'CSE 60641')?.text ?? '', /counts in full as Ph\.D\. coursework/);
+    assert.match(line(near, 'CSE 60770')?.text ?? '', /after your MSCSE was awarded \(Spring 2022\)/);
+  });
+  it('with no award term on file, the last course still ends the MSCSE and is its coursework', () => {
+    const undated = student(t('spring', 2019), [...MSCSE(2019), later], { ndMasters: {} });
+    assert.equal(mscseSeparation(undated), undefined);
+    assert.match(line(undated, 'CSE 60770')?.text ?? '', /from your Notre Dame MSCSE — counts in full as Ph\.D\. coursework/);
   });
 });

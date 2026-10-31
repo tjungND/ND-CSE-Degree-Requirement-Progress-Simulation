@@ -338,8 +338,15 @@ export interface ClassifiedCourse {
    * earlier graduate program was at ANOTHER university (policy review round
    * 3, P3-dh-3.14-3.20-3; DGS 2026-10-06: option (c)) — not credit from an
    * earlier Notre Dame program, and possibly non-degree coursework (Academic
-   * Code §2.3's twelve): it waits for the DGS, with no §5.2 projection. */
+   * Code §2.3's twelve): it waits for the DGS, with no §5.2 projection. Also
+   * one dated after the student's Notre Dame MSCSE was awarded and before
+   * the Ph.D. (afterNdMastersAward; DGS 2026-10-31, question 7). */
   ndBeforeAdmission?: true;
+  /** The MSCSE's award term, on an ndBeforeAdmission course dated after it:
+   * not the MSCSE's coursework, which ended with the award (DGS 2026-10-31,
+   * question 7 of the credit-transfer review). Its line and the review
+   * request say so. */
+  afterNdMastersAward?: Term;
   /** Coursework dated before an interruption of five years or more (Academic
    * Code §5.5: "Credit for any course or examination will be forfeited"),
    * sent to the DGS rather than counted or refused (policy review 2026-10-03). */
@@ -666,6 +673,13 @@ export function isOwnMscseCoursework(student: Student, c: CourseEntry): boolean 
   if (student.program !== 'phd' || student.ndMasters === undefined) return false;
   if (!(c.origin === 'nd' || isNotreDameInstitution(c.institution)) || c.degreeLevel === 'bachelors') return false;
   if (compareTerm(c.term, normalizeEntryTerm(student.entryTerm).term) >= 0) return false;
+  // The MSCSE ends at its award (DGS 2026-10-31, question 7 of the
+  // credit-transfer review: after the conferral "the student wasn't enrolled
+  // in any ND program"). A Notre Dame course dated after the award term is not
+  // the MSCSE's: it neither counts as its coursework (classifyTransfer holds
+  // it for the DGS) nor restarts the five-year separation (mscseSeparation).
+  // With no award term on file, the last course still dates the end.
+  if (student.ndMasters.term !== undefined && compareTerm(c.term, student.ndMasters.term) > 0) return false;
   // The early-start summer just before the Ph.D. is the Ph.D.'s own
   // coursework (P3-chg-other-1, DGS 2026-10-05), not the MSCSE's — read as the
   // MSCSE's, it dated the MSCSE to that summer and erased a five-year
@@ -733,7 +747,8 @@ export function betweenMscseAndPhd(student: Student, entry: Term, term: Term): b
 }
 
 /** When the student's own Notre Dame MSCSE ended: its award term, or else its
- * last course on the record. */
+ * last course on the record (a course after the award is not the MSCSE's —
+ * DGS 2026-10-31, question 7). */
 export function ownMscseEnd(student: Student): Term | undefined {
   if (student.ndMasters?.term !== undefined) return student.ndMasters.term;
   return student.courses
@@ -831,9 +846,12 @@ export function ownMscseStart(student: Student): Term | undefined {
  * one graduate program (2026-10-03), so Academic Code §5.5 applies: "Credit
  * for any course or examination will be forfeited if the student interrupts
  * his or her program of study for five years or more." Measured as a
- * readmission's is: from the end of the MSCSE's last term (its award term, or
- * its last course) to the start of the Ph.D. Returns that last term, or
- * undefined when the gap is shorter or there is no Notre Dame MSCSE. */
+ * readmission's is: from the end of the MSCSE's last term to the start of the
+ * Ph.D. That term is the award term — a later Notre Dame course is not the
+ * MSCSE's and does not restart the clock (DGS 2026-10-31, question 7: it was
+ * the later of the two until then) — or, with no award term on file, the last
+ * MSCSE course. Returns that last term, or undefined when the gap is shorter
+ * or there is no Notre Dame MSCSE. */
 export function mscseSeparation(student: Student): Term | undefined {
   if (student.program !== 'phd' || student.ndMasters === undefined) return undefined;
   const entry = normalizeEntryTerm(student.entryTerm).term;
@@ -1973,6 +1991,48 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     };
   }
   if (posting !== undefined) return classifyPosted(env, c, extBase, posting, coreNote);
+  // A NOTRE DAME course dated after the student's Notre Dame MSCSE was
+  // awarded and before the Ph.D. (DGS 2026-10-31, question 7 of the
+  // credit-transfer review): the MSCSE ended with its award — after the
+  // conferral "the student wasn't enrolled in any ND program" — so the course
+  // is not the MSCSE's, which the Graduate School's rule below counts as the
+  // courses "taken during MS". The summer just before the Ph.D. is the Ph.D.'s
+  // own (isEarlyStartCourse; P3-chg-other-1). Any other such course is handled
+  // as a Notre Dame course taken before admission outside any Notre Dame
+  // program already is (P3-dh-3.14-3.20-3; DGS 2026-10-06, option (c)): it
+  // waits for the DGS, counted provisionally, with no §5.2 projection, and the
+  // review request names Academic Code §2.3's twelve. DGS Handbook §3.14's
+  // prior approval is for courses taken elsewhere, so it is not asked here.
+  const mscseAward = program === 'phd' && isNotreDameInstitution(c.institution) ? student.ndMasters?.term : undefined;
+  if (mscseAward !== undefined && compareTerm(c.term, mscseAward) > 0 && compareTerm(c.term, entry) < 0 && !isEarlyStartCourse(c, student)) {
+    const shape = rule ? priorNdShape(c.courseId, rule, program, c.dgsApproved === true) : undefined;
+    const afterAward = { notTransferCredit: true as const, ndBeforeAdmission: true as const, afterNdMastersAward: mscseAward };
+    if (shape && 'ineligibleReason' in shape) return { ...extBase, ...afterAward, ineligibleReason: `${shape.ineligibleReason}${coreNote}` };
+    // The DGS's ruling, recorded with the course's tick (P4-ac-2 (a)).
+    if (c.dgsHoldApproved === true && rule !== undefined) {
+      return {
+        ...extBase,
+        ...afterAward,
+        dgsHoldTicked: true,
+        reviewed: true,
+        pool: shape?.pool ?? 'regular',
+        caps: [...(shape?.caps ?? [])],
+        // A course still in progress stays in progress once ruled on (round 5, item 6).
+        tier: tierFor(c.grade, false),
+        approvedNote: `taken at Notre Dame after your MSCSE was awarded — the DGS ruled it counts, as you ticked on the course (Academic Code §2.3)${coreNote}`,
+      };
+    }
+    return {
+      ...extBase,
+      ...afterAward,
+      reviewed: rule !== undefined,
+      ...(rule === undefined ? { unknown: true as const } : {}),
+      pool: shape?.pool ?? 'regular',
+      caps: [...(shape?.caps ?? []), ...(rule === undefined && deptOf(c.courseId) !== 'CSE' ? (['noncse'] as CapId[]) : [])],
+      tier: 'provisional',
+      approvalPending: `taken at Notre Dame after your MSCSE was awarded (${termLabel(mscseAward)}) and before you entered the Ph.D. — not MSCSE coursework, which ended with the award; if you took it as a non-degree student, at most ${NON_DEGREE_CREDITS_MAX} such credits may count (Academic Code §2.3); the DGS decides, with the Graduate School${rule === undefined ? '; not in the course rules yet — send the review request so the DGS can enter it' : shape && !('ineligibleReason' in shape) && shape.approvalPending ? `; ${shape.approvalPending}` : ''}${coreNote}`,
+    };
+  }
   // THE STUDENT'S OWN NOTRE DAME MSCSE, on a Ph.D. record — the Graduate
   // School's answer, through the DGS (2026-09-22): "in cases where a
   // graduate student moves from a master's program to a PhD program in the

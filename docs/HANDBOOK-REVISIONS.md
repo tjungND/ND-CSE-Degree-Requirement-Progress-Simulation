@@ -61,7 +61,9 @@ the CSE MSCSE and Ph.D. as one graduate program (2026-09-22, 2026-10-03), so a P
 MSCSE coursework is not transfer credit and §5.2's window does not apply to it. What applies
 instead is Academic Code §5.5's five-year interruption (DGS 2026-10-06): when five years or more
 separate the MSCSE from the Ph.D., every MSCSE course counts only once the DGS reviews it and the
-Graduate School approves. A master's in another Notre Dame department keeps §5.2's window.
+Graduate School approves. The five years run from the MSCSE's award (DGS 2026-10-31): after the conferral
+the student is in no Notre Dame program, so a Notre Dame course taken later is not MSCSE coursework and does not
+restart them. A master's in another Notre Dame department keeps §5.2's window.
 
 **What the window dates (policy review round 3, P3-cross-doc-6).** §4.2 dates the window by the
 degree — "Courses from a M.S. degree earned … within the last five years prior to admission" —
@@ -77,8 +79,8 @@ M.S. program at Notre Dame or another institution, may be used … (See Section 
 everyone, §5.2's clause should be narrowed to say what it is for. The Graduate School owns
 §5.2's text, so this one may have to go to them. Either way, the handbook should say what the
 app now does for a returning MSCSE graduate: the MSCSE's coursework counts as Ph.D. coursework,
-unless five years or more separate the two, when the DGS reviews it and the Graduate School
-approves (Academic Code §5.5).
+unless five years or more separate the two (counted from the MSCSE's award), when the DGS reviews it and the
+Graduate School approves (Academic Code §5.5).
 
 ---
 

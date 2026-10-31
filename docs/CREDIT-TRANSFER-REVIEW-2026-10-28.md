@@ -174,6 +174,8 @@ the review request used to ask for (C36); what is left is the advisor’s approv
    — **answered 2026-10-30: (b), the time away decides — under five years it counts; no change** (DECISIONS 2026-10-30)
 7. For a separated MSCSE, which ends it when both are on the record: its award term or a later Notre Dame
    graduate course before the Ph.D. (the later course now).
+   — **answered 2026-10-31: the award term; the later Notre Dame course is not MSCSE coursework and waits for the DGS**
+   (DECISIONS 2026-10-31)
 8. Johns Hopkins prints its courses school.department.course (`EN.601.433`); the subject is now read as
    `601` (Computer Science there), which is not on `cse_subject_codes` — add it to count those as CSE.
    — **answered 2026-10-30: yes; the live sheet lists 601** (DECISIONS 2026-10-30)

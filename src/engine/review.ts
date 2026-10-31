@@ -20,7 +20,7 @@
 // the DGS confirms the course. §5.2 criterion 5: "the transfer is recommended
 // by the DGS and approved by the Graduate School."
 import { BS_SHARED_CREDITS_MAX, bachelorsSixSpent, spentOnBachelorsAndMasters } from './allocate.ts';
-import { termIndex } from './term.ts';
+import { termIndex, termLabel } from './term.ts';
 import { isNotreDameInstitution, needsApproval } from '../data/external.ts';
 import type { Rules } from '../data/types.ts';
 import { classify, levelOf, type ClassifiedCourse } from './allocate.ts';
@@ -440,7 +440,14 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
       const policyAsks = [
         ...(c.nonDegree ? ['rule on my non-degree coursework — at most 12 credits may count (Academic Code §2.3)'] : []),
         // P3-dh-3.14-3.20-3 (option (c)): the twelve named for the DGS to decide.
-        ...(c.ndBeforeAdmission ? ['decide whether this course counts — I took it at Notre Dame before admission, while my earlier graduate program was at another university; if it was in non-degree status, at most 12 such credits may count (Academic Code §2.3)'] : []),
+        // …and one after the MSCSE's award (DGS 2026-10-31, question 7).
+        ...(c.ndBeforeAdmission
+          ? [
+              c.afterNdMastersAward !== undefined
+                ? `decide whether this course counts — I took it at Notre Dame after my MSCSE was awarded (${termLabel(c.afterNdMastersAward)}) and before the Ph.D.; if it was in non-degree status, at most 12 such credits may count (Academic Code §2.3)`
+                : 'decide whether this course counts — I took it at Notre Dame before admission, while my earlier graduate program was at another university; if it was in non-degree status, at most 12 such credits may count (Academic Code §2.3)',
+            ]
+          : []),
         ...(c.ugToGrUnverified ? ['confirm this course was moved from UG to GR and transferred before my bachelor’s was conferred (Graduate School 4+1 guidance)'] : []),
         // P3-fourplusone-2 (DGS 2026-10-07: option (2)): the GR registration and
         // the answered admission term disagree; the DGS settles it.
