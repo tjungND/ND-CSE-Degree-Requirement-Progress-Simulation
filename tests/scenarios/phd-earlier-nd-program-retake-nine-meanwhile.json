@@ -1,0 +1,145 @@
+{
+  "name": "phd-earlier-nd-program-retake-nine-meanwhile",
+  "description": "DGS 2026-11-01, question 14 of the credit-transfer review: option (b). A Ph.D. student with a finished master’s in another Notre Dame department, whose CSE 60535 (Fall 2024, A) and CSE 60321 transfer (ExternalCourses `yes`), retakes CSE 60535 in Spring 2027, the qualifier’s fourth semester, with 6 of §4.2’s nine regular credits at Notre Dame done. The retake counts in progress toward the nine meanwhile — the nine and the qualifier read in progress, as for a new course — while the Fall 2024 attempt keeps counting toward the 24 (12 of 24, nothing in progress: the course’s credits count once). The retake read “not counted — … the Fall 2024 attempt of this course is the one counted” and the nine and the qualifier Not yet.",
+  "today": "2027-03-01",
+  "rules": {
+    "base": "default",
+    "patch": {
+      "external": [
+        {
+          "university": "UNIVERSITY OF NOTRE DAME",
+          "course_id": "CSE 60535",
+          "course_title": "Computer Vision",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "satisfies_core_area": "none"
+        },
+        {
+          "university": "UNIVERSITY OF NOTRE DAME",
+          "course_id": "CSE 60321",
+          "course_title": "Advanced Computer Architecture",
+          "transferable_PhD": "yes",
+          "transferable_MSCSE": "yes",
+          "is_cse": "yes",
+          "satisfies_core_area": "architecture"
+        }
+      ]
+    }
+  },
+  "student": {
+    "schemaVersion": 1,
+    "program": "phd",
+    "entryTerm": {
+      "season": "fall",
+      "year": 2025
+    },
+    "priorMs": "completed",
+    "bachelorsAwarded": {
+      "season": "spring",
+      "year": 2023
+    },
+    "gpa": 3.7,
+    "background": {
+      "bachelors": "elsewhere",
+      "graduate": "nd-other",
+      "finished": true
+    },
+    "milestones": {
+      "researchQualifierPassed": "2026-12-10"
+    },
+    "attestations": {},
+    "courses": [
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "title": "Computer Vision",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60321",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2024
+        },
+        "grade": "A",
+        "origin": "transfer",
+        "title": "Advanced Computer Architecture",
+        "institution": "University of Notre Dame",
+        "degreeLevel": "masters",
+        "registeredLevel": "graduate"
+      },
+      {
+        "courseId": "CSE 60111",
+        "credits": 3,
+        "term": {
+          "season": "fall",
+          "year": 2025
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60641",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2026
+        },
+        "grade": "A",
+        "origin": "nd"
+      },
+      {
+        "courseId": "CSE 60535",
+        "credits": 3,
+        "term": {
+          "season": "spring",
+          "year": 2027
+        },
+        "grade": "IP",
+        "origin": "nd"
+      }
+    ]
+  },
+  "expect": {
+    "phd.credits.nd": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "6 of 9 credits complete. 3 in progress."
+      ]
+    },
+    "phd.credits.regular": {
+      "status": "unmet",
+      "detailIncludes": [
+        "12 of 24 credits complete."
+      ],
+      "detailExcludes": [
+        "in progress"
+      ]
+    },
+    "phd.qualifier": {
+      "status": "in_progress"
+    },
+    "phd.transfer": {
+      "status": "in_progress",
+      "detailIncludes": [
+        "6 of the 24 credits you may transfer are counted"
+      ]
+    }
+  },
+  "expectCourseLines": {
+    "CSE 60535": [
+      "in progress — will count toward the regular-course credits taken at Notre Dame (3 cr) when passed (§4.2)",
+      "the Fall 2024 attempt is the one counted toward regular courses"
+    ]
+  }
+}

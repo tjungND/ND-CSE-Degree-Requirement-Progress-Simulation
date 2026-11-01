@@ -898,7 +898,9 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     // under its number reads as before.
     const shared = alloc.perCourse.some((q) => q !== p && q.course.entry.courseId === id);
     const fromNd = p.course.entry.origin === 'nd' || isNotreDameInstitution(p.course.entry.institution);
-    const byNumber = (aLiveSibling ? [] : (feeds.get(id) ?? [])).flatMap((x) => {
+    // A retake counting toward the nine meanwhile reads only its own rows:
+    // the course's core area and group are the counted attempt's (question 14).
+    const byNumber = (aLiveSibling || p.course.nineMeanwhile !== undefined ? [] : (feeds.get(id) ?? [])).flatMap((x) => {
       if (!shared) return [x];
       if (x.id.startsWith('phd.qualifier.core.')) {
         const area = x.id.slice('phd.qualifier.core.'.length);

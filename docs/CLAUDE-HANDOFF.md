@@ -1173,7 +1173,14 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   40000-level courses `ineligible`. If you see a sixth "group" appear in matching, this broke.
 - **Retakes** (§4.4.2): only ND rows dedupe (foreign transfer ids can collide); the counted
   attempt is the last PASSING final, else a live IP retake, else the last failed one (which
-  earns nothing — F/U earn zero credit by DGS decision).
+  earns nothing — F/U earn zero credit by DGS decision). `pickAttempt(attempts, earns)` decides;
+  `countedOf` is the attempt counted, which every superseded line names. Once all rows are
+  classified, `settleRetakes()` takes a second look (2026-11-01): a counted attempt its own line
+  refuses (pool `none`, not "not counted yet") is re-picked as earning nothing, and on the Ph.D. a
+  live Notre Dame retake beside a counted attempt the nine cannot count (not `origin: 'nd'`, not
+  `ndMastersCredit`) stays superseded but carries `nineMeanwhile` — its live classification, which
+  the Notre Dame-only pass counts in place of that attempt (question 14: (b)). Rows that list a
+  course read `countsHere()` in context.ts, which lets such a retake through for the nine only.
 - **Transcript upload** (`src/transcript/`): pdfjs-dist is one of the two lazily-loaded runtime
   dependencies (the other is tesseract.js, the opt-in OCR), loaded as its own chunk (pdf-*.js, 416 KB / 126 KB gz, plus the 1.4 MB worker) so the main bundle does not carry it. Measured 2026-10-22 with `npm run bundle-report` (blue-team review 2026-10-17, W5 — the "~170 KB" this line claimed dated from the first weeks): before batch A the self-check's first load was 925 KB raw / 265 KB gz (index 663 KB + shared chunk 219 KB + CSS 66 KB) and the course-rules page's 309 KB / 75 KB gz; after W1–W3 the self-check loads 709 KB / 212 KB gz (index 584 KB; shared chunk 76 KB) and the course-rules page 171 KB / 50 KB gz, with the previous-university parser (external-*.js, 77 KB / 29 KB gz), the saved rules copy (data/snapshot.json, 97 KB) and the handbook's text (handbook-text.json, 51 KB) fetched only when used. The parser handles Banner 8
   ("INSTITUTION CREDIT") and Banner 9 ("Institutional Credit") wording, ND's official-PDF

@@ -176,13 +176,18 @@ export function heldForMissingParams(row: RequirementResult, ctx: Ctx, keys: rea
   };
 }
 
+/** A registration a row may name: not superseded by another attempt of the
+ * course — or a retake counting toward §4.2's nine meanwhile, whose only
+ * credit is the nine's (DGS 2026-11-01, question 14). */
+const countsHere = (c: CourseAllocation['course']): boolean => c.superseded !== true || c.nineMeanwhile !== undefined;
+
 /** The courses a credit row counts only provisionally — named on the row
  * whenever its verdict leans on them. Read from the row's own allocation
  * (`pick`), not the pool (credit-transfer review 2026-10-28, #35): a pending
  * course a cap refused changes no count, and a pending total-only course
  * does count toward the total. */
 export function provisionalCourseIds(ctx: Ctx, pick: (p: CourseAllocation) => number): string[] {
-  return [...new Set(ctx.alloc.perCourse.filter((p) => pick(p) > 0 && p.course.tier === 'provisional' && !p.course.superseded).map((p) => p.course.entry.courseId))];
+  return [...new Set(ctx.alloc.perCourse.filter((p) => pick(p) > 0 && p.course.tier === 'provisional' && countsHere(p.course)).map((p) => p.course.entry.courseId))];
 }
 
 /** §2.2's bar on defending with a low GPA, as the sentence the defense rows
@@ -602,7 +607,7 @@ export function countedCourseIds(ctx: Ctx, pick: (p: CourseAllocation) => number
  * 2026-10-29). The registrations are left out when one is not a row of the
  * record — the course lines then read the ids, as before. */
 export function courseFeeds(ctx: Ctx, pick: (p: CourseAllocation) => number): { satisfiedBy: string[]; pendingBy: string[]; satisfiedByEntries?: number[]; pendingByEntries?: number[] } {
-  const live = ctx.alloc.perCourse.filter((p) => pick(p) > 0 && !p.course.superseded);
+  const live = ctx.alloc.perCourse.filter((p) => pick(p) > 0 && countsHere(p.course));
   const done = live.filter((p) => p.course.tier === 'definite');
   const waiting = live.filter((p) => p.course.tier !== 'definite');
   const index = (p: CourseAllocation): number => ctx.student.courses.indexOf(p.course.entry);
@@ -615,7 +620,7 @@ export function courseFeeds(ctx: Ctx, pick: (p: CourseAllocation) => number): { 
  * 2026-09-22: the report folds these behind "Courses counted"). */
 export function courseContributions(ctx: Ctx, pick: (p: CourseAllocation) => number): Contribution[] {
   return ctx.alloc.perCourse
-    .filter((p) => pick(p) > 0 && !p.course.superseded)
+    .filter((p) => pick(p) > 0 && countsHere(p.course))
     .map((p) => ({ courseId: p.course.entry.courseId, ...(ctx.student.courses.indexOf(p.course.entry) >= 0 ? { entryIndex: ctx.student.courses.indexOf(p.course.entry) } : {}), credits: pick(p), ...(p.course.tier === 'definite' ? {} : { pending: true as const, kind: p.course.tier === 'in_progress' ? ('in_progress' as const) : p.course.dualPlanOnly ? ('plan' as const) : ('waiting' as const) }) }));
 }
 
@@ -623,7 +628,7 @@ export function courseContributions(ctx: Ctx, pick: (p: CourseAllocation) => num
  * what a student's course line means by "will count toward". */
 export function pendingCourseIds(ctx: Ctx, pick: (p: CourseAllocation) => number): string[] {
   return ctx.alloc.perCourse
-    .filter((p) => pick(p) > 0 && p.course.tier !== 'definite' && !p.course.superseded)
+    .filter((p) => pick(p) > 0 && p.course.tier !== 'definite' && countsHere(p.course))
     .map((p) => p.course.entry.courseId);
 }
 

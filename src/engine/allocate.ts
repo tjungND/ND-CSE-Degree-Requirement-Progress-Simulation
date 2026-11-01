@@ -160,6 +160,12 @@ export interface ClassifiedCourse {
    * outright, with this note on its line — the Grad Admin still records it. */
   approvedNote?: string;
   superseded?: boolean;
+  /** A Ph.D. retake in progress beside an earlier attempt this degree counts
+   * but §4.2's nine at Notre Dame cannot (DGS 2026-11-01, question 14: option
+   * (b)). Still superseded for every other requirement — its credits count
+   * once — while the Notre Dame-only pass counts `live`, the retake's own
+   * classification, in place of `replaces`, the attempt counted meanwhile. */
+  nineMeanwhile?: { live: ClassifiedCourse; replaces: CourseEntry };
   /** Who said the credits were quarter hours: the DGS's ExternalCourses row,
    * or the transcript's own term headers (2026-09-11). */
   creditSystemSource?: 'sheet' | 'transcript' | 'student';
@@ -1241,46 +1247,60 @@ export function classify(student: Student, rules: Rules, today?: string): {
       a.origin === 'transfer' &&
       (a.countedToward === 'both' || (a.countedToward === undefined && (a.degreeLevel === 'bachelors' || (student.bachelorsAwarded !== undefined && compareTerm(a.term, student.bachelorsAwarded) <= 0))))
     );
-  for (const [id, attempts] of byId) {
-    if (attempts.length < 2) continue;
+  // A LIVE retake wins over a passed attempt that earns no credit — C- or D
+  // since the 2026-09-12 floor (red-team 2026-09-13). The student is sitting
+  // the course again for exactly the credit that grade cannot give, which is
+  // the same reason a live retake is preferred to a failed attempt; deciding
+  // this on isPassed alone let the C- stay "the one counted" and threw the
+  // in-progress credit away with it, which also starved §4.5's
+  // candidacy-readiness gate. Between two FINAL grades the §4.4.2 rule is
+  // unchanged: the retake grade replaces, whatever it is.
+  // …and so does one an earlier degree already used: on the Ph.D., an
+  // earlier Notre Dame attempt counted toward both the bachelor's and the
+  // MSCSE cannot count here, so a live retake is the attempt that can
+  // (review of the fix, 2026-10-29: it read "the Spring 2025 attempt … is
+  // the one counted" beside that attempt's own "not counted").
+  // …nor, while a live retake is under way, an attempt from before a
+  // readmission that the DGS has not ruled stands: the retake counts as in
+  // progress, and if the DGS rules the old credit stands, the old attempt
+  // counts again and the retake is the repeat (DGS 2026-10-30, question 3:
+  // option (a)).
+  // …nor one its own line refuses — an earlier Notre Dame program's course
+  // graded below B or ruled not to transfer (§5.2): settleRetakes below reads
+  // that from the classification.
+  const heldByReadmission = (a: CourseEntry): boolean => a.dgsHoldApproved !== true && (interruptedCourse(a) || beforeShortReadmission(a));
+  const earnsHere = (a: CourseEntry): boolean => passesCreditFloor(a.grade) && usableHere(a) && !heldByReadmission(a);
+  /** Which attempt of one course counts, and which attempts it supersedes,
+   * given which attempts earn credit here (`earns`). */
+  const pickAttempt = (attempts: readonly CourseEntry[], earns: (a: CourseEntry) => boolean): { counted: CourseEntry; superseded: CourseEntry[] } => {
     const passing = attempts.filter((a) => isPassed(a.grade));
     const inProgress = attempts.filter((a) => isInProgress(a.grade));
     const last = passing[passing.length - 1];
     const twinHere = last === undefined || usableHere(last) ? undefined : passing.filter((a) => termIndex(a.term) === termIndex(last.term) && usableHere(a)).pop();
     const lastPassing = twinHere ?? last;
-    // A LIVE retake wins over a passed attempt that earns no credit — C- or D
-    // since the 2026-09-12 floor (red-team 2026-09-13). The student is sitting
-    // the course again for exactly the credit that grade cannot give, which is
-    // the same reason the next branch prefers a live retake to a failed
-    // attempt; deciding this on isPassed alone let the C- stay "the one
-    // counted" and threw the in-progress credit away with it, which also
-    // starved §4.5's candidacy-readiness gate. Between two FINAL grades the
-    // §4.4.2 rule is unchanged: the retake grade replaces, whatever it is.
-    // …and so does one an earlier degree already used: on the Ph.D., an
-    // earlier Notre Dame attempt counted toward both the bachelor's and the
-    // MSCSE cannot count here, so a live retake is the attempt that can
-    // (review of the fix, 2026-10-29: it read "the Spring 2025 attempt … is
-    // the one counted" beside that attempt's own "not counted").
-    // …nor, while a live retake is under way, an attempt from before a
-    // readmission that the DGS has not ruled stands: the retake counts as in
-    // progress, and if the DGS rules the old credit stands, the old attempt
-    // counts again and the retake is the repeat (DGS 2026-10-30, question 3:
-    // option (a)).
-    const heldByReadmission = (a: CourseEntry): boolean => a.dgsHoldApproved !== true && (interruptedCourse(a) || beforeShortReadmission(a));
-    const earnsHere = (a: CourseEntry): boolean => passesCreditFloor(a.grade) && usableHere(a) && !heldByReadmission(a);
     const counted =
-      lastPassing !== undefined && (earnsHere(lastPassing) || inProgress.length === 0)
+      lastPassing !== undefined && (earns(lastPassing) || inProgress.length === 0)
         ? lastPassing
         : inProgress.length > 0
           ? inProgress[inProgress.length - 1]!
           : attempts[attempts.length - 1]!; // all failed → last one (earns nothing anyway)
     // A failed attempt beside one that earns nothing here keeps its own line
     // ("failed — earns no credit"), not "the … attempt is the one counted".
-    for (const a of attempts) if (a !== counted && (earnsHere(counted) || isPassed(a.grade) || isInProgress(a.grade))) supersededSet.add(a);
+    return { counted, superseded: attempts.filter((a) => a !== counted && (earns(counted) || isPassed(a.grade) || isInProgress(a.grade))) };
+  };
+  // The attempt each retaken course counts — the one the others' lines name.
+  const countedOf = new Map<string, CourseEntry>();
+  // A retake classified as if it were the attempt counted (settleRetakes).
+  const liveRun = new Set<CourseEntry>();
+  for (const [id, attempts] of byId) {
+    if (attempts.length < 2) continue;
+    const { counted, superseded } = pickAttempt(attempts, earnsHere);
+    countedOf.set(id, counted);
+    for (const a of superseded) supersededSet.add(a);
     if (!mixedAnswers.has(id) || new Set(attempts.map((a) => termIndex(a.term))).size > 1) warnings.push(`${id} is entered ${attempts.length} times — its credits count once.`);
   }
 
-  const classified: ClassifiedCourse[] = sorted.map((c): ClassifiedCourse => {
+  const classifyEntry = (c: CourseEntry): ClassifiedCourse => {
     const rule = ruleOf(c);
     const grade = c.grade;
     const base: ClassifiedCourse = { entry: c, rule, pool: 'none', caps: [], tier: 'provisional' };
@@ -1414,7 +1434,8 @@ export function classify(student: Student, rules: Rules, today?: string): {
       };
     };
     return withSharedDegree(withInterruption(withIncomplete(classifyOne(c, rule, grade, base))));
-  });
+  };
+  const classified = settleRetakes(sorted.map(classifyEntry));
 
   // TWO EARLIER GRADUATE PROGRAMS (policy review round 3, P3-prior-programs-3;
   // DGS 2026-10-07: option (3), "Detect the case and send it to the DGS").
@@ -1449,6 +1470,80 @@ export function classify(student: Student, rules: Rules, today?: string): {
     warnings,
     staleInProgress,
   };
+
+  /** The retake rule's second look, once every attempt is classified:
+   * (1) an attempt counted over a live retake that its own line refuses — an
+   *     earlier Notre Dame program's course graded below B, or ruled not to
+   *     transfer (§5.2) — earns nothing here, so the retake counts, as over a
+   *     C- (it read "the Fall 2024 attempt of this course is the one counted"
+   *     beside that attempt's own "not counted", and a failed retake beside
+   *     it the same). An attempt waiting on the student's answer ("not
+   *     counted yet") may still count, and is left counted.
+   * (2) A Ph.D. retake in progress beside an earlier attempt this degree
+   *     counts but §4.2's nine at Notre Dame cannot — a course from an
+   *     earlier Notre Dame program, Notre Dame coursework from before
+   *     admission — counts in progress toward the nine meanwhile (DGS
+   *     2026-11-01, question 14: option (b)). The earlier attempt keeps
+   *     counting toward the 24 and the 60 until the retake has a grade, the
+   *     retake stays out of them (its credits count once), and the Notre
+   *     Dame-only pass counts the retake in its place (`nineMeanwhile`) —
+   *     which the MSCSE along the way reads too. Graded, the rule above
+   *     decides as before. A retake still waiting for an approval of its own
+   *     is left as it was. */
+  function settleRetakes(first: ClassifiedCourse[]): ClassifiedCourse[] {
+    const byEntry = new Map(first.map((cc) => [cc.entry, cc] as const));
+    const refused = (a: CourseEntry): boolean => {
+      const cc = byEntry.get(a);
+      return cc !== undefined && cc.superseded !== true && cc.pool === 'none' && cc.ineligibleReason !== undefined && !/^not counted yet/.test(cc.ineligibleReason);
+    };
+    const again = new Set<CourseEntry>();
+    for (const [id, attempts] of byId) {
+      const before = countedOf.get(id);
+      if (before === undefined || !refused(before)) continue;
+      const { counted, superseded } = pickAttempt(attempts, (a) => earnsHere(a) && !refused(a));
+      countedOf.set(id, counted);
+      const now = new Set(superseded);
+      for (const a of attempts) {
+        if (now.has(a)) supersededSet.add(a);
+        else supersededSet.delete(a);
+        // Every attempt's line names the attempt counted: all are read again.
+        again.add(a);
+      }
+    }
+    const settled = again.size === 0 ? first : first.map((cc) => (again.has(cc.entry) ? classifyEntry(cc.entry) : cc));
+    if (program !== 'phd') return settled;
+    const current = new Map(settled.map((cc) => [cc.entry, cc] as const));
+    const meanwhile = new Map<CourseEntry, { live: ClassifiedCourse; replaces: CourseEntry }>();
+    for (const [id, attempts] of byId) {
+      const counted = countedOf.get(id);
+      const countedCc = counted === undefined ? undefined : current.get(counted);
+      if (counted === undefined || countedCc === undefined || countedCc.superseded === true) continue;
+      // Taken in the program, or in the student's own Notre Dame MSCSE: it
+      // counts toward the nine itself.
+      if (counted.origin === 'nd' || countedCc.ndMastersCredit === true) continue;
+      const retake = attempts.filter((a) => a.origin === 'nd' && isInProgress(a.grade) && supersededSet.has(a) && compareTerm(a.term, counted.term) > 0).pop();
+      if (retake === undefined) continue;
+      // A what-if: the retake as the attempt counted. Its warnings are not the record's.
+      const said = warnings.length;
+      liveRun.add(retake);
+      const live = classifyEntry(retake);
+      liveRun.delete(retake);
+      warnings.length = said;
+      if (live.pool !== 'regular' || live.tier !== 'in_progress' || live.ineligibleReason !== undefined) continue;
+      meanwhile.set(retake, { live, replaces: counted });
+    }
+    if (meanwhile.size === 0) return settled;
+    return settled.map((cc) => {
+      const m = meanwhile.get(cc.entry);
+      if (m === undefined) return cc;
+      return {
+        ...cc,
+        tier: 'in_progress',
+        nineMeanwhile: m,
+        ineligibleReason: `in progress — will count toward the regular-course credits taken at Notre Dame (${formatCredits(m.live.effectiveCredits ?? cc.entry.credits)} cr) when passed (§4.2); until then the ${termLabel(m.replaces.term)} attempt is the one counted toward regular courses — its credits count once — and this retake replaces it once passed`,
+      };
+    });
+  }
 
   /** One course, before the Incomplete and readmission overlays above. */
   function classifyOne(c: CourseEntry, rule: RuleCourse | undefined, grade: Grade, base: ClassifiedCourse): ClassifiedCourse {
@@ -1491,8 +1586,8 @@ export function classify(student: Student, rules: Rules, today?: string): {
       return { ...base, ineligibleReason: 'not counted — entered with 0 credits; check the credit hours on your transcript' };
     }
 
-    if (supersededSet.has(c)) {
-      const countedAttempt = byId.get(c.courseId)?.find((a) => !supersededSet.has(a));
+    if (supersededSet.has(c) && !liveRun.has(c)) {
+      const countedAttempt = countedOf.get(c.courseId) ?? byId.get(c.courseId)?.find((a) => !supersededSet.has(a));
       const countedIsLater = countedAttempt && compareTerm(countedAttempt.term, c.term) > 0;
       return {
         ...base,
@@ -2336,7 +2431,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
       : []),
     ...(passFail && !ruled ? [`graded S (pass/fail), which cannot show the ${transferFloor} that §5.2 requires — the DGS decides whether it transfers`] : []),
     ...(afterAdmission && !ruled
-      ? [`taken ${termLabel(c.term)}, ${afterAdmissionWhere} — a course taken elsewhere after admission needs the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14)${outsideEveryWindow ? '; taken while you were enrolled in no Notre Dame program, without that approval it counts only by an exception the Graduate School approves in writing' : ''}; the DGS confirms it was approved`]
+      ? [`taken ${termLabel(c.term)}, ${afterAdmissionWhere} — a course taken elsewhere after admission needs the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14)${outsideEveryWindow ? '; taken while you were enrolled in no Notre Dame program, without that approval it counts only by an exception the Graduate School approves in writing (Academic Code §1)' : ''}; the DGS confirms it was approved`]
       : []),
     ...(admissionSemester && !ruled
       ? [`taken ${termLabel(c.term)}, the semester of your Ph.D. admission letter${duringMscse ? ', while you were enrolled in your Notre Dame MSCSE' : ''} — taken after the admission decision, it needed the department’s and the Graduate School’s approval in advance (§5.2; DGS Handbook §3.14); the DGS confirms which, and that it was approved if it had to be`]
@@ -3263,11 +3358,27 @@ function allocateOnce(classified: ClassifiedCourse[], caps: CapSpec[], opts: All
   // passes disagreed when transfers spent the nine in the main pass only; and
   // deferring it in both cost the nine at Notre Dame in 1,562 of 28,000
   // generated records).
+  // A retake counting toward the nine meanwhile takes the place of the
+  // attempt counted for everything else (DGS 2026-11-01, question 14): its
+  // own classification, with the semester maximum its term's other courses
+  // carry, and the attempt it replaces left out — one attempt per course
+  // here too.
+  const replaced = new Set(classified.flatMap((c) => (c.nineMeanwhile !== undefined ? [c.nineMeanwhile.replaces] : [])));
+  const ndSource = new Map<ClassifiedCourse, ClassifiedCourse>();
   const ndPass =
     opts.notreDameOnly === true || opts.notreDameCounts === false
       ? undefined
       : allocateOnce(
-          classified.filter((c) => c.entry.origin === 'nd' || c.ndMastersCredit === true || c.notTransferCredit === true),
+          classified
+            .filter((c) => (c.entry.origin === 'nd' || c.ndMastersCredit === true || c.notTransferCredit === true) && !replaced.has(c.entry))
+            .map((c) => {
+              if (c.nineMeanwhile === undefined) return c;
+              const term: CapId = `term:${termIndex(c.entry.term)}`;
+              const live = c.nineMeanwhile.live;
+              const counted = caps.some((spec) => spec.id === term) && !live.caps.includes(term) ? { ...live, caps: [...live.caps, term] } : live;
+              ndSource.set(counted, c);
+              return counted;
+            }),
           caps,
           { ...opts, notreDameOnly: true },
         );
@@ -3342,6 +3453,13 @@ function allocateOnce(classified: ClassifiedCourse[], caps: CapSpec[], opts: All
   // read straight off ctx.classified), just no credit-hour requirement.
   for (const cc of classified) {
     if (cc.pool !== 'none' && passesCreditFloor(cc.entry.grade)) continue;
+    // A retake counting toward the nine meanwhile (question 14): nothing in
+    // this pass — the attempt it will replace counts here — and in progress
+    // toward the nine, which the Notre Dame-only pass gives it below.
+    if (cc.nineMeanwhile !== undefined) {
+      allocations.set(cc, { course: cc, countedRegular: 0, countedOther: 0, excluded: 0, ndRegularCredits: 0, explanation: cc.ineligibleReason ?? '', mark: markForTier(cc.tier) });
+      continue;
+    }
     const belowCreditFloor = cc.pool !== 'none';
     const reason = belowCreditFloor
       ? 'a passed grade below C does not count toward any credit-hour requirement (Academic Code §4.3)'
@@ -3377,13 +3495,13 @@ function allocateOnce(classified: ClassifiedCourse[], caps: CapSpec[], opts: All
   // with no transfer on the record (review of the fix, 2026-10-29). Only the
   // courses taken here count toward the nine and the award.
   const atNd = ndPass!;
-  const ndCredits = new Map(atNd.perCourse.map((p) => [p.course, p.countedRegular]));
+  const ndCredits = new Map(atNd.perCourse.map((p) => [ndSource.get(p.course) ?? p.course, p.countedRegular]));
   for (const p of perCourse) {
     const atNotreDame = p.course.entry.origin === 'nd' || p.course.ndMastersCredit === true;
-    const nd = p.course.pool === 'regular' && atNotreDame ? (ndCredits.get(p.course) ?? 0) : 0;
+    const nd = (p.course.nineMeanwhile?.live.pool ?? p.course.pool) === 'regular' && atNotreDame ? (ndCredits.get(p.course) ?? 0) : 0;
     p.ndRegularCredits = nd;
     // A course a transfer pushed out of the allowance says it still counts here.
-    if (nd > p.countedRegular) {
+    if (nd > p.countedRegular && p.course.nineMeanwhile === undefined) {
       const whole = nd >= (p.course.effectiveCredits ?? p.course.entry.credits);
       p.explanation += `; ${whole ? 'it still counts' : `${formatCredits(nd)} of its credits still count`} toward the regular-course credits taken at Notre Dame — §4.2 counts those “regardless of any credits transferred”`;
     }

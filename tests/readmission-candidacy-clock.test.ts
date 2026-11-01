@@ -29,7 +29,7 @@ const readmitted = (over: Partial<Student> = {}): Student =>
     ...over,
   });
 const row = (s: Student, id: string) => audit(s, rules, TODAY).requirements.find((r) => r.id === id)!;
-const NOTE = 'Counted in calendar semesters from Fall 2021, the semesters you were away before your readmission in Fall 2024 included (DGS 2026-10-06); the Graduate School can approve an exception when the DGS requests one';
+const NOTE = 'Counted in calendar semesters from Fall 2021, the semesters you were away before your readmission in Fall 2024 included (DGS 2026-10-06); the Graduate School can approve an exception when the DGS requests one (Academic Code §1)';
 const ASK = /^Candidacy deadline after my readmission: /;
 
 describe('a readmission’s gap is counted toward the eighth semester (DGS 2026-10-06)', () => {

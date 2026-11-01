@@ -197,3 +197,5 @@ the review request used to ask for (C36); what is left is the advisor’s approv
     — **answered 2026-10-30: no, keep it as it is** (DECISIONS 2026-10-30)
 14. An earlier Notre Dame program's attempt ruled transferable, beside a Ph.D. retake in progress, counts
     toward the 24 and not the nine — should the retake count toward the nine meanwhile?
+    — **answered 2026-11-01: (b); the retake counts in progress toward the nine meanwhile** (DECISIONS 2026-11-01;
+    `nineMeanwhile`). Found with it and fixed: an earlier attempt its own line refuses no longer keeps a live retake out.

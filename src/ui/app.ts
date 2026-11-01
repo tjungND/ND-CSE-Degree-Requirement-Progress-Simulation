@@ -1601,7 +1601,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             phd
               ? 'Every clock still counts from your original entry term, in calendar semesters with the time away included (Academic Code §6.2.6: “from the time of matriculation”; DGS 2026-10-06)'
               : 'The five-year limit still counts from your original entry term, in calendar semesters with the time away included (§3.3; Academic Code §6.1.4; DGS 2026-10-06)'
-          } — the Graduate School can approve an exception when the DGS requests one. Your courses from before it wait for the DGS — the program may reject some or all past credits (DGS Handbook §3.3), and after an interruption of five years or more the Code forfeits them (Academic Code §5.5).`,
+          } — the Graduate School can approve an exception when the DGS requests one (Academic Code §1). Your courses from before it wait for the DGS — the program may reject some or all past credits (DGS Handbook §3.3), and after an interruption of five years or more the Code forfeits them (Academic Code §5.5).`,
           ),
         ),
       ),

@@ -88,7 +88,7 @@ describe('the course’s line', () => {
   });
   it('after the letter, between the MSCSE and the Ph.D.: held, and only an exception counts it without the approval', () => {
     const s = record(neu(summer(2022)), { phdAdmittedTerm: spring(2022) });
-    assert.match(line(s), /taken Summer 2022, after your Ph\.D\. admission \(Spring 2022\), before you entered the Ph\.D\. — .*; taken while you were enrolled in no Notre Dame program, without that approval it counts only by an exception the Graduate School approves in writing; the DGS confirms it was approved/);
+    assert.match(line(s), /taken Summer 2022, after your Ph\.D\. admission \(Spring 2022\), before you entered the Ph\.D\. — .*; taken while you were enrolled in no Notre Dame program, without that approval it counts only by an exception the Graduate School approves in writing \(Academic Code §1\); the DGS confirms it was approved/);
   });
   it('the semester of the letter: the DGS decides, and the review request asks', () => {
     const s = record(neu(summer(2021)), { phdAdmittedTerm: summer(2021) });

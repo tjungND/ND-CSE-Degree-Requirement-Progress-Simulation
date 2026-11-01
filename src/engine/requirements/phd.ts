@@ -1691,7 +1691,7 @@ function eighthSemesterNotes(ctx: Ctx, sem: number, effectiveSem: number, open: 
   const re = ctx.student.readmittedTerm;
   if (re !== undefined && compareTerm(re, ctx.entry) > 0) {
     parts.push({
-      note: `Counted in calendar semesters from ${termLabel(ctx.entry)}, the semesters you were away before your readmission in ${termLabel(re)} included (DGS 2026-10-06); the Graduate School can approve an exception when the DGS requests one${readmissionGapCounted(ctx) ? ', and your review request asks' : ''}`,
+      note: `Counted in calendar semesters from ${termLabel(ctx.entry)}, the semesters you were away before your readmission in ${termLabel(re)} included (DGS 2026-10-06); the Graduate School can approve an exception when the DGS requests one (Academic Code §1)${readmissionGapCounted(ctx) ? ', and your review request asks' : ''}`,
     });
   }
   // What moved it, what did not, and what is still to be said (P3-ac-5a-1, DGS 2026-10-05).
