@@ -1,6 +1,6 @@
 # Where things stand (kept current by every session — read after CLAUDE.md and docs/CLAUDE-HANDOFF.md)
 
-Last updated: 2026-10-31 (the 2026-10-29 paragraph — its answers through question 7 on 2026-10-31 —, the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+Last updated: 2026-11-01 (“Open for the DGS”, near the end, rebuilt from a sweep of every record; the 2026-10-29 paragraph — its answers through question 7 on 2026-10-31 —, the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
 
 2026-10-29 (DGS 2026-10-28: “Do a thorough review to see if there are any other errors in credit transfer … and see whether they are applied to the 24 regular credits and 60 total credits correctly”; in batches): **the credit-transfer review.** A workflow of 182 agents (eight finder families — non-CSE transfer, old transfer, Notre Dame courses outside CSE, Notre Dame undergraduate coursework, graduate courses taken during the undergraduate years elsewhere, §5.2's cap, the totals, the outputs — then two independent checks of each finding and a gap round) confirmed 74 errors and raised 3 questions; the findings, their reproductions and the 208 cases checked correct are in the session scratchpad, summarized in the reply. **Batch 1:** sums of decimal credits are exact on a six-decimal grid (`exactCredits`): 30, 24 and 60 reached exactly read Met (they read “30 of 30 … Not met”). **Batch 2:** a subject code with a college prefix or level suffix (COMP SCI, CAS CS, CSCI-GA, CSCI-P, C S) is read whole, so those CSE transfers no longer use the non-CSE nine. **Batch 3:** §4.2's nine at Notre Dame and the MSCSE along the way are counted from the Notre Dame courses alone (a second allocator pass — transfer-first no longer costs them); requirement credit takes shared caps and a semester's maximum before total-only credit; posted credit, then transfers, then the program's own courses on a tie; F1's spill is charged to the course's other caps; a Ph.D. non-regular transfer does not draw the nine; a missing non-CSE limit leaves the 60 counting; project-typed courses other than CSE 68901/68902 are total-only (DECISIONS 2026-10-29, for the DGS to confirm). No pinned verdict moved; 13 scenarios added. **Batch 4:** posted credit — one school however spelled is one program; a posted course taken after admission is no earlier program; the posting goes on the attempt that could carry §5.2 credit; no stale-IP warning for posted credit; posted graduate credit on a bachelor's twin counts; a blank satisfies_core_area is undecided everywhere, `none` ends the suggestion. **Batch 5:** retakes and duplicates — Notre Dame attempts filed as earlier coursework join the retake rule; same-term duplicates decided by grade; a duplicate seminar or research row warned; two registrations of one course are two rows in the request, the course lines and the approvals card; below-C courses are not sent for approval. **Batch 6:** windows and holds — §5.2's window ends with the Notre Dame MSCSE; a course elsewhere during the MSCSE is after admission; the early-start summer is the Ph.D.'s; a long readmission holds transfer credit too, a short one the own-MSCSE courses; a transfer in progress elsewhere is not submitted; a "Before" estimate is not an award term; the Ph.D. asks for an unknown Notre Dame award term. **Batch 7:** ticks — the transfer-recorded tick covers the transfers it was given for (`transferRecordedCourses`); old saved boxes tick only what they covered; a pre-posting tick does not answer the posting's question; an earlier Notre Dame program's case-by-case row waits for its tick under an ExternalCourses `yes`; a held candidate's line names its hold; a blank verdict is asked as the sheet's question. **Batch 8:** the cards, the requests, the email and Next steps say what the counts did (allowance cards list only their own refusals; the §5.2 card names ticked transfers and converted credits; the Grad Admin request's over-cap text, ND parts and missing limits; the review request's credits and posted rows; the MSCSE's own § and ADGS; warnings for over-answered shared credits and the semester maximum's own cut). All 74 confirmed findings are addressed; 3 questions and several open points await the DGS (DECISIONS 2026-10-29 rows; summary and status of every finding in docs/CREDIT-TRANSFER-REVIEW-2026-10-28.md). An independent review of the allocator rewrite found four faults in it (the Notre Dame-only pass, the order search's speed, posted credit outside CSE, the non-CSE card) — fixed the same day. A second verification the same day (67 agents; 572,563 generated records swept for allocator invariants, fill order and monotonicity) confirmed 42 side effects and partial fixes — all fixed except three left as they are (a candidate's “would count … if approved” amount read from today's fill order; the diagnostics for the retired per-course `credit_system` column); one pinned verdict moved (`phd-4plus1-double-count-used` · shared.approvals: needs DGS review → in progress, since no ruling can grant a double count once the six are spent). “Counts toward” and the request's table now follow each registration (`courseFeeds`); both imports pair one posting per row (`pairBlockRows`); the posted-duplicate warning is for the DGS to confirm. A final check of those fixes (every reproduction re-run, plus an independent review) found seven faults in them and older problems beside them — among them a page freeze (an over-maximum semester with Notre Dame courses outside CSE beside many non-CSE transfers ran the order search out of memory; now bounded) — all fixed; a second pinned verdict moved (`phd-two-degree-six-overanswered`, the same cause). A last check before shipping (a differential sweep of 28,000 generated records, two reviews) found three faults in those fixes — fixed — and left three questions for the DGS (DECISIONS, the last-check row). 2026-10-30: the DGS answered the review's questions 1–3 (DECISIONS 2026-10-30): a `yes` thesis row stays regular credit once recorded; one tick on a case-by-case transfer settles its §5.2 holds too; a live retake counts over an attempt held by a readmission. Question 8 answered the same day (“Yes. Add it to the spreadsheet.”): the live sheet’s `cse_subject_codes` (Parameters B36) lists 601, Johns Hopkins’ Computer Science (EN.601.433). Question 13 (“No. Keep it as is now.”): §5.5 does not reach a core area met by a course that earns no credit. Questions 4 and 6 (the same day): no change — credit inside §5.2’s window through a separated MSCSE counts (§5.5 does not forfeit it), and after a readmission the time away decides for posted credit. Question 5 (5a option 1, 5b, 5c): for a Notre Dame MSCSE holder’s course from another university taken after the MSCSE began and before the Ph.D. began, the semester of the Ph.D. admission letter (`phdAdmittedTerm`, a new Your standing question shown only then) decides “after admission” (DGS Handbook §3.14 — confirmed against the DGS Handbook the DGS shared; §3.13 is Incompletes); batch 6 (b)’s hold on every course taken during the MSCSE is gone. Question 7 (2026-10-31): the MSCSE ends at its award — §5.5’s five years run from the award term, and a Notre Dame course dated after it and before the Ph.D. (not the early-start summer) is no longer MSCSE coursework: it waits for the DGS as other Notre Dame coursework from before admission does (`afterNdMastersAward`). Questions 9–12 (the same day): 9 yes, 10 keep, 11 no — no change (FLAGSHIP_PLACES notes that Indiana and UMass have several campuses); 12 “Keep the courses that complete requirements”: a semester over §3.8’s maximum now lets a course whose requirements are complete yield its room to one a requirement still needs, never trading one requirement for another (`keepWhatCompletes`). Question 14 (2026-11-01): (b) — a Ph.D. retake in progress beside an earlier attempt this degree counts but the nine at Notre Dame cannot (an earlier Notre Dame program’s course, Notre Dame coursework from before admission) counts in progress toward the nine, and so the qualifier, meanwhile; the earlier attempt keeps the 24 and the 60 until the grade (`nineMeanwhile`, `settleRetakes`). Fixed with it: an earlier attempt its own line refuses (below B, ruled not to transfer) no longer keeps a live retake out, and a superseded attempt’s line names the attempt counted. W-CL633, W-CL176 and W-CL179 now cite Academic Code §1 for the Graduate School’s written exceptions (DGS “Yes.”). All fourteen questions of the review are answered; the readings marked for the DGS to confirm are in the DECISIONS rows. Same day: the review request’s plain-text fallback is one block per course, cut-off titles print whole from the course rules, and the Notre Dame reader also reads a wrapped title whose first line sits above its row (centred cells); the student whose titles were cut should use “Import again”. Docs/CREDIT-TRANSFER-REVIEW-2026-10-28.md § Second verification.
 
@@ -956,46 +956,56 @@ queue. Recent commits, newest first:
   tab costs ~2 s (hedge); a tab whose request AND hedge both stall costs ~7 s (fresh attempt). A second
   hedge at ~4 s would trim that last case — only worth doing if students report waits.
 
-## Open for the DGS (decisions, not code)
+## Open for the DGS (reviewed 2026-11-01)
 
-1. The evening batch's wording (listed, numbered, in the reply that delivered it): the Grad Admin card
-   and processing request, the copy dialog, the bachelor's-award notes, the two Level labels, the
-   rewordings around the two roles. Say "Sn: …" to change any of them.
-2. (Closed 2026-10-06, policy review round 3, P3-text-ui-6: the alpha notice now reads "exactly the rules
-   the DGS uses to decide requirement satisfaction; the Grad Admin processes what is decided", as the
-   course rules page has since 2026-10-04.)
-3. (Closed 2026-10-13, DGS “Yes. Follow with the same on-page warning.”: the Courses tab now keeps the LAST of two rows with the same course_id + rules_effective_term, as ExternalCourses and Universities do, and both web pages show the warning. DECISIONS 2026-10-13.)
+A sweep of DECISIONS, this file, the credit-transfer review, the policy-review report (rounds 1–4: 0 to
+decide), the transcript plan and the wording register on 2026-11-01. Everything not listed is answered.
+The list as put to the DGS, numbered, is the 2026-11-01 reply; close each item here when it is answered.
 
-## Open items for the DGS
+**Questions with no answer yet**
 
-4. `docs/HANDBOOK-REVISIONS.md` (new, 2026-09-09) lists the places where the answer belongs in the
-   handbook rather than in the app: §4.4.2's silence about when a specialization course may be taken,
-   the §4.2 / §5.2 disagreement about the five-year window, §4.5 and a student who already holds the
-   MSCSE, §3.5's senior-year 6xxxx courses against §5.2's graduate-status rule, and §4.2 and courses
-   below the 60000 level. For the CSE graduate committee; the §5.2 items may have to go to the
-   Graduate School.
-5. The Courses tab is now 321 rows, not 371 — the DGS deleted 50 courses on 2026-09-09 that "never
-   appear in the class list in any term from Summer 2005 to Fall 2026, including the 49xxx elective
-   placeholders, CSE 48100 and CSE 60801" (Changelog row 19; a CSV copy of the deleted rows was
-   kept), and set `active = no` on 169 courses last offered Fall 2021 or earlier (row 20). Nothing to
-   do; noted because a deleted row is normally the thing NOT to do — a student who took the course
-   would read "not in the rules sheet". These 50 were never taught, so no student can have taken one.
-   The committed `data/snapshot.json` lags the sheet by up to six hours, so a fetch and the snapshot
-   can disagree for a while; the deployed page always reads the live sheet.
-6. The 4+1 questions are settled (DECISIONS rows of 2026-09-10 and 2026-09-11): the Graduate School's
-   own answer replaced the department's reading — undergraduate Notre Dame coursework is not §5.2
-   transfer credit at all — and a 4+1 transcript's entry term is the term after the last degree it
-   awards. `phd_senior_grad_credits_max` was withdrawn with the reversal; its parked row was deleted
-   from the sheet on 2026-10-04.
-   Nothing is open upward any more; what is left is the HANDBOOK's silence, in
-   docs/HANDBOOK-REVISIONS.md §4, which now carries the Graduate School's wording verbatim and the
-   three sentences the handbook needs. Add to it, when §3.2 is next revised, that a 40000-level
-   course counted toward the MSCSE needs the advisor's and the DGS's approval — the app enforces it
-   from the sheet's `counts_toward_mscse = dgs_approval`, and the handbook says nothing.
-7. (Closed 2026-10-10, DGS “(a)”: **the L7 trade** is kept — a scanner's own text layer skips the junk-code
-   guard, every row shown ticked and flagged; 94 → 100 flagged extras on L7 accepted. DECISIONS 2026-10-10.)
-8. (Closed 2026-10-10, DGS “yes, shrink”: **the scanned-line strip** now shrinks to fit the row at any width;
-   at 390 px the whole line shows. DECISIONS 2026-10-10.)
+1. **The time limit with one blank value** (round 5 verification, 2026-10-14, “emails-2”). Once the 8- or
+   5-year limit has passed, the row reads Cannot evaluate instead of Overdue whenever ANY other row cannot
+   be evaluated (a sheet number or a date missing) — even beside rows plainly unmet — and so drops the
+   completion-status / extension advice (`timeLimitRow`, context.ts). Proposed: Overdue when another row
+   is unmet or in progress; Cannot evaluate only when the blanks are all that stand between the record
+   and complete.
+2. **A readmission under five years** (from question 6, 2026-10-30). Posted credit from before it counts;
+   the program's own Notre Dame courses from before it (2026-10-04) and the student's own Notre Dame
+   MSCSE courses (batch 6 (e)) still wait for the DGS under DGS Handbook §3.3
+   (`phd-readmitted-after-four-years`: “3 of 24 … 6 pending review/approval”). Count them too?
+3. **The transfer card in a retake semester** (question 14's reading (3)): the §5.2 card and the Grad
+   Admin request still ask to submit the earlier attempt, which a passing retake makes unnecessary.
+   Hold it until the retake's grade?
+4. **W-CL545** wraps to three lines in the 210 px label column at desk widths: widen the column or
+   shorten the hint?
+5. **“CAS CS505”** — a one- or two-letter department glued to its number after a college word reads
+   as the college (final check, 2026-10-29; no transcript seen with it).
+6. **The transcript reader** (TRANSCRIPT-ACCURACY-PLAN §5): open question (g), Sabancı's legend-defined
+   P (Progressing) on a thesis row, read as a pass (known-failing `sabanci-dual-credit`); a Thai “Summer
+   Session 2022” keeps its printed year though it falls in 2023; Buddhist-era years (“2565”) are not read.
+
+**Claude's readings in effect, marked “for the DGS to confirm”** (each in its DECISIONS row): question
+14 (1)–(2) (2026-11-01); question 7 (a)–(b) and question 10's “Keep” read as today's rule (2026-10-31);
+the credit-transfer review's batch 3 (a)–(g), batch 4 (b), (c), (e), batch 5 (a), batch 6 (a), (e), (f)
+— its (b) replaced by question 5, its (d) confirmed by question 6 — and batch 7 (a), (c), (d)
+(2026-10-29); P3-import-1's implementation choices and P3-chg-other-1's guard rails (2026-10-05). Older
+rows marked “the DGS may reverse” are defaults under the 2026-08-31 delegation and are not listed.
+
+**Waiting on the DGS, not rulings:** wording W-CL583–W-CL642 ships as written unless edited by number;
+the WordPress footer snippet and the `?embed=1` shortcode (Open work, below); when to drop the alpha
+banner and link both pages from cse.nd.edu; optionally the Melbourne / Limerick specimens and a sanitized
+Workday sample for the reader; `docs/HANDBOOK-REVISIONS.md` for the CSE graduate committee (the §5.2
+items may have to go to the Graduate School).
+
+**A known fault, no ruling needed:** “emails-6” (2026-10-14) — the emails' first-person rewrite
+(`firstPerson`, email-why.ts) turns a quoted page label such as “Your standing” into “My standing”.
+
+**Notes kept from the earlier list:** the DGS deleted 50 never-taught courses from the Courses tab on
+2026-09-09 (Changelog rows 19–20; a CSV copy kept) — a deleted row is normally the thing NOT to do, since
+a student who took the course would read “not in the rules sheet”. The 4+1 questions are settled
+(2026-09-10/11); the handbook's silence is HANDBOOK-REVISIONS §4, the §3.2 sentence included. The
+committed `data/snapshot.json` lags the sheet by up to six hours; the deployed page reads the live sheet.
 
 ## Open work (optional)
 
