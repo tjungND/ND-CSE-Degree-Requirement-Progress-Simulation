@@ -5,9 +5,6 @@
  "mcmaster-mosaic": [
   "F3 fixed (item 14, 2026-10-11): the digit-letter-digit numbers read \u2014 31 of 31 rows found. Still open: MOSAIC's term column (1, 2, 3 = fall, winter, summer of the session) \u2014 a repeated course's row ('SFWRENG 2FA3 \u2026 3   3   B   C+ (62)   (R)', want summer 2021) and 'MUSIC 2MT3   Music Theory I   2   3   C' (the '2' read into the title, want spring 2023) take the session's fall"
  ],
- "sabanci-dual-credit": [
-  "open question (g) \u2014 the legend-defined P (Progressing) on 'CS 593   Master Thesis' must read IP, not the pass S a bare P means, once the header maps"
- ],
  "ukraine-supplement": [
   "new (Batch B): Cyrillic course codes ('\u041e\u041a 1', '\u0412\u0411 1.1') and bilingual Ukrainian/English column words \u2014 leadCode and COLUMN_KIND_RES are Latin-only \u2014 read no course row (0 of 15); a bilingual grade cell ('\u0432\u0456\u0434\u043c\u0456\u043d\u043d\u043e / excellent') is one printed value",
   "new (Batch B): a false row from the section-4.4 grading-scale line \u2014 '90-100 | \u0432\u0456\u0434\u043c\u0456\u043d\u043d\u043e / excellent (A); | ? | A | fall 2023' (the range '90-100' opens like a code, the ECTS letter in parentheses reads as its grade) \u2014 a negative-fixture concern"

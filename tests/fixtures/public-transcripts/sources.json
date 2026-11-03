@@ -480,7 +480,8 @@
   "url": "https://oidb.metu.edu.tr/en/course-credit-system",
   "kind": "registrar grading/credit legend (HTML); rows composed (AA–FF, ECTS column); verifier replaced an invented '(3-0)3' credit cell",
   "lens": "mideast-africa-latam",
-  "from": "mideast-africa-latam/verify/metu.corrected.json"
+  "from": "mideast-africa-latam/verify/metu.corrected.json",
+  "note": "The composed CENG 400 row's grade P reads as the legend's own 'P Progressing' — in progress (DGS 2026-11-03, question 6 (a): the transcript's key decides); it was pinned as the pass S a bare P means before that ruling."
  },
  "bilkent": {
   "institution": "Bilkent University",

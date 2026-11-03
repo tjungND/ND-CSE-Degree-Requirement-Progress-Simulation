@@ -489,7 +489,7 @@ Open issues (carried into the OCR steps and Batch C unless marked for the DGS):
 - **DGS:** whether "The City University of New York" is a campus system for `campus.ts` (the
   CUNYfirst fixture's system line beats the college's header), and whether a "Trimester GPA" totals
   label and a registrar's calendar sentence count as trimester evidence (the North South fixture).
-- **DGS:** open question (g) — Sabanci's legend-defined P (Progressing).
+- **DGS:** open question (g) — Sabanci's legend-defined P (Progressing). Answered 2026-11-03 (question 6 (a): the key decides — P reads in progress; `sabanci-dual-credit` passes).
 - Families still open on 14 composed fixtures (their known-failing entries name them): F2 (Workday's
   "2024-25 Winter Term 1" headers; Nepal's continuously numbered semesters under an academic-year
   range), F3 (McMaster's digit-letter-digit, SNU's dotted and UCLA's one-digit course numbers), F1
@@ -910,7 +910,9 @@ Open issues (the DGS's are marked):
   “SHANGHAI JIAOTONG UNIVERSITY” and no country)? With China in the calendar table (first semester = the
   fall), sjtu-lifelong-template's fourteen two-group rows and its 2003 table would read their terms.
 - **DGS:** a Thai “Summer Session 2022” keeps its printed year (academic year 2022's summer falls in
-  2023); Buddhist-era years (“2565”) are not read.
+  2023); Buddhist-era years (“2565”) are not read. Answered 2026-11-03 (question 6 (b), (c): the summer moves to
+  2023 — `calendarSummer`; Buddhist-era years are converted on a document whose heading names Thailand —
+  `inCommonEra`). The SJTU question above was answered “No” on 2026-10-10.
 - Coded side-by-side tables (a course number in each half) are not split — no specimen.
 - The e2e on Chrome and WebKit for the code-less preview row (`ext.row.N.id` empty and required, the
   tick box disabled, W-CL409 above the table) — a driver step and screenshots.
@@ -1158,7 +1160,7 @@ Open issues from this verification (the DGS's are marked):
   combined preview); a full-size text-layer row prints its term as “FA23” under TERM with an empty YEAR column —
   code-less rows are always full-size, so they show it every time.
 - Carried, unchanged: question (g), Thai
-  summers and Buddhist-era years (DGS); Melbourne / Limerick and the five public PDFs not
+  summers and Buddhist-era years (DGS; all three answered 2026-11-03); Melbourne / Limerick and the five public PDFs not
   on disk (DGS); the WordPress footer snippet (DGS); a sanitized Workday sample (DGS, later); the 16
   known-failing text fixtures; Alberta's “Avy” and dropped “Points”; Duke's key; colon / dropped-point numerics;
   rule (b) on short-word titles; TH02's English-only heading words; `dateOnLine` and ordinal dates.

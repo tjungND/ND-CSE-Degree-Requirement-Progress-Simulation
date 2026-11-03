@@ -903,6 +903,51 @@ describe('transcript accuracy program, Batch C — TH02 country calendars (2026-
   });
 });
 
+describe('DGS 2026-11-03, question 6 — the transcript’s own key, Thailand’s summer and the Buddhist Era', () => {
+  const termOf = (r: ReturnType<typeof parseExternalTranscript>, id: string) => [row(r, id)?.season, row(r, id)?.year];
+  const thai = ['CHULALONGKORN UNIVERSITY', 'OFFICE OF THE REGISTRAR   Bangkok, Thailand', 'TRANSCRIPT OF RECORDS'];
+  const hdr = 'Course No.   Course Title   Credits   Grade';
+  it('(a) a legend’s "P Progressing" makes P in progress; a bare P, or a key where P is a pass, stays the pass', () => {
+    const thesis = (...legend: string[]) => row(doc('SOME UNIVERSITY', 'TRANSCRIPT', 'Fall 2023', hdr, 'CS 593   Master Thesis   0   P', ...legend), 'CS 593')?.grade;
+    assert.equal(thesis('Other grades: P Progressing  S Satisfactory  U Unsatisfactory'), 'IP');
+    assert.equal(thesis('Grading: A 4.0, B 3.0; S Satisfactory; P In Progress'), 'IP');
+    assert.equal(thesis('P = In progress'), 'IP');
+    assert.equal(thesis(), 'S');
+    assert.equal(thesis('Grades: P Pass; IP In Progress; PR Progress'), 'S', '“IP In Progress” and “PR Progress” define other codes');
+    // A course row is never a key: a P grade before a title that starts with “Progress”.
+    assert.equal(row(doc('SOME UNIVERSITY', 'TRANSCRIPT', 'Fall 2023', hdr, 'CS 593   Master Thesis   0   P', 'CS 594   P   Progress Report   0'), 'CS 593')?.grade, 'S');
+  });
+  it('(b) a Thai "Summer Session 2022" is the summer of academic year 2022: June–July 2023', () => {
+    const terms = ['First Semester 2022', hdr, '2110501   Computer Architecture   3   A', 'Second Semester 2022', '2110521   Machine Learning   3   A', 'Summer Session 2022', '2110599   Summer Project   3   S'];
+    const r = doc(...thai, ...terms);
+    assert.deepEqual(termOf(r, '2110521'), ['spring', 2023]);
+    assert.deepEqual(termOf(r, '2110599'), ['summer', 2023]);
+    // A summer printed before any numbered semester (a summer entry) too.
+    assert.deepEqual(termOf(doc(...thai, 'Summer Session 2022', hdr, '2110599   Summer Project   3   S', 'First Semester 2022', '2110501   Computer Architecture   3   A'), '2110599'), ['summer', 2023]);
+  });
+  it('(b) the summer keeps its printed year without the country, on a document that names every term by its season, and where the line prints a month', () => {
+    assert.deepEqual(termOf(doc('CHULALONGKORN UNIVERSITY', 'TRANSCRIPT OF RECORDS', 'First Semester 2022', hdr, '2110501   Computer Architecture   3   A', 'Summer Session 2022', '2110599   Summer Project   3   S'), '2110599'), ['summer', 2022]);
+    const seasons = doc(...thai, 'Fall 2022', hdr, '2110501   Computer Architecture   3   A', 'Spring 2023', '2110521   Machine Learning   3   A', 'Summer 2023', '2110599   Summer Project   3   S');
+    assert.deepEqual([termOf(seasons, '2110501'), termOf(seasons, '2110521'), termOf(seasons, '2110599')], [['fall', 2022], ['spring', 2023], ['summer', 2023]]);
+    assert.deepEqual(termOf(doc(...thai, 'First Semester 2022', hdr, '2110501   Computer Architecture   3   A', 'Summer Session June 2023', '2110599   Summer Project   3   S'), '2110599'), ['summer', 2023]);
+  });
+  it('(c) Buddhist-era years on a Thai document read as the Common Era: terms, the slash notation, an academic year and dates', () => {
+    const be = doc(...thai, 'First Semester 2565', hdr, '2110501   Computer Architecture   3   A', 'Second Semester 2565', '2110521   Machine Learning   3   A', 'Summer Session 2565', '2110599   Summer Project   3   S', 'First Semester 2566', '2110620   Special Topics   3   W');
+    assert.deepEqual(['2110501', '2110521', '2110599', '2110620'].map((id) => termOf(be, id)), [['fall', 2022], ['spring', 2023], ['summer', 2023], ['fall', 2023]]);
+    const slash = doc(...thai, 'Semester 1/2565', hdr, '2110501   Computer Architecture   3   A', '2/2565', '2110521   Machine Learning   3   A');
+    assert.deepEqual([termOf(slash, '2110501'), termOf(slash, '2110521')], [['fall', 2022], ['spring', 2023]]);
+    const year = doc(...thai, '2565 Academic Year', '1st Semester', 'Course   Credits   Score', 'Computer Architecture   3   A');
+    assert.deepEqual(year.courses.map((c) => [c.season, c.year]), [['fall', 2022]]);
+    assert.equal(doc(...thai, 'Degree: Master of Engineering', 'Date of Admission: August 2565   Date of Graduation: 30 June 2567', 'First Semester 2565', hdr, '2110501   Computer Architecture   3   A').degreeConferred, true);
+    assert.equal(doc(...thai, 'Degree: Bachelor of Engineering', 'Date of Graduation: 30/06/2567', 'First Semester 2563', hdr, '2110101   Programming   3   A').bachelorsConferredOn, '2024-06-30');
+  });
+  it('(c) a Buddhist-era year is never read without the country, and a course number in the 2500s is never one', () => {
+    assert.deepEqual(termOf(doc('CHULALONGKORN UNIVERSITY', 'TRANSCRIPT OF RECORDS', 'First Semester 2565', hdr, '2110501   Computer Architecture   3   A'), '2110501'), [undefined, undefined]);
+    const codes = doc(...thai, 'First Semester 2565', hdr, 'ENGL 2565   Summer Reading   3   A', 'ENGL 2566   Term Paper Writing   3   B');
+    assert.deepEqual(codes.courses.map((c) => [c.courseId, c.title, c.season, c.year]), [['ENGL 2565', 'Summer Reading', 'fall', 2022], ['ENGL 2566', 'Term Paper Writing', 'fall', 2022]]);
+  });
+});
+
 describe('transcript accuracy program, Batch C — adjacent-line graduate conferral (2026-10-09)', () => {
   const head = ['CHULALONGKORN UNIVERSITY', 'OFFICE OF THE REGISTRAR   Bangkok, Thailand', 'TRANSCRIPT OF RECORDS'];
   const rows = ['First Semester 2022', 'Course No.   Course Title   Credits   Grade', '2110501   Computer Architecture   3   A'];

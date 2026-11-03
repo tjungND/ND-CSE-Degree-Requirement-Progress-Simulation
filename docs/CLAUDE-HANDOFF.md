@@ -404,10 +404,13 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   `readCodelessRow`; a candidate with `codeMissing: true` has `courseId: ''`, and a document with any coded row keeps none of them —
   the filter after the loop); `readMappedValues` (scanWithMap's value reading, shared with the code-less reader; the “Full Mark”
   exception to GT05 lives there); `sideBySide()` / `sideBySideHalves` and `semesterColumns` / `placeSemester` (CC16 — the
-  “First Semester   Second Semester” line heads two columns and is no term header); `COUNTRY_CALENDARS` / `countryCalendar` /
-  `calendarSemester` beside `readTermLine` (TH02 — add a country with its source and an evidence pattern for a cell of the
+  “First Semester   Second Semester” line heads two columns and is no term header); `COUNTRY_CALENDARS` (module level beside
+  `institutionHeading` and `headingCountry` since 2026-11-03) and `countryCalendar` / `calendarSemester` / `calendarSummer` beside
+  `readTermLine` (TH02 — add a country with its source and an evidence pattern for a cell of the
   institution's heading, `institutionHeading`; the table
-  is consulted only for NUMBERED semesters and never when a term prints its months); `adjacentConferral` beside
+  is consulted only for NUMBERED semesters — and, since 2026-11-03, for the summer of a document that numbers them — and
+  never when a term prints its months; an entry's `era` makes `inCommonEra` rewrite that era's years, beside a term word
+  or in a date only, before the scan reads any line — Thailand's Buddhist Era, minus 543); `adjacentConferral` beside
   `degreeConferred`. In `src/ui/external-upload.ts`: `previewRowOf` (a code-less row starts unticked), `idStillMissing`,
   `readyToAdd`, `CODE_MISSING_NOTE` / `codeMissingHint` (W-CL407–W-CL409); `undergraduateInProgress` treats a printed raw
   result as final when it is a mark or a band word (narrowed by the 2026-10-10 review fix). `sameTransferCourse` refuses two empty ids. The replay scorer pairs code-less rows by title. Pinned by

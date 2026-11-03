@@ -403,6 +403,11 @@ interface LegendHints {
   npPasses?: true;
   /** P is a letter grade worth points (India's UGC scale "P 4"), not a pass. */
   pIsLetter?: true;
+  /** P means the course is still under way: Sabancı's key, "P Progressing",
+   * on a master's thesis carried from term to term (DGS 2026-11-03, question
+   * 6 (a): follow the transcript's own key) — in progress, not the pass a
+   * bare P means. */
+  pInProgress?: true;
   /** The Australian HD / D / CR / P / N scale (the ANU sample, 2026-09-26):
    * D is a Distinction (70–79), not the app's D, CR a Credit band, P the
    * 50–59 pass — every band is left raw beside its mark for the DGS. */
@@ -430,6 +435,10 @@ function readLegend(lines: string[]): LegendHints {
     if (/(?:^|[\s,;|])S\s*(?:[=:–-]|\()?\s*(?:outstanding\s*\(?)?10\b/i.test(l)) hints.sIsTop = true;
     if (/(?:^|[\s,;|])NP\s*[=:–-]?\s*\(?\s*(?:no\s+grade\s*[-–:]?\s*pass|pass(?:ed|ing)?(?:\s*[,;)]|\s+without|\s*$))/i.test(l)) hints.npPasses = true;
     if (/(?:^|[\s,;|])P\s*(?:\(pass\))?\s*[=:–-]?\s*(?:\()?\s*[4-5](?:\.0+)?\b(?!\s*\.\d)/.test(l) && /\b(?:O|A\+?)\s*[=:–-]?\s*\(?\s*(?:10|9)\b/.test(l)) hints.pIsLetter = true;
+    // "P Progressing", "P = In Progress", "P (In progress)" — only where the
+    // P opens a legend entry: on a course row ("CS 593   P   Progress …") it
+    // is a grade, and a title is never a key.
+    if (/(?:^|[\s,;|(])P\s*[=:–-]?\s*\(?\s*(?:progressing|in[\s-]+progress)\b/i.test(l) && !/^[A-Z]{2,10}\s+\d{2,5}\b/.test(l)) hints.pInProgress = true;
     // An HD grade on a row, or a legend naming the High Distinction: the
     // Australian scale, where D is a Distinction (the ANU sample, 2026-09-26).
     if (/\bhigh\s+distinction\b/i.test(l) || /(?:^|\s)HD\s*\*?$/.test(l)) hints.hdScale = true;
@@ -482,6 +491,7 @@ function mapGrade(token: string, legend: LegendHints = {}, inGradePosition = tru
   if (t === 'S' && legend.sIsTop) return undefined;
   if (t === 'NP' && legend.npPasses) return 'S';
   if (t === 'P' && legend.pIsLetter) return undefined;
+  if (t === 'P' && legend.pInProgress) return 'IP';
   if (legend.passFailBands && /^(?:PASS|FAIL)$/.test(t)) return undefined;
   if (PASS_TOKENS.has(t)) return 'S';
   if (FAIL_TOKENS.has(t)) return 'U';
@@ -1592,6 +1602,110 @@ function institutionHeading(lines: readonly string[]): string[] {
   return heading;
 }
 
+// -------------------------------------------------------------------
+// TH02 — academic calendars set at COUNTRY level (DGS 2026-10-09,
+// transcript accuracy program, Batch C: "a small country-level
+// academic-calendar table in code beside readTermLine (Thailand first),
+// each entry with its source, used only when the transcript prints no
+// month range itself"). A transcript that numbers its semesters within a
+// printed year ("First Semester 2022") without their months is placed by
+// its country's calendar when the document names the country; without one
+// the calendar-order rule below stands (2026-09-26). An entry needs a
+// source a future DGS can open, and the country as the document prints it
+// — a city or an institution's name is not evidence (a question for the
+// DGS before China, whose single-year "2001 Academic Year" SJTU's template
+// prints with no country, can be added). The year a semester is numbered
+// in is the ACADEMIC year, which opens in the first semester.
+// -------------------------------------------------------------------
+interface CountryCalendar {
+  country: string;
+  /** A cell of the institution's heading that names the country: "Bangkok,
+   * Thailand", "Bangkok 10330, Thailand", "THAILAND" — never a course title
+   * ("History of Thailand" has no comma before the name), and never a
+   * person's field (`institutionHeading`). */
+  evidence: RegExp;
+  /** Each numbered semester: its season, and the years after the academic
+   * year it was numbered in. */
+  semesters: Partial<Record<1 | 2 | 3, { season: Season; yearOffset: 0 | 1 }>>;
+  source: string;
+  /** Years the country's documents print in an era of their own, and how
+   * far it runs ahead of the Common Era (`inCommonEra`). */
+  era?: { name: string; offset: number; source: string };
+}
+const COUNTRY_CALENDARS: readonly CountryCalendar[] = [
+  {
+    country: 'Thailand',
+    evidence: /^(?:[\p{L}][\p{L}\d .'-]*,\s*(?:\d{5}\s+)?|\d{5}\s+)?(?:kingdom\s+of\s+)?thailand\.?$/iu,
+    // First Semester August–December → the fall of the academic year;
+    // Second Semester January–May → the spring of the next calendar year;
+    // the Summer Session June–July → its summer.
+    semesters: { 1: { season: 'fall', yearOffset: 0 }, 2: { season: 'spring', yearOffset: 1 }, 3: { season: 'summer', yearOffset: 1 } },
+    source:
+      'Chulalongkorn University, Faculty of Science, academic calendar (https://www.sis.sc.chula.ac.th/?p=32, read 2026-10-09): "First Semester: August – December; Second Semester: January – May; Summer Session (Optional): June – July"; the Office of the Registrar dates academic year 2568 (2025) from a first semester opening 4 August 2025 and a second opening 5 January 2026 (Start_EndDates_E-Sem2568.pdf, reg.chula.ac.th).',
+    // The Buddhist Era (DGS 2026-11-03, question 6 (c)): "2565" is 2022.
+    era: {
+      name: 'Buddhist Era',
+      offset: 543,
+      source: 'The same registrar page: academic year 2568 is 2025 (2568 − 543), its first semester opening 4 August 2025. Thailand counts its years from 1 January since 1941, so the offset is the same all year.',
+    },
+  },
+];
+
+/** The country of `COUNTRY_CALENDARS` the institution's own heading names
+ * (`institutionHeading`), if any. */
+function headingCountry(lines: readonly string[]): CountryCalendar | undefined {
+  const cells = institutionHeading(lines).flatMap((l) => l.split(/\s{2,}/).map((c) => c.trim()));
+  return COUNTRY_CALENDARS.find((c) => cells.some((cell) => c.evidence.test(cell)));
+}
+
+/** A year printed in the country's own era, read as the Common Era (DGS
+ * 2026-11-03, question 6 (c): "Buddhist-era years ('2565' = 2022) … Convert
+ * them?" — "Yes"). Only on a document whose institution's heading names a
+ * country with an era (`headingCountry`, the evidence TH02's calendar takes),
+ * since the same number is a different year elsewhere (Sri Lanka's and
+ * Myanmar's Buddhist calendars run 544 years ahead), and only where the
+ * number is printed AS a year — a course number, a title or a name is never
+ * touched:
+ *  - beside a term word: "First Semester 2565", "Summer Session 2565",
+ *    "Semester 1/2565", "Academic Year: 2565-2566", "2565 Academic Year";
+ *  - Thailand's own term notation, a semester and its year: "1/2565";
+ *  - in a date: "30 June 2567", "June 30, 2567", "30/06/2567", "2567-06-30".
+ * Converted years are written back into the line, so everything after this
+ * reads them as any other year; the lines keep their number and order (the
+ * OCR confidences and a row's `sourceLines` still line up). */
+function inCommonEra(lines: string[]): string[] {
+  const era = headingCountry(lines)?.era;
+  if (era === undefined) return lines;
+  const ce = (year: string): string => String(Number(year) - era.offset);
+  /** An era year, with the second year of an academic-year range when one is
+   * printed ("2565-2566", "2565/66" — a two-digit year stands for the era
+   * year of the same century: "66" is 2566, so 2023). */
+  const span = (first: string, sep?: string, second?: string): string =>
+    sep === undefined || second === undefined ? ce(first) : `${ce(first)}${sep}${second.length === 4 ? ce(second) : ce(first.slice(0, 2) + second).slice(2)}`;
+  return lines.map((line) =>
+    line
+      // After a term word: "First Semester 2565", "Summer Session 2565",
+      // "Semester 1/2565", "Academic Year: 2565-2566".
+      .replace(
+        /\b(semester|session|term|trimester|academic\s+year)(\s*[:#-]?\s*(?:[1-3]\s*\/\s*)?)(25\d{2})(?:(\s*[-–/]\s*)(25\d{2}|\d{2}))?\b(?!\s*[-–/.]\s*\d)/gi,
+        (_m, word: string, gap: string, first: string, sep?: string, second?: string) => word + gap + span(first, sep, second),
+      )
+      // Before one, on a line that is nothing else: "2565 Academic Year",
+      // "2565 First Semester" (a course number before its title is never
+      // alone on its line).
+      .replace(
+        /^(\s*)(25\d{2})(?:(\s*[-–/]\s*)(25\d{2}|\d{2}))?(\s+(?:academic\s+year|(?:first|second|1st|2nd)\s+semester|semester\s*[1-3]?|summer(?:\s+session)?)\s*)$/i,
+        (_m, lead: string, first: string, sep: string | undefined, second: string | undefined, words: string) => lead + span(first, sep, second) + words,
+      )
+      // Thailand's own notation, a semester and its year: "1/2565".
+      .replace(/(^|\s)([1-3])\s*\/\s*(25\d{2})(?=\s|$)/g, (_m, lead: string, n: string, y: string) => `${lead}${n}/${ce(y)}`)
+      // Dates: "30 June 2567", "June 30, 2567", "30/06/2567", "2567-06-30".
+      .replace(/\b((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(?:\d{1,2}(?:st|nd|rd|th)?,?\s+)?)(25\d{2})\b/gi, (_m, head: string, y: string) => head + ce(y))
+      .replace(/\b(\d{1,2})([/.-])(\d{1,2})\2(25\d{2})\b/g, (_m, d: string, sep: string, mo: string, y: string) => `${d}${sep}${mo}${sep}${ce(y)}`)
+      .replace(/\b(25\d{2})([/.-])(\d{1,2})\2(\d{1,2})\b/g, (_m, y: string, sep: string, mo: string, d: string) => `${ce(y)}${sep}${mo}${sep}${d}`),
+  );
+}
+
 /** OCR lines below this confidence get their rows flagged in the preview.
  * Since OCR step 11 (2026-10-09) a line's confidence is its least confident
  * WORD's (src/transcript/ocr-lines.ts OCR_LINE_CONFIDENCE). The floor was
@@ -1631,6 +1745,10 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
   // The lines came from the OCR path (each with the engine's confidence):
   // the scan-only repairs of OCR plan step 2.5 apply — never to a text layer.
   const ocrLines = confidences !== undefined;
+
+  // A year printed in the country's own era is read as the Common Era from
+  // here on (DGS 2026-11-03, question 6 (c); `inCommonEra`).
+  lines = inCommonEra(lines);
 
   const courses: ExternalCourseCandidate[] = [];
   const legend = readLegend(lines);
@@ -2813,59 +2931,30 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     const last = years[years.length - 1]!;
     return season !== undefined && season !== 'fall' && last === first + 1 ? last : first;
   };
-  // -------------------------------------------------------------------
-  // TH02 — academic calendars set at COUNTRY level (DGS 2026-10-09,
-  // transcript accuracy program, Batch C: "a small country-level
-  // academic-calendar table in code beside readTermLine (Thailand first),
-  // each entry with its source, used only when the transcript prints no
-  // month range itself"). A transcript that numbers its semesters within a
-  // printed year ("First Semester 2022") without their months is placed by
-  // its country's calendar when the document names the country; without one
-  // the calendar-order rule below stands (2026-09-26). An entry needs a
-  // source a future DGS can open, and the country as the document prints it
-  // — a city or an institution's name is not evidence (a question for the
-  // DGS before China, whose single-year "2001 Academic Year" SJTU's template
-  // prints with no country, can be added). The year a semester is numbered
-  // in is the ACADEMIC year, which opens in the first semester.
-  // -------------------------------------------------------------------
-  interface CountryCalendar {
-    country: string;
-    /** A cell of the institution's heading that names the country: "Bangkok,
-     * Thailand", "Bangkok 10330, Thailand", "THAILAND" — never a course title
-     * ("History of Thailand" has no comma before the name), and never a
-     * person's field (`institutionHeading`). */
-    evidence: RegExp;
-    /** Each numbered semester: its season, and the years after the academic
-     * year it was numbered in. */
-    semesters: Partial<Record<1 | 2 | 3, { season: Season; yearOffset: 0 | 1 }>>;
-    source: string;
-  }
-  const COUNTRY_CALENDARS: readonly CountryCalendar[] = [
-    {
-      country: 'Thailand',
-      evidence: /^(?:[\p{L}][\p{L}\d .'-]*,\s*(?:\d{5}\s+)?|\d{5}\s+)?(?:kingdom\s+of\s+)?thailand\.?$/iu,
-      // First Semester August–December → the fall of the academic year;
-      // Second Semester January–May → the spring of the next calendar year;
-      // the Summer Session June–July → its summer.
-      semesters: { 1: { season: 'fall', yearOffset: 0 }, 2: { season: 'spring', yearOffset: 1 }, 3: { season: 'summer', yearOffset: 1 } },
-      source:
-        'Chulalongkorn University, Faculty of Science, academic calendar (https://www.sis.sc.chula.ac.th/?p=32, read 2026-10-09): "First Semester: August – December; Second Semester: January – May; Summer Session (Optional): June – July"; the Office of the Registrar dates academic year 2568 (2025) from a first semester opening 4 August 2025 and a second opening 5 January 2026 (Start_EndDates_E-Sem2568.pdf, reg.chula.ac.th).',
-    },
-  ];
+  // TH02's table, COUNTRY_CALENDARS, sits at module level beside
+  // `institutionHeading` (moved 2026-11-03): its eras are read before the
+  // scan begins (`inCommonEra`).
   /** The country calendar this document is placed by: its country named in
    * the INSTITUTION's own heading (`institutionHeading`, review fix
    * 2026-10-10), and no term printed with its own month range anywhere (the
    * transcript's months win). */
-  const countryCalendar: CountryCalendar | undefined = (() => {
-    if (lines.some((l) => MONTH_RANGE_RE.test(l) && TERM_WORD_RE.test(l))) return undefined;
-    const cells = institutionHeading(lines).flatMap((l) => l.split(/\s{2,}/).map((c) => c.trim()));
-    return COUNTRY_CALENDARS.find((c) => cells.some((cell) => c.evidence.test(cell)));
-  })();
+  const countryCalendar: CountryCalendar | undefined = lines.some((l) => MONTH_RANGE_RE.test(l) && TERM_WORD_RE.test(l)) ? undefined : headingCountry(lines);
   /** A numbered semester of `academicYear` by the country's calendar. */
   const calendarSemester = (n: number, academicYear: number): { year: number; season: Season } | undefined => {
     const place = countryCalendar?.semesters[n as 1 | 2 | 3];
     return place ? { year: academicYear + place.yearOffset, season: place.season } : undefined;
   };
+  /** The summer of a country calendar's academic year (DGS 2026-11-03,
+   * question 6 (b): Thailand's "Summer Session 2022" falls in 2023 — "Move it
+   * to 2023?" — "Yes"). A document that numbers its semesters within the
+   * academic year ("First Semester 2022", "Second Semester 2022", "1/2022")
+   * prints that same academic year on its summer, which the calendar places
+   * after the second semester; a document that names every term by its
+   * season ("Fall 2022", "Summer 2023") prints calendar years, and keeps
+   * them. */
+  const calendarSummer = countryCalendar === undefined || !lines.some((l) => /^\s*(?:(?:first|second|1st|2nd)\s+semester\b|semester\s*[-:]?\s*(?:[12]|I{1,2})\b|[12]\s*\/\s*(?:19|20)\d{2}(?:\s|$))/i.test(l))
+    ? undefined
+    : Object.values(countryCalendar.semesters).find((p) => p.season === 'summer');
   const readTermLine = (line: string): TermRead | undefined => {
     if (!TERM_WORD_RE.test(line) && !YEAR_PART_RE.test(line) && !SLASH_ORDINAL_RE.test(line) && !/\bsession\s*:/i.test(line)) return undefined;
     // A year whose last digit the PDF sets apart ("200 3   FULL YEAR", the
@@ -3001,6 +3090,9 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
       // "Spring 2023-2024", "Sommersemester 2023", "Second Semester 1397-1398":
       // the spring and summer belong to the range's second year.
       if (range && season !== 'fall') return { year: secondYear(range), season, explicit: true };
+      // Thailand's "Summer Session 2022" is the summer of academic year 2022,
+      // June–July 2023 (`calendarSummer`) — unless the line prints a month.
+      if (season === 'summer' && calendarSummer !== undefined && !MONTH_YEAR_RE.test(flat)) return { year: year + calendarSummer.yearOffset, season, explicit: true };
       return { year, season, explicit: true };
     }
     if (ordinal === undefined && range && /\b(academic\s+year|session|year)\b/i.test(flat)) return { year, season: 'fall' }; // a whole academic year (KU Leuven "Academic year 2022-2023"): it opens in the fall — not explicit, a dated row may override it
