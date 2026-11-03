@@ -452,7 +452,8 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
     // DGS has ruled, as ticked.
     const long = ctx.forfeitBefore !== undefined;
     const m = student.milestones;
-    const coursesHeld = classified.some((c) => !c.superseded && (long ? c.interrupted === true : c.beforeReadmission === true));
+    // A shorter readmission holds no course (DGS 2026-11-03).
+    const coursesHeld = long && classified.some((c) => !c.superseded && c.interrupted === true);
     const examsHeld =
       long &&
       ((student.program === 'phd' && student.attestations.qualifierPassedUnderPriorRules === true && priorRulesQualifierHeld(ctx)) ||
@@ -468,11 +469,9 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
             : ruled
               ? ' unless the DGS and the Graduate School rule otherwise — they ruled on what you entered from before it, as you ticked'
               : '';
-    const shortClause = coursesHeld
-      ? ', so the courses from before your readmission wait for the DGS and are in the review request'
-      : ruled
-        ? '; the DGS ruled on the courses from before your readmission, as you ticked on each'
-        : '';
+    // Less than five years away, the courses from before it count (DGS
+    // 2026-11-03: "Count if within 5 years. DGS approval if over 5 years.").
+    const shortClause = 'your courses from before it count, since you were away less than five years (DGS Handbook §3.3; DGS 2026-11-03)';
     warnings.push(
       long
         ? `Readmitted ${termLabel(student.readmittedTerm)} after an interruption of five years or more: the Academic Code forfeits credit for every course and examination from before it (Academic Code §5.5)${longClause}; the clocks still count from ${termLabel(entry)}, your original matriculation, in calendar semesters with the time away included.`
@@ -480,18 +479,20 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
           // P3-dh-3.1-3.13-4): §6.2.6 is the Ph.D.'s; no master's section says
           // when the five years start, so the app's reading is said plainly.
           student.program === 'mscse'
-          ? `Readmitted ${termLabel(student.readmittedTerm)}: the five-year limit still counts from ${termLabel(entry)}, your original entry term, in calendar semesters with the time away included (§3.3; Academic Code §6.1.4); the program may reject some or all of your earlier credits (DGS Handbook §3.3)${shortClause}.`
-          : `Readmitted ${termLabel(student.readmittedTerm)}: the clocks still count from ${termLabel(entry)}, your original matriculation, in calendar semesters with the time away included (Academic Code §6.2.6; DGS 2026-10-06); the program may reject some or all of your earlier credits (DGS Handbook §3.3)${shortClause}.`,
+          ? `Readmitted ${termLabel(student.readmittedTerm)}: the five-year limit still counts from ${termLabel(entry)}, your original entry term, in calendar semesters with the time away included (§3.3; Academic Code §6.1.4); ${shortClause}.`
+          : `Readmitted ${termLabel(student.readmittedTerm)}: the clocks still count from ${termLabel(entry)}, your original matriculation, in calendar semesters with the time away included (Academic Code §6.2.6; DGS 2026-10-06); ${shortClause}.`,
     );
     // The readmission itself goes to the DGS (policy review 2026-10-04,
     // P2-dh-3.1-3.13-3/-9): DGS Handbook §3.1 — "A student who fails to
     // complete the ND Roll Call process and registration for fall and/or spring
     // semester must complete the readmission process upon their return" — and
-    // §3.8's withdrawal. The app cannot see the readmission; it asks.
+    // §3.8's withdrawal. The app cannot see the readmission; it asks. Which
+    // earlier credits stand is asked only after five years or more (DGS
+    // 2026-11-03: a shorter readmission's credits count).
     reviewFlags.push(
       decisionWording(
         student.program,
-        `Readmission: I was readmitted in ${termLabel(student.readmittedTerm)} after a withdrawal or a fall or spring semester I was not registered for (DGS Handbook §3.1, §3.3, §3.8; Academic Code §3.5). Please confirm my readmission and which of my earlier credits stand; ${student.program === 'mscse' ? `my five years still count from ${termLabel(entry)} (§3.3; Academic Code §6.1.4)` : `my clocks still count from ${termLabel(entry)} (Academic Code §6.2.6)`}.`,
+        `Readmission: I was readmitted in ${termLabel(student.readmittedTerm)} after a withdrawal or a fall or spring semester I was not registered for (DGS Handbook §3.1, §3.3, §3.8; Academic Code §3.5). Please confirm my readmission${long ? ' and which of my earlier credits stand' : ''}; ${student.program === 'mscse' ? `my five years still count from ${termLabel(entry)} (§3.3; Academic Code §6.1.4)` : `my clocks still count from ${termLabel(entry)} (Academic Code §6.2.6)`}.`,
       ),
     );
     // The candidacy deadline keeps the gap (policy review round 3,
@@ -756,7 +757,13 @@ export function audit(asEntered: Student, rules: Rules, today: string): AuditRep
   const completeOrLate = (r: RequirementResult) => r.status === 'met' || (r.status === 'needs_dgs_review' && (r.statusLabel === 'Eligibility at risk' || r.completedLate === true));
   const others = {
     allMet: otherRows.every(completeOrLate),
-    anyCannotEvaluate: otherRows.some((r) => r.status === 'cannot_evaluate'),
+    // Past the limit, a blank holds the row at Cannot evaluate only when the
+    // blanks are all that stand between the record and complete (DGS
+    // 2026-11-03, the round-5 question “emails-2”: “Read Overdue whenever
+    // another requirement is unmet or in progress”): beside a row plainly
+    // unmet, in progress or waiting for the DGS the limit was missed whatever
+    // the blank turns out to be.
+    onlyBlanksLeft: otherRows.some((r) => r.status === 'cannot_evaluate') && otherRows.every((r) => completeOrLate(r) || r.status === 'cannot_evaluate'),
     // The master's candidacy application is uncounted (2026-10-04), so the
     // MSCSE card must not say "all requirements are complete" while it is
     // open (policy review round 3, P3-dh-3.21-3.24-1). The MSCSE's own card

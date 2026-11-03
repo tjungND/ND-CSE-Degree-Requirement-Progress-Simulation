@@ -329,8 +329,9 @@ describe('a Notre Dame course entered as program coursework but dated before the
 
 // A readmission after a withdrawal or a missed fall or spring semester, under
 // five years (policy review 2026-10-04, P2-dh-3.1-3.13-3/-4/-9): the earlier
-// program courses wait for the DGS (DGS Handbook §3.3), the review request asks
-// about them and about the readmission itself, and nothing is inferred from an
+// program courses count (DGS 2026-11-03: "Count if within 5 years"; they
+// waited for the DGS under DGS Handbook §3.3 until then), the review request
+// asks about the readmission itself only, and nothing is inferred from an
 // empty semester.
 describe('readmission after a shorter gap (DGS Handbook §3.1, §3.3)', () => {
   const readmitted = (over: Partial<Student> = {}) =>
@@ -341,12 +342,14 @@ describe('readmission after a shorter gap (DGS Handbook §3.1, §3.3)', () => {
       ...over,
     });
 
-  it('sends the earlier course and the readmission to the review request', () => {
+  it('counts the earlier course and sends only the readmission to the review request (DGS 2026-11-03)', () => {
     const report = audit(readmitted(), rules, '2026-03-01');
-    assert.ok((report.reviewFlags ?? []).some((f) => /^Readmission: I was readmitted in Fall 2025 after a withdrawal or a fall or spring semester I was not registered for/.test(f)));
+    assert.ok((report.reviewFlags ?? []).some((f) => /^Readmission: I was readmitted in Fall 2025 after a withdrawal or a fall or spring semester I was not registered for .* Please confirm my readmission; /.test(f)), JSON.stringify(report.reviewFlags));
+    assert.ok(!(report.reviewFlags ?? []).some((f) => /which of my earlier credits stand/.test(f)), JSON.stringify(report.reviewFlags));
     // The MSCSE's own sections (P3-dh-3.1-3.13-4): §6.2.6 is the Ph.D.'s.
     assert.ok((report.reviewFlags ?? []).some((f) => /my five years still count from Fall 2023 \(§3\.3; Academic Code §6\.1\.4\)/.test(f)), JSON.stringify(report.reviewFlags));
-    assert.ok(report.warnings.some((w) => /the courses from before your readmission wait for the DGS and are in the review request/.test(w.replace(/ADGS/g, 'DGS'))));
+    assert.ok(report.warnings.some((w) => /your courses from before it count, since you were away less than five years \(DGS Handbook §3\.3; DGS 2026-11-03\)\.$/.test(w)), JSON.stringify(report.warnings));
+    assert.match(line(readmitted(), 'CSE 60641', '2026-03-01'), /^counts toward regular courses/);
   });
 
   it('a later course counts as before; with no readmission entered, an empty year is not read as a gap', () => {
@@ -367,7 +370,8 @@ describe('a readmission after five years or more (Academic Code §5.5), counted 
     return line(s, 'CSE 60641', `${back.year + 1}-03-01`);
   };
   const LONG = /taken before an interruption of five years or more \(readmitted .*\) — Academic Code §5\.5 forfeits the credit/;
-  const SHORT = /taken before your readmission \(.*\) — the program may reject some or all past credits \(DGS Handbook §3\.3\)/;
+  // Under five years the course counts (DGS 2026-11-03).
+  const SHORT = /^counts toward regular courses/;
   it('Fall 2018 → Spring 2023 (about four years) is a shorter gap; Spring 2019 → Fall 2024 is five years or more', () => {
     assert.match(away(fall(2018), spring(2023)), SHORT);
     assert.match(away(spring(2019), fall(2024)), LONG);

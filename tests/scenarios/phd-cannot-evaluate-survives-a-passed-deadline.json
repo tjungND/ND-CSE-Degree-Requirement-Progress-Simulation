@@ -1,6 +1,6 @@
 {
   "name": "phd-cannot-evaluate-survives-a-passed-deadline",
-  "description": "Red-team 2026-09-13: a blank rules-sheet cell is not a missed deadline. This student passed all three core areas and the research qualifier and has the nine ND regular credits — the ONLY thing unresolved is that `category_courses_required` is missing from the Parameters tab, so §4.4.2 cannot be evaluated. Both deadline overrides used to bulldoze that into \"unmet — Overdue, talk to the DGS\" (and, on the time-limit row, into an alarming \"the 8-year limit passed\" forfeiture message for a student who had in fact finished). CLAUDE.md: a missing parameter renders \"cannot evaluate\", never a default.",
+  "description": "Red-team 2026-09-13: a blank rules-sheet cell is not a missed deadline. This student passed all three core areas and the research qualifier and has the nine ND regular credits — the ONLY thing unresolved is that `category_courses_required` is missing from the Parameters tab, so §4.4.2 cannot be evaluated. Both deadline overrides used to bulldoze that into \"unmet — Overdue, talk to the DGS\" (and, on the time-limit row, into an alarming \"the 8-year limit passed\" forfeiture message for a student who had in fact finished). CLAUDE.md: a missing parameter renders \"cannot evaluate\", never a default. Since 2026-11-03 (DGS, the round-5 question “emails-2”: “Read Overdue whenever another requirement is unmet or in progress”) the time-limit row reads Overdue here — this student is far from finished (9 of 60 credits), so the blank is not all that stands between the record and complete; `phd-finished-past-the-limit-one-blank` is the student who has finished, whose row still cannot be judged.",
   "today": "2026-09-13",
   "rules": {
     "base": "default",
@@ -23,6 +23,6 @@
   "expect": {
     "phd.qualifier.categories": { "status": "cannot_evaluate", "detailIncludes": ["category_courses_required"] },
     "phd.qualifier": { "status": "cannot_evaluate", "detailIncludes": ["cannot be evaluated until the rules sheet is complete"], "detailExcludes": ["Overdue — talk to the DGS"] },
-    "phd.timeLimit": { "status": "cannot_evaluate", "detailIncludes": ["cannot be evaluated yet — a value is missing from the rules sheet or from your record"], "detailExcludes": ["Overdue"] }
+    "phd.timeLimit": { "status": "unmet", "detailIncludes": ["Overdue — the 8-year limit passed", "may apply to the Graduate School for dissertation completion status"], "detailExcludes": ["cannot be evaluated yet"] }
   }
 }

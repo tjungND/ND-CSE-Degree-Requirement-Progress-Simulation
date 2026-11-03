@@ -1,6 +1,6 @@
 {
   "name": "phd-earlier-nd-program-retake-nine-meanwhile",
-  "description": "DGS 2026-11-01, question 14 of the credit-transfer review: option (b). A Ph.D. student with a finished master’s in another Notre Dame department, whose CSE 60535 (Fall 2024, A) and CSE 60321 transfer (ExternalCourses `yes`), retakes CSE 60535 in Spring 2027, the qualifier’s fourth semester, with 6 of §4.2’s nine regular credits at Notre Dame done. The retake counts in progress toward the nine meanwhile — the nine and the qualifier read in progress, as for a new course — while the Fall 2024 attempt keeps counting toward the 24 (12 of 24, nothing in progress: the course’s credits count once). The retake read “not counted — … the Fall 2024 attempt of this course is the one counted” and the nine and the qualifier Not yet.",
+  "description": "DGS 2026-11-01, question 14 of the credit-transfer review: option (b). A Ph.D. student with a finished master’s in another Notre Dame department, whose CSE 60535 (Fall 2024, A) and CSE 60321 transfer (ExternalCourses `yes`), retakes CSE 60535 in Spring 2027, the qualifier’s fourth semester, with 6 of §4.2’s nine regular credits at Notre Dame done. The retake counts in progress toward the nine meanwhile — the nine and the qualifier read in progress, as for a new course — while the Fall 2024 attempt keeps counting toward the 24 (12 of 24, nothing in progress: the course’s credits count once). The retake read “not counted — … the Fall 2024 attempt of this course is the one counted” and the nine and the qualifier Not yet. Its transfer request waits for the retake’s grade (DGS 2026-11-03, question 14’s reading (3): option (b)) — a passing retake replaces it — while CSE 60321’s goes now.",
   "today": "2027-03-01",
   "rules": {
     "base": "default",
@@ -132,7 +132,9 @@
     "phd.transfer": {
       "status": "in_progress",
       "detailIncludes": [
-        "6 of the 24 credits you may transfer are counted"
+        "6 of the 24 credits you may transfer are counted",
+        "Approved by the DGS in the course rules: CSE 60321.",
+        "CSE 60535: its processing request waits for your Spring 2027 retake’s grade."
       ]
     }
   },

@@ -146,9 +146,12 @@ describe('held lines', () => {
     const s = phdStudent({ entryTerm: fall(2019), bachelorsAwarded: spring(2016), integratedBsMs: true, ndMasters: { term: spring(2018) }, background: { bachelors: 'nd-cse', ndIntegrated: true, graduate: 'nd-4plus1' } as never, courses: [{ courseId: 'CSE 60535', credits: 3, term: fall(2017), grade: 'I', origin: 'transfer', institution: ND, degreeLevel: 'bachelors', registeredLevel: 'graduate', countedToward: 'mscse' }, ndCourse('CSE 60427', { term: fall(2019) })] });
     assert.doesNotMatch(audit(s, buildRules(), TODAY).courseLines.find((l) => l.courseId === 'CSE 60535')!.text, /counts in full/);
   });
-  it('a 4+1 senior-year course counted toward the MSCSE is held by a shorter readmission', () => {
+  // Held from 2026-10-29; counted since DGS 2026-11-03 ("Count if within 5 years").
+  it('a 4+1 senior-year course counted toward the MSCSE counts after a shorter readmission', () => {
     const s = phdStudent({ entryTerm: fall(2019), bachelorsAwarded: spring(2018), integratedBsMs: true, ndMasters: { term: spring(2019) }, background: { bachelors: 'nd-cse', ndIntegrated: true, graduate: 'nd-4plus1' } as never, readmittedTerm: fall(2022), courses: [{ ...ndCourse('CSE 60535', { term: fall(2017) }), origin: 'transfer', institution: ND, countedToward: 'mscse' }, { courseId: 'CSE 60641', credits: 3, term: fall(2018), grade: 'A', origin: 'transfer', institution: ND, degreeLevel: 'masters', registeredLevel: 'graduate' }, ndCourse('CSE 60427', { term: fall(2019) }), ndCourse('CSE 60321', { term: spring(2020) }), ndCourse('CSE 60770', { term: fall(2022) })] });
-    assert.equal(classify(s, buildRules(), TODAY).classified.find((c) => c.entry.courseId === 'CSE 60535')!.beforeReadmission, true);
+    const c = classify(s, buildRules(), TODAY).classified.find((x) => x.entry.courseId === 'CSE 60535')!;
+    assert.doesNotMatch(c.approvalPending ?? '', /readmission/);
+    assert.doesNotMatch(audit(s, buildRules(), TODAY).courseLines.find((l) => l.courseId === 'CSE 60535')!.text, /before your readmission/);
   });
   it('a transfer ticked as recorded and held says it is recorded, on its line and to the DGS', () => {
     const rules = buildRules({ external: [{ university: 'NORTHEASTERN UNIVERSITY', course_id: 'CS 5800', course_title: 'Algorithms', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes', credit_system: 'semester' }] });

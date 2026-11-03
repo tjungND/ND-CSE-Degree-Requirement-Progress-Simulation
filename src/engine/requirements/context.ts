@@ -307,7 +307,7 @@ export function tuitionScholarshipNote(ctx: Ctx): DetailPart {
 
 export function timeLimitRow(
   ctx: Ctx,
-  others: { allMet: boolean; anyCannotEvaluate: boolean; mastersApplicationOpen?: boolean },
+  others: { allMet: boolean; onlyBlanksLeft: boolean; mastersApplicationOpen?: boolean },
   args: {
     id: string;
     group: string;
@@ -408,13 +408,15 @@ export function timeLimitRow(
           ]
         : [`All requirements are complete within the ${years}-year limit${shiftNote}`, ...extNotes];
       deadline = { date, approx: true, state: 'done', label: 'Complete' };
-    } else if (ctx.today > date && others.anyCannotEvaluate) {
+    } else if (ctx.today > date && others.onlyBlanksLeft) {
       // A missing rules-sheet value is not a missed deadline (red-team
       // 2026-09-13): a student who has finished everything used to read
       // "Overdue — forfeiture" because one unrelated parameter was blank. Nor
       // is a date missing from the record (2026-10-04: the admission to
       // candidacy of a record whose dissertation milestones are dated), so
-      // the sentence names both and leaves "which" to that row.
+      // the sentence names both and leaves "which" to that row. Only when the
+      // blanks are all that is left (DGS 2026-11-03, "emails-2": beside a row
+      // unmet or in progress the limit reads Overdue, with its advice).
       status = 'cannot_evaluate';
       parts = [`The ${years}-year limit passed at ${deadlineTermLabel(date)} (approximate)${shiftNote}, but a requirement above cannot be evaluated yet — a value is missing from the rules sheet or from your record, and that row says which — so whether everything was finished in time cannot be judged`, ...longerNote(ctx.today), ...extNotes, tuition, ...fundingDue];
       deadline = { date, approx: true, state: 'overdue', label: `The ${years}-year limit passed at ${deadlineTermLabel(date)}` };

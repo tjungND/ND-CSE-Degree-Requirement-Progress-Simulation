@@ -6,7 +6,7 @@ import { allocate, priorNdUndergraduateCanCount, type CapSpec, type ClassifiedCo
 import { audit } from '../src/engine/audit.ts';
 import { matchDistinctGroups } from '../src/engine/matching.ts';
 import { coursesNeedingDgsReview } from '../src/engine/review.ts';
-import { isCseCourse, subjectCode } from '../src/data/external.ts';
+import { isCseCourse, subjectCode, subjectCodes } from '../src/data/external.ts';
 import { resolveRuleRow } from '../src/data/assemble.ts';
 import { specialTracks } from '../src/engine/tracks.ts';
 import { classify } from '../src/engine/allocate.ts';
@@ -415,6 +415,15 @@ describe('is a transferred course a CSE course?', () => {
       assert.equal(isCseCourse(id, undefined, live), true, id);
     for (const id of ['CAS MA 123', 'MATH 280A', 'INFO 5100', 'STAT 51200', 'COMP LIT 101'])
       assert.equal(isCseCourse(id, undefined, live), false, id);
+    // The department glued to its number after a college word (DGS
+    // 2026-11-03): "CAS CS505" is CS, as "CAS CS 505" is; "CAS MA123" is
+    // not. Letters of a course number stay out unless the list holds them.
+    for (const id of ['CAS CS505', 'GRS CS630'])
+      assert.equal(isCseCourse(id, undefined, live), true, id);
+    for (const id of ['CAS MA123', 'COMS W4111', 'SS ZG519'])
+      assert.equal(isCseCourse(id, undefined, live), false, id);
+    assert.equal(subjectCode('CSC I0400'), 'CSC', 'City College reads CSC first');
+    assert.deepEqual(subjectCodes('CAS CS505'), ['CAS', 'CS']);
     // Johns Hopkins school.department.course: the department number, which
     // the list names as it names Rutgers' 198.
     assert.equal(isCseCourse('EN.601.433', undefined, live), false, 'not on the list yet');

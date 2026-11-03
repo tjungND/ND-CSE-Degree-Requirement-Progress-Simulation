@@ -1,6 +1,6 @@
 {
   "name": "mscse-readmitted-after-missed-semester",
-  "description": "DGS Handbook §3.1 (“A student who fails to complete the ND Roll Call process and registration for fall and/or spring semester must complete the readmission process upon their return”) and §3.3 (“the program may require the student to reapply. The program may also reserve the right to reject some or all past credits”) — policy review 2026-10-04, P2-dh-3.1-3.13-3/-4/-9; DGS: “apply the suggested handling”. An MSCSE student who entered Fall 2023, took courses through Spring 2024, registered for nothing in 2024–25 and was readmitted Fall 2025: the courses from before the readmission count provisionally and wait for the ADGS, instead of counting in full with only a warning; the clocks still count from Fall 2023.",
+  "description": "DGS Handbook §3.1 (“A student who fails to complete the ND Roll Call process and registration for fall and/or spring semester must complete the readmission process upon their return”) and §3.3 (“the program may require the student to reapply. The program may also reserve the right to reject some or all past credits”) — policy review 2026-10-04, P2-dh-3.1-3.13-3/-4/-9; DGS: “apply the suggested handling”. An MSCSE student who entered Fall 2023, took courses through Spring 2024, registered for nothing in 2024–25 and was readmitted Fall 2025: the courses from before the readmission count provisionally and wait for the ADGS, instead of counting in full with only a warning; the clocks still count from Fall 2023. Since DGS 2026-11-03 (“Count if within 5 years. DGS approval if over 5 years.” — question 6’s answer of 2026-10-30, extended to the program’s own courses) they count in full instead: 9 of 24, and the review request asks the ADGS to confirm the readmission only.",
   "today": "2026-03-01",
   "rules": {
     "base": "default"
@@ -61,14 +61,16 @@
     "ms.credits.regular": {
       "status": "unmet",
       "detailIncludes": [
-        "3 of 24 credits complete",
-        "6 pending review/approval"
+        "9 of 24 credits complete"
+      ],
+      "detailExcludes": [
+        "pending review/approval"
       ]
     }
   },
   "expectCourseLines": {
     "CSE 60641": [
-      "taken before your readmission (Fall 2025) — the program may reject some or all past credits (DGS Handbook §3.3); the ADGS confirms"
+      "counts toward regular courses (3 cr)"
     ],
     "CSE 60321": [
       "counts toward regular courses (3 cr)"
@@ -76,9 +78,11 @@
   },
   "expectWarnings": [
     "the five-year limit still counts from",
-    "(§3.3; Academic Code §6.1.4)"
+    "(§3.3; Academic Code §6.1.4)",
+    "your courses from before it count, since you were away less than five years"
   ],
   "expectNoWarnings": [
     "§6.2.6"
-  ]
+  ],
+  "expectReviewEmpty": true
 }

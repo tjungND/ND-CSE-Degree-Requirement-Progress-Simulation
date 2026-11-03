@@ -129,9 +129,11 @@ export function subjectCode(courseId: string): string {
  * the first word made every one of them a course outside CSE, cut by the
  * nine. The candidates are the letters of everything before the course number
  * ("COMPSCI", "CS", "CASCS", "CSCIGA"), its first and its last part ("CAS",
- * "CS"; "CSCI", "GA"), and a department number between a school and a course
- * number ("601"; Rutgers' "198"). A course is a CSE course when any candidate
- * is on the `cse_subject_codes` list. A code of digits alone has none. */
+ * "CS"; "CSCI", "GA"), one or two letters glued to the number after a word
+ * ("CAS CS505" → "CS"; DGS 2026-11-03), and a department number between a
+ * school and a course number ("601"; Rutgers' "198"). A course is a CSE course
+ * when any candidate is on the `cse_subject_codes` list. A code of digits
+ * alone has none. */
 export function subjectCodes(courseId: string): string[] {
   const numbered = /^\s*\d{1,2}\s*:\s*(\d{3})\s*:\s*\d{3}\s*$/.exec(courseId);
   if (numbered) return [numbered[1]!];
@@ -145,10 +147,20 @@ export function subjectCodes(courseId: string): string[] {
   // word belong to the number: City College "CSC I0400" is subject CSC, not
   // CSCI (review of the fix, 2026-10-29). Written without a lookbehind, which
   // Safari before 16.4 cannot compile.
+  // …and are a reading of their own, last: after a college word they are the
+  // department — "CAS CS505" is Boston University's CS, as "CAS CS 505" is
+  // (DGS 2026-11-03: the final check's question of 2026-10-29, option (b); it
+  // read as the college, CAS, outside CSE). A letter of a course number
+  // ("COMS W4111", "SS ZG519") names a CSE course only if the list holds it.
   const glued = /\s([A-Z]{1,2})$/.exec(prefix);
-  if (glued && /[A-Z]/.test(prefix.slice(0, glued.index))) prefix = prefix.slice(0, glued.index + 1);
+  let gluedLetters: string | undefined;
+  if (glued && /[A-Z]/.test(prefix.slice(0, glued.index))) {
+    gluedLetters = glued[1]!;
+    prefix = prefix.slice(0, glued.index + 1);
+  }
   const parts = prefix.split(/[^A-Z]+/).filter((p) => p !== '');
   const out = parts.length > 0 ? [parts.join(''), parts[0]!, parts[parts.length - 1]!] : [];
+  if (gluedLetters !== undefined) out.push(gluedLetters);
   const dotted = /^\s*[A-Z]{1,4}\.(\d{3})\.\d{3}/.exec(id);
   if (dotted) out.push(dotted[1]!);
   return [...new Set(out)];

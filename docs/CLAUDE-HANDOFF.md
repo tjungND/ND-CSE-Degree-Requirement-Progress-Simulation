@@ -1181,6 +1181,9 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   `ndMastersCredit`) stays superseded but carries `nineMeanwhile` — its live classification, which
   the Notre Dame-only pass counts in place of that attempt (question 14: (b)). Rows that list a
   course read `countsHere()` in context.ts, which lets such a retake through for the nine only.
+  The transferred attempt beside a live Notre Dame retake carries `retakeHold` (classifyTransfer,
+  either program; DGS 2026-11-03, question 14's reading (3)): it counts, its processing request
+  waits — transfer.ts lists it apart and grad-admin-request.ts `processingItems` leaves it out.
 - **Transcript upload** (`src/transcript/`): pdfjs-dist is one of the two lazily-loaded runtime
   dependencies (the other is tesseract.js, the opt-in OCR), loaded as its own chunk (pdf-*.js, 416 KB / 126 KB gz, plus the 1.4 MB worker) so the main bundle does not carry it. Measured 2026-10-22 with `npm run bundle-report` (blue-team review 2026-10-17, W5 — the "~170 KB" this line claimed dated from the first weeks): before batch A the self-check's first load was 925 KB raw / 265 KB gz (index 663 KB + shared chunk 219 KB + CSS 66 KB) and the course-rules page's 309 KB / 75 KB gz; after W1–W3 the self-check loads 709 KB / 212 KB gz (index 584 KB; shared chunk 76 KB) and the course-rules page 171 KB / 50 KB gz, with the previous-university parser (external-*.js, 77 KB / 29 KB gz), the saved rules copy (data/snapshot.json, 97 KB) and the handbook's text (handbook-text.json, 51 KB) fetched only when used. The parser handles Banner 8
   ("INSTITUTION CREDIT") and Banner 9 ("Institutional Credit") wording, ND's official-PDF
@@ -1710,7 +1713,9 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   "outside computing", so an ECE course is inside CSE whatever its topic; `is_cse = no` is for a
   single course ruled otherwise (P4-data-6, 2026-10-12). `isCseCourse()` in
   src/data/external.ts is the only place that decides; `subjectCode()` normalises "CompSci 537" →
-  "COMPSCI", and reads a school:subject:course code's middle number ("16:198:507" → "198", Rutgers'
+  "COMPSCI" (`subjectCodes()` lists every reading: the whole prefix, its first and last part, and,
+  last, one or two letters glued to the number after a word — "CAS CS505" → CAS, CS, DGS
+  2026-11-03 — which the first reading drops, so "CSC I0400" is CSC), and reads a school:subject:course code's middle number ("16:198:507" → "198", Rutgers'
   Computer Science; the live list carries 198 and 332 (Rutgers ECE) since 2026-10-16 — a code of digits alone has none). A code the list does not name is OUTSIDE CSE (its silence is an answer), but a MISSING
   or BLANK parameter is no answer at all — `codeList` returns undefined for both, and classify()
   then holds every transferred course without an `is_cse` cell for the DGS (`cseUnknown`, since
@@ -1908,7 +1913,10 @@ changed, so nobody undoes it by accident:
   accommodationSemesters), `covidCohort` (entry ≤ Spring 2020, from the entry term, no tick box),
   `timeLimitDate(ctx, years)`, `clockShiftNote(ctx)`. `timeLimitRow` takes `completedOn` — a
   completion after the limit → `needs_dgs_review` 'Eligibility at risk' on the row AND the limit
-  row (audit.ts `completeOrLate` lets that row count as complete for `allMet`).
+  row (audit.ts `completeOrLate` lets that row count as complete for `allMet`). Past the limit
+  the row reads Cannot evaluate only on `others.onlyBlanksLeft` — every other counted row
+  `completeOrLate` or `cannot_evaluate` (DGS 2026-11-03, “emails-2”; it was `anyCannotEvaluate`,
+  any blank anywhere); otherwise Overdue, with its advice.
 - **New rows / ids.** `phd.rcr` (CANDIDACY group; `milestones.rcrTrainingCompleted`) and
   `phd.dissertation.submitted` (`milestones.dissertationSubmitted`; `phdTimeLimitRow`'s
   `completedOn` = submission else defense). `milestones.researchQualifierFailed` (six-month
@@ -1958,7 +1966,7 @@ changed, so nobody undoes it by accident:
   only when some are done — "core knowledge (Algorithms and Computer Architecture; §4.4.1)", the
   page dropping the "; §4.4.1"). The late note still names each area (`rowName`): each has its term.
 - **Transcript-aware standing selectors** (DGS 2026-10-04, app.ts `transcriptGaps`, `fullTimeTerms`): with a `fromNdTranscript` row on file, an empty fall/spring is a gap (named in the leave question), never a research-only semester to tick.
-- **Readmission under five years** (P2-dh-3.1-3.13-3/-4/-9, 2026-10-04): `readmittedTerm` with a gap under five years marks the program's own earlier `nd` rows `beforeReadmission` (provisional, review-request ask, DGS Handbook §3.3); ≥ five years stays `interrupted` (§5.5, ND and prior-ND rows). Any readmission adds a `Readmission:` review flag. An empty semester is never read as a gap.
+- **Readmission under five years** (P2-dh-3.1-3.13-3/-4/-9, 2026-10-04; reversed DGS 2026-11-03): until 2026-11-03 a gap under five years marked the program's own earlier `nd` rows `beforeReadmission` (provisional, review-request ask, DGS Handbook §3.3). Since then nothing is held under five years — `beforeShortReadmission` and the `beforeReadmission` field are gone, the warning says the courses count — and ≥ five years stays `interrupted` (§5.5, ND and prior-ND rows). Any readmission adds a `Readmission:` review flag; “and which of my earlier credits stand” only after five years or more. An empty semester is never read as a gap.
 - **Dual degree** (P2-ac-1-3-2, 2026-10-04): `Student.concurrentDegree` + `CourseEntry.sharedWithOtherDegree` add the cap `otherdegree` (nine, `DUAL_DEGREE_SHARED_CREDITS_MAX` — code, not sheet) in `classify()`'s outermost overlay `withSharedDegree`, ND rows only and only while `concurrentDegree` is true; without `attestations.dualPlanApproved` the course is provisional and its line leads “waiting for the Graduate School”. `otherDegreeCapRow` (shared.ts) builds `ms.cap.otherdegree`/`phd.cap.otherdegree`; `capRow` counts every counted credit for this cap (as for `transfer`). The standing checkbox has the key `standing.concurrentDegree`, not `attest.…` — the a11y driver's focus check clicks the first `attest.` box.
 - **Status wording** (`status.ts`): `deadlineStatus` takes `extension.semesters` and `lateWording`
   (the candidacy row's late pass cites Academic Code §6.2.8, not a DGS extension).

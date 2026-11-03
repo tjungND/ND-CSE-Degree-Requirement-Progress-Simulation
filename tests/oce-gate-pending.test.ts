@@ -141,9 +141,20 @@ describe('an OCE passed while credits wait for the DGS (P3-hidden-inputs-1, opti
 // on CSE 60641, CSE 60111 or 6 more and an advisor who is …", whose "or" ran
 // into the advisor item.
 describe('the total first, then what a decision would cover (P4-phd-10)', () => {
-  it('the readmitted student of the finding: 21 needed, 6 of them by the two held courses', () => {
+  // The finding's student was readmitted after about two years, whose earlier
+  // courses count since DGS 2026-11-03 ("Count if within 5 years"); the same
+  // record readmitted after five years or more holds them (Academic Code §5.5).
+  it('the readmitted student of the finding: 15 needed after a shorter gap', () => {
     const sc = loadScenario('phd-readmitted-candidacy-calendar');
     const c = audit(sc.student, buildRules(sc.rules.patch), '2025-10-05').requirements.find((r) => r.id === 'phd.candidacy')!;
+    assert.match(c.detail, /still needed: 15 more regular-course credits and an advisor who is tenured or tenure-track CSE faculty \(§4\.5\)\./);
+  });
+  it('…and after five years or more away: 21 needed, 6 of them by the two held courses', () => {
+    const sc = loadScenario('phd-readmitted-candidacy-calendar');
+    const s = structuredClone(sc.student);
+    s.readmittedTerm = { season: 'fall', year: 2027 };
+    s.courses = s.courses.map((c) => (c.courseId === 'CSE 60321' ? { ...c, term: { season: 'fall', year: 2027 } } : c));
+    const c = audit(s, buildRules(sc.rules.patch), '2027-10-05').requirements.find((r) => r.id === 'phd.candidacy')!;
     assert.match(c.detail, /still needed: 21 more regular-course credits \(6 of them can be satisfied by CSE 60641 and CSE 60111 if the DGS approves them\) and an advisor who is tenured or tenure-track CSE faculty \(§4\.5\)\./);
   });
   it('a course waiting for the DGS and one waiting for the Graduate School’s plan approval: each named with its approver', () => {

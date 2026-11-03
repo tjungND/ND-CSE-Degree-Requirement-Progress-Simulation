@@ -171,7 +171,9 @@ the review request used to ask for (C36); what is left is the advisor’s approv
    (5a option 1, 5b, 5c yes, 5d §3.14 confirmed; DECISIONS 2026-10-30)
 6. Whether DGS Handbook §3.3 (“reject some or all past credits”, a shorter readmission) reaches credit
    already posted on the Notre Dame record (counted now).
-   — **answered 2026-10-30: (b), the time away decides — under five years it counts; no change** (DECISIONS 2026-10-30)
+   — **answered 2026-10-30: (b), the time away decides — under five years it counts; no change** (DECISIONS 2026-10-30).
+   Extended 2026-11-03 (DGS: “(a)”): the program's own Notre Dame courses and the student's own Notre Dame
+   MSCSE courses from before a shorter readmission count too — #15's hold and batch 6 (e) are superseded.
 7. For a separated MSCSE, which ends it when both are on the record: its award term or a later Notre Dame
    graduate course before the Ph.D. (the later course now).
    — **answered 2026-10-31: the award term; the later Notre Dame course is not MSCSE coursework and waits for the DGS**
@@ -199,3 +201,5 @@ the review request used to ask for (C36); what is left is the advisor’s approv
     toward the 24 and not the nine — should the retake count toward the nine meanwhile?
     — **answered 2026-11-01: (b); the retake counts in progress toward the nine meanwhile** (DECISIONS 2026-11-01;
     `nineMeanwhile`). Found with it and fixed: an earlier attempt its own line refuses no longer keeps a live retake out.
+    Its reading (3), answered 2026-11-03 (DGS: “(b)”): the earlier attempt's transfer request waits for the
+    retake's grade — not in the Grad Admin request meanwhile (`retakeHold`; DECISIONS 2026-11-03).

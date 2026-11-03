@@ -632,7 +632,7 @@ function residencyRow(ctx: Ctx): RequirementResult {
 
 /** §4.3: "Failure to complete all requirements for the Ph.D. degree within
  * eight (8) years results in forfeiture of degree eligibility." */
-export function phdTimeLimitRow(ctx: Ctx, others: { allMet: boolean; anyCannotEvaluate: boolean; mastersApplicationOpen?: boolean }): RequirementResult {
+export function phdTimeLimitRow(ctx: Ctx, others: { allMet: boolean; onlyBlanksLeft: boolean; mastersApplicationOpen?: boolean }): RequirementResult {
   const quote =
     'Failure to complete all requirements for the Ph.D. degree within eight (8) years results in forfeiture of degree eligibility.';
   // The last requirement is the OFFICIAL SUBMISSION (Academic Code §6.2.6:

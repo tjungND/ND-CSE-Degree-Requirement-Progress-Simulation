@@ -120,27 +120,29 @@ describe('5: the readmission warning after the DGS’s ticks', () => {
 
 // 29 (b): the hold's ruling is its own field. A course the DGS approved case
 // by case, which a later readmission holds, waits until the hold is ruled on.
+// A readmission after five years or more: a shorter one holds nothing since
+// DGS 2026-11-03.
 describe('29 (b): a case-by-case tick does not release a later hold', () => {
   const s = (entry: Partial<Student['courses'][number]>): Student =>
     phdStudent({
-      entryTerm: fall(2022),
+      entryTerm: fall(2017),
       gpa: 3.6,
       readmittedTerm: fall(2025),
-      courses: [ndCourse('CSE 40567', { term: spring(2023), ...entry }), ndCourse('CSE 60641', { term: fall(2025) })],
+      courses: [ndCourse('CSE 40567', { term: spring(2018), ...entry }), ndCourse('CSE 60641', { term: fall(2025) })],
       milestones: { advisorIdentified: '2022-10-01', advisorName: 'Prof. Example', advisorTtt: 'yes' },
     });
   it('the old case-by-case tick: still held, and the box reads unticked', () => {
     const line = audit(s({ dgsApproved: true }), rules, '2025-10-15').courseLines.find((l) => l.courseId === 'CSE 40567')!;
     assert.equal(line.mark, 'pending', line.text);
-    assert.match(line.text, /taken before your readmission \(Fall 2025\)/);
-    assert.doesNotMatch(line.text, /the DGS confirmed it still counts/);
+    assert.match(line.text, /taken before an interruption of five years or more \(readmitted Fall 2025\)/);
+    assert.doesNotMatch(line.text, /confirmed it stands/);
     assert.equal(line.holdRuling, true);
     assert.equal(line.approved, undefined);
   });
   it('the box ticked on the held course (both fields): released', () => {
     const line = audit(s({ dgsApproved: true, dgsHoldApproved: true }), rules, '2025-10-15').courseLines.find((l) => l.courseId === 'CSE 40567')!;
     assert.notEqual(line.mark, 'pending', line.text);
-    assert.match(line.text, /the DGS confirmed it still counts, as you ticked on the course/);
+    assert.match(line.text, /the DGS and the Graduate School confirmed it stands, as you ticked on the course/);
     assert.equal(line.approved, true);
   });
 });
@@ -417,9 +419,10 @@ describe('23, 32: the time limit in the advisor email', async () => {
     assert.ok(!todo.student.some((d) => /^Ask the DGS about the time limit/.test(d)), JSON.stringify(todo.student));
     assert.ok(todo.student.includes('Enter the missing date or value the cards name, so the time limit can be checked (§4.3).'), JSON.stringify(todo.student));
   });
-  // Verification, emails-1: held only by another row's missing sheet number.
+  // Verification, emails-1: held only by another row's missing sheet number
+  // (since 2026-11-03, emails-2, only when nothing else is open).
   it('23: a limit held only by a missing sheet number asks nothing of the student', () => {
-    const sc = loadScenario('phd-cannot-evaluate-survives-a-passed-deadline');
+    const sc = loadScenario('phd-finished-past-the-limit-one-blank');
     const report = audit(sc.student, buildRules(sc.rules.patch), sc.today);
     assert.equal(report.requirements.find((r) => r.id === 'phd.timeLimit')!.status, 'cannot_evaluate');
     const todo = actionItems(report);
@@ -649,13 +652,15 @@ describe('round 5 verification follow-ups', () => {
     assert.equal(box('life-phd-after-nd-mscse-finished', (s) => (s.milestones.msCandidacyApplied = '2024-02-10')), undefined);
   });
   // Verification, holds-3 and docs-tests-4: the halves the first tests missed.
-  it('5: a short readmission with every earlier course ruled says so, not “wait for the DGS”', () => {
+  // Since DGS 2026-11-03 a short readmission holds nothing, so there is no
+  // hold to rule on: no course offers the hold's tick, and the warning says
+  // the courses count.
+  it('5: a short readmission holds no course and says the courses count', () => {
     const sc = loadScenario('phd-readmitted-after-four-years');
-    const s = structuredClone(sc.student);
-    const r = buildRules(sc.rules.patch);
-    for (const l of audit(s, r, sc.today).courseLines.filter((x) => x.holdRuling)) Object.assign(s.courses.find((c) => c.courseId === l.courseId)!, { dgsApproved: true, dgsHoldApproved: true });
-    const w = audit(s, r, sc.today).warnings?.find((x) => /^Readmitted/.test(x)) ?? '';
-    assert.match(w, /; the DGS ruled on the courses from before your readmission, as you ticked on each\.$/, w);
+    const report = audit(sc.student, buildRules(sc.rules.patch), sc.today);
+    assert.deepEqual(report.courseLines.filter((x) => x.holdRuling).map((x) => x.courseId), []);
+    const w = report.warnings?.find((x) => /^Readmitted/.test(x)) ?? '';
+    assert.match(w, /; your courses from before it count, since you were away less than five years \(DGS Handbook §3\.3; DGS 2026-11-03\)\.$/, w);
     assert.doesNotMatch(w, /wait for the DGS/);
   });
   it('6: a ticked Notre Dame course from before admission, in progress, is in progress', () => {

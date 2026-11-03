@@ -145,9 +145,14 @@ describe('a dated admission', () => {
 });
 
 describe('a record whose dissertation milestones are dated but not the admission', () => {
+  const dated = { candidacyPassed: '2029-04-01', defensePassed: '2031-11-10', dissertationSubmitted: '2031-12-01' };
   it('asks for the admission date — no “apply now”, no probation — and the eight-year row cannot judge yet', () => {
     // Every saved record predates the admission field (review of the split, 2026-10-04).
-    const s = ready({ candidacyPassed: '2029-04-01', defensePassed: '2031-11-10', dissertationSubmitted: '2031-12-01' });
+    // Everything else is complete, so the blank date is all that is left
+    // (DGS 2026-11-03, “emails-2”).
+    const s = ready({ ...dated, researchQualifierPassed: '2027-11-01' }, {
+      courses: [...REGULAR.map((id, i) => ndCourse(id, { term: [fall(2026), spring(2027), fall(2027), spring(2028)][Math.floor(i / 2)]! })), ndCourse('CSE 63801', { credits: 1 }), ndCourse('CSE 63802', { credits: 1, term: spring(2027) }), ...[fall(2026), spring(2027), fall(2027), spring(2028)].map((t) => ndCourse('CSE 98900', { credits: 9, term: t, grade: 'S' }))],
+    });
     const { report, admission } = rows(s, '2035-02-01');
     assert.equal(admission.status, 'cannot_evaluate');
     assert.equal(admission.deadline, undefined);
@@ -157,6 +162,15 @@ describe('a record whose dissertation milestones are dated but not the admission
     const limit = report.requirements.find((r) => r.id === 'phd.timeLimit')!;
     assert.equal(limit.status, 'cannot_evaluate');
     assert.match(limit.detail, /a value is missing from the rules sheet or from your record, and that row says which/);
+  });
+  it('beside rows still unmet, the passed limit reads Overdue with its advice (DGS 2026-11-03, “emails-2”)', () => {
+    // 24 of 60 credits and no seminars: the blank date is not what stands
+    // between this record and complete.
+    const { report, admission } = rows(ready(dated), '2035-02-01');
+    assert.equal(admission.status, 'cannot_evaluate');
+    const limit = report.requirements.find((r) => r.id === 'phd.timeLimit')!;
+    assert.equal(limit.status, 'unmet');
+    assert.match(limit.detail, /^Overdue — the 8-year limit passed at the start of Fall 2034 \(approximate\)\. After the eighth year a student may apply to the Graduate School for dissertation completion status \(Academic Code §6\.2\.6\.1\) — talk to the DGS/);
   });
 });
 

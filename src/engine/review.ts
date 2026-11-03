@@ -197,12 +197,11 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
       if (c.unknown === true || c.approvalPending !== undefined) {
         // The record-level facts no sheet row can settle (policy review
         // 2026-10-03): a lapsed Incomplete, and coursework from before a
-        // readmission — after five years or more (Academic Code §5.5), or a
-        // shorter gap (DGS Handbook §3.3; 2026-10-04).
+        // readmission after five years or more (Academic Code §5.5; a shorter
+        // gap holds nothing since DGS 2026-11-03).
         const heldAsks = [
           ...(c.incompleteLapsed ? ['confirm whether the Graduate School extended my Incomplete, or the grade was posted (Academic Code §4.4)'] : []),
           ...(c.interrupted ? [c.mscseSeparated ? 'rule on the credit from my Notre Dame MSCSE, which ended five years or more before I entered the Ph.D., and request the Graduate School’s approval (Academic Code §5.5)' : 'rule on the credit from before my readmission (Academic Code §5.5)'] : []),
-          ...(c.beforeReadmission ? ['confirm the credit from before my readmission still counts (DGS Handbook §3.3)'] : []),
         ];
         nd.push({
           course: c,
@@ -301,8 +300,6 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
       // Another university's Incomplete (P3-ac-4-1; DGS 2026-10-05: held for DGS review).
       ...(c.outsideIncomplete ? ['decide this course once its final grade is posted — it is graded I (Incomplete) at my previous university, so it cannot show the B that §5.2 requires yet'] : []),
       ...(c.interrupted ? [`${c.mscseSeparated ? 'rule on the credit from my Notre Dame MSCSE, which ended five years or more before I entered the Ph.D., and request the Graduate School’s approval (Academic Code §5.5)' : 'rule on the credit from before my readmission (Academic Code §5.5)'}${recordedHere ? RECORDED : ''}`] : []),
-      // A shorter readmission's hold on the student's own MSCSE courses (review of the fix, 2026-10-29).
-      ...(c.beforeReadmission ? [`confirm the credit from before my readmission still counts (DGS Handbook §3.3)${recordedHere ? RECORDED : ''}`] : []),
     ];
 
     // Credit the Notre Dame record already shows as accepted (P3-import-1;
@@ -334,14 +331,13 @@ export function coursesNeedingDgsReviewFor(classified: readonly ClassifiedCourse
           // (credit-transfer review 2026-10-28, #65).
           needsRow: c.external === undefined && (c.cseUnknown === true || coreOpen),
           // A record-level hold on posted credit is asked as its ruling too —
-          // a readmission after five years or more, or a shorter one (review
-          // of the fix, 2026-10-29: the §5.2 card said "the review request
-          // asks" while it asked nothing).
-          replyNeeded: c.ndPostingHeld !== undefined || c.interrupted === true || c.beforeReadmission === true,
+          // a readmission after five years or more (review of the fix,
+          // 2026-10-29: the §5.2 card said "the review request asks" while it
+          // asked nothing).
+          replyNeeded: c.ndPostingHeld !== undefined || c.interrupted === true,
           decide: [
             ...(c.ndPostingHeld !== undefined ? ['confirm this credit, already accepted on my Notre Dame record, counts toward this degree (I tick the box on the course when you do)'] : []),
             ...(c.interrupted ? ['rule on the credit from before my readmission (Academic Code §5.5) — it is already accepted on my Notre Dame record'] : []),
-            ...(c.beforeReadmission ? ['confirm the credit from before my readmission still counts (DGS Handbook §3.3) — it is already accepted on my Notre Dame record'] : []),
             ...(c.cseUnknown ? [IS_CSE] : []),
             ...(coreOpen ? [CORE] : []),
           ],

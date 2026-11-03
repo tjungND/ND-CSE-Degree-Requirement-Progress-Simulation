@@ -328,7 +328,7 @@ function lastMsCompletion(ctx: Ctx): Completion | undefined {
 
 /** §3.3: "Failure to complete all requirements for the M.S. degree within
  * 5 years results in forfeiture of degree eligibility." */
-export function msTimeLimitRow(ctx: Ctx, others: { allMet: boolean; anyCannotEvaluate: boolean; mastersApplicationOpen?: boolean }): RequirementResult {
+export function msTimeLimitRow(ctx: Ctx, others: { allMet: boolean; onlyBlanksLeft: boolean; mastersApplicationOpen?: boolean }): RequirementResult {
   const quote =
     'Failure to complete all requirements for the M.S. degree within 5 years results in forfeiture of degree eligibility.';
   // The same row as the Ph.D.'s, with the master's key and quote — and the

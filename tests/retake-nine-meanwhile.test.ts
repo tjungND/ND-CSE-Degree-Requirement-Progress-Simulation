@@ -6,8 +6,11 @@
 // phd-earlier-nd-program-refused-attempt-live-retake.
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { classify } from '../src/engine/allocate.ts';
 import { audit } from '../src/engine/audit.ts';
+import { transferKey } from '../src/engine/transfer-recorded.ts';
 import type { AuditReport, CourseEntry, Student } from '../src/engine/types.ts';
+import { processingItems } from '../src/ui/grad-admin-request.ts';
 import { buildRules } from './helpers.ts';
 import { ndCourse, phdStudent, transferCourse } from './helpers/student.ts';
 
@@ -133,5 +136,51 @@ describe('an earlier attempt its own line refuses no longer keeps a live retake 
     const r = audit(record('B-', 'IP', 'mscse'), rulesFor('yes'), '2026-03-01');
     assert.equal(lineOf(r, 2).mark, 'in_progress');
     assert.match(row(r, 'ms.credits.regular').detail, /3 in progress/);
+  });
+});
+
+// Question 14's reading (3) (DGS 2026-11-03: option (b), “Hold that course's
+// transfer request until the retake has a grade”): a passing retake replaces
+// the earlier attempt, so no transfer is needed — the attempt counts
+// meanwhile, and its processing request waits.
+describe('the earlier attempt’s transfer request waits for the retake’s grade (DGS 2026-11-03)', () => {
+  const record = (retake: CourseEntry['grade'], extra: Partial<CourseEntry> = {}, more: Partial<Student> = {}) =>
+    student([earlier('CSE 60535', 'Computer Vision', extra), ndCourse('CSE 60111', { term: fall(2025) }), ndCourse('CSE 60535', { term: spring(2026), grade: retake })], more);
+  const sent = (s: Student, rules: ReturnType<typeof rulesFor>, today: string) => processingItems(audit(s, rules, today), s, rules, classify(s, rules, today).classified).transfers.map((t) => t.courseId);
+
+  it('in the retake semester: counted, not sent, and the card and the line say why', () => {
+    const s = record('IP');
+    const r = audit(s, rulesFor('yes'), '2026-03-01');
+    const card = row(r, 'phd.transfer');
+    assert.equal(card.status, 'in_progress');
+    assert.equal(card.statusLabel, undefined);
+    assert.match(card.detail, /^3 of the 24 credits you may transfer are counted\./);
+    assert.match(card.detail, /CSE 60535: its processing request waits for your Spring 2026 retake’s grade\. A passing retake replaces this attempt, so no transfer is needed; if the retake is not passed, send the processing request then\./);
+    assert.doesNotMatch(card.detail, /Approved by the DGS in the course rules|Send the Grad Admin the processing request|Final once the Graduate School/);
+    assert.match(lineOf(r, 0).text, /^counts toward regular courses \(3 cr\); approved by the DGS in the course rules — its processing request waits for the grade of your Spring 2026 retake — a passing retake replaces this attempt, and no transfer is needed/);
+    assert.deepEqual(sent(s, rulesFor('yes'), '2026-03-01'), []);
+  });
+
+  it('a case-by-case attempt the student ticked waits the same way', () => {
+    const s = record('IP', { dgsApproved: true });
+    const r = audit(s, rulesFor('dgs_approval'), '2026-03-01');
+    assert.match(row(r, 'phd.transfer').detail, /CSE 60535: its processing request waits for your Spring 2026 retake’s grade/);
+    assert.doesNotMatch(row(r, 'phd.transfer').detail, /Approved by the DGS for you, as you ticked/);
+    assert.deepEqual(sent(s, rulesFor('dgs_approval'), '2026-03-01'), []);
+  });
+
+  it('graded: passed, nothing to send; not passed, the request goes', () => {
+    assert.deepEqual(sent(record('A'), rulesFor('yes'), '2026-06-01'), []);
+    const failed = record('F');
+    assert.deepEqual(sent(failed, rulesFor('yes'), '2026-06-01'), ['CSE 60535']);
+    assert.match(row(audit(failed, rulesFor('yes'), '2026-06-01'), 'phd.transfer').detail, /Approved by the DGS in the course rules: CSE 60535\. Send the Grad Admin the processing request/);
+  });
+
+  it('a transfer already recorded is not held', () => {
+    const attempt = earlier('CSE 60535', 'Computer Vision');
+    const s = student([attempt, ndCourse('CSE 60111', { term: fall(2025) }), ndCourse('CSE 60535', { term: spring(2026), grade: 'IP' })], { attestations: { transferRecorded: true, transferRecordedCourses: [transferKey(attempt)] } });
+    const r = audit(s, rulesFor('yes'), '2026-03-01');
+    assert.doesNotMatch(row(r, 'phd.transfer').detail, /waits for your Spring 2026 retake/);
+    assert.match(lineOf(r, 0).text, /recorded by the Grad Admin, as you ticked under Approvals/);
   });
 });

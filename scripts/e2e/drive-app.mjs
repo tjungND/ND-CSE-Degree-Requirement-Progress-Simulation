@@ -436,7 +436,7 @@ export async function driveApp(s, baseUrl) {
   const unlisted = JSON.parse(await hints());
   console.log('  an unlisted number, before Add:', JSON.stringify(unlisted));
   if (unlisted.note !== 'MATH 60610 is not in the course rules yet — add it anyway; it goes to the DGS in the review request below.' || unlisted.hint !== 'Not in the course rules yet — enter its title so the DGS can identify it in your review request' || unlisted.title !== '') throw new Error('an unlisted Notre Dame number must be said at once, its Title box asking for a title: ' + JSON.stringify(unlisted));
-  if (unlisted.label !== '(e.g. CSE 60641 — start typing to pick from the course rules)') throw new Error('the number box’s hint must name the course rules’ list: ' + unlisted.label);
+  if (unlisted.label !== '(e.g. CSE 60641; type to search)') throw new Error('the number box’s hint must say typing searches (W-CL545, DGS 2026-11-03): ' + unlisted.label);
   await s.evalJs(`(() => { const t = document.querySelector('[data-key="course.new.title"]'); t.value = 'Topics in Mathematics'; t.dispatchEvent(new Event('input')); })()`);
   const titled = JSON.parse(await hints());
   if (titled.hint !== '' || titled.note === '') throw new Error('a title typed clears the Title hint and keeps the number’s note: ' + JSON.stringify(titled));

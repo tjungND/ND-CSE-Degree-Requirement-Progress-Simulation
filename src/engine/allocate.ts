@@ -148,6 +148,11 @@ export interface ClassifiedCourse {
    * after admission, no earlier program, …), for the line of a course still a
    * candidate — it named no hold (credit-transfer review 2026-10-28, #72). */
   transferHold?: string;
+  /** A Notre Dame retake of this transferred attempt is in progress — the
+   * term of the latest: a passing retake replaces the attempt, so its
+   * processing request waits for the retake's grade (DGS 2026-11-03,
+   * question 14's reading (3): option (b)). The attempt still counts. */
+  retakeHold?: Term;
   rule?: RuleCourse;
   pool: Pool;
   ineligibleReason?: string; // when pool === 'none'
@@ -362,13 +367,6 @@ export interface ClassifiedCourse {
    * 3, P3-cse-5-6-3): `interrupted` is set too, so every reader of a forfeited
    * course treats it alike; this flag only words it. */
   mscseSeparated?: true;
-  /** Program coursework dated before a readmission after a shorter gap — a
-   * withdrawal, or a fall or spring semester the student did not register for
-   * (DGS Handbook §3.3: "the program may require the student to reapply. The
-   * program may also reserve the right to reject some or all past credits").
-   * Counted provisionally and sent to the DGS (policy review 2026-10-04,
-   * P2-dh-3.1-3.13-4). */
-  beforeReadmission?: true;
   /** Transfer-only: the DGS's ExternalCourses ruling for this course, when one
    * exists (attached even when the course earns no credit, so §4.4.1 core
    * knowledge can still see a DGS-confirmed course). */
@@ -879,7 +877,7 @@ export function decidedCaseByCase(c: ClassifiedCourse, program: Program): boolea
   // …and its record-level hold too, as for a Notre Dame course: the review
   // request asks the DGS to rule on it, and the box is where the student
   // records the answer (review of the fixes, 2026-10-29 — there was none).
-  if (c.entry.origin === 'transfer' && !isNotreDameInstitution(c.entry.institution)) return needsApproval(c.transferable) || c.dgsHoldTicked === true || c.beforeReadmission === true || c.interrupted === true;
+  if (c.entry.origin === 'transfer' && !isNotreDameInstitution(c.entry.institution)) return needsApproval(c.transferable) || c.dgsHoldTicked === true || c.interrupted === true;
   // A §5.2 candidate from an earlier Notre Dame program (policy review round
   // 3, P3-dh-10-2; DGS 2026-10-06: "Apply the suggested handling"): its
   // transfer verdict is its ExternalCourses row, so a `dgs_approval` there is
@@ -893,7 +891,7 @@ export function decidedCaseByCase(c: ClassifiedCourse, program: Program): boolea
   // Dame coursework before admission — or one whose hold the tick released
   // (policy review round 4, P4-ac-2; DGS 2026-10-11: option (a)). Non-degree
   // and before-admission courses need their Courses-tab row first.
-  if (c.dgsHoldTicked || c.beforeReadmission || c.interrupted) return true;
+  if (c.dgsHoldTicked || c.interrupted) return true;
   if ((c.nonDegree || c.ndBeforeAdmission) && c.rule !== undefined) return true;
   if (!c.rule) return false;
   return needsCourseApproval(program === 'mscse' ? c.rule.countsTowardMscse : c.rule.countsTowardPhd);
@@ -908,7 +906,7 @@ export function holdAwaitsRuling(c: ClassifiedCourse): boolean {
 }
 
 export function heldByRecord(c: ClassifiedCourse): boolean {
-  return c.dgsHoldTicked === true || c.beforeReadmission === true || c.interrupted === true || ((c.nonDegree === true || c.ndBeforeAdmission === true) && c.rule !== undefined);
+  return c.dgsHoldTicked === true || c.interrupted === true || ((c.nonDegree === true || c.ndBeforeAdmission === true) && c.rule !== undefined);
 }
 
 /** Courses still graded IP in a semester that has ended, one group per
@@ -1169,17 +1167,14 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // posted or not (credit-transfer review 2026-10-28, #7: it counted and went
   // to the Grad Admin while the warning said every earlier course waits).
   const interruptedCourse = (c: CourseEntry): boolean => longInterruption && compareTerm(c.term, readmitted!) < 0;
-  // A shorter gap (policy review 2026-10-04, P2-dh-3.1-3.13-3/-4/-9; DGS:
-  // "apply the suggested handling"): readmission after a withdrawal or a missed
-  // fall or spring semester lets the program "reject some or all past credits"
-  // (DGS Handbook §3.3) — this program's own earlier courses wait for the DGS.
-  // The program's own earlier courses include the student's own Notre Dame
-  // MSCSE's — one graduate program with the Ph.D. (Graduate School,
-  // 2026-10-03; credit-transfer review 2026-10-28, #15).
-  // …and a 4+1's senior-year course counted toward that MSCSE, as the
-  // separation's hold reads it (review of the fixes, 2026-10-29).
-  const beforeShortReadmission = (c: CourseEntry): boolean =>
-    readmitted !== undefined && !longInterruption && (c.origin === 'nd' || heldWithSeparatedMscse(student, c)) && compareTerm(c.term, readmitted) < 0;
+  // A shorter gap — readmission after a withdrawal or a missed fall or spring
+  // semester, less than five years away — holds nothing: DGS Handbook §3.3
+  // lets the program "reject some or all past credits", and this program
+  // counts them (DGS 2026-11-03: "Count if within 5 years. DGS approval if over
+  // 5 years." — question 6's answer of 2026-10-30, given for posted credit,
+  // applied to the program's own Notre Dame courses and the student's own
+  // Notre Dame MSCSE's as well). Until then they waited for the DGS (policy
+  // review 2026-10-04, P2-dh-3.1-3.13-4; credit-transfer review batch 6 (e)).
   // The Notre Dame MSCSE five years or more before the Ph.D. (DGS 2026-10-06):
   // every one of its courses waits for the DGS and the Graduate School.
   const separatedSince = mscseSeparation(student);
@@ -1261,14 +1256,15 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // (review of the fix, 2026-10-29: it read "the Spring 2025 attempt … is
   // the one counted" beside that attempt's own "not counted").
   // …nor, while a live retake is under way, an attempt from before a
-  // readmission that the DGS has not ruled stands: the retake counts as in
-  // progress, and if the DGS rules the old credit stands, the old attempt
-  // counts again and the retake is the repeat (DGS 2026-10-30, question 3:
-  // option (a)).
+  // readmission after five years or more that the DGS has not ruled stands:
+  // the retake counts as in progress, and if the DGS rules the old credit
+  // stands, the old attempt counts again and the retake is the repeat (DGS
+  // 2026-10-30, question 3: option (a); a shorter readmission holds nothing
+  // since 2026-11-03).
   // …nor one its own line refuses — an earlier Notre Dame program's course
   // graded below B or ruled not to transfer (§5.2): settleRetakes below reads
   // that from the classification.
-  const heldByReadmission = (a: CourseEntry): boolean => a.dgsHoldApproved !== true && (interruptedCourse(a) || beforeShortReadmission(a));
+  const heldByReadmission = (a: CourseEntry): boolean => a.dgsHoldApproved !== true && interruptedCourse(a);
   const earnsHere = (a: CourseEntry): boolean => passesCreditFloor(a.grade) && usableHere(a) && !heldByReadmission(a);
   /** Which attempt of one course counts, and which attempts it supersedes,
    * given which attempts earn credit here (`earns`). */
@@ -1397,20 +1393,9 @@ export function classify(student: Student, rules: Rules, today?: string): {
     const withInterruption = (cc: ClassifiedCourse): ClassifiedCourse => {
       // The hold's own ruling, not a case-by-case approval (round 5, item 29 (b)).
       if (c.dgsHoldApproved === true && cc.ineligibleReason === undefined) {
-        if (beforeShortReadmission(c)) return ticked(cc, `taken before your readmission (${termLabel(readmitted!)}) — the DGS confirmed it still counts, as you ticked on the course (DGS Handbook §3.3)`);
         if (separatedSince !== undefined && !interruptedCourse(c) && heldWithSeparatedMscse(student, c))
           return ticked(cc, `from your Notre Dame MSCSE, five years or more before the Ph.D. — the DGS and the Graduate School confirmed it counts, as you ticked on the course (Academic Code §5.5)`);
         if (interruptedCourse(c)) return ticked(cc, `taken before an interruption of five years or more — the DGS and the Graduate School confirmed it stands, as you ticked on the course (Academic Code §5.5)`);
-      }
-      if (beforeShortReadmission(c) && cc.ineligibleReason === undefined) {
-        const hold = `taken before your readmission (${termLabel(readmitted!)}) — the program may reject some or all past credits (DGS Handbook §3.3); the DGS confirms`;
-        return {
-          ...held(cc),
-          ...holding(cc, hold),
-          beforeReadmission: true,
-          tier: 'provisional',
-          approvalPending: `${hold}${cc.approvalPending ? `; ${cc.approvalPending}` : ''}`,
-        };
       }
       if (separatedSince !== undefined && !interruptedCourse(c) && heldWithSeparatedMscse(student, c) && cc.ineligibleReason === undefined) {
         const hold = `from your Notre Dame MSCSE, which ended in ${termLabel(separatedSince)}, five years or more before you entered the Ph.D. in ${termLabel(entry)} — a separation that long may forfeit its credit (Academic Code §5.5), so it counts as Ph.D. coursework once the DGS reviews it and the Graduate School approves`;
@@ -1597,9 +1582,9 @@ export function classify(student: Student, rules: Rules, today?: string): {
         // typed by hand and then imported again produces — naming the term
         // identifies neither row, so say what actually happened instead
         // (2026-09-11).
-        ineligibleReason: countedIsLater && isInProgress(countedAttempt.grade) && c.dgsHoldApproved !== true && (interruptedCourse(c) || beforeShortReadmission(c))
+        ineligibleReason: countedIsLater && isInProgress(countedAttempt.grade) && c.dgsHoldApproved !== true && interruptedCourse(c)
           ? // Held by a readmission, set aside for the live retake (DGS 2026-10-30, question 3).
-            `not counted — the ${termLabel(countedAttempt.term)} retake in progress counts instead: this attempt was taken before your readmission (${termLabel(readmitted!)}), so its credit is held (${interruptedCourse(c) ? 'Academic Code §5.5' : 'DGS Handbook §3.3'}); if the retake is not passed, the DGS is asked about this attempt`
+            `not counted — the ${termLabel(countedAttempt.term)} retake in progress counts instead: this attempt was taken before your readmission (${termLabel(readmitted!)}), so its credit is held (Academic Code §5.5); if the retake is not passed, the DGS is asked about this attempt`
           : countedIsLater
           ? `superseded by the ${termLabel(countedAttempt.term)} retake — its credits count once${program === 'phd' && rule?.categoryGroups && rule.categoryGroups.length > 0 ? ', and for the category specialization the retake grade replaces this one (§4.4.2)' : ''}`
           : countedAttempt && compareTerm(countedAttempt.term, c.term) === 0
@@ -2496,8 +2481,19 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // transfer review 2026-10-28, #19) — said inside each branch that sends it,
   // never in front of "recorded" (review of the fix, 2026-10-29).
   const noGradeYet = grade === 'IP' ? 'once its final grade (B or better, §5.2) is in, ' : '';
+  // A Notre Dame retake of this course in progress (DGS 2026-11-03, question
+  // 14's reading (3): option (b) — "Hold that course's transfer request until
+  // the retake has a grade"): passed, the retake replaces this attempt and no
+  // transfer is needed; not passed, the request goes then. Not once recorded.
+  const retakeHold = fromNd && !transferRecordedFor(student, c)
+    ? student.courses
+        .filter((a) => a !== c && a.origin === 'nd' && a.courseId === c.courseId && isInProgress(a.grade) && compareTerm(a.term, c.term) > 0)
+        .reduce<Term | undefined>((latest, a) => (latest === undefined || compareTerm(a.term, latest) > 0 ? a.term : latest), undefined)
+    : undefined;
   const processWhen = transferRecordedFor(student, c)
     ? 'recorded by the Grad Admin, as you ticked under Approvals (§5.2)'
+    : retakeHold !== undefined
+      ? `its processing request waits for the grade of your ${termLabel(retakeHold)} retake — a passing retake replaces this attempt, and no transfer is needed`
     : window.closed !== undefined
       ? `${grade === 'IP' ? 'no final grade yet (§5.2 needs a B or better); ' : ''}${transferWindowClosedText(window.closed)}`
       : firstSemesterDone
@@ -2518,6 +2514,7 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
     ...(creditsAsPrinted ? { creditsAsPrinted: true as const } : {}),
     ...(settled && attested ? { tickApproved: true as const } : {}),
     ...(heldForDgs.length > 0 ? { transferHold: heldForDgs.join('; ') } : {}),
+    ...(retakeHold !== undefined ? { retakeHold } : {}),
     pool: transferPool,
     caps: ['transfer', ...(shape?.caps ?? []), ...nonCseCap],
     tier: tierFor(grade, !settled),
@@ -3899,7 +3896,7 @@ function buildExplanationText(
       // Separated by five years or more (DGS 2026-10-06): the pending reason
       // says why it waits, so the line names only the degree.
       // The reason is said once, in the group's intro (UI review, 2026-10-08).
-      parts.push(cc.mscseSeparated ? 'counted toward your MSCSE' : `counted toward your MSCSE — ${cc.approvalPending !== undefined || cc.interrupted || cc.beforeReadmission ? '' : 'counts in full as '}Ph.D. coursework`);
+      parts.push(cc.mscseSeparated ? 'counted toward your MSCSE' : `counted toward your MSCSE — ${cc.approvalPending !== undefined || cc.interrupted ? '' : 'counts in full as '}Ph.D. coursework`);
     // "counts in full" only when nothing is still to be approved: a plain
     // bachelor's course or an unverified UG→GR move says why it waits instead
     // (policy review 2026-10-03) — on the MSCSE lines above too, a lapsed
@@ -3914,7 +3911,7 @@ function buildExplanationText(
     // once, in the group's intro above the rows (UI review, 2026-10-08).
     // Held by an interruption of five years or more, the line never promises
     // full credit beside "§5.5 forfeits it" (credit-transfer review 2026-10-28, #40).
-    else if (cc.ndMastersCredit) parts.push(`from your Notre Dame MSCSE — ${cc.approvalPending !== undefined || cc.interrupted || cc.beforeReadmission ? '' : 'counts in full as '}Ph.D. coursework (not transfer credit)${cc.pool === 'total_only' ? '; a master’s project or thesis is not a regular course, so it counts toward the total credits only (§4.2)' : ''}`);
+    else if (cc.ndMastersCredit) parts.push(`from your Notre Dame MSCSE — ${cc.approvalPending !== undefined || cc.interrupted ? '' : 'counts in full as '}Ph.D. coursework (not transfer credit)${cc.pool === 'total_only' ? '; a master’s project or thesis is not a regular course, so it counts toward the total credits only (§4.2)' : ''}`);
     // The rule, not a computed date (policy review round 3, P3-cross-doc-4; DGS
     // 2026-10-06: "Apply the suggested handling"): the 30 days are the
     // student's and the 14 after them the instructor's (Academic Code §4.4:

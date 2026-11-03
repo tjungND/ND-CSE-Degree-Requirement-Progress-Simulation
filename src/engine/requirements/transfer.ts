@@ -8,7 +8,7 @@
 // Parameters tab, one key per degree and prior-degree state.
 import { isNotreDameInstitution, needsApproval } from '../../data/external.ts';
 import { formatCredits } from '../credits.ts';
-import { compareTerm, semesterNumber, termOfDate } from '../term.ts';
+import { compareTerm, semesterNumber, termLabel, termOfDate } from '../term.ts';
 import type { DetailPart, RequirementResult, Status } from '../types.ts';
 import type { Ctx } from './context.ts';
 import { conferralWindow, earlierTransferPrograms, firstSemesterComplete, outsideIncompleteNote, transferWindowClosedText } from '../allocate.ts';
@@ -68,6 +68,10 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
       : 'transfer_unfinished_ms_credits_max';
   const cap = ctx.params.number(capKey);
   let status: Status;
+  // Every transfer still to send waits for a Notre Dame retake's grade
+  // (question 14's reading (3), DGS 2026-11-03): nothing is with the Graduate
+  // School yet, so the pill does not say so.
+  let onlyRetakesLeft = false;
   // Which courses are counted, waiting or refused, against how much, are the
   // facts; the allowance's basis, the reasons and the instructions are notes
   // (DGS 2026-10-03).
@@ -308,7 +312,9 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // Admin still records it, so the row says which courses to send — not
     // one a cap left no credit of (DGS 2026-10-27: TELE 5600, over the
     // non-CSE nine, is not submitted; its own line above says why).
-    const approvedForAll = transfers.filter((c) => !c.superseded && c.transferable === 'yes' && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && admitted(c) > 0);
+    // …nor one whose Notre Dame retake is in progress: its request waits for
+    // the retake's grade (DGS 2026-11-03, question 14's reading (3)), below.
+    const approvedForAll = transfers.filter((c) => !c.superseded && c.transferable === 'yes' && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && c.retakeHold === undefined && admitted(c) > 0);
     // Each course says whether it is recorded, and the processing note goes
     // with a line holding one that is not — the tick covers courses one by one
     // (review of the fixes, 2026-10-29: a ticked course read as still to send).
@@ -321,11 +327,22 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // A case-by-case course the student ticked as approved counts and goes in
     // the request too, so the card names it (credit-transfer review
     // 2026-10-28, #51 — it appeared nowhere on the card).
-    const approvedForMe = transfers.filter((c) => !c.superseded && needsApproval(c.transferable) && c.tickApproved === true && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && admitted(c) > 0);
+    const approvedForMe = transfers.filter((c) => !c.superseded && needsApproval(c.transferable) && c.tickApproved === true && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && c.retakeHold === undefined && admitted(c) > 0);
     if (approvedForMe.length > 0) {
       parts.push(`Approved by the DGS for you, as you ticked: ${named(approvedForMe)}${recorded ? ' — recorded by the Grad Admin, as you ticked under Approvals (§5.2)' : ''}`, ...(recorded || approvedForAll.some(unrecorded) || !approvedForMe.some(unrecorded) ? [] : [{ note: upper(processWhen) }]));
     }
-    if (pending.length === 0 && counted > 0 && !recorded) {
+    // A Notre Dame retake of a transferred attempt in progress (DGS
+    // 2026-11-03, question 14's reading (3): option (b)): the attempt counts,
+    // and its processing request waits for the retake's grade.
+    const retakeHeld = transfers.filter((c) => !c.superseded && c.retakeHold !== undefined && c.ineligibleReason === undefined && c.approvalPending === undefined && c.ndPosting === undefined && admitted(c) > 0);
+    for (const c of retakeHeld) {
+      parts.push(`${c.entry.courseId}: its processing request waits for your ${termLabel(c.retakeHold!)} retake’s grade`, {
+        note: 'A passing retake replaces this attempt, so no transfer is needed; if the retake is not passed, send the processing request then',
+      });
+    }
+    const toSend = countedTransfers.filter((c) => c.ndPosting === undefined && unrecorded(c));
+    onlyRetakesLeft = !recorded && toSend.length > 0 && toSend.every((c) => c.retakeHold !== undefined);
+    if (pending.length === 0 && counted > 0 && !recorded && !onlyRetakesLeft) {
       parts.push({ note: 'Final once the Graduate School has approved the transfer and the Grad Admin has recorded it (§5.2, criterion 5) — then tick “The Graduate School approved my transfer credit” under Approvals' });
     }
     if (status !== 'met') {
@@ -375,7 +392,7 @@ export function transferRow(ctx: Ctx, opts: { id: string; group: string; capKeyC
     // decided and only §5.2's criterion 5 is left.
     ...(status === 'needs_dgs_review'
       ? { statusLabel: 'Waiting for the DGS' }
-      : status === 'in_progress' && transfers.length > 0 && !transfers.some((c) => !c.superseded && c.approvalPending)
+      : status === 'in_progress' && transfers.length > 0 && !transfers.some((c) => !c.superseded && c.approvalPending) && !onlyRetakesLeft
         ? { statusLabel: 'Graduate School approval pending' }
         : {}),
     ...joinedDetail(parts),

@@ -1,6 +1,6 @@
 {
-  "name": "phd-short-readmission-holds-own-mscse",
-  "description": "Credit-transfer review 2026-10-28 (#15): readmitted in Fall 2022 after a shorter gap; the program “may reject some or all past credits” (DGS Handbook §3.3), so the Ph.D.’s own earlier courses wait for the DGS — but the student’s own Notre Dame MSCSE courses from before it counted in full. They are the same graduate program (Graduate School, 2026-10-03): they wait too, and their lines no longer say “counts in full”.",
+  "name": "phd-short-readmission-counts-own-mscse",
+  "description": "Readmitted in Fall 2022 after a shorter gap (about a year and a half away). The credit-transfer review (2026-10-28, #15) found the Ph.D.’s own earlier courses waiting for the DGS while the student’s own Notre Dame MSCSE courses from before it counted in full; they are one graduate program (Graduate School, 2026-10-03), so from 2026-10-29 both waited (the scenario was `phd-short-readmission-holds-own-mscse`). Since DGS 2026-11-03 (“Count if within 5 years. DGS approval if over 5 years.” — question 6’s answer of 2026-10-30, extended to the program’s own courses) both count: 18 of 24, the MSCSE lines read “counts in full as Ph.D. coursework”, and the review request asks nothing about them.",
   "today": "2026-10-28",
   "rules": {
     "base": "default"
@@ -109,13 +109,20 @@
     "phd.credits.regular": {
       "status": "unmet",
       "detailIncludes": [
-        "3 of 24 credits complete. 15 pending review/approval."
+        "18 of 24 credits complete."
+      ],
+      "detailExcludes": [
+        "pending review/approval"
       ]
     }
   },
   "expectCourseLines": {
     "CSE 60641": [
-      "taken before your readmission (Fall 2022)"
+      "from your Notre Dame MSCSE — counts in full as Ph.D. coursework"
+    ],
+    "CSE 60427": [
+      "counts toward regular courses (3 cr)"
     ]
-  }
+  },
+  "expectReviewEmpty": true
 }

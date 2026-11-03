@@ -456,7 +456,11 @@ export function processingItems(report: AuditReport, student: Student, rules: Ru
         c.approvalPending === undefined &&
         // …nor a course with no final grade yet: §5.2 needs its B on the
         // record (credit-transfer review 2026-10-28, #19).
-        c.entry.grade !== 'IP',
+        c.entry.grade !== 'IP' &&
+        // …nor an attempt whose Notre Dame retake is in progress: a passing
+        // retake replaces it, so its request waits for the retake's grade
+        // (DGS 2026-11-03, question 14's reading (3): option (b)).
+        c.retakeHold === undefined,
     )
     .map((c) => {
       const cap = capOf(c);

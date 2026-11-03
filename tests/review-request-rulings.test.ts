@@ -22,9 +22,11 @@ const student: Student = phdStudent({
   bachelorsAwarded: t('spring', 2020),
   priorMs: 'completed',
   gpa: 3.5,
-  readmittedTerm: t('fall', 2025),
+  background: { bachelors: 'elsewhere', graduate: 'elsewhere', finished: true },
   courses: [
-    ndCourse('CSE 60111', { term: t('fall', 2022) }), // before the readmission
+    // At Notre Dame before admission, the earlier program elsewhere (until
+    // 2026-11-03 a course from before a shorter readmission, which now counts).
+    { courseId: 'CSE 60111', credits: 3, term: t('spring', 2022), grade: 'A', origin: 'transfer', institution: 'University of Notre Dame', degreeLevel: 'masters' },
     ndCourse('CSE 60641', { term: t('spring', 2026), grade: 'I' }), // an Incomplete past its deadline
     transferCourse('CS 50300', 'Operating Systems', { term: t('fall', 2021), grade: 'S', degreeLevel: 'masters' }), // pass/fail, cannot show a B
   ],
@@ -37,7 +39,7 @@ describe('rulings for this student go to list B, once, with their text (P3-email
   const listA = text.split('A. Please enter or complete these in the course rules')[1]?.split('B. Please decide these for me')[0] ?? '';
   const listB = (text.split('B. Please decide these for me — a reply is needed:')[1] ?? '').split('Thank you!')[0]!;
   const rulings: [string, RegExp][] = [
-    ['CSE 60111', /confirm the credit from before my readmission still counts \(DGS Handbook §3\.3\)/],
+    ['CSE 60111', /at most 12 such credits may count \(Academic Code §2\.3\)/],
     ['CSE 60641', /confirm whether the Graduate School extended my Incomplete, or the grade was posted \(Academic Code §4\.4\)/],
     ['CS 50300', /decide whether this S \(pass\/fail\) course transfers — it cannot show the B §5\.2 requires/],
   ];

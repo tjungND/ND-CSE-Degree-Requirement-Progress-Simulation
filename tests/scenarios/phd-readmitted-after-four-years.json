@@ -1,6 +1,6 @@
 {
   "name": "phd-readmitted-after-four-years",
-  "description": "Policy review round 3, P3-ac-5a-2 (DGS 2026-10-05: 'Apply the suggested handling'): the five years of Academic Code §5.5 are the time actually away, from the end of the last Notre Dame term to the start of the readmission term. Last enrolled Fall 2018, readmitted Spring 2023 — about four years. Until 2026-10-05 the app subtracted the year numbers (2023 − 2018 = 5) and told the student the Code forfeits every earlier credit; it is a shorter gap, under which the program may reject some or all past credits (DGS Handbook §3.3).",
+  "description": "Policy review round 3, P3-ac-5a-2 (DGS 2026-10-05: 'Apply the suggested handling'): the five years of Academic Code §5.5 are the time actually away, from the end of the last Notre Dame term to the start of the readmission term. Last enrolled Fall 2018, readmitted Spring 2023 — about four years. Until 2026-10-05 the app subtracted the year numbers (2023 − 2018 = 5) and told the student the Code forfeits every earlier credit; it is a shorter gap, under which the program may reject some or all past credits (DGS Handbook §3.3). Since DGS 2026-11-03 (“Count if within 5 years. DGS approval if over 5 years.” — question 6’s answer of 2026-10-30, extended to the program’s own courses) the courses from before this shorter gap count: 9 of 24, nothing in the review request but the readmission itself.",
   "today": "2023-10-01",
   "rules": {
     "base": "default"
@@ -61,16 +61,20 @@
     "phd.credits.regular": {
       "status": "unmet",
       "detailIncludes": [
-        "3 of 24",
-        "6 pending review/approval"
+        "9 of 24 credits complete"
+      ],
+      "detailExcludes": [
+        "pending review/approval"
       ]
     }
   },
   "expectCourseLines": {
     "CSE 60111": [
-      "waiting for the DGS",
-      "taken before your readmission (Spring 2023)",
-      "DGS Handbook §3.3"
+      "counts toward regular courses (3 cr)"
     ]
-  }
+  },
+  "expectReviewEmpty": true,
+  "expectWarnings": [
+    "your courses from before it count, since you were away less than five years (DGS Handbook §3.3; DGS 2026-11-03)"
+  ]
 }
