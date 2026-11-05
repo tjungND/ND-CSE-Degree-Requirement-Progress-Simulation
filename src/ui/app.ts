@@ -1306,9 +1306,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     if (admission) card.append(admission);
     const ftTerms = fullTimeTerms(classified);
     if (ftTerms) card.append(ftTerms);
-    card.append(clockFields());
-    card.append(probationField());
-    card.append(dualDegreeField());
+    card.append(specialSituations());
     const nonDegree = nonDegreeQuestion(classified);
     if (nonDegree) card.append(nonDegree);
     return card;
@@ -1347,6 +1345,36 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         ),
       ),
     );
+  }
+
+  /** The rare cases of Your standing under one selector (DGS 2026-11-05:
+   * "Hide them under one 'Special situations?'"): a medical leave, an
+   * accommodation or a readmission (`clockFields`), probation
+   * (`probationField`) and a second degree program (`dualDegreeField`), each
+   * still its own selector inside. Closed unless one of them needs attention —
+   * the leave question while a transcript gap waits for an answer opens both —
+   * and what is on file is said in its summary line (DGS 2026-10-04). */
+  function specialSituations(): HTMLElement {
+    const clocks = clockFields();
+    const onFile = [
+      ...clockOnFile(),
+      ...(student.probationLetterDeadline !== undefined ? [`a probation-letter deadline, ${student.probationLetterDeadline}`] : []),
+      ...(student.concurrentDegree === true ? ['a second Notre Dame degree program'] : []),
+    ];
+    const fold = rareFold('special', onFile.length > 0 ? `Special situations? — on file: ${onFile.join(', ')}` : 'Special situations?', (clocks as HTMLDetailsElement).open, clocks, probationField(), dualDegreeField());
+    fold.classList.add('special-situations');
+    return fold;
+  }
+
+  /** What `clockFields` has on file, as its summary line and the Special
+   * situations line say it. */
+  function clockOnFile(): string[] {
+    return [
+      ...((student.leaveSemesters ?? 0) > 0 ? [`${student.leaveSemesters} medical leave ${student.leaveSemesters === 1 ? 'semester' : 'semesters'}`] : []),
+      ...((student.otherLeaveSemesters ?? 0) > 0 ? [`${student.otherLeaveSemesters} ${student.otherLeaveSemesters === 1 ? 'semester' : 'semesters'} of other approved leave`] : []),
+      ...((student.accommodationSemesters ?? 0) > 0 ? [`${student.accommodationSemesters} accommodation ${student.accommodationSemesters === 1 ? 'semester' : 'semesters'}`] : []),
+      ...(student.readmittedTerm ? [`readmitted ${termLabel(student.readmittedTerm)}`] : []),
+    ];
   }
 
   /** On probation, with a deadline in the letter (Academic Code §5.7.2) — a
@@ -1525,12 +1553,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // Closed by default; open only when a transcript gap is waiting for an
     // answer (DGS 2026-10-04: "Open one if an attention is needed there (e.g.,
     // found a gap semester)"). What is on file is said in the summary line.
-    const onFile = [
-      ...((student.leaveSemesters ?? 0) > 0 ? [`${student.leaveSemesters} medical leave ${student.leaveSemesters === 1 ? 'semester' : 'semesters'}`] : []),
-      ...((student.otherLeaveSemesters ?? 0) > 0 ? [`${student.otherLeaveSemesters} ${student.otherLeaveSemesters === 1 ? 'semester' : 'semesters'} of other approved leave`] : []),
-      ...((student.accommodationSemesters ?? 0) > 0 ? [`${student.accommodationSemesters} accommodation ${student.accommodationSemesters === 1 ? 'semester' : 'semesters'}`] : []),
-      ...(student.readmittedTerm ? [`readmitted ${termLabel(student.readmittedTerm)}`] : []),
-    ];
+    const onFile = clockOnFile();
     // An all-W or all-F semester is answered by a readmission only: a leave is
     // requested before the first class day (Academic Code §5.1), so it is not one.
     // …and while the answer does not cover the gaps (policy review round 3,

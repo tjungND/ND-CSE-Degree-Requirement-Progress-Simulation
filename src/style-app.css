@@ -419,6 +419,8 @@ tr.totals-doubt > td { background: var(--warn-tint); }
 details.rare { margin: 6px 0 10px; }
 details.rare > summary { cursor: pointer; color: var(--navy); font-weight: 600; font-size: 13px; padding: 3px 0; min-height: 24px; box-sizing: border-box; }
 details.rare[open] > summary { margin-bottom: 6px; }
+/* Your standing's rare cases, one level down under "Special situations?" (DGS 2026-11-05). */
+details.special-situations > details.rare { margin-left: 18px; }
 .req details.detail-fold > summary { cursor: pointer; color: var(--navy); font-weight: 600; font-size: 13px; } /* a card's folded list (2026-10-04) */
 .req .contrib > summary { cursor: pointer; color: var(--navy); font-weight: 600; }
 .req .contrib-list { margin: 4px 0 0; padding-left: 18px; color: var(--ink); }

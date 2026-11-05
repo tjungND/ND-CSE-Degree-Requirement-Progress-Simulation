@@ -1,6 +1,8 @@
 # Where things stand (kept current by every session — read after CLAUDE.md and docs/CLAUDE-HANDOFF.md)
 
-Last updated: 2026-11-05 (the two 2026-11-05 paragraphs and the two 2026-11-03 paragraphs just below, and “Open for the DGS”, near the end — rebuilt from a sweep of every record on 2026-11-01 — with every question and reading on it answered; the 2026-10-29 paragraph — its answers through question 7 on 2026-10-31 —, the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+Last updated: 2026-11-05 (the three 2026-11-05 paragraphs and the two 2026-11-03 paragraphs just below, and “Open for the DGS”, near the end — rebuilt from a sweep of every record on 2026-11-01 — with every question and reading on it answered; the 2026-10-29 paragraph — its answers through question 7 on 2026-10-31 —, the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+
+2026-11-05, later still (DGS: “Hide them under one ‘Special situations?’”; one commit): **Your standing's three rare selectors — leave/accommodation/readmission, probation, a second degree program — sit under one “Special situations?”** (`specialSituations`, app.ts), closed unless one needs attention (a transcript gap or a leave semester to place opens it), with what is on file in its summary line. Wording W-CL649 (DECISIONS 2026-11-05).
 
 2026-11-05, later (DGS: “… Can you let it keep blinking until students perform that step?”; one commit): **the “Next step” ring pulses until the step is done** — the pulse repeats without end, the ten-second timer is gone, and `keepRing` (next-step.ts, called at the end of every render) rings the step again in its new place while the page still asks for it; a loaded file, its Undo, simulation mode or Reset ends it; steady without the pulse under reduced motion. Open for the DGS: the optional Previous Undergraduate Transcript row (“skip it”) now pulses until imported or until another step is finished (DECISIONS 2026-11-05).
 
@@ -980,7 +982,7 @@ read as in progress, a Thai summer session moved to the next calendar year, Budd
 DECISIONS row marked. Older rows marked “the DGS may reverse” are defaults under the 2026-08-31 delegation and
 were never on the list.
 
-**Waiting on the DGS, not rulings:** wording W-CL583–W-CL648 ships as written unless edited by number (item 6 added none);
+**Waiting on the DGS, not rulings:** wording W-CL583–W-CL649 ships as written unless edited by number (item 6 added none);
 the WordPress footer snippet and the `?embed=1` shortcode (Open work, below); when to drop the alpha
 banner and link both pages from cse.nd.edu; optionally the Melbourne / Limerick specimens and a sanitized
 Workday sample for the reader; `docs/HANDBOOK-REVISIONS.md` for the CSE graduate committee (the §5.2
