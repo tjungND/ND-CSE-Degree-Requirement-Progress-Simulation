@@ -14,16 +14,17 @@
 // step is finished (`finishedBetween`), and the next one (`nextAfter`) — the
 // first still asked for AFTER it, else the first still asked for; after an
 // earlier transcript, the rows the earlier degrees still ask for first — is
-// scrolled into view, focused, ringed with a "Next step" tag for ten seconds
-// and said in a message (`showNextStep`), for a button and for an answer in
-// a field alike (DGS 2026-10-17: "Scroll and focus too"). A step that waits
-// on someone else, or has no place on the page, is never next. render()
-// rebuilds the page on every change, so the next change ends the ring.
+// scrolled into view, focused, ringed with a pulsing "Next step" tag and said
+// in a message (`showNextStep`), for a button and for an answer in a field
+// alike (DGS 2026-10-17: "Scroll and focus too"). A step that waits on
+// someone else, or has no place on the page, is never next. The ring stays,
+// pulsing, until that step is done (DGS 2026-11-05: "let it keep blinking
+// until students perform that step"): render() rebuilds the page on every
+// change, so `keepRing` puts it back in the step's new place after each
+// render while the page still asks for it; a record put in the record's
+// place (a file loaded, its Undo, simulation mode, Reset) ends it.
 import { applyDeciderRule } from './first-mention.ts';
 import { STEP_KEYS, type NextStep, type StepKey } from './next-steps.ts';
-
-/** How long the ring stays, in milliseconds. */
-const RING_MS = 10_000;
 
 /** One thing the page asks for: `import.nd`, `earlier.done`,
  * `import:<slot>` (an earlier-transcript row) or `step:<key>`. */
@@ -100,6 +101,8 @@ export interface NextStepTarget {
   focus: HTMLElement;
   /** What the message says (W-CL525–W-CL527). */
   message: string;
+  /** The step it is (`keepRing` finds it again after a render). */
+  id: PendingId;
 }
 
 /** A control the student can use now (not one shown inactive with a reason). */
@@ -141,7 +144,7 @@ const CONTROL: Partial<Record<StepKey, (doc: Document, step: NextStep) => Elemen
 };
 
 /** A transcript row's Import, ringed with its row (W-CL525). */
-function importTarget(button: Element | null): NextStepTarget | undefined {
+function importTarget(button: Element | null): Omit<NextStepTarget, 'id'> | undefined {
   if (!usable(button)) return undefined;
   const row = (button.closest('.external-slot, .transcript-upload') as HTMLElement | null) ?? boxOf(button);
   const label = row.querySelector('.slot-label')?.textContent?.trim() || 'transcript';
@@ -150,6 +153,11 @@ function importTarget(button: Element | null): NextStepTarget | undefined {
 
 /** Where `id` is done on the page, if it can be done now. */
 export function targetOf(doc: Document, id: PendingId, steps: readonly NextStep[], program: 'mscse' | 'phd'): NextStepTarget | undefined {
+  const found = placeOf(doc, id, steps, program);
+  return found ? { ...found, id } : undefined;
+}
+
+function placeOf(doc: Document, id: PendingId, steps: readonly NextStep[], program: 'mscse' | 'phd'): Omit<NextStepTarget, 'id'> | undefined {
   if (id === 'import.nd') return importTarget(doc.querySelector('[data-key="import.nd"]'));
   if (id.startsWith('import:')) return importTarget(doc.querySelector(`[data-key="ext.import.${id.slice('import:'.length)}"]`));
   if (id === 'earlier.done') {
@@ -185,26 +193,45 @@ export function nextAfter(doc: Document, finished: readonly PendingId[], now: Re
   return undefined;
 }
 
+/** The element ringed now, and the step it is for with the record it was
+ * shown on — the student object, which a loaded file, its Undo, simulation
+ * mode and Reset replace (app.ts). */
 let ringed: HTMLElement | undefined;
-let ringTimer: number | undefined;
+let ringedStep: { id: PendingId; record: object } | undefined;
 
-/** Scroll to the next step, focus it, ring it and say it. */
-export function showNextStep(target: NextStepTarget | undefined, say: (message: string) => void): void {
-  if (!target) return;
-  const { box, focus, message } = target;
-  // One ring at a time: a step finished while the last ring is on moves it.
-  window.clearTimeout(ringTimer);
-  ringed?.classList.remove('next-step-ring');
-  const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  box.classList.add('next-step-ring');
+/** One ring at a time: a step finished while the last ring is on moves it. */
+function ringOnly(box: HTMLElement | undefined): void {
+  if (ringed !== box) ringed?.classList.remove('next-step-ring');
+  box?.classList.add('next-step-ring');
   ringed = box;
+}
+
+/** Scroll to the next step, focus it, ring it and say it. `record`: the
+ * student record it is shown on. */
+export function showNextStep(target: NextStepTarget | undefined, say: (message: string) => void, record: object): void {
+  if (!target) return;
+  const { box, focus, message, id } = target;
+  const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ringOnly(box);
+  ringedStep = { id, record };
   // A heading takes focus only with a tabindex.
   if (focus.tabIndex < 0 && !focus.hasAttribute('tabindex')) focus.setAttribute('tabindex', '-1');
   focus.focus({ preventScroll: true });
   box.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
   say(message);
-  ringTimer = window.setTimeout(() => {
-    box.classList.remove('next-step-ring');
-    if (ringed === box) ringed = undefined;
-  }, RING_MS);
+}
+
+/** After every render (app.ts): the ringed step, while the page still asks
+ * for it (`now`) on the same record, ringed again in its new place — no
+ * scroll, no focus, no message. A step that cannot be done just now (its
+ * Import inactive while a preview is open) has no ring until it can; a step
+ * done, or another record, ends it. */
+export function keepRing(doc: Document, now: ReadonlySet<PendingId>, steps: readonly NextStep[], program: 'mscse' | 'phd', record: object): void {
+  if (!ringedStep) return;
+  if (ringedStep.record !== record || !now.has(ringedStep.id)) {
+    ringedStep = undefined;
+    ringOnly(undefined);
+    return;
+  }
+  ringOnly(targetOf(doc, ringedStep.id, steps, program)?.box);
 }

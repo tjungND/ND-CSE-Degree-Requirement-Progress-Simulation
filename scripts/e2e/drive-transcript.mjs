@@ -144,12 +144,17 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   const againToast = await s.evalJs(`[...document.querySelectorAll('.toast')].map(t => t.textContent).join(' | ')`);
   const againRow = await s.evalJs(`document.querySelector('.transcript-upload')?.textContent ?? ''`);
   if (!againRow.includes('7 courses from your transcript') || !/The 7 courses imported earlier were replaced\./.test(againToast)) throw new Error('Import again must replace the earlier import and say so: ' + againRow.slice(0, 100) + ' | ' + againToast.slice(0, 200));
+  // The next step stays ringed until it is done (DGS 2026-11-05): "Looks
+  // right", ringed after the first Add, is still ringed after Import again.
+  const ringedKey = () => s.evalJs(`[...document.querySelectorAll('.next-step-ring')].map((r) => r.querySelector('[data-key]')?.getAttribute('data-key') ?? r.className).join(' | ')`);
+  const beforeUndo = await ringedKey();
+  if (beforeUndo !== afterNd.focused) throw new Error('the next step must stay ringed through other changes until it is done: ' + JSON.stringify({ was: afterNd.focused, now: beforeUndo }));
   await s.evalJs(`[...document.querySelectorAll('.toast button')].find(b => b.textContent === 'Undo').click()`);
   await s.settle();
   const undone = await s.evalJs(`document.querySelector('.transcript-upload')?.textContent ?? ''`);
   if (!undone.includes('7 courses from your transcript')) throw new Error('Undo must put the earlier import back: ' + undone.slice(0, 100));
-  // An Undo finishes no step: nothing is highlighted (DGS 2026-10-17, next-step.ts).
-  if (await s.evalJs(`document.querySelectorAll('.next-step-ring').length > 0`)) throw new Error('an Undo must highlight nothing');
+  // An Undo finishes no step, so it highlights nothing new: the ring stays where it was (DGS 2026-10-17, 2026-11-05; next-step.ts).
+  if ((await ringedKey()) !== beforeUndo) throw new Error('an Undo must not move the highlight: ' + JSON.stringify({ before: beforeUndo, after: await ringedKey() }));
   console.log('  Import again: every row offered, the earlier import replaced (7 rows stay 7), Undo restores it');
   // The standing card now shows the term read from the transcript, flagged.
   const entryNote = await s.evalJs(`document.querySelector('.entry-note')?.textContent ?? ''`);

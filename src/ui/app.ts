@@ -81,7 +81,7 @@ import { diagnosticsCard, footer, masthead, noticeStrip, snapshotBanner } from '
 import { type RequestCardArgs, askDgsCard, askGradAdminCard } from './request-cards.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
 import { courseworkSentence, nearestDeadline, nextSteps, type NextStep } from './next-steps.ts';
-import { finishedBetween, nextAfter, pendingOn, showNextStep, targetOf, type PendingId } from './next-step.ts';
+import { finishedBetween, keepRing, nextAfter, pendingOn, showNextStep, targetOf, type PendingId } from './next-step.ts';
 import {
   type LoadCleanup,
   type Refusal,
@@ -336,7 +336,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // A new record starts at its Notre Dame transcript (DGS 2026-10-17: after
     // the notice, "New record only"): the "Start here" row is highlighted, and
     // focus goes to its Import. A returning student's page stays at the top.
-    showNextStep(askedFor.has('import.nd') ? targetOf(document, 'import.nd', stepsShown, student.program) : undefined, nextStepNote);
+    showNextStep(askedFor.has('import.nd') ? targetOf(document, 'import.nd', stepsShown, student.program) : undefined, nextStepNote, student);
     // Say why the questions are back (coverage review, 2026-10-08).
     if (incomplete && !programChanged) toast('A question about your earlier degrees was added since you answered them — answer it in the Transcripts card.');
   };
@@ -467,7 +467,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         stepCheck = undefined;
         if (!check || check.quiet) return;
         const finished = finishedBetween(check.before, askedFor);
-        if (finished.length > 0) showNextStep(nextAfter(document, finished, askedFor, stepsShown, student.program), nextStepNote);
+        if (finished.length > 0) showNextStep(nextAfter(document, finished, askedFor, stepsShown, student.program), nextStepNote, student);
       }, 0);
     }
     if (opts.quiet) stepCheck.quiet = true;
@@ -853,6 +853,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // What the page asks for now — a later change is measured against it (next-step.ts).
     askedFor = pendingOn(root, next.steps, untouched);
     stepsShown = next.steps;
+    // The next step stays ringed until it is done (DGS 2026-11-05).
+    keepRing(document, askedFor, stepsShown, student.program, student);
     // Announce the recomputed result to screen readers — only when it changed,
     // so a keystroke in a title field does not chatter.
     const headline = root.querySelector('.scorehead .headline')?.textContent?.trim() ?? '';

@@ -150,9 +150,11 @@ async function checkCopyDialog(s) {
 
 // 1. The opening notice as a modal dialog.
 // The next step after a finished one (next-step.ts; DGS 2026-10-16 and
-// 2026-10-17): exactly one ring, its "Next step" tag (drawn by CSS), focus on
-// the step's control, on screen once the smooth scroll lands, and the
-// message in its own slot. Returns what it found, for the caller's checks.
+// 2026-10-17): exactly one ring, its "Next step" tag (drawn by CSS), pulsing
+// with no end (DGS 2026-11-05: "keep blinking until students perform that
+// step"), focus on the step's control, on screen once the smooth scroll
+// lands, and the message in its own slot. Returns what it found, for the
+// caller's checks.
 export async function nextStepShown(s) {
   await s.waitFor(`document.querySelectorAll('.next-step-ring').length === 1 && (() => { const r = document.activeElement?.getBoundingClientRect(); return !!r && r.bottom > 0 && r.top < window.innerHeight; })()`, 5000);
   const found = JSON.parse(await s.evalJs(`JSON.stringify((() => {
@@ -161,12 +163,14 @@ export async function nextStepShown(s) {
       ringed: ring ? ring.tagName.toLowerCase() + '.' + [...ring.classList].join('.') : '',
       label: ring?.querySelector('.slot-label')?.textContent ?? '',
       tag: ring ? getComputedStyle(ring, '::after').content : '',
+      pulses: ring ? getComputedStyle(ring).animationIterationCount : '',
       focused: document.activeElement?.dataset?.key ?? document.activeElement?.tagName ?? '',
       focusInRing: !!ring && ring.contains(document.activeElement),
       note: document.querySelector('.toast.next-step-note')?.textContent ?? '',
     };
   })())`));
   if (!/Next step/.test(found.tag)) throw new Error('the ring must carry its "Next step" tag: ' + JSON.stringify(found));
+  if (found.pulses !== 'infinite') throw new Error('the ring must keep pulsing until its step is done: ' + JSON.stringify(found));
   if (!found.focusInRing) throw new Error('focus must be on the highlighted step: ' + JSON.stringify(found));
   return found;
 }
