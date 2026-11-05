@@ -30,19 +30,11 @@ export const BETA_NOTICE =
   'Informational only, no warranty — not an official degree audit; every final decision ' +
   'rests with the DGS.';
 
-/** The one award the page's result is acted on directly (DECISIONS
- * 2026-10-07, P3-cse-3-2 — DGS: "This app’s checking is equivalent to the DGS
- * review … If the rules/policies say the student is eligible for MSCSE along
- * the way, the DGS (= I) does not need to be further involved"). Said after
- * BETA_NOTICE on the Ph.D. tab, so "informational only" is not contradicted
- * by the processing request (DGS 2026-10-11, item 6). The DGS's sentence above
- * stays word for word. */
-export const ALONG_THE_WAY_NOTICE = 'For the MSCSE along the way, this self-check is the DGS’s own review of the award (§3.1).';
-
-/** The alpha notice for a program's tab: the Ph.D.'s adds the along-the-way sentence. */
-export function betaNotice(program: 'mscse' | 'phd'): string {
-  return program === 'phd' ? `${BETA_NOTICE} ${ALONG_THE_WAY_NOTICE}` : BETA_NOTICE;
-}
+// The same notice on both tabs (DGS 2026-11-05: "do not make 'MSCSE along
+// the way' an exception. Just make it simple and let all be informational
+// only"): the Ph.D. tab's along-the-way sentence of 2026-10-11 (item 6,
+// `ALONG_THE_WAY_NOTICE`) is gone from the strip, its Details, the footer,
+// the advisor summary and the processing request's closing line.
 
 /** What is NOT in beta: the course rules themselves (DGS wording, 2026-09-01).
  * Shown in bold beside the alpha notice at the top of the page (app.ts), so a

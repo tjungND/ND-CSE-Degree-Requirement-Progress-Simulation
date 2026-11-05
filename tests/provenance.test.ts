@@ -12,7 +12,7 @@ import type { CourseEntry, Student } from '../src/engine/types.ts';
 import { advisorSummary } from '../src/ui/advisor-summary.ts';
 import { changedFields, courseEntryOf } from '../src/ui/external-upload.ts';
 import { gradAdminRequest } from '../src/ui/grad-admin-request.ts';
-import { ALONG_THE_WAY_NOTICE, BETA_NOTICE, betaNotice } from '../src/ui/handbook.ts';
+import { BETA_NOTICE } from '../src/ui/handbook.ts';
 import { sourceOf, sourcesLine } from '../src/ui/provenance.ts';
 import { validateStudent } from '../src/ui/state.ts';
 import { allScenarios, buildRules } from './helpers.ts';
@@ -97,26 +97,28 @@ describe('the emails', () => {
     assert.doesNotMatch(ga.text, /Record the milestone/);
   });
 
-  it('“informational only” is not said of the MSCSE along the way', () => {
+  it('“informational only” is said of everything, the MSCSE along the way included (DGS 2026-11-05)', () => {
     assert.ok(ga.items.msAlongTheWay, 'the scenario’s award is met');
     // The one major event on this record (DGS 2026-10-15): its milestones are dated, its applications made.
     assert.equal(ga.items.count, 1);
     assert.deepEqual(ga.items.actions.map((a) => a.slice(0, 40)), ['Process the MSCSE along the way — the se']);
-    // The closing names no section (DGS 2026-10-28).
-    assert.match(ga.text, /informational only — every decision rests with the DGS — except the MSCSE along the way above, for which this self-check is the DGS’s own review\)\.\n/);
-    // Without the award in the request, the closing is the sentence as before
-    // (the ADGS's on the MSCSE tab — the page's own DGS→ADGS rewrite).
+    // The closing names no section (DGS 2026-10-28) and no exception for the
+    // award it carries (DGS 2026-11-05: "let all be informational only").
+    assert.match(ga.text, /\(alpha version under testing; informational only — every decision rests with the DGS\)\.\n/);
+    assert.doesNotMatch(ga.text, /except the MSCSE along the way|DGS’s own review/);
+    // Without the award in the request, the same sentence (the ADGS's on the
+    // MSCSE tab — the page's own DGS→ADGS rewrite).
     const msc = allScenarios().find((s) => s.name === 'life-mscse-thesis-finished')!;
     const r2 = buildRules(msc.rules.patch);
     const ga2 = gradAdminRequest(audit(msc.student, r2, msc.today), msc.student, r2, { todayIso: msc.today, entryTerm: 'Fall 2024', priorStudy: 'None' });
     assert.match(ga2.text, /\(alpha version under testing; informational only — every decision rests with the ADGS\)\.\n/);
     // Thesis direction taken in two semesters is two rows of the course table, each with its term (2026-10-11).
     assert.equal(ga2.items.courses.filter((c) => c.courseId === 'CSE 68901').map((c) => c.term).join(' | '), 'Fall 2025 | Spring 2026');
-    // The alpha notice: the DGS's sentence word for word, and on the Ph.D. tab the exception after it.
-    assert.equal(betaNotice('mscse'), BETA_NOTICE);
-    assert.equal(betaNotice('phd'), `${BETA_NOTICE} ${ALONG_THE_WAY_NOTICE}`);
+    // The alpha notice: the DGS's sentence word for word, with nothing after
+    // it on the Ph.D. tab either (DGS 2026-11-05).
     const adv = advisorSummary(report, { todayIso: sc.today, entryTerm: 'Fall 2021', priorStudy: 'None', sources: sourcesLine(student) });
-    assert.ok(adv.text.includes(ALONG_THE_WAY_NOTICE));
+    assert.ok(adv.text.includes(`Alpha version under testing. ${BETA_NOTICE} Checked against`));
+    assert.doesNotMatch(adv.text, /DGS’s own review/);
     assert.ok(adv.text.includes('My courses: 1 typed by me;'));
   });
 });

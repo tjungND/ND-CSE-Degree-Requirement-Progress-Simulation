@@ -2342,8 +2342,10 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   `sourcesLine` word them; the engine never reads them. grad-admin-request.ts: `ProcessingTransfer.source`,
   `CountedCourse.source`, a Source column in both tables, “as I entered it” / “as I ticked”; the
   course table is one row per REGISTRATION (`StandingTable.courseEntries`, the k-th listing of an
-  id = the k-th definite, non-superseded classified entry). `betaNotice(program)` adds
-  `ALONG_THE_WAY_NOTICE` on the Ph.D. tab; BETA_NOTICE itself is the DGS's wording — never edit it.
+  id = the k-th definite, non-superseded classified entry). The alpha notice is BETA_NOTICE on both tabs,
+  with no along-the-way exception (DGS 2026-11-05; `betaNotice` / `ALONG_THE_WAY_NOTICE` of 2026-10-11 are gone
+  — the strip, its Details, the footer, the advisor summary and the processing request's closing read alike);
+  BETA_NOTICE itself is the DGS's wording — never edit it.
 - **Plan notes** (2026-10-11, item 19): `src/ui/plan-notes.ts` `planNotes(c, rules, realTerm)` — Notre Dame
   courses in a semester after the REAL current one, only in simulation mode (app.ts course cell,
   `.plan-note`). `offered_next` goes through schedule-terms.ts `rowSchedule` so it means what the

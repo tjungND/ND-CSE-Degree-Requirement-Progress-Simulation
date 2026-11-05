@@ -12,7 +12,7 @@ import type { Program } from '../engine/types.ts';
 import { LICENSE_URL, REPO_URL, mailto, reportToDgs } from './contacts.ts';
 import { el } from './dom.ts';
 import { isEmbedded, openFullPageLink } from './embed.ts';
-import { BETA_SCOPE_NOTICE, RULES_ACCURACY_NOTICE, betaNotice, handbookLink, rulesDateLine } from './handbook.ts';
+import { BETA_NOTICE, BETA_SCOPE_NOTICE, RULES_ACCURACY_NOTICE, handbookLink, rulesDateLine } from './handbook.ts';
 import { sheetSourceLine, sheetSourceNote } from './sheet-source.ts';
 import { diagnosticsContent } from './sheet-warnings.ts';
 import { siblingAnchorAttrs } from './sibling-links.ts';
@@ -141,7 +141,7 @@ export function noticeStrip(program: Program): HTMLElement {
       'p',
       { class: 'notice-full beta' },
       el('strong', {}, 'Alpha version under testing. '),
-      betaNotice(program),
+      BETA_NOTICE,
       ' ',
       // The link parenthetical folds into the bold sentence here (trim
       // review 2026-09-18, P-39); the constant keeps its period for the
@@ -179,9 +179,8 @@ export function noticeStrip(program: Program): HTMLElement {
     el(
       'div',
       { class: 'banner beta notice-strip', role: 'note' },
-      // On the Ph.D. tab the one exception is named (DGS 2026-10-11, item 6;
-      // P3-cse-3-2): for the MSCSE along the way the check is the DGS's review.
-      el('p', { class: 'notice-line' }, el('strong', {}, 'Alpha — under testing. '), program === 'phd' ? 'Informational only, except the MSCSE along the way (§3.1); the DGS decides.' : 'Informational only; the DGS decides.'),
+      // The same line on both tabs, with no exception (DGS 2026-11-05).
+      el('p', { class: 'notice-line' }, el('strong', {}, 'Alpha — under testing. '), 'Informational only; the DGS decides.'),
       alphaDetails,
     ),
     el(
@@ -256,14 +255,9 @@ export function footer({ program, stamp, contactHost }: { program: Program; stam
       // losing its meaning"): the same four points — the sources, what is
       // sent to the DGS, approximate deadlines, confirm before relying.
       ' and the Graduate School’s Academic Code, DGS Handbook and 4+1 guidance. What this page cannot see — sign-offs, recommendations, Graduate School approvals and extensions, and facts you state yourself — goes to the DGS rather than being decided here. Deadlines are by semester and approximate; the Graduate School calendar sets the exact dates. ',
-      // The one exception on the Ph.D. tab (policy review round 4, P4-text-4;
-      // DGS 2026-10-11: option (a), and no copy to the DGS on along-the-way
-      // awards): the self-check IS §3.1's review of the MSCSE along the way
-      // (DGS 2026-10-07, P3-cse-3-2), as the strip, the notice, the advisor
-      // email and the processing request already say.
-      program === 'phd'
-        ? 'Confirm with the DGS before you rely on this self-check — except the MSCSE along the way, for which this self-check is the DGS’s own review (§3.1).'
-        : 'Confirm with the DGS before you rely on this self-check.',
+      // The same on both tabs, with no exception (DGS 2026-11-05; the Ph.D.
+      // tab's along-the-way clause of 2026-10-11, P4-text-4, is gone).
+      'Confirm with the DGS before you rely on this self-check.',
     ),
     // No alpha paragraph in the footer (DGS 2026-09-19, trim proposal P-3):
     // it was word for word the red strip's Details at the top of the page.

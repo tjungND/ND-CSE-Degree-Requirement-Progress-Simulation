@@ -28,7 +28,7 @@ import { decisionWording } from '../engine/decider.ts';
 import { ADVISOR_FLAG } from './next-steps.ts';
 import { DUAL_PLAN_REASON, gpaText } from '../engine/requirements/shared.ts';
 import { ACTION_HEADING, STUDENT_LINE, esc, htmlRequirementBlock, plural, programLabel, programShort, studentLineHtml, textRequirementBlock, type DeadlineAlert, type StandingColor, upperHeading } from './email-html.ts';
-import { HANDBOOK_URL, betaNotice, formatYmdLong } from './handbook.ts';
+import { BETA_NOTICE, HANDBOOK_URL, formatYmdLong } from './handbook.ts';
 import type { ProgramHistory } from './program-history.ts';
 import { deadlineAlert, isNotStarted, scoredRows, standingColor, statusWord } from './report.ts';
 import { msLimitPassedClause, whyFor, flatten, splitStatements, firstPerson } from './email-why.ts';
@@ -173,7 +173,7 @@ export function advisorSummary(report: AuditReport, opts: AdvisorSummaryOptions)
       // 2026-10-03).
       `Deadlines are counted from ${opts.entryTerm}${opts.qualifierFrom ? ` — the qualifying exam’s and the first-year seminars’ from ${opts.qualifierFrom}, when I transferred into the Ph.D. —` : ''} and given by semester; they are approximate — the Graduate School calendar sets the exact dates.`
     : '';
-  const statusNote = `Alpha version under testing. ${betaNotice(report.program)} Checked against the CSE Graduate Studies Handbook (${HANDBOOK_URL}), together with the Graduate School’s Academic Code, DGS Handbook and 4+1 guidance.`;
+  const statusNote = `Alpha version under testing. ${BETA_NOTICE} Checked against the CSE Graduate Studies Handbook (${HANDBOOK_URL}), together with the Graduate School’s Academic Code, DGS Handbook and 4+1 guidance.`;
 
   // The tag: the page's pill word (report.ts statusWord — the engine's
   // per-row label when it set one, W-CS2 "Eligibility at risk"; else Overdue,
