@@ -7,11 +7,12 @@
 // Registrars' abbreviations count too (DGS 2026-10-15, on a Rutgers row
 // "DSGN&ANAL COMP ALGOR": "I can confirm this is an algorithm course"):
 // "ALGOR", "ALGO(S)"; "OPER SYS", "OP SYS"; "ARCHIT…", "COMP ARCH",
-// "COMPUTER SYS ARCH". Never a bare "ALG" (also linear ALGebra), "OS" or
-// "ARCH" alone.
+// "COMPUTER SYS ARCH". "ALGS" too (DGS 2026-11-07, on an Illinois row "Intro
+// to Algs & Models of Comp": "Include 'Algs' in the keyword list"). Never a
+// bare "ALG" (also linear ALGebra), "OS" or "ARCH" alone.
 const AREA_TITLE_RE: Record<string, RegExp> = {
   os: /operating|\bop(?:er)?\.?\s*sys/i,
-  algorithms: /algor|\balgos?\b/i,
+  algorithms: /algor|\balgos?\b|\balgs\b/i,
   architecture: /architect|\barchit|\bcomp(?:uter)?\.?\s+(?:sys(?:tems?)?\.?\s+)?arch\b/i,
 };
 export const CORE_TITLE_RE = new RegExp(Object.values(AREA_TITLE_RE).map((re) => re.source).join('|'), 'i');

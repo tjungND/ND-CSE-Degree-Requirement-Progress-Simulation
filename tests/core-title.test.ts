@@ -15,6 +15,8 @@ describe('core-area title keywords', () => {
       ['DSGN&ANAL COMP ALGOR', 'Algorithms'],
       ['DATA STRUC & ALGOS', 'Algorithms'],
       ['INTRO TO ALGO', 'Algorithms'],
+      ['Intro to Algs & Models of Comp', 'Algorithms'], // DGS 2026-11-07
+      ['ADVANCED ALGS', 'Algorithms'],
       ['OPER SYS DESIGN', 'Operating Systems'],
       ['PRIN OP SYS', 'Operating Systems'],
       ['COMPUTER ARCHITEC', 'Computer Architecture'],
@@ -28,7 +30,7 @@ describe('core-area title keywords', () => {
     assert.ok(!coreTitleMatchesArea('DSGN&ANAL COMP ALGOR', 'os'));
   });
   it('never a bare ALG, OS or ARCH, nor words that merely contain them', () => {
-    for (const title of ['LINEAR ALG', 'ALGEBRA I', 'OS AND NETWORKS LAB', 'ARCH HISTORY', 'OPERATIONS RESEARCH', 'MONARCHY AND EMPIRE', 'COMPUTER SYSTEMS', 'COMPOSITION', 'SEARCH ENGINES', 'OPTICS SYSTEMS']) {
+    for (const title of ['LINEAR ALG', 'ALGEBRA I', 'ALGEBRAS AND GROUPS', 'ALGSOC SEMINAR', 'OS AND NETWORKS LAB', 'ARCH HISTORY', 'OPERATIONS RESEARCH', 'MONARCHY AND EMPIRE', 'COMPUTER SYSTEMS', 'COMPOSITION', 'SEARCH ENGINES', 'OPTICS SYSTEMS']) {
       assert.equal(coreTitleSuggestion(title), undefined, title);
       assert.ok(!CORE_TITLE_RE.test(title), title);
     }
