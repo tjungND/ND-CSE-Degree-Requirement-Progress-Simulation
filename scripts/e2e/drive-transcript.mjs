@@ -367,9 +367,22 @@ export async function driveTranscript(s, baseUrl, pdfs) {
   console.log('  after the Master’s row’s Add, the next step:', JSON.stringify(afterMasters));
   if (afterMasters.focused !== 'ext.import.bachelors' || afterMasters.note !== 'Next step: import your Previous Undergraduate Transcript (highlighted).') throw new Error('after the Master’s transcript, the Undergraduate row must be next: ' + JSON.stringify(afterMasters));
   const ugNotice = await s.evalJs(`document.querySelector('.next-step-ring [data-key="ext.optional.bachelors"]')?.textContent ?? ''`);
-  if (!/^You may not need this one: an undergraduate course counts only toward core knowledge \(CSE §4\.4\.1\) — .+\. If your bachelor’s had no such course, skip it\.$/.test(ugNotice)) throw new Error('the Undergraduate row must say when it can be skipped: ' + ugNotice);
+  if (!/^You may not need this one: an undergraduate course counts only toward core knowledge \(CSE §4\.4\.1\) — .+\. If your bachelor’s had no such course, skip it\. Skip$/.test(ugNotice)) throw new Error('the Undergraduate row must say when it can be skipped: ' + ugNotice);
   console.log('  the Undergraduate row’s notice:', ugNotice);
   await s.shotElement('next-step-undergraduate', '.next-step-ring');
+  // Skip (DGS 2026-11-07: "Keep pulsing, but allow students to skip the step
+  // and move on to the next"): the optional row's Skip moves the highlight on
+  // and is saved with the record; the row says so and keeps its Import.
+  await s.evalJs(`document.querySelector('.next-step-ring [data-key="ext.skip.bachelors"]').click()`);
+  const afterSkip = await nextStepShown(s);
+  console.log('  the Undergraduate row skipped, the next step:', JSON.stringify(afterSkip));
+  if (afterSkip.focused !== 'review.copy' || !afterSkip.note.startsWith('Next step: Send the review request')) throw new Error('Skip must move the highlight on, to the review request: ' + JSON.stringify(afterSkip));
+  const skippedRow = JSON.parse(await s.evalJs(`JSON.stringify({ note: document.querySelector('[data-key="ext.skipped.bachelors"]')?.textContent ?? '', button: !!document.querySelector('[data-key="ext.skip.bachelors"]'), importStays: !!document.querySelector('[data-key="ext.import.bachelors"]'), ringedRow: !!document.querySelector('.next-step-ring [data-key="ext.import.bachelors"]'), saved: JSON.parse(localStorage.getItem('cse-degree-audit/v1/student')).skippedSteps })`));
+  console.log('  the skipped row:', JSON.stringify(skippedRow));
+  if (skippedRow.note !== 'Skipped — you can still import it.' || skippedRow.button || !skippedRow.importStays || skippedRow.ringedRow || JSON.stringify(skippedRow.saved) !== '["import:bachelors"]') throw new Error('the skipped row must say so, keep its Import, lose its ring and be saved: ' + JSON.stringify(skippedRow));
+  await s.evalJs(`document.querySelector('[data-key="ext.skipped.bachelors"]').closest('.external-slot').id = 'e2e-skipped-row'`);
+  await s.shotElement('next-step-undergraduate-skipped', '#e2e-skipped-row');
+  await s.evalJs(`document.getElementById('e2e-skipped-row')?.removeAttribute('id')`);
   // The DGS's rulings live on each course's line in the coursework table
   // (2026-09-06 — the separate verdicts block was removed as redundant): the
   // 3 Purdue courses are unreviewed §5.2 transfer CANDIDATES, amber (later

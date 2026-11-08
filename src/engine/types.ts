@@ -401,7 +401,14 @@ export interface Student {
    * removing that import forgets what it read, while the answer is a draft. UI
    * only. */
   backgroundReadFrom?: Partial<Record<keyof NonNullable<Student['background']> | 'integratedAdmittedTerm', 'nd' | 'bachelors' | 'masters' | 'phd'>>;
-  priorMs: 'none' | 'unfinished' | 'completed'; // §5.2 transfer caps
+  /** Steps of the page's "Next step" highlight the student chose to skip
+   * (DGS 2026-11-07: "Keep pulsing, but allow students to skip the step and
+   * move on to the next"), by their next-step.ts id — so far only the
+   * optional Undergraduate row on the Ph.D. tab offers Skip
+   * (`import:bachelors`). A skipped step is never highlighted again; its
+   * Import stays. The engine never reads this field. UI only. */
+  skippedSteps?: string[];
+  priorMs:'none' | 'unfinished' | 'completed'; // §5.2 transfer caps
   /** True while priorMs holds a value INFERRED from an uploaded transcript
    * (2026-09-03) rather than chosen by the student — cleared when they touch
    * the dropdown, and reset with priorMs when the inferring transcript's

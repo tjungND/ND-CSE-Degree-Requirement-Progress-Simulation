@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { AuditReport, RequirementResult, Student } from '../src/engine/types.ts';
-import { finishedBetween, importsAsked, nextOrder, ORDER } from '../src/ui/next-step.ts';
+import { finishedBetween, importsAsked, nextOrder, ORDER, skippedBetween, skippedOf, stillToDo } from '../src/ui/next-step.ts';
 import { nextSteps, STEP_KEYS } from '../src/ui/next-steps.ts';
 import { dropExampleRows, exampleRowsRemovedNote, validateStudent, type LoadCleanup } from '../src/ui/state.ts';
 import { ndCourse, phdStudent } from './helpers/student.ts';
@@ -75,6 +75,33 @@ describe('the earlier transcripts follow the earlier-degrees answer (DGS 2026-10
   });
   it('a step after the transcripts does not send the student back to a row they skipped', () => {
     assert.equal(nextOrder(['step:advisor.name'], new Set(['import:bachelors', 'step:advisor.tenure']))[0], 'step:advisor.tenure');
+  });
+});
+
+describe('a skipped step (DGS 2026-11-07: "Keep pulsing, but allow students to skip the step and move on to the next")', () => {
+  const asked = new Set(['import:bachelors', 'step:coursework.degrees', 'step:advisor.name']);
+  it('the Skip is finished like the step, so the next one is highlighted', () => {
+    const finished = skippedBetween(new Set(), skippedOf({ skippedSteps: ['import:bachelors'] }), asked);
+    assert.deepEqual(finished, ['import:bachelors']);
+    assert.equal(nextOrder(finished, stillToDo(asked, new Set(finished)))[0], 'step:coursework.degrees');
+  });
+  it('a skipped step is never next again — not even with nothing after the finished one', () => {
+    const skipped = skippedOf({ skippedSteps: ['import:bachelors'] });
+    assert.deepEqual(nextOrder(['step:advisor.approved'], stillToDo(new Set(['import:bachelors']), skipped)), []);
+    assert.deepEqual(nextOrder(['import:masters'], stillToDo(asked, skipped)), ['step:coursework.degrees', 'step:advisor.name']);
+  });
+  it('a skip already on the record, or of a step not asked for, finishes nothing', () => {
+    assert.deepEqual(skippedBetween(new Set(['import:bachelors']), new Set(['import:bachelors']), asked), []);
+    assert.deepEqual(skippedBetween(new Set(), new Set(['import:bachelors']), new Set(['step:advisor.name'])), []);
+  });
+  it('importing into a skipped row is still a finished step', () => {
+    assert.deepEqual(finishedBetween(asked, new Set(['step:coursework.degrees', 'step:advisor.name'])), ['import:bachelors']);
+  });
+  it('the skip is kept with the record; anything else in its place is dropped', () => {
+    assert.deepEqual(validateStudent({ ...phdStudent(), skippedSteps: ['import:bachelors', 'import:bachelors'] }).skippedSteps, ['import:bachelors']);
+    assert.equal(validateStudent({ ...phdStudent(), skippedSteps: 'import:bachelors' }).skippedSteps, undefined);
+    assert.equal(validateStudent({ ...phdStudent(), skippedSteps: [42, '<b>x</b>'] }).skippedSteps, undefined);
+    assert.equal(validateStudent({ ...phdStudent() }).skippedSteps, undefined);
   });
 });
 

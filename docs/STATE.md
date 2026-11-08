@@ -1,10 +1,12 @@
 # Where things stand (kept current by every session — read after CLAUDE.md and docs/CLAUDE-HANDOFF.md)
 
-Last updated: 2026-11-05 (the three 2026-11-05 paragraphs and the two 2026-11-03 paragraphs just below, and “Open for the DGS”, near the end — rebuilt from a sweep of every record on 2026-11-01 — with every question and reading on it answered; the 2026-10-29 paragraph — its answers through question 7 on 2026-10-31 —, the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+Last updated: 2026-11-07 (the 2026-11-07 paragraph, the three 2026-11-05 paragraphs and the two 2026-11-03 paragraphs just below, and “Open for the DGS”, near the end — rebuilt from a sweep of every record on 2026-11-01 — with every question and reading on it answered; the 2026-10-29 paragraph — its answers through question 7 on 2026-10-31 —, the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+
+2026-11-07 (DGS, on the optional row's pulse: “Keep pulsing, but allow students to skip the step and move on to the next.”; one commit; a new Desktop session, continuing `claude/session-2026-10-27`): **the optional Undergraduate row (Ph.D. tab) has a Skip** at the end of its hint. Skipping saves the step on the record (`skippedSteps`), ends the ring and highlights the next step; the row then says “Skipped — you can still import it.”, and the row is never highlighted again. Every other step still pulses until done. Wording W-CL650–W-CL651 (DECISIONS 2026-11-07).
 
 2026-11-05, later still (DGS: “Hide them under one ‘Special situations?’”; one commit): **Your standing's three rare selectors — leave/accommodation/readmission, probation, a second degree program — sit under one “Special situations?”** (`specialSituations`, app.ts), closed unless one needs attention (a transcript gap or a leave semester to place opens it), with what is on file in its summary line. Wording W-CL649 (DECISIONS 2026-11-05).
 
-2026-11-05, later (DGS: “… Can you let it keep blinking until students perform that step?”; one commit): **the “Next step” ring pulses until the step is done** — the pulse repeats without end, the ten-second timer is gone, and `keepRing` (next-step.ts, called at the end of every render) rings the step again in its new place while the page still asks for it; a loaded file, its Undo, simulation mode or Reset ends it; steady without the pulse under reduced motion. Open for the DGS: the optional Previous Undergraduate Transcript row (“skip it”) now pulses until imported or until another step is finished (DECISIONS 2026-11-05).
+2026-11-05, later (DGS: “… Can you let it keep blinking until students perform that step?”; one commit): **the “Next step” ring pulses until the step is done** — the pulse repeats without end, the ten-second timer is gone, and `keepRing` (next-step.ts, called at the end of every render) rings the step again in its new place while the page still asks for it; a loaded file, its Undo, simulation mode or Reset ends it; steady without the pulse under reduced motion. The optional Previous Undergraduate Transcript row (“skip it”) pulses until imported or until another step is finished — answered 2026-11-07: keep pulsing, with a Skip (DECISIONS 2026-11-05, 2026-11-07).
 
 2026-11-05 (DGS: “In the alpha testing notice, do not make ‘MSCSE along the way’ an exception. Just make it simple and let all be informational only.”; one commit): **the Ph.D. tab’s notices read as the MSCSE tab’s** — the red strip “Informational only; the DGS decides.”, the Details and the advisor summary BETA_NOTICE alone, the footer “Confirm with the DGS before you rely on this self-check.”, the processing request’s one closing (`betaNotice` / `ALONG_THE_WAY_NOTICE` removed). The award’s processing is unchanged: the card and the request still say the self-check is the DGS’s review of it (P3-cse-3-2). Wording W-CL648 (DECISIONS 2026-11-05).
 
@@ -972,7 +974,7 @@ A sweep of DECISIONS, this file, the credit-transfer review, the policy-review r
 decide), the transcript plan and the wording register on 2026-11-01. Everything not listed is answered.
 The list as put to the DGS, numbered, is the 2026-11-01 reply; close each item here when it is answered.
 
-**Questions with no answer yet:** one (2026-11-05) — the optional Previous Undergraduate Transcript row (“If your bachelor’s had no such course, skip it”) now pulses its “Next step” ring until imported or until another step is finished: keep, or let an optional row pulse only a few times? Answered 2026-11-03 — questions 1–5 (DGS: “1. (a) 2. (a) 3. (b) 4. (b) 5. (b)”): 1, the time
+**Questions with no answer yet:** none. Answered 2026-11-07 — the optional Undergraduate row keeps pulsing, with a Skip that moves the highlight on (DGS: “Keep pulsing, but allow students to skip the step and move on to the next.”). Answered 2026-11-03 — questions 1–5 (DGS: “1. (a) 2. (a) 3. (b) 4. (b) 5. (b)”): 1, the time
 limit with one blank value — Overdue beside a row unmet or in progress; 2, a readmission under five years — the
 earlier courses count; 3, the transfer card in a retake semester — the request waits for the retake's grade; 4,
 W-CL545 — shortened; 5, “CAS CS505” — read as CS. Question 6 (DGS: “6. Yes to all.”): Sabancı's “P Progressing”
@@ -982,7 +984,7 @@ read as in progress, a Thai summer session moved to the next calendar year, Budd
 DECISIONS row marked. Older rows marked “the DGS may reverse” are defaults under the 2026-08-31 delegation and
 were never on the list.
 
-**Waiting on the DGS, not rulings:** wording W-CL583–W-CL649 ships as written unless edited by number (item 6 added none);
+**Waiting on the DGS, not rulings:** wording W-CL583–W-CL651 ships as written unless edited by number (item 6 added none);
 the WordPress footer snippet and the `?embed=1` shortcode (Open work, below); when to drop the alpha
 banner and link both pages from cse.nd.edu; optionally the Melbourne / Limerick specimens and a sanitized
 Workday sample for the reader; `docs/HANDBOOK-REVISIONS.md` for the CSE graduate committee (the §5.2

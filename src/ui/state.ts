@@ -143,6 +143,15 @@ function validBackgroundReadFrom(v: unknown): Student['backgroundReadFrom'] {
   }
   return Object.keys(out).length > 0 ? out : undefined;
 }
+/** The skipped "Next step" ids (DGS 2026-11-07): short id strings only, each
+ * once; anything else — or an empty list — is dropped. An id the page no
+ * longer has is harmless (it matches no step). */
+function validSkippedSteps(v: unknown): Student['skippedSteps'] {
+  if (!Array.isArray(v)) return undefined;
+  const ids = [...new Set(v.filter((x): x is string => typeof x === 'string' && /^[a-z][a-z.:-]{0,40}$/.test(x)))].slice(0, 40);
+  return ids.length > 0 ? ids : undefined;
+}
+
 function validNdMasters(v: unknown): Student['ndMasters'] {
   if (!v || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
@@ -513,6 +522,7 @@ export function validateStudent(data: unknown, refusals: Refusal[] = [], cleanup
     backgroundDraft: validBackground(raw['background']) === undefined ? validBackgroundDraft(raw['backgroundDraft']) : undefined,
     backgroundRead: validBackgroundRead(raw['backgroundRead']),
     backgroundReadFrom: validBackgroundReadFrom(raw['backgroundReadFrom']),
+    skippedSteps: validSkippedSteps(raw['skippedSteps']),
     ndMasters: validNdMasters(raw['ndMasters']),
     ...(typeof raw['integratedBsMs'] === 'boolean' ? { integratedBsMs: raw['integratedBsMs'] as boolean } : {}),
     ...(typeof raw['integratedBsMs'] === 'boolean' && raw['integratedBsMsInferred'] && typeof (raw['integratedBsMsInferred'] as Record<string, unknown>)['how'] === 'string'

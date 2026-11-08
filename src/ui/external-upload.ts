@@ -1167,11 +1167,42 @@ function slotRow(slot: { level: DegreeLevel; label: string }, args: ExternalCard
     if (slot.level === 'bachelors' && student.program === 'phd') {
       const areas = args.rules.coreAreas.map((a) => a.name);
       const named = areas.length <= 1 ? areas.join('') : `${areas.slice(0, -1).join(', ')} or ${areas[areas.length - 1]}`;
+      // Skip (DGS 2026-11-07: "Keep pulsing, but allow students to skip the
+      // step and move on to the next"): saved on the record, the row is never
+      // the highlighted "Next step" again, and the next one is highlighted
+      // (next-step.ts `skippedBetween`). The Import stays. Not in simulation
+      // mode, where the row's Import is inactive and nothing is highlighted.
+      const skipped = student.skippedSteps?.includes('import:bachelors') === true;
+      const skip = args.simulation
+        ? []
+        : skipped
+          ? [' ', el('span', { class: 'slot-skipped', 'data-key': 'ext.skipped.bachelors' }, el('strong', {}, 'Skipped'), ' — you can still import it.')]
+          : [
+              ' ',
+              // The row's own `button`: inactive, saying why, while a preview is open.
+              button(
+                {
+                  class: 'btn tiny',
+                  'data-key': 'ext.skip.bachelors',
+                  'aria-label': `Skip the ${slot.label}`,
+                  onclick: () => {
+                    // The button goes with this render: focus the row's Import
+                    // unless the next step takes it.
+                    args.setFocusAfterRender?.(`ext.import.${slot.level}`);
+                    update((s) => {
+                      s.skippedSteps = [...(s.skippedSteps ?? []).filter((id) => id !== 'import:bachelors'), 'import:bachelors'];
+                    });
+                  },
+                },
+                'Skip',
+              ),
+            ];
       parts.push(
         el(
           'p',
           { class: 'hint slot-note', 'data-key': 'ext.optional.bachelors' },
           `You may not need this one: an undergraduate course counts only toward core knowledge (§4.4.1)${named ? ` — ${named}` : ''}. If your bachelor’s had no such course, skip it.`,
+          ...skip,
         ),
       );
     }

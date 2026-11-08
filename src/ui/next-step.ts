@@ -78,6 +78,31 @@ export function finishedBetween(before: ReadonlySet<PendingId>, now: ReadonlySet
   return [...before].filter((id) => !now.has(id));
 }
 
+// Skipping a step (DGS 2026-11-07: "Keep pulsing, but allow students to skip
+// the step and move on to the next"). The optional Undergraduate row on the
+// Ph.D. tab offers Skip (external-upload.ts); its id is saved on the record
+// (`Student.skippedSteps`). The page still asks for the step — its Import
+// stays, and importing into it later is a finished step like any other — but
+// it is never highlighted again: `stillToDo` leaves it out of what the next
+// step is chosen from and what keeps the ring, and the Skip itself is
+// finished like the step (`skippedBetween`), so the next one is highlighted.
+
+/** The steps a record skipped. */
+export function skippedOf(record: { skippedSteps?: readonly string[] }): Set<PendingId> {
+  return new Set(record.skippedSteps ?? []);
+}
+
+/** What the page asks for (`now`), less what the student skipped. */
+export function stillToDo(now: ReadonlySet<PendingId>, skipped: ReadonlySet<PendingId>): Set<PendingId> {
+  return new Set([...now].filter((id) => !skipped.has(id)));
+}
+
+/** The steps skipped by a change: skipped now, not before, and asked for
+ * before it — finished, for choosing the next step. */
+export function skippedBetween(before: ReadonlySet<PendingId>, now: ReadonlySet<PendingId>, askedBefore: ReadonlySet<PendingId>): PendingId[] {
+  return [...now].filter((id) => !before.has(id) && askedBefore.has(id));
+}
+
 /** The order to look for the next step in, after `finished` was done: what
  * is still asked for after the earliest of them, then from the start. After
  * an earlier transcript, the rows the earlier degrees still ask for come

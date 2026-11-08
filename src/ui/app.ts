@@ -81,7 +81,7 @@ import { diagnosticsCard, footer, masthead, noticeStrip, snapshotBanner } from '
 import { type RequestCardArgs, askDgsCard, askGradAdminCard } from './request-cards.ts';
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
 import { courseworkSentence, nearestDeadline, nextSteps, type NextStep } from './next-steps.ts';
-import { finishedBetween, keepRing, nextAfter, pendingOn, showNextStep, targetOf, type PendingId } from './next-step.ts';
+import { finishedBetween, keepRing, nextAfter, pendingOn, showNextStep, skippedBetween, skippedOf, stillToDo, targetOf, type PendingId } from './next-step.ts';
 import {
   type LoadCleanup,
   type Refusal,
@@ -451,7 +451,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
   let stepsShown: NextStep[] = [];
   /** A change's pending check: what was asked for before it, and whether it
    * is one that finishes nothing (`quiet`). */
-  let stepCheck: { before: Set<PendingId>; quiet: boolean } | undefined;
+  let stepCheck: { before: Set<PendingId>; skipped: Set<PendingId>; quiet: boolean } | undefined;
   /** The student's own change: saved, and the page rebuilt. A change that
    * finishes a step — the page no longer asks for something it asked for —
    * highlights the next one (DGS 2026-10-17, next-step.ts): measured once
@@ -461,13 +461,16 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
    * simulated semester) — the page re-renders and nothing is highlighted. */
   const update = (mutate: (s: Student) => void, opts: { quiet?: boolean } = {}): void => {
     if (stepCheck === undefined) {
-      stepCheck = { before: askedFor, quiet: false };
+      stepCheck = { before: askedFor, skipped: skippedOf(student), quiet: false };
       window.setTimeout(() => {
         const check = stepCheck;
         stepCheck = undefined;
         if (!check || check.quiet) return;
-        const finished = finishedBetween(check.before, askedFor);
-        if (finished.length > 0) showNextStep(nextAfter(document, finished, askedFor, stepsShown, student.program), nextStepNote, student);
+        // A Skip is finished like the step (DGS 2026-11-07), and a skipped
+        // step is never the next one.
+        const skipped = skippedOf(student);
+        const finished = [...finishedBetween(check.before, askedFor), ...skippedBetween(check.skipped, skipped, check.before)];
+        if (finished.length > 0) showNextStep(nextAfter(document, finished, stillToDo(askedFor, skipped), stepsShown, student.program), nextStepNote, student);
       }, 0);
     }
     if (opts.quiet) stepCheck.quiet = true;
@@ -853,8 +856,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     // What the page asks for now — a later change is measured against it (next-step.ts).
     askedFor = pendingOn(root, next.steps, untouched);
     stepsShown = next.steps;
-    // The next step stays ringed until it is done (DGS 2026-11-05).
-    keepRing(document, askedFor, stepsShown, student.program, student);
+    // The next step stays ringed until it is done (DGS 2026-11-05) — or skipped (2026-11-07).
+    keepRing(document, stillToDo(askedFor, skippedOf(student)), stepsShown, student.program, student);
     // Announce the recomputed result to screen readers — only when it changed,
     // so a keystroke in a title field does not chatter.
     const headline = root.querySelector('.scorehead .headline')?.textContent?.trim() ?? '';
