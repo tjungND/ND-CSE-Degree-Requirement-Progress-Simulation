@@ -821,7 +821,7 @@ describe('Georgia Tech’s name as its official transcript prints it (DGS 2026-1
   });
   it('that name finds the rulings filed under it', () => {
     const rules = buildRules({ external: [{ university: NAME, course_id: 'ECE 6122', course_title: 'Adv Prog Techniques', transferable_PhD: 'yes' }] });
-    assert.ok(findExternalRule(rules.external, NAME, 'ECE 6122'));
+    assert.ok(findExternalRule(rules.external, NAME, 'ECE 6122', undefined));
   });
 });
 

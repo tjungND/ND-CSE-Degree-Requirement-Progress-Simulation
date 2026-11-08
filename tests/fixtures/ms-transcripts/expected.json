@@ -906,6 +906,24 @@
    "CS 597 | Project Research | 4 | S | fall 2025"
   ]
  },
+ "uiuc_banner_ap_credit": {
+  "university": "University of Illinois Urbana-Champaign",
+  "campusSystem": "University of Illinois",
+  "campus": "Urbana-Champaign",
+  "degreeConferred": true,
+  "bachelorsConferredOn": "2022-05-15",
+  "quarterSystem": null,
+  "courses": [
+   "CS 598 | Data Mining: A Practical Approach | 4 | A | fall 2022 | graduate",
+   "CS 511 | Advanced Data Management | 4 | A- | fall 2022 | graduate",
+   "CS 591 | Teaching Assistant Training | 0 | S | fall 2022 | graduate",
+   "CS 598 | Topics in Systems: A Survey | 4 | B+ | spring 2023 | graduate",
+   "CS 598 | Deep Generative Models | 4 | A | spring 2023 | graduate",
+   "CS 568 | User-Centered Machine Learning | 4 | A | fall 2023 | graduate",
+   "CS 124 | Introduction to Computer Science I | 3 | A | fall 2018 | undergraduate",
+   "CS 173 | Discrete Structures | 3 | A- | fall 2018 | undergraduate"
+  ]
+ },
  "uiuc_ms": {
   "university": "University of Illinois Urbana-Champaign",
   "campusSystem": "University of Illinois",

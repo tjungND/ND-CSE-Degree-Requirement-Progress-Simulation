@@ -407,7 +407,7 @@ function isRelevantRow(university: string, rules: Rules, r: PreviewRow, program:
   // Everything else an undergraduate row could do is the Ph.D. qualifying
   // examination's §4.4.1, which the MSCSE does not have (DGS 2026-09-11).
   const qualifier = program === 'phd';
-  if (qualifier && (CORE_TITLE_RE.test(r.title) || findExternalRule(rules.external, university, r.courseId) !== undefined)) return true;
+  if (qualifier && (CORE_TITLE_RE.test(r.title) || findExternalRule(rules.external, university, r.courseId, r.title) !== undefined)) return true;
   if (!isNotreDameInstitution(university) || r.year === undefined || r.courseId.trim() === '') return false;
   const rule = resolveRuleRow(rules, r.courseId, { season: r.season, year: r.year });
   // Notre Dame's own undergraduate coursework can do more than demonstrate a
@@ -2124,7 +2124,7 @@ function previewBlock(args: ExternalCardArgs): HTMLElement {
       // read it (verification, transfer-3).
       unfinishedLabel = unfinishedPriorLabel(s);
     });
-    const matched = ready.filter((r) => findExternalRule(rules.external, university, r.courseId)).length;
+    const matched = ready.filter((r) => findExternalRule(rules.external, university, r.courseId, r.title)).length;
     const undergraduateRows = ready.length - graduateRows;
     preview = undefined;
     releaseScanStrips();

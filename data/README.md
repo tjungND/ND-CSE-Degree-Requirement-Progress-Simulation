@@ -193,7 +193,7 @@ transcript will read the same, so the rows must keep it to match.
 |---|---|---|
 | `university` | text | the institution's name as the import read it from the official transcript — paste it, never retype or edit it (DGS 2026-10-07) |
 | `course_id` | text | as printed there ("CS 50300", "30240233"); spaces/hyphens don't matter |
-| `course_title` | text | for humans reading the sheet |
+| `course_title` | text | **part of the match since 2026-11-07** (DGS: one course code under different titles is different courses — Illinois's CS 598 and IIT's CS 595 are topics numbers). A row decides a student's course only when the titles are the same, apart from capitals, spacing and punctuation; paste it from the review request, which copies it from the transcript. Leave it **blank** for a ruling on EVERY course with that code ("every CS 59000 is not transferable"); a titled row for the same code still wins for its own title |
 | `satisfies_core_area` | a `core_area` code, `none`, or blank | §4.4.1 core area the course covers — a match makes the student's core row **met**. `none` = decided, no core area (a core-sounding title then stops appearing in the review request); blank = not decided yet (the course stays in the review request) |
 | `transferable_PhD` | `yes` / `no` / `dgs_approval` / `adgs_approval` / blank | §5.2, for a **Ph.D.** student. `yes` = pre-approved, though each student still makes the formal request (DGS recommendation + Graduate School approval). `no` = never transfers. `dgs_approval` / `adgs_approval` = this one needs an approval, so the app keeps it in the review request as an open decision and tells the student "needs DGS approval"; it does not ask them to argue the case, which is between the advisor and the DGS. Blank = not looked at for that program |
 | `transferable_MSCSE` | the same four values, or blank | The same question for an **MSCSE** student, answered separately (2026-09-09). The app reads whichever column matches the student's own program. The two approval words mean the same thing for now and both read as "needs DGS approval"; the sheet's own word is kept, so the MSCSE message can name the ADGS later without another sheet change |
@@ -217,7 +217,9 @@ pre-approving the §5.2 transfer of a prior Notre Dame graduate course
 
 **Two rows for the same university + course** (say, a decided row pasted below an older blank
 one): the **last** row wins — it replaces the earlier one — and the diagnostics warn so the older
-row can be deleted (DGS decision 2026-09-06). Blank verdict cells mean "not decided yet"; the
+row can be deleted (DGS decision 2026-09-06). The same course is the same code **and title**
+(2026-11-07): two rows of one code with different titles are two courses, and both stand — so a
+corrected row that also changes the title does not replace the old one; delete the old row. Blank verdict cells mean "not decided yet"; the
 course stays in the students' review request until `transferable` and, for a core-sounding title,
 `satisfies_core_area` (a core area or `none`) are filled in. A `dgs_approval` row is a decision
 about the COURSE, not about the student, so it keeps the course in the review request — that is the

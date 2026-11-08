@@ -1816,8 +1816,8 @@ function classifyTransfer(env: ClassifyEnv, c: CourseEntry, rule: RuleCourse | u
   // under UNIVERSITY OF NOTRE DAME (DECISIONS 2026-09-05; policy review round
   // 3, P3-dh-10-2), whatever spelling the student's record has ("Notre Dame").
   const external =
-    findExternalRule(rules.external, c.institution ?? '', c.courseId) ??
-    (isNotreDameInstitution(c.institution) ? findExternalRule(rules.external, NOTRE_DAME_ROW_UNIVERSITY, c.courseId) : undefined);
+    findExternalRule(rules.external, c.institution ?? '', c.courseId, c.title) ??
+    (isNotreDameInstitution(c.institution) ? findExternalRule(rules.external, NOTRE_DAME_ROW_UNIVERSITY, c.courseId, c.title) : undefined);
   // Set once per university in the sheet's Universities tab (DGS 2026-10-10;
   // a cell on every ExternalCourses row until then); applies to every course
   // from it. The DGS's row for the university decides the credit system;

@@ -59,7 +59,7 @@ describe('CC15 code-less rows in the transcript preview (DGS 2026-10-09)', () =>
 
   it('an empty id matches no DGS ruling and no other course', () => {
     const rules = buildRules();
-    assert.equal(findExternalRule(rules.external, 'NANKAI UNIVERSITY', ''), undefined);
+    assert.equal(findExternalRule(rules.external, 'NANKAI UNIVERSITY', '', undefined), undefined);
     const blank = { courseId: '', origin: 'transfer', institution: 'Nankai University', credits: 3, grade: 'A', term: { season: 'fall', year: 2021 } } as CourseEntry;
     assert.equal(sameTransferCourse(blank, { ...blank }), false, 'two blank ids are not one course');
     assert.equal(sameTransferCourse({ ...blank, courseId: 'CS 701' }, { ...blank, courseId: 'cs-701' }), true);

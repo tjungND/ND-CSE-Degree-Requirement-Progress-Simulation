@@ -80,8 +80,8 @@ describe('ExternalCourses parsing', () => {
       issues,
     );
     assert.equal(rows.length, 1);
-    assert.equal(findExternalRule(rows, 'Purdue', 'CS 1'), undefined); // the alias no longer matches
-    assert.ok(findExternalRule(rows, 'purdue university', 'CS 1'));
+    assert.equal(findExternalRule(rows, 'Purdue', 'CS 1', undefined), undefined); // the alias no longer matches
+    assert.ok(findExternalRule(rows, 'purdue university', 'CS 1', undefined));
     assert.equal(issues.length, 1);
     assert.match(issues[0]!.message, /no longer used/);
     assert.match(issues[0]!.message, /can be deleted/);
@@ -97,15 +97,15 @@ describe('matching is forgiving about spelling, never about identity', () => {
 
   it('finds rules via the transcript-printed name — forgiving spelling, no aliases', () => {
     for (const uni of ['PURDUE UNIVERSITY', 'Purdue University', ' purdue-university ']) {
-      assert.ok(findExternalRule(rules.external, uni, 'cs 50300'), uni);
+      assert.ok(findExternalRule(rules.external, uni, 'cs 50300', undefined), uni);
     }
-    assert.ok(findExternalRule(rules.external, 'Université de Montréal', 'IFT 2125')); // diacritics stripped both ways
-    assert.ok(findExternalRule(rules.external, 'Tsinghua University', '30240233'));
-    assert.equal(findExternalRule(rules.external, 'Purdue', 'CS 50300'), undefined); // abbreviations no longer match
-    assert.equal(findExternalRule(rules.external, '清华大学', '30240233'), undefined); // native script retired with aliases
-    assert.equal(findExternalRule(rules.external, 'Purdue University', 'CS 99999'), undefined);
-    assert.equal(findExternalRule(rules.external, 'Indiana University', 'CS 50300'), undefined);
-    assert.equal(findExternalRule(rules.external, '', 'CS 50300'), undefined);
+    assert.ok(findExternalRule(rules.external, 'Université de Montréal', 'IFT 2125', undefined)); // diacritics stripped both ways
+    assert.ok(findExternalRule(rules.external, 'Tsinghua University', '30240233', undefined));
+    assert.equal(findExternalRule(rules.external, 'Purdue', 'CS 50300', undefined), undefined); // abbreviations no longer match
+    assert.equal(findExternalRule(rules.external, '清华大学', '30240233', undefined), undefined); // native script retired with aliases
+    assert.equal(findExternalRule(rules.external, 'Purdue University', 'CS 99999', undefined), undefined);
+    assert.equal(findExternalRule(rules.external, 'Indiana University', 'CS 50300', undefined), undefined);
+    assert.equal(findExternalRule(rules.external, '', 'CS 50300', undefined), undefined);
   });
 });
 
@@ -773,5 +773,60 @@ describe('review request: a Universities-tab row for a university the sheet does
 
   it('an older caller without the check gets no Universities rows', () => {
     assert.doesNotMatch(build(false).text, /Universities tab/);
+  });
+});
+
+// DGS 2026-11-07: "There are some courses who share the same course code but
+// different course titles, meaning that they are different courses. However,
+// the request to DGS ignore different courses with the same course code. Fix
+// it. They need to be treated as different courses."
+describe('one course id, different titles: different courses (DGS 2026-11-07)', () => {
+  const UIUC = 'University of Illinois Urbana-Champaign';
+  const tab = (rows: [string, string, string][]) =>
+    parseExternalTab(['university,course_id,course_title,satisfies_core_area,transferable_PhD', ...rows.map(([id, title, t]) => `${UIUC},${id},"${title}",none,${t}`)].join('\n'), CORE, []);
+  it('a titled row decides only the course of that title — case, spacing and punctuation aside', () => {
+    const rows = tab([['CS 598', 'Text Mining: A New Paradigm', 'yes'], ['CS 598', 'Deep Generative Models', 'no']]);
+    assert.equal(findExternalRule(rows, UIUC, 'CS 598', 'Text Mining: A New Paradigm')?.transferablePhd, 'yes');
+    assert.equal(findExternalRule(rows, UIUC, 'CS-598', 'TEXT MINING - A NEW PARADIGM')?.transferablePhd, 'yes');
+    assert.equal(findExternalRule(rows, UIUC, 'CS 598', 'Deep Generative Models')?.transferablePhd, 'no');
+    assert.equal(findExternalRule(rows, UIUC, 'CS 598', 'Topics in Systems: A Survey'), undefined, 'a third title is a course the DGS has not reviewed');
+    assert.equal(findExternalRule(rows, UIUC, 'CS 598', undefined), undefined, 'no title: two rows, so the id alone cannot say which');
+  });
+  it('one titled row does not decide another title of its id; a course with no title takes it', () => {
+    const rows = tab([['CS 598', 'Text Mining: A New Paradigm', 'yes']]);
+    assert.equal(findExternalRule(rows, UIUC, 'CS 598', 'Deep Generative Models'), undefined);
+    assert.equal(findExternalRule(rows, UIUC, 'CS 598', '')?.transferablePhd, 'yes');
+  });
+  it('a row with a blank title decides every course of its id, unless a row names the title', () => {
+    const rows = tab([['CS 598', '', 'no'], ['CS 598', 'Text Mining: A New Paradigm', 'yes']]);
+    assert.equal(findExternalRule(rows, UIUC, 'CS 598', 'Deep Generative Models')?.transferablePhd, 'no');
+    assert.equal(findExternalRule(rows, UIUC, 'CS 598', 'Text Mining: A New Paradigm')?.transferablePhd, 'yes');
+  });
+  it('the engine reads each course by its own row', () => {
+    const rules = buildRules({ external: [
+      { university: UIUC, course_id: 'CS 598', course_title: 'Text Mining: A New Paradigm', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes', satisfies_core_area: 'none' },
+    ] });
+    const s = student([
+      { courseId: 'CS 598', title: 'Text Mining: A New Paradigm', credits: 4, grade: 'A', term: { season: 'fall', year: 2022 }, origin: 'transfer', institution: UIUC, degreeLevel: 'masters' },
+      { courseId: 'CS 598', title: 'Deep Generative Models', credits: 4, grade: 'A', term: { season: 'spring', year: 2023 }, origin: 'transfer', institution: UIUC, degreeLevel: 'masters' },
+    ]);
+    const lines = classify(s, rules, '2027-01-15').classified.filter((c) => c.entry.courseId === 'CS 598');
+    assert.deepEqual(lines.map((c) => [c.entry.title, c.external !== undefined]), [['Text Mining: A New Paradigm', true], ['Deep Generative Models', false]]);
+  });
+  it('the review request asks about each title: its own ExternalCourses row and its own item', () => {
+    const built = buildCombinedReviewRequest({
+      priorStudy: 'Completed prior M.S. or Ph.D.',
+      nd: [],
+      external: [
+        { institution: UIUC, courseId: 'CS 598', title: 'Text Mining: A New Paradigm', credits: 4, grade: 'A', termText: 'Fall 2022', reason: 'not yet reviewed by the DGS', unlisted: true },
+        { institution: UIUC, courseId: 'CS 598', title: 'Deep Generative Models', credits: 4, grade: 'A', termText: 'Spring 2023', reason: 'not yet reviewed by the DGS', unlisted: true },
+        // The same title again is the same course, taken again: one row.
+        { institution: UIUC, courseId: 'CS 598', title: 'Deep Generative Models', credits: 4, grade: 'A', termText: 'Fall 2023', reason: 'not yet reviewed by the DGS', unlisted: true },
+      ],
+    });
+    const externalTab = built.text.slice(built.text.indexOf('rules sheet — ExternalCourses tab:'), built.text.indexOf('Course details:'));
+    assert.equal((externalTab.match(/CS 598\tText Mining: A New Paradigm/g) ?? []).length, 1, externalTab);
+    assert.equal((externalTab.match(/CS 598\tDeep Generative Models/g) ?? []).length, 1, externalTab);
+    assert.match(externalTab, /one row per course — a course taken more than once is listed once here/);
   });
 });

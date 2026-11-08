@@ -13,7 +13,8 @@ const spring = (year: number) => ({ season: 'spring' as const, year });
 
 describe('one row per registration', () => {
   it('#20: two topic sections of one course, one term — each submitted at its own admitted credits', () => {
-    const rules = buildRules({ external: [{ university: 'PURDUE UNIVERSITY', course_id: 'CS 59000', course_title: 'Special Topics', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes', credit_system: 'semester' }] });
+    // One row for the whole topics number: its title is blank, so it decides every CS 59000 (DGS 2026-11-07).
+    const rules = buildRules({ external: [{ university: 'PURDUE UNIVERSITY', course_id: 'CS 59000', course_title: '', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes', credit_system: 'semester' }] });
     const s = phdStudent({
       entryTerm: fall(2026), priorMs: 'unfinished', bachelorsAwarded: spring(2023),
       courses: [

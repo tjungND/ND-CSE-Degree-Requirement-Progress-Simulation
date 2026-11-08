@@ -186,7 +186,11 @@ Since 2026-09-06 the ExternalCourses tab's `satisfies_core_area` also accepts `n
 area" — it stops a core-sounding title from staying in the review request); blank still means not
 decided yet, and a course with a blank-verdict row stays in the request (`data/README.md`). When two
 rows name the same university + course, the LAST row wins (DGS 2026-09-06 — a corrected row pasted
-below an old one takes effect; the diagnostics still warn so the older row can be deleted).
+below an old one takes effect; the diagnostics still warn so the older row can be deleted). Since
+2026-11-07 the course is the code AND the `course_title` (DGS: same code, different titles = different
+courses): a row decides only a course of its own title (case, spacing and punctuation aside), a
+blank title decides every course with the code, and two rows of one code under different titles both
+stand (`findExternalRule`, `normalizeCourseTitle` in src/data/external.ts).
 
 One-time setup for the external-transcripts feature — DONE 2026-09-02: the **ExternalCourses**
 tab exists in the rules sheet (header row in `data/README.md`; sample rows in

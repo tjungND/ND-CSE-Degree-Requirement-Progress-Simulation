@@ -6,7 +6,7 @@ import { parseTermCode } from '../engine/term.ts';
 import type { Term } from '../engine/types.ts';
 import { looksNonRegularTitle, looksUndergraduateNumber } from './course-checks.ts';
 import { parseCsv } from './csv.ts';
-import { normalizeCourseId, normalizeUniversity } from './external.ts';
+import { normalizeCourseId, normalizeCourseTitle, normalizeUniversity } from './external.ts';
 import type { CourseType, Counts, ExternalRule, RuleCourse, SheetIssue, Transferable, UniversityRow } from './types.ts';
 import { RESERVED_GROUP_CODES } from './types.ts';
 
@@ -592,9 +592,14 @@ export function parseExternalTab(
 
     // Two rows for the same university + course: the LAST row wins (DGS
     // 2026-09-06 — a corrected row pasted below an old one takes effect),
-    // with a warning so the older row can be deleted.
+    // with a warning so the older row can be deleted. The same course is the
+    // same id AND title (DGS 2026-11-07): one id under two titles is two
+    // courses — a topics number — and both rows stand (findExternalRule).
     const dupIndex = out.findIndex(
-      (r) => r.universityKey === rule.universityKey && normalizeCourseId(r.courseId) === normalizeCourseId(courseId),
+      (r) =>
+        r.universityKey === rule.universityKey &&
+        normalizeCourseId(r.courseId) === normalizeCourseId(courseId) &&
+        normalizeCourseTitle(r.title) === normalizeCourseTitle(rule.title),
     );
     if (dupIndex >= 0) {
       const dup = out[dupIndex]!;

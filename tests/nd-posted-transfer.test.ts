@@ -110,7 +110,7 @@ describe('Option 1: graduate credit on the record counts as posted', () => {
     assert.deepEqual(asks.map((a) => a.ask.decide), [['core area (§4.4.1), if any']]);
   });
   it('a grade the transcript did not print does not make it “in progress” for a confirmed core area', () => {
-    const withRow = buildRules({ external: [{ university: 'Purdue University', course_id: 'CS 50100', course_title: 'Graduate Operating Systems', satisfies_core_area: 'OS', transferable_PhD: '', transferable_MSCSE: '', credit_system: 'semester', is_cse: 'yes' }] });
+    const withRow = buildRules({ external: [{ university: 'Purdue University', course_id: 'CS 50100', course_title: '', satisfies_core_area: 'OS', transferable_PhD: '', transferable_MSCSE: '', credit_system: 'semester', is_cse: 'yes' }] });
     const os = audit(student([block('CS 50100', spring(2025), 'graduate')], { courses: [block('CS 50100', spring(2025), 'graduate')] }), withRow, TODAY).requirements.find((r) => r.id === 'phd.qualifier.core.os')!;
     assert.equal(os.status, 'met', os.detail);
   });

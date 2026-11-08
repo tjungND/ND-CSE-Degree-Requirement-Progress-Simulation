@@ -253,7 +253,17 @@ const DEGREE_CONFERRED_HEADER_RE = /degree\b.*\b(conferred|awarded)\b/i;
 const DEGREE_CONFERRED_HEADER_ALONE_RE = /^[^:]*\bdegree\b[^:]*\b(conferred|awarded)\b\s*:?\s*$/i;
 
 // Block and term markers the scan tests on every line.
-const TRANSFER_BANNER_RE = /TRANSFER\s+CREDIT\s+ACCEPTED\s+BY/i;
+// Banner's heading, "TRANSFER CREDIT ACCEPTED BY THE INSTITUTION" — or the
+// heading alone on its line, as Illinois prints it above its Advanced
+// Placement credit (DGS 2026-11-07: those rows were read as the record's own
+// courses, in the term before them).
+const TRANSFER_BANNER_RE = /TRANSFER\s+CREDIT\s+ACCEPTED\s+BY|^\s*TRANSFER\s+CREDIT\s+ACCEPTED\s*:?\s*$/i;
+// Inside that block (Illinois, DGS 2026-11-07): the line naming a transfer
+// term by Banner's short code and its source ("FA18   Advanced Placement
+// Tests"), and a credit-by-examination row at a level rather than a course
+// ("PSYC 1--   Test-Based Credit   3.00 PS").
+const BANNER_SOURCE_LINE_RE = /^\s*(?:FA|SP|SU|WI|AU)\s?\d{2}\s{2,}\S/;
+const BANNER_LEVEL_CREDIT_ROW_RE = /^\s*[A-Z]{2,5}\s+\d(?:--|XX)\s{2,}.*\d+[.,]\d{1,3}\s+[A-Z]{1,3}[+-]?\s*$/;
 const TRANSFER_TABLE_RE = /^\s*(?:term\s+)?course\s+transfer\s+course\b/i;
 const INSTITUTION_CREDIT_RE = /INSTITUTION(?:AL)?\s+CREDIT|UNIVERSITY OF NOTRE DAME CREDIT/i;
 // Lines that END a transfer-credit block when no "INSTITUTION CREDIT" line
@@ -1952,7 +1962,23 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
         asCredits(nextToken) !== undefined &&
         tokens[k + 2] !== undefined &&
         mapGrade(tokens[k + 2]!, legend) !== undefined;
-      if (integerBetweenWords || codeInTitle || letterInTitle) {
+      // "Text Mining: A New Paradigm   4.00 A   16.00" (an Illinois record,
+      // DGS 2026-11-07: the title read as "Text Mining:"): a capital letter
+      // between title words — a word follows it, not a value, and the row's
+      // credits come later — is the article or an initial, never the grade.
+      // The word after it is a title word: one with a small letter
+      // ("New", "La"), or three or more capitals ("NEW") the app does not
+      // map as a grade.
+      const letterBetweenWords =
+        !titleDone &&
+        prevWord !== undefined &&
+        /^[A-Z]$/.test(token) &&
+        nextToken !== undefined &&
+        /^[\p{L}]{2,}/u.test(nextToken) &&
+        mapGrade(nextToken, legend) === undefined &&
+        (/\p{Ll}/u.test(nextToken) || /^[\p{Lu}]{3,}/u.test(nextToken)) &&
+        tokens.slice(k + 2).some((t) => asCredits(t) !== undefined);
+      if (integerBetweenWords || codeInTitle || letterInTitle || letterBetweenWords) {
         into.titleParts.push(token);
         continue;
       }
@@ -3595,6 +3621,13 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
         transferRowsSkipped += 1;
         return lineIndex;
       }
+      // Banner's credit by examination at a level, not a course ("PSYC 1--
+      // Test-Based Credit   3.00 PS", Illinois, DGS 2026-11-07): a row of
+      // the block, counted with the rest.
+      if (transferBlock === 'banner' && BANNER_LEVEL_CREDIT_ROW_RE.test(flat)) {
+        transferRowsSkipped += 1;
+        return lineIndex;
+      }
       return readCodelessRow(line, flat, lineIndex);
     }
     // An exemption row has no title: a code and "EXC" or a number. The first
@@ -3610,6 +3643,9 @@ export function parseExternalTranscript(lines: string[], confidences?: number[],
     // shape is still another school's equivalent (sectionedTitleFirstRecord,
     // 2026-10-15).
     if (transferBlock !== undefined || (sectionedRecord && equivalentShape)) {
+      // The block's own term-and-source line ("FA18   Advanced Placement
+      // Tests", Illinois, DGS 2026-11-07) is no row: it prints no credits.
+      if (transferBlock === 'banner' && BANNER_SOURCE_LINE_RE.test(flat) && !/\d[.,]\d/.test(flat)) return lineIndex;
       transferRowsSkipped += 1;
       return lineIndex;
     }

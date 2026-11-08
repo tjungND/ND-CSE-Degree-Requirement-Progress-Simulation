@@ -1008,3 +1008,38 @@ describe('item 14 follow-up — one-digit course numbers on a scan (item 13’s 
     assert.deepEqual(parseExternalTranscript(doc, sure(doc)).courses.map((c) => c.courseId), ['CS 50100']);
   });
 });
+
+describe('DGS 2026-11-07 — an Illinois record: a capital letter inside a title, and Advanced Placement credit', () => {
+  const head = ['University of Illinois Urbana-Champaign', 'Fall 2022 - Urbana-Champaign', '  Graduate College'];
+  it('a capital letter between title words is a word of the title, not the grade', () => {
+    const r = doc(...head, 'CS    598       Text Mining: A New Paradigm          4.00 A      16.00', 'CS    598       Topics in A Big World                4.00 B+     13.20', 'CS    598       DATA SYSTEMS: A NEW LOOK             4.00 A-     14.68');
+    assert.deepEqual(
+      r.courses.map((c) => [c.title, c.credits, c.grade]),
+      [
+        ['Text Mining: A New Paradigm', 4, 'A'],
+        ['Topics in A Big World', 4, 'B+'],
+        ['DATA SYSTEMS: A NEW LOOK', 4, 'A-'],
+      ],
+    );
+  });
+  it('still the grade where the credits follow it, or nothing does', () => {
+    const r = doc(...head, 'CS    511       Advanced Data Management   A   4.00', 'CS    512       Data Mining Principles   4.00   A');
+    assert.deepEqual(r.courses.map((c) => [c.title, c.credits, c.grade]), [['Advanced Data Management', 4, 'A'], ['Data Mining Principles', 4, 'A']]);
+  });
+  it('“TRANSFER CREDIT ACCEPTED” alone on its line opens the transfer block: its rows are left out, not filed under the term before it', () => {
+    const r = doc(
+      ...head,
+      'CS    546       Machine Learning in Practice         4.00 A      16.00',
+      'TRANSFER CREDIT ACCEPTED',
+      'FA18                Advanced Placement Tests',
+      'CHEM 102      General Chemistry I                    3.00 PS',
+      'MATH 220      Calculus                               5.00 PS',
+      ' Ehrs:   8.00 GPA-Hrs:   0.00 QPts:    0.00 GPA:    0.00',
+      'Fall 2018 - Urbana-Champaign',
+      'CS    124       Introduction to Computer Science I   3.00 A      12.00',
+    );
+    assert.deepEqual(r.courses.map((c) => [c.courseId, c.season, c.year]), [['CS 546', 'fall', 2022], ['CS 124', 'fall', 2018]]);
+    assert.equal(r.transferRowsSkipped, 2);
+    assert.ok(!(r.printedTotals ?? []).some((t) => t.earned === 8), 'the transfer block’s totals line is no term’s');
+  });
+});

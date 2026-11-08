@@ -18,7 +18,8 @@ describe('reviewRequestSummary — the card chip and its copy button', () => {
 });
 
 type Row = Record<string, string>;
-const row = (course_id: string, extra: Row = {}): Row => ({ university: 'PURDUE UNIVERSITY', course_id, course_title: 'x', ...extra });
+// A blank course_title: the row decides every course with that id (DGS 2026-11-07 — a titled row decides only the course of that title).
+const row = (course_id: string, extra: Row = {}): Row => ({ university: 'PURDUE UNIVERSITY', course_id, course_title: '', ...extra });
 
 const student = (courses: CourseEntry[]): Student => phdStudent({ priorMs: 'completed', courses });
 const ids = (s: Student, external: Row[] | undefined) =>

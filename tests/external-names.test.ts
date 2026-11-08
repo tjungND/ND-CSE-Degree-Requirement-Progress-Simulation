@@ -58,7 +58,7 @@ describe('every university name the ExternalCourses tab lists is read unchanged 
         assert.equal(r.university, name, 'the name must come back exactly as the sheet lists it');
         assert.equal(r.universityGuessed, undefined, 'read from the printed text, not recovered from an acronym');
         const row = rules.external.find((x) => x.university === name)!;
-        assert.ok(findExternalRule(rules.external, r.university!, row.courseId), `the read name must find the ruling for ${row.courseId}`);
+        assert.ok(findExternalRule(rules.external, r.university!, row.courseId, undefined), `the read name must find the ruling for ${row.courseId}`);
       });
     }
   }

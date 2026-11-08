@@ -228,10 +228,12 @@ export function normalizeCourseId(id: string): string {
 /** The ExternalCourses rows indexed by university key, then by normalized
  * course id — built once per rows array (a WeakMap keyed on the array itself,
  * so a fresh Rules object gets a fresh index) instead of scanning every row for
- * every course the engine classifies. First row wins on both levels, exactly
- * as the linear scans it replaces did. */
+ * every course the engine classifies. `findExternalRule` picks among a course
+ * id's rows by title; the first matching row wins. */
 interface ExternalIndex {
-  byUniversity: Map<string, { byCourse: Map<string, ExternalRule> }>;
+  /** Every row of a course id, in sheet order: one course id may name several
+   * courses — a topics number — told apart by the title (DGS 2026-11-07). */
+  byUniversity: Map<string, { byCourse: Map<string, ExternalRule[]> }>;
 }
 const EXTERNAL_INDEX = new WeakMap<readonly ExternalRule[], ExternalIndex>();
 function externalIndex(rules: readonly ExternalRule[]): ExternalIndex {
@@ -245,24 +247,50 @@ function externalIndex(rules: readonly ExternalRule[]): ExternalIndex {
       index.byUniversity.set(r.universityKey, uni);
     }
     const id = normalizeCourseId(r.courseId);
-    if (!uni.byCourse.has(id)) uni.byCourse.set(id, r);
+    uni.byCourse.set(id, [...(uni.byCourse.get(id) ?? []), r]);
   }
   EXTERNAL_INDEX.set(rules, index);
   return index;
 }
 
-/** The DGS's ruling for one (university, course) pair, or undefined = the DGS
- * has not reviewed that course yet. First matching row wins (duplicates are
- * reported at parse time). */
+/** A course title as the match compares it (DGS 2026-11-07): case, spacing
+ * and punctuation aside, "&" as "and" — "Text Mining: A New Paradigm" and
+ * "TEXT MINING - A NEW PARADIGM" are one title. */
+export function normalizeCourseTitle(title: string | undefined): string {
+  return (title ?? '')
+    .toUpperCase()
+    .replace(/&/g, ' AND ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+/** The DGS's ruling for one course of one university, or undefined = the DGS
+ * has not reviewed that course yet.
+ *
+ * The same course id with a different title is a different course (DGS
+ * 2026-11-07: "There are some courses who share the same course code but
+ * different course titles, meaning that they are different courses … They
+ * need to be treated as different courses") — Illinois's CS 598 and IIT's
+ * CS 595 are topics numbers, one per subject. So a row decides a course only
+ * when its `course_title` is the course's title (`normalizeCourseTitle`); a
+ * row with a BLANK title decides every course with that id. A course with no
+ * title (typed by hand without one) is decided by its id alone only when the
+ * tab has one row for it — or a blank-title row. First matching row wins. */
 export function findExternalRule(
   rules: readonly ExternalRule[],
   university: string,
   courseId: string,
+  title: string | undefined,
 ): ExternalRule | undefined {
   const uni = normalizeUniversity(university);
   const id = normalizeCourseId(courseId);
   if (uni === '' || id === '') return undefined;
-  return externalIndex(rules).byUniversity.get(uni)?.byCourse.get(id);
+  const rows = externalIndex(rules).byUniversity.get(uni)?.byCourse.get(id);
+  if (rows === undefined) return undefined;
+  const codeWide = (): ExternalRule | undefined => rows.find((r) => normalizeCourseTitle(r.title) === '');
+  const want = normalizeCourseTitle(title);
+  if (want === '') return rows.length === 1 ? rows[0] : codeWide();
+  return rows.find((r) => normalizeCourseTitle(r.title) === want) ?? codeWide();
 }
 
 /** §5.2: "Credits not earned on the semester system, such as trimester and

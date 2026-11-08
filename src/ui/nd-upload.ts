@@ -281,7 +281,7 @@ export function ndTranscriptUpload(args: NdUploadArgs): HTMLElement {
           !priorNdUndergraduateCanCount({ courseId: c.courseId, credits: c.credits, term: c.term, grade: c.grade, origin: 'transfer' }, rule, args.student.program) &&
           !(qualifierApplies && CORE_TITLE_RE.test(c.title ?? '')) &&
           !(qualifierApplies && rule?.coreArea) &&
-          !(qualifierApplies && findExternalRule(args.rules.external, 'University of Notre Dame', c.courseId))
+          !(qualifierApplies && findExternalRule(args.rules.external, 'University of Notre Dame', c.courseId, c.title))
         );
       });
       // The GPA (combined-transcript bug report 2026-09-05): the transcript's

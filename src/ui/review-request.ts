@@ -9,7 +9,7 @@
 // to the transcript parser, and the one static import of its marker constants
 // (grad-admin-request.ts) pulled the whole 4,000-line parser into every first
 // load. The markers now live in email-html.ts beside the other email helpers.
-import { NOTRE_DAME_ROW_UNIVERSITY, isNotreDameInstitution, normalizeCourseId, normalizeUniversity } from '../data/external.ts';
+import { NOTRE_DAME_ROW_UNIVERSITY, isNotreDameInstitution, normalizeCourseId, normalizeCourseTitle, normalizeUniversity } from '../data/external.ts';
 import { formatCredits } from '../engine/credits.ts';
 import type { PendingDgsReview } from '../engine/review.ts';
 import { termLabel } from '../engine/term.ts';
@@ -245,6 +245,17 @@ function oncePerCourse(courses: readonly PendingReviewCourse[], keyOf: (c: Pendi
   return out;
 }
 
+/** One course of another university (DGS 2026-11-07): its university, its
+ * id AND its title — "There are some courses who share the same course code
+ * but different course titles, meaning that they are different courses …
+ * They need to be treated as different courses." A topics number (Illinois's
+ * CS 598) is a different course under each title, and the ExternalCourses tab
+ * tells them apart by `course_title` (findExternalRule), so each gets its own
+ * row and its own item. The same title again is the same course, taken again. */
+function externalCourseKey(c: PendingReviewCourse): string {
+  return `${normalizeUniversity(c.institution ?? '')}|${normalizeCourseId(c.courseId)}|${normalizeCourseTitle(c.title)}`;
+}
+
 /** Said only when a repeat was actually folded away, so the DGS knows why the
  * table is shorter than the details below it. */
 const repeatNote = (kept: readonly PendingReviewCourse[], all: readonly PendingReviewCourse[]): string =>
@@ -302,7 +313,7 @@ export function buildCombinedReviewRequest(opts: {
   ];
   // One row per course for the sheet; every attempt still shown in the details.
   const ndRows = oncePerCourse(opts.nd, (c) => normalizeCourseId(c.courseId));
-  const extRows = oncePerCourse(opts.external, (c) => `${normalizeUniversity(c.institution ?? '')}|${normalizeCourseId(c.courseId)}`);
+  const extRows = oncePerCourse(opts.external, externalCourseKey);
   // Group the external courses per transcript (slot + university), so the
   // details read the way the student uploaded them — one table per group.
   const groups: { heading: string; rows: string[][] }[] = [];
@@ -330,7 +341,7 @@ export function buildCombinedReviewRequest(opts: {
   const distinct = (courses: readonly PendingReviewCourse[]): PendingReviewCourse[] => {
     const seen = new Set<string>();
     return courses.filter((c) => {
-      const key = `${normalizeUniversity(c.institution ?? '')}|${normalizeCourseId(c.courseId)}`;
+      const key = c.institution === undefined ? `|${normalizeCourseId(c.courseId)}` : externalCourseKey(c);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

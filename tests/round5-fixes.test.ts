@@ -220,7 +220,7 @@ describe('11: a course the §5.2 cap counts in part', () => {
   it('two 4-credit Purdue courses against an unfinished master’s six', async () => {
     const { gradAdminRequest } = await import('../src/ui/grad-admin-request.ts');
     const r = buildRules({
-      external: ['CS 50300', 'CS 58000'].map((id) => ({ university: 'PURDUE UNIVERSITY', course_id: id, course_title: id, transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes', credit_system: 'semester' })),
+      external: ['CS 50300', 'CS 58000'].map((id) => ({ university: 'PURDUE UNIVERSITY', course_id: id, course_title: '', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'yes', credit_system: 'semester' })),
     });
     const s = phdStudent({
       entryTerm: fall(2024), priorMs: 'unfinished', gpa: 3.6, bachelorsAwarded: spring(2021),
@@ -246,7 +246,7 @@ describe('11: a course the §5.2 cap counts in part', () => {
     const { gradAdminRequest } = await import('../src/ui/grad-admin-request.ts');
     const r = buildRules({
       parameters: { ms_noncse_credits_max: '3' },
-      external: ['MA 51100', 'MA 52000'].map((id) => ({ university: 'PURDUE UNIVERSITY', course_id: id, course_title: id, transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'no', credit_system: 'semester' })),
+      external: ['MA 51100', 'MA 52000'].map((id) => ({ university: 'PURDUE UNIVERSITY', course_id: id, course_title: '', transferable_PhD: 'yes', transferable_MSCSE: 'yes', is_cse: 'no', credit_system: 'semester' })),
     });
     const s = phdStudent({
       program: 'mscse', msOption: 'project', entryTerm: fall(2024), priorMs: 'completed', gpa: 3.6, bachelorsAwarded: spring(2021),

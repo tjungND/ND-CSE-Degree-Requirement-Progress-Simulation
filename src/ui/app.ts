@@ -1970,7 +1970,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       if (
         g.bachelors &&
         !(qualifierApplies && CORE_TITLE_RE.test(e.c.title ?? '')) &&
-        !(qualifierApplies && findExternalRule(rules.external, e.c.institution ?? '', e.c.courseId)) &&
+        !(qualifierApplies && findExternalRule(rules.external, e.c.institution ?? '', e.c.courseId, e.c.title)) &&
         !(qualifierApplies && priorNd && rule?.coreArea) &&
         !(priorNd && priorNdUndergraduateCanCount(e.c, rule, student.program))
       ) {
