@@ -1,17 +1,23 @@
 // Which semesters the course-rules page's two schedule cards stand for, and
-// whether a Courses-tab row's `offered_now` / `offered_next` still describe
-// them (DGS 2026-09-09; per-row since 2026-09-14).
+// what a Courses-tab row's `offered_now` / `offered_next` say about them (DGS
+// 2026-09-09; dated per row 2026-09-14; dated by the sheet since 2026-11-08).
 //
-// The problem this solves: the card headings come from today's date (Notre
-// Dame's, settled on the loading card), but the columns are static. A DGS who
-// does not update them the week a semester turns over would have the page
-// print last semester's courses under this semester's name. Until 2026-09-14
-// one Parameters stamp (`current_semester`) dated the whole sheet; now each
-// row's own `last_offered` dates its two columns (DGS: "use the last_offered
-// column and offered_now in Courses sheet to tell whether those offered_now
-// courses are currently up-to-date or stale"). A row updated for this
-// semester is read as written; one updated last semester has its "next"
-// column read as this semester; anything older, or undated, shows nothing.
+// The semester the schedule describes comes from the SHEET (DGS 2026-11-08: "I
+// want to change how 'current semester' is calculated. Use the 'last_offered'
+// column to infer that. The latest semester there is the current semester."):
+// the latest fall or spring in the Courses tab's `last_offered` (`sheetSemester`).
+// The DGS rolls the schedule over by dating the courses that run in the new
+// semester; until then the cards keep naming the semesters the columns were
+// written for, so a late update never prints last semester's courses under
+// this semester's NAME (the concern the per-row dating of 2026-09-14 answered).
+//
+// Per row (`rowSchedule`): `offered_now` speaks for that semester only on a row
+// dated it — a course running now was last offered now (DGS 2026-09-18), so a
+// row dated earlier is a course that ran before, whose `yes` is left over.
+// `offered_next` speaks for the semester after it on EVERY row (DGS
+// 2026-11-08: Spring 2027 courses not running in Fall 2026 were missing from
+// the next-semester card — a course not running now cannot be dated now, and
+// the sheet's own semester now dates the column instead).
 //
 // DOM-free so the rule has a test matrix (tests/schedule-terms.test.ts).
 import { semesterSeq } from '../engine/term.ts';
@@ -35,56 +41,71 @@ function compareTeaching(a: Term, b: Term): number {
   return semesterSeq(a) - semesterSeq(b);
 }
 
-export type RowFreshness = 'current' | 'ahead' | 'stale' | 'undated';
+/** Same fall or spring. */
+export function sameTeachingTerm(a: Term, b: Term): boolean {
+  return compareTeaching(teachingTermOf(a), teachingTermOf(b)) === 0;
+}
+
+/** The latest `last_offered` a row may carry: the teaching semester after
+ * today's. A course cannot last have been offered in a term that has not
+ * happened, but the DGS may date next semester's courses before it starts —
+ * that is how the schedule is rolled over (DGS 2026-11-08). Anything later is
+ * a slip of the keyboard ("Fall 2062"), and one such cell must not carry the
+ * whole page to its semester: it is left out, and counted. */
+export function latestDatable(today: Term): Term {
+  return afterTeachingTerm(teachingTermOf(today));
+}
+
+/** The semester the Courses tab's schedule describes (DGS 2026-11-08: "The
+ * latest semester there is the current semester."): the latest FALL or
+ * SPRING `last_offered` of any row, retired or not, up to `latestDatable`.
+ * Summer dates are not schedule semesters (the cards are fall/spring) and are
+ * skipped, so dating a summer course does not move the schedule to the fall
+ * before its courses are marked. With no fall or spring date at all, the
+ * date's own teaching semester (`fromSheet` false). */
+export function sheetSemester(rows: Iterable<{ lastOffered?: Term }>, today: Term): { term: Term; fromSheet: boolean } {
+  const limit = latestDatable(today);
+  let latest: Term | undefined;
+  for (const r of rows) {
+    const t = r.lastOffered;
+    if (t === undefined || t.season === 'summer' || compareTeaching(t, limit) > 0) continue;
+    if (latest === undefined || compareTeaching(t, latest) > 0) latest = t;
+  }
+  return latest === undefined ? { term: teachingTermOf(today), fromSheet: false } : { term: { season: latest.season, year: latest.year }, fromSheet: true };
+}
+
+/** How a row's `last_offered` stands to the schedule's semester.
+ *   `current` — dated it: `offered_now` speaks for it.
+ *   `other`   — dated another semester (an earlier one, or a summer): its
+ *               `offered_now` is left over from when it ran, and not shown.
+ *   `undated` — no readable `last_offered`: the same.
+ *   `ahead`   — dated past `latestDatable` (a typo): the row shows nothing. */
+export type RowFreshness = 'current' | 'other' | 'undated' | 'ahead';
 
 export interface RowSchedule {
-  /** What the row says about THIS semester's card: true/false as recorded,
-   * undefined when the row says nothing usable. */
+  /** What the row says about the schedule semester's card: true/false as
+   * recorded, undefined when the row says nothing usable. */
   this?: boolean;
-  /** The same for the NEXT semester's card. */
+  /** The same for the semester after it. */
   next?: boolean;
   freshness: RowFreshness;
 }
 
-/** What one row may say about the two cards, given today and the row's
- * `last_offered`.
- *
- * The DGS settled what the column means on 2026-09-18: **the last term this
- * course was actually offered**. That single sentence decides this function.
- * A course running this semester was, by definition, last offered this
- * semester — so `last_offered` naming this semester is the DGS saying "these
- * two cells describe the schedule I am looking at now", and both are read as
- * written (`current`).
- *
- * Everything else says nothing about today:
- *   `stale`  — dated an EARLIER semester. The row has not been touched since,
- *              so its `offered_now` contradicts its own date and its
- *              `offered_next` names a semester nobody can identify: "next"
- *              after Spring 2026 is Fall 2026 to the page and Spring 2027 to
- *              the DGS who wrote it. Until 2026-09-18 this case was shifted
- *              forward one semester, which printed a green "Fall ’26" tag on a
- *              spring-only course (review R-1).
- *   `ahead`   — dated a LATER semester, which the DGS's definition makes
- *              impossible: a course cannot last have been offered in a term
- *              that has not happened. Reading such a row as current put its
- *              `offered_now` under this semester's card and, after the
- *              rollover, republished both columns a semester forward (R-7).
- *   `undated` — no readable `last_offered` at all.
- *
- * In all three the page shows nothing and says how many rows it left out,
- * exactly as it never guesses a requirement. */
-export function rowSchedule(today: Term, row: { lastOffered?: Term; offeredNow?: boolean; offeredNext?: boolean }): RowSchedule {
-  const thisTerm = teachingTermOf(today);
-  if (row.lastOffered === undefined) return { freshness: 'undated' };
-  const cmp = compareTeaching(teachingTermOf(row.lastOffered), thisTerm);
-  if (cmp === 0) {
-    return { freshness: 'current', ...(row.offeredNow !== undefined ? { this: row.offeredNow } : {}), ...(row.offeredNext !== undefined ? { next: row.offeredNext } : {}) };
-  }
-  return { freshness: cmp > 0 ? 'ahead' : 'stale' };
+/** What one row says about the two cards: `semester` is the schedule's
+ * semester (`sheetSemester`), `today` the date's — for the typo guard. */
+export function rowSchedule(semester: Term, today: Term, row: { lastOffered?: Term; offeredNow?: boolean; offeredNext?: boolean }): RowSchedule {
+  const dated = row.lastOffered === undefined ? undefined : teachingTermOf(row.lastOffered);
+  if (dated !== undefined && compareTeaching(dated, latestDatable(today)) > 0) return { freshness: 'ahead' };
+  const freshness: RowFreshness = dated === undefined ? 'undated' : compareTeaching(dated, teachingTermOf(semester)) === 0 ? 'current' : 'other';
+  return {
+    freshness,
+    ...(freshness === 'current' && row.offeredNow !== undefined ? { this: row.offeredNow } : {}),
+    ...(row.offeredNext !== undefined ? { next: row.offeredNext } : {}),
+  };
 }
 
-/** The two cards' semesters for a date. */
-export function scheduleTerms(today: Term): { thisTerm: Term; nextTerm: Term } {
-  const thisTerm = teachingTermOf(today);
+/** The two cards' semesters: the schedule's semester and the one after. */
+export function scheduleTerms(semester: Term): { thisTerm: Term; nextTerm: Term } {
+  const thisTerm = teachingTermOf(semester);
   return { thisTerm, nextTerm: afterTeachingTerm(thisTerm) };
 }

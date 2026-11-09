@@ -39,13 +39,17 @@ describe('notes on a planned course', () => {
   });
 
   it('explicitly off next semester’s schedule, read as the course-rules page reads it', () => {
-    // CSE 60111: offered_next = no, last offered Spring 2026 — dated LAST
-    // semester, so in Fall 2026 its schedule cells say nothing.
-    assert.deepEqual(planNotes(planned('CSE 60111', 'spring', 2027), buildRules(), FALL_2026), []);
+    // CSE 60111: offered_next = no, last offered Spring 2026. Since 2026-11-08
+    // (DGS) the column speaks on every row for the semester after the sheet's
+    // own — the latest fall or spring in last_offered, Fall 2026 here.
+    assert.deepEqual(planNotes(planned('CSE 60111', 'spring', 2027), buildRules(), FALL_2026), ['not on the Spring 2027 schedule in the course rules']);
     const current = buildRules({ courses: [{ course_id: 'CSE 60111', set: { last_offered: 'Fall 2026', offered_now: 'yes', offered_next: 'no' } }] });
     assert.deepEqual(planNotes(planned('CSE 60111', 'spring', 2027), current, FALL_2026), ['not on the Spring 2027 schedule in the course rules']);
     // Only the next semester: a later spring is not what the column describes.
     assert.deepEqual(planNotes(planned('CSE 60111', 'spring', 2028), current, FALL_2026), []);
+    // A yes says nothing; a blank says nothing.
+    const yes = buildRules({ courses: [{ course_id: 'CSE 60111', set: { offered_next: 'yes' } }] });
+    assert.deepEqual(planNotes(planned('CSE 60111', 'spring', 2027), yes, FALL_2026), []);
   });
 
   it('outside its usual season — fall, spring or both; varies and blank say nothing', () => {

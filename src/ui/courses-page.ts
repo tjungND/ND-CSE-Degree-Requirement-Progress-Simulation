@@ -9,8 +9,8 @@ import type { NotreDameNow } from '../data/clock.ts';
 import { resolveRuleRow } from '../data/assemble.ts';
 import type { CourseType, Counts, RuleCourse, Rules } from '../data/types.ts';
 import type { Term } from '../engine/types.ts';
-import { termLabel, termOfDate } from '../engine/term.ts';
-import { rowSchedule, scheduleTerms, type RowFreshness, type RowSchedule } from './schedule-terms.ts';
+import { semesterSeq, termLabel, termOfDate } from '../engine/term.ts';
+import { latestDatable, rowSchedule, sameTeachingTerm, scheduleTerms, sheetSemester, teachingTermOf, type RowSchedule } from './schedule-terms.ts';
 
 // (A local `afterTeachingTermBack` lived here until 2026-09-18 — a second copy
 // of schedule-terms.ts's own arithmetic, kept only for a sentence about
@@ -242,11 +242,19 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
   applyContactOverrides(rules.parameters); // sheet-driven contacts (2026-09-04)
   const todayIso = today.iso; // Notre Dame's date, settled on the loading card (2026-09-07)
   const currentTerm = termOfDate(todayIso);
-  // Which semesters the two schedule cards stand for, and whether a row's
-  // columns still describe them — per row, by its own `last_offered`
-  // (DGS 2026-09-14); src/ui/schedule-terms.ts explains why the page will
-  // not guess.
-  const { thisTerm: thisTeachingTerm, nextTerm: nextTeachingTerm } = scheduleTerms(currentTerm);
+  // Which semesters the two schedule cards stand for: the sheet's own — the
+  // latest fall or spring in the Courses tab's `last_offered` (DGS 2026-11-08:
+  // "The latest semester there is the current semester.") — and the one after
+  // it. src/ui/schedule-terms.ts has the rule. The rule versions shown, the
+  // dates and everything else on the page still go by Notre Dame's date.
+  const sheetTerm = sheetSemester([...rules.courses.values()].flat(), currentTerm);
+  const { thisTerm: thisTeachingTerm, nextTerm: nextTeachingTerm } = scheduleTerms(sheetTerm.term);
+  /** The sheet describes the date's own semester: the cards may say "this
+   * semester" and "next semester". Otherwise — the sheet rolled over ahead of
+   * the calendar, or not yet — they name their semesters and nothing more. */
+  const sheetIsNow = sameTeachingTerm(thisTeachingTerm, currentTerm);
+  /** The sheet still describes a semester the calendar has left. */
+  const sheetBehind = sheetTerm.fromSheet && !sheetIsNow && semesterSeq(thisTeachingTerm) < semesterSeq(teachingTermOf(currentTerm));
   /** "Fall 2026" → "Fall '26", the tag on a qualifier-card course (2026-09-17). */
   const termShortLabel = (t: Term): string => `${t.season[0]!.toUpperCase()}${t.season.slice(1)} ’${String(t.year).slice(-2)}`;
   /** In the summer neither fall/spring semester is running, so the cards name
@@ -256,6 +264,14 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
   const inSummer = currentTerm.season === 'summer';
   const thisSemesterPhrase = inSummer ? 'this coming semester' : 'this semester';
   const nextSemesterPhrase = inSummer ? 'the semester after' : 'next semester';
+  /** "Offered this semester — Fall 2026" while the sheet describes the date's
+   * semester; "Offered in Spring 2027" when it does not (DGS 2026-11-08). */
+  const scheduleLabel = (which: 'this' | 'next', form: 'heading' | 'option' | 'key'): string => {
+    const term = termLabel(which === 'this' ? thisTeachingTerm : nextTeachingTerm);
+    const phrase = which === 'this' ? thisSemesterPhrase : nextSemesterPhrase;
+    if (!sheetIsNow) return form === 'key' ? ` offered in ${term}` : `Offered in ${term}`;
+    return form === 'heading' ? `Offered ${phrase} — ${term}` : form === 'option' ? `Offered ${phrase} (${term})` : ` offered ${phrase}`;
+  };
   const offeredIn =
     (which: 'this' | 'next') =>
     (r: RuleCourse): boolean | undefined => {
@@ -265,16 +281,21 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
   /** Rows the page leaves OFF the schedule cards although their sheet cells
    * say a course is offered, by the reason. Only `yes` cells count (review
    * B-9, 2026-09-18): a row that says "no" is not being withheld, and a
-   * retired row is left out by `active`, which the note names separately. */
-  const freshnessCounts = (): Record<RowFreshness, number> & { retired: number } => {
-    const out = { current: 0, ahead: 0, stale: 0, undated: 0, retired: 0 };
+   * retired row is left out by `active`, which the note names separately.
+   * Since 2026-11-08 `offered_next` is read on every row, so what is left out
+   * is an `offered_now` = yes on a row not dated the schedule's semester
+   * (`other`, `undated`), and any row dated past what can be dated (`ahead`). */
+  const leftOutCounts = (): { other: number; undated: number; ahead: number; retired: number } => {
+    const out = { other: 0, undated: 0, ahead: 0, retired: 0 };
     for (const r of rows) {
       if (r.offeredNow !== true && r.offeredNext !== true) continue;
       if (!r.active) {
         out.retired += 1;
         continue;
       }
-      out[scheduleOf(r).freshness] += 1;
+      const f = scheduleOf(r).freshness;
+      if (f === 'ahead') out.ahead += 1;
+      else if (r.offeredNow === true && f !== 'current') out[f] += 1;
     }
     return out;
   };
@@ -290,8 +311,8 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
   /** Each row's schedule reading (schedule-terms.ts), taken once: the filter,
    * both cards, the tags, the key line and the note under the cards all ask
    * for it, and it is pure. */
-  const schedules = new Map<RuleCourse, RowSchedule>(rows.map((r) => [r, rowSchedule(currentTerm, r)]));
-  const scheduleOf = (r: RuleCourse): RowSchedule => schedules.get(r) ?? rowSchedule(currentTerm, r);
+  const schedules = new Map<RuleCourse, RowSchedule>(rows.map((r) => [r, rowSchedule(thisTeachingTerm, currentTerm, r)]));
+  const scheduleOf = (r: RuleCourse): RowSchedule => schedules.get(r) ?? rowSchedule(thisTeachingTerm, currentTerm, r);
 
   const coreName = new Map(rules.coreAreas.map((c) => [c.code, c.name]));
   const groupName = new Map(rules.categoryGroups.map((g) => [g.code, g.name]));
@@ -846,11 +867,15 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
       { class: 'overview schedule-overview' },
       el('h2', {}, 'CSE courses on the schedule'),
       // (The intro paragraph was removed at the DGS's request, 2026-09-16.)
+      // The sheet still describes a semester the calendar has left (DGS
+      // 2026-11-08: the schedule's semester is the sheet's own): said, so the
+      // cards' named semesters are not read as an oversight of the page.
+      ...(sheetBehind ? [el('p', { class: 'muted small sched-behind' }, `The schedule in the course rules was last updated for ${termLabel(thisTeachingTerm)}.`)] : []),
       el(
         'div',
         { class: 'ov-grid two' },
-        card(`Offered ${thisSemesterPhrase} — ${termLabel(thisTeachingTerm)}`, thisTeachingTerm, offeredIn('this'), 'this'),
-        card(`Offered ${nextSemesterPhrase} — ${termLabel(nextTeachingTerm)}`, nextTeachingTerm, offeredIn('next'), 'next'),
+        card(scheduleLabel('this', 'heading'), thisTeachingTerm, offeredIn('this'), 'this'),
+        card(scheduleLabel('next', 'heading'), nextTeachingTerm, offeredIn('next'), 'next'),
       ),
       // What was left out and why. Each clause counts rows whose cells say a
       // course IS offered and which the page still does not show, with the
@@ -858,19 +883,20 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
       // edit instead of a quiet one (2026-09-14; rewritten 2026-09-18 for the
       // DGS's ruling that `last_offered` is the last term a course ran).
       ...(() => {
-        const n = freshnessCounts();
+        const n = leftOutCounts();
         const s = (k: number) => (k === 1 ? '' : 's');
         const is = (k: number) => (k === 1 ? 'is' : 'are');
+        const has = (k: number) => (k === 1 ? 'has' : 'have');
+        const sem = termLabel(thisTeachingTerm);
         const parts: string[] = [];
-        if (n.stale > 0)
-          parts.push(
-            `${n.stale} course${s(n.stale)} marked as offered ${is(n.stale)} dated to an earlier semester in the Courses tab’s last_offered, so the two cells describe a schedule that has passed and ${is(n.stale)} not shown`,
-          );
+        // A course running in the schedule's semester was last offered then
+        // (DGS 2026-09-18), so a `yes` beside another date is left over.
+        if (n.other > 0) parts.push(`${n.other} course${s(n.other)} marked as offered in ${sem} ${has(n.other)} another semester in last_offered and ${is(n.other)} not shown on the ${sem} card`);
+        if (n.undated > 0) parts.push(`${n.undated} course${s(n.undated)} marked as offered in ${sem} ${has(n.undated)} no readable last_offered and ${is(n.undated)} not shown on the ${sem} card`);
         if (n.ahead > 0)
           parts.push(
-            `${n.ahead} course${s(n.ahead)} marked as offered ${is(n.ahead)} dated ahead of ${termLabel(thisTeachingTerm)} in last_offered — a course cannot last have been offered in a semester that has not happened — and ${is(n.ahead)} not shown`,
+            `${n.ahead} course${s(n.ahead)} marked as offered ${is(n.ahead)} dated after ${termLabel(latestDatable(currentTerm))} in last_offered — a course cannot last have been offered then — and ${is(n.ahead)} not shown`,
           );
-        if (n.undated > 0) parts.push(`${n.undated} course${s(n.undated)} marked as offered ${n.undated === 1 ? 'has' : 'have'} no readable last_offered and ${is(n.undated)} not shown`);
         if (n.retired > 0) parts.push(`${n.retired} course${s(n.retired)} marked as offered ${is(n.retired)} also marked retired (active = no) and ${is(n.retired)} not shown`);
         return parts.length > 0 ? [el('p', { class: 'muted small' }, parts.join('. ') + '.', ...reportToDgs(' Please tell'))] : [];
       })(),
@@ -945,9 +971,9 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
       ...(() => {
         if (!anyNow && !anyNext) return [];
         const bits: (string | Node)[] = [];
-        if (anyNow) bits.push(el('span', { class: 'pill small sched-now' }, termShortLabel(thisTeachingTerm)), ` offered ${thisSemesterPhrase}`);
+        if (anyNow) bits.push(el('span', { class: 'pill small sched-now' }, termShortLabel(thisTeachingTerm)), scheduleLabel('this', 'key'));
         if (anyNow && anyNext) bits.push(' · ');
-        if (anyNext) bits.push(el('span', { class: 'pill small sched-next' }, termShortLabel(nextTeachingTerm)), ` offered ${nextSemesterPhrase}`);
+        if (anyNext) bits.push(el('span', { class: 'pill small sched-next' }, termShortLabel(nextTeachingTerm)), scheduleLabel('next', 'key'));
         // Without the second half, say why it is missing rather than leaving
         // its absence to be read as "nothing runs next semester".
         if (anyNow && !anyNext) bits.push(`. ${termLabel(nextTeachingTerm)} is not on the sheet yet.`);
@@ -1275,8 +1301,8 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
     });
     offered.append(option('', 'Any semester', filters.offered === ''));
     // Only a semester the sheet has actually recorded is offered as a choice.
-    if (saidThis) offered.append(option('now', `Offered ${thisSemesterPhrase} (${termLabel(thisTeachingTerm)})`, filters.offered === 'now'));
-    if (saidNext) offered.append(option('next', `Offered ${nextSemesterPhrase} (${termLabel(nextTeachingTerm)})`, filters.offered === 'next'));
+    if (saidThis) offered.append(option('now', scheduleLabel('this', 'option'), filters.offered === 'now'));
+    if (saidNext) offered.append(option('next', scheduleLabel('next', 'option'), filters.offered === 'next'));
     const retired = el('input', {
       type: 'checkbox',
       'data-key': 'filter.retired',

@@ -199,12 +199,16 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   "ND" is NOT done by this function — those are hand-edited literals in `app.ts`, `report.ts`,
   `external-upload.ts` and one `shortTitle` in `requirements/phd.ts`, because each one needed its article and its e2e pin moved with it, and
   the masthead, the footer and the emails keep "Notre Dame" deliberately.
-- **The schedule cards' staleness rule** (2026-09-09; per row since 2026-09-14): `src/ui/schedule-terms.ts`
-  is the whole of it — DOM-free, with a test matrix. `rowSchedule(today, row)` reads a row's
-  `offered_now` / `offered_next` against its own `last_offered` (parsed into `RuleCourse.lastOffered`):
-  dated this teaching semester or later → both as written; dated the semester before → `offered_next`
-  becomes this semester; older or undated → nothing, and the page counts those rows in a "not shown"
-  line. `current_semester` / `offered_semester` are no longer read (the Parameters row is harmless).
+- **The schedule cards' dating** (2026-09-09; per row 2026-09-14; by the sheet since 2026-11-08, DGS: “The
+  latest semester there is the current semester.”): `src/ui/schedule-terms.ts` is the whole of it — DOM-free,
+  with a test matrix. `sheetSemester(rows, today)` = the latest FALL/SPRING `last_offered` of any row (summer
+  skipped; a date past `latestDatable(today)` — the semester after today's — skipped as a typo; none → the
+  date's own semester, `fromSheet: false`). `rowSchedule(semester, today, row)`: `offered_next` on every row;
+  `offered_now` only on a row dated `semester` (`current`), else `other` / `undated`; a row dated past
+  `latestDatable` → `ahead`, nothing. courses-page.ts `scheduleLabel` says “this/next semester” only while
+  `sheetIsNow`, else “Offered in <term>”; `sheetBehind` adds “The schedule in the course rules was last
+  updated for <term>.”; `leftOutCounts` feeds the “not shown” line. plan-notes.ts reads the same way. The
+  rule versions shown on the page still resolve against Notre Dame's date (`currentTerm`).
 - **The code was tidied for readers and agents on 2026-09-20** (four review passes, behaviour
   preserved; verified by the 535 unit tests and the e2e suite in both engines). What moved:
   `src/ui/app.ts` 3,141 → 2,185 lines — the ND transcript import is `src/ui/nd-upload.ts`
@@ -2350,8 +2354,8 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   BETA_NOTICE itself is the DGS's wording — never edit it.
 - **Plan notes** (2026-10-11, item 19): `src/ui/plan-notes.ts` `planNotes(c, rules, realTerm)` — Notre Dame
   courses in a semester after the REAL current one, only in simulation mode (app.ts course cell,
-  `.plan-note`). `offered_next` goes through schedule-terms.ts `rowSchedule` so it means what the
-  course-rules page means. `LAST_OFFERED_RECENT_SEMESTERS = 4`. The `clock-*` scenarios cross each
+  `.plan-note`). `offered_next` goes through schedule-terms.ts `sheetSemester` + `rowSchedule` so it
+  means what the course-rules page means. `LAST_OFFERED_RECENT_SEMESTERS = 4`. The `clock-*` scenarios cross each
   deadline the day before and after; regenerate any of them only with the DGS's approval of the
   verdict list.
 - **Problem links** (2026-10-11, item 18): `src/ui/report-problem.ts` builds both mailtos (to

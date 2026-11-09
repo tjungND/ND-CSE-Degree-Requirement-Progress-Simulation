@@ -1890,6 +1890,11 @@ export async function driveCourses(s, baseUrl) {
     }
   }
   console.log('  schedule cards:', cards.headings.map((h, i) => `${h} (${cards.items[i] > 0 ? cards.items[i] + ' courses' : cards.bodies[i]})`).join(' | '));
+  // The next-semester card lists every course marked offered_next, whether or
+  // not it runs this semester (DGS 2026-11-08: the schedule's semester is the
+  // latest fall or spring in last_offered, and offered_next is read on every row).
+  await s.evalJs(`document.querySelectorAll('.schedule-overview .ov-card')[1].id = 'e2e-next-card'`);
+  await s.shotElement('courses-schedule-next', '#e2e-next-card');
   // A card may only ever list courses under a semester the row itself has
   // dated (DGS 2026-09-09; per row by `last_offered` since 2026-09-14): the
   // headings come from today, the columns do not. Fresh rows are listed;

@@ -92,16 +92,20 @@ app skip that row and report it.
 
 `offered_now` and `offered_next` (`yes` / `no` / blank) say whether a course is on the schedule
 this semester and next; the course-rules page turns them into two cards at the top of the page.
-Each row's `last_offered` — the last term the course was actually offered (DGS, 2026-09-18) —
-dates them: a row dated THIS semester is read as written, and a row dated any other semester shows
-nothing and is counted, with the reason, in a "not shown" line under the cards. The current
-semester comes from Notre Dame's date, not from the sheet. **When you fill `offered_now` /
-`offered_next`, set `last_offered` to the same semester in the same edit** — that is what tells the
-page the row is current.
+**The schedule's semester comes from the sheet** (DGS, 2026-11-08): it is the latest fall or spring
+in `last_offered` — the last term each course was actually offered (DGS, 2026-09-18) — and the
+next-semester card is the one after it. `offered_next` = yes lists a course on that card whatever
+its own `last_offered` (a course not running now is still listed for next semester); `offered_now`
+= yes lists it on the current card only when its `last_offered` names that semester, since a course
+running now was last offered now. **To roll the schedule over, date the courses running in the new
+semester** (`last_offered` = the new semester, `offered_now` = yes) **and re-mark `offered_next` for
+every course in the same sitting**: as soon as one course is dated with the new semester, the page
+reads every `offered_next` as the semester after it. Anything the page leaves out is counted, with
+the reason, in a "not shown" line under the cards.
 
 The other columns (`title`, `level`, `credit_min`, `credit_max`, `credits_default`,
-`typically_offered`) are informational — `last_offered` is not: it dates the two schedule columns,
-as above. `credits_default` is what the app
+`typically_offered`) are informational — `last_offered` is not: its latest fall or spring is the
+schedule's semester, as above. `credits_default` is what the app
 pre-fills; leave it blank for variable-credit courses. Full schema: `data/README.md`.
 
 ### A2. Add a new course

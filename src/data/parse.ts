@@ -276,17 +276,20 @@ export function parseCoursesTab(text: string, issues: SheetIssue[]): RuleCourse[
     };
     const offeredNow = offeredOf('offered_now');
     const offeredNext = offeredOf('offered_next');
-    // `last_offered` dates the two columns (DGS 2026-09-14). "Fall 2026" or
-    // "FA26"; anything else leaves the row undated, and a dated schedule
-    // column on an undated row is reported so the DGS sees why it is not shown.
+    // `last_offered`: "Fall 2026" or "FA26"; anything else leaves the row
+    // undated. The latest fall or spring in the column is the semester the
+    // schedule describes (DGS 2026-11-08), and `offered_now` speaks for it only
+    // on a row dated it — so an `offered_now` = yes on an undated row is
+    // reported, to say why the course is not on that card. (`offered_next`
+    // needs no date of its own since 2026-11-08.)
     const lastOffered = (cells['last_offered'] ?? '').trim() === '' ? undefined : parseTermCode(cells['last_offered']!);
-    if ((offeredNow !== undefined || offeredNext !== undefined) && lastOffered === undefined) {
+    if (offeredNow === true && lastOffered === undefined) {
       issues.push({
         severity: 'warning',
         tab: 'Courses',
         row: rowNum,
         column: 'last_offered',
-        message: `Courses row ${rowNum} (${courseId}): offered_now / offered_next is set but last_offered ('${cells['last_offered'] ?? ''}') is not a term like 'Fall 2026'. The schedule columns are dated by last_offered, so this row is not shown on the schedule cards until it is.`,
+        message: `Courses row ${rowNum} (${courseId}): offered_now is yes but last_offered ('${cells['last_offered'] ?? ''}') is not a term like 'Fall 2026'. A course is shown as offered this semester only when its last_offered names the semester the schedule describes — the latest one in that column — so this row is not on that card until it does.`,
       });
     }
 

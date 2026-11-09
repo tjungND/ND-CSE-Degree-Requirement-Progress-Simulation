@@ -80,31 +80,33 @@ added to the table, and nothing else in the app reads them. A card whose column 
 says "Not released yet." instead of showing an empty list, and the filter appears only once at
 least one course carries a value.
 
-**Each row's `last_offered` is what dates them** (since 2026-09-14; until then one Parameters
-stamp, `current_semester`, dated the whole sheet — that key is no longer read and its row may go).
-`last_offered` means **the last term the course was actually offered** (DGS, 2026-09-18). The
-current semester comes from Notre Dame's date, so the card headings are always right; what the page
-has to know is whether a row's `offered_now` / `offered_next` were written for that semester, and
-the definition answers it: a course running now was last offered now.
+**The sheet dates them** (DGS 2026-11-08: “I want to change how ‘current semester’ is calculated.
+Use the ‘last_offered’ column to infer that. The latest semester there is the current semester.”).
+`last_offered` means **the last term the course was actually offered** (DGS, 2026-09-18), and its
+latest FALL or SPRING value is the semester the schedule describes; the next-semester card is the
+one after it (`sheetSemester` in src/ui/schedule-terms.ts). Per row:
 
-| the row's `last_offered` is | what the page shows for that row |
+| | what the page shows |
 |---|---|
-| this semester | both columns as recorded |
-| an earlier semester | nothing — the row describes a schedule that has passed, and its "next" names a semester nobody can identify |
-| a later semester | nothing — a course cannot last have been offered in a term that has not happened; check the cell |
-| not a term, or blank | nothing |
+| `offered_next` | on every row, whatever its `last_offered` — a course not running now is listed for next semester |
+| `offered_now` on a row dated the schedule's semester | as recorded |
+| `offered_now` on a row dated another semester, or undated | nothing — a course running now was last offered now, so the `yes` is left over; counted under the cards |
+| a row dated later than the semester after today's | nothing — a typo; it does not move the schedule either |
 
-Each of those "nothing" rows is counted, with its reason, in the line under the two cards, so a
-stale schedule is visible rather than quiet. The worst a late update can do is show less than it
-could, never something false. **Fill the three cells together each semester** — set `last_offered`
-to the semester you are describing at the same time as `offered_now` / `offered_next` — and a stale
-`yes` can never outlive its date.
+Summer dates never move the schedule (the cards are fall and spring). The headings say “this
+semester” and “next semester” while the sheet's semester is also the calendar's; otherwise they name
+their semesters (“Offered in Spring 2027”), and when the sheet is behind the calendar a line says
+“The schedule in the course rules was last updated for Fall 2026.” **To roll the schedule over**,
+date the courses running in the new semester (`last_offered`, `offered_now` = yes) and re-mark
+`offered_next` for every course in the same sitting: from the first course dated with the new
+semester, every `offered_next` is read as the semester after it. Each course left out is counted,
+with its reason, in the line under the cards.
 
-One consequence worth knowing (review R-1, 2026-09-18): a course that does NOT run this semester
-but is already timetabled for the next one cannot be shown on the "next semester" card, because
-its honest `last_offered` is some earlier term and the page has no way to tell a freshly written
-`offered_next` from one left over from last year. If that case matters, the sheet needs a separate
-"schedule last updated" column — a schema change, so ask the DGS first.
+History: 2026-09-09 one Parameters stamp (`current_semester`) dated the sheet; 2026-09-14 each row's
+`last_offered` dated its own two columns, read against Notre Dame's date; 2026-09-18 only a row
+dated this semester was read — which left every course not running now off the next-semester card
+(review R-1's recorded cost, reported by the DGS on 2026-11-08 with 24 of 37 Spring 2027 courses
+missing).
 
 Since 2026-09-08 a university whose transcript prints its name only in the letterhead IMAGE can
 still be recognised from an acronym in the text: `NAME_ONLY_IN_IMAGE` in

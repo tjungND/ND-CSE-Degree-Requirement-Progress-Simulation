@@ -7,8 +7,9 @@
 //   `last_offered`        the last term it actually ran, when that is more
 //                         than two academic years before this semester;
 //   `offered_next` = no   explicitly not on next semester's schedule, read
-//                         exactly as the course-rules page reads it (only
-//                         while the row's `last_offered` is this semester);
+//                         exactly as the course-rules page reads it (the
+//                         semester after the latest fall or spring in
+//                         `last_offered`, on every row — DGS 2026-11-08);
 //   `typically_offered`   fall / spring / both — a pattern from past years,
 //                         said as a hint when the planned season is not in it
 //                         (`varies` and a blank cell say nothing).
@@ -19,7 +20,7 @@ import { resolveRuleRow } from '../data/assemble.ts';
 import type { Rules } from '../data/types.ts';
 import { compareTerm, semesterSeq, termLabel } from '../engine/term.ts';
 import type { CourseEntry, Term } from '../engine/types.ts';
-import { rowSchedule, scheduleTerms, teachingTermOf } from './schedule-terms.ts';
+import { rowSchedule, scheduleTerms, sheetSemester, teachingTermOf } from './schedule-terms.ts';
 
 /** More than this many fall/spring semesters since a course last ran, and the
  * note names its last offering: two academic years, so a course taught every
@@ -36,8 +37,12 @@ export function planNotes(c: CourseEntry, rules: Rules, realTerm: Term): string[
   else if (row.lastOffered && semesterSeq(teachingTermOf(realTerm)) - semesterSeq(teachingTermOf(row.lastOffered)) > LAST_OFFERED_RECENT_SEMESTERS) {
     notes.push(`last offered in ${termLabel(row.lastOffered)} — check that it will run in ${termLabel(c.term)}`);
   }
-  const { nextTerm } = scheduleTerms(realTerm);
-  if (rowSchedule(realTerm, row).next === false && compareTerm(c.term, nextTerm) === 0) notes.push(`not on the ${termLabel(nextTerm)} schedule in the course rules`);
+  // The schedule's semester is the sheet's own — the latest fall or spring in
+  // last_offered (DGS 2026-11-08) — and `offered_next` speaks for the one
+  // after it on every row, exactly as the course-rules page reads it.
+  const semester = sheetSemester([...rules.courses.values()].flat(), realTerm).term;
+  const { nextTerm } = scheduleTerms(semester);
+  if (rowSchedule(semester, realTerm, row).next === false && compareTerm(c.term, nextTerm) === 0) notes.push(`not on the ${termLabel(nextTerm)} schedule in the course rules`);
   const typical = row.typicallyOffered;
   const seasons = typical === 'fall' ? ['fall'] : typical === 'spring' ? ['spring'] : typical === 'both' ? ['fall', 'spring'] : undefined;
   if (seasons && !seasons.includes(c.term.season)) notes.push(`typically offered in ${typical === 'both' ? 'fall and spring' : typical}; planned for ${termLabel(c.term)}`);
