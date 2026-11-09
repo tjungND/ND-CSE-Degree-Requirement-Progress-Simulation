@@ -2238,6 +2238,39 @@ async function driveCoursesEmbed(s, baseUrl) {
   // The masthead's intro, its self-check link and the dated line are not rendered in embed mode since 2026-09-16 (DGS: no text at the top).
   if (trimmed.selfCheckTarget !== undefined) throw new Error('embed mode must not render the masthead intro: ' + JSON.stringify(trimmed));
   if (trimmed.rulesDate) throw new Error('embed mode must not render the dated line either (DGS 2026-09-16: no text at the top)');
+  // The qualifier cards in the frame (DGS 2026-11-08: "the area/category boxes
+  // are not aligned nicely … E.g., by showing only the course codes?"): course
+  // numbers and tags only, every card in a grid the same width, the two grids
+  // on one column track, nothing spilling out of a card — at a WordPress
+  // column's widths and a phone's. The title is still in the link.
+  for (const width of [1000, 760, 390]) {
+    await s.setViewport({ width, height: 1400 });
+    await s.settle();
+    const grid = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+      const grids = [...document.querySelectorAll('.overview:not(.schedule-overview) .ov-grid')];
+      const cards = grids.map((g) => [...g.querySelectorAll(':scope > .ov-card')].map((c) => { const r = c.getBoundingClientRect(); return { left: Math.round(r.left), width: Math.round(r.width), spill: c.scrollWidth - c.clientWidth }; }));
+      const item = document.querySelector('.overview:not(.schedule-overview) a.ov-item');
+      const title = item?.querySelector('.ctitle');
+      // Every course on one line: its last tag level with its number.
+      const wrapped = [...document.querySelectorAll('.overview:not(.schedule-overview) a.ov-item')].filter((a) => { const pills = a.querySelectorAll('.pill'); return pills.length > 0 && Math.abs(pills[pills.length - 1].getBoundingClientRect().top - a.querySelector('.cid').getBoundingClientRect().top) > 6; }).map((a) => a.querySelector('.cid').textContent);
+      return { cards, wrapped, titleShown: title ? title.getBoundingClientRect().width > 1 : null, name: item?.textContent.trim() ?? '', pageSpill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    })())`));
+    const widths = grid.cards.flat().map((c) => c.width);
+    const lefts = grid.cards.map((g) => g.map((c) => c.left));
+    const firstRowShared = lefts.length === 2 && lefts[0].slice(0, Math.min(lefts[0].length, lefts[1].length)).every((x, i) => Math.abs(x - lefts[1][i]) <= 1);
+    if (grid.titleShown !== false || !/^CSE \d{5}/.test(grid.name)) throw new Error(`embed at ${width} px: the qualifier cards must show course numbers only, the title kept in the link — ` + JSON.stringify(grid));
+    if (Math.max(...widths) - Math.min(...widths) > 1) throw new Error(`embed at ${width} px: every qualifier card must be the same width — ` + JSON.stringify(widths));
+    if (!firstRowShared) throw new Error(`embed at ${width} px: the Core knowledge and Specialization cards must share one column track — ` + JSON.stringify(lefts));
+    if (grid.cards.flat().some((c) => c.spill > 0) || grid.pageSpill > 0) throw new Error(`embed at ${width} px: nothing may spill out of a card or the page — ` + JSON.stringify(grid));
+    if (grid.wrapped.length > 0) throw new Error(`embed at ${width} px: a course's tags wrapped under its number — ` + JSON.stringify(grid.wrapped));
+    console.log(`  embed at ${width} px: qualifier cards ${widths[0]} px wide, ${lefts[0].length} + ${lefts[1].length} on one column track, numbers only (“${grid.name.slice(0, 40)}”)`);
+    if (width === 1000) {
+      await s.evalJs(`document.querySelector('.overview:not(.schedule-overview)').id = 'e2e-embed-qualifier'`);
+      await s.shotElement('courses-embed-qualifier', '#e2e-embed-qualifier');
+    }
+  }
+  await s.setViewport({ width: 1400, height: 1900 });
+  await s.settle();
   // The page rewrites its own URL from the filters on first render; embed=1 is
   // not a filter and used to be dropped, which lost the mode on any reload.
   if (!/embed=1/.test(trimmed.search)) throw new Error('embed=1 did not survive the filter URL rewrite: ' + trimmed.search);

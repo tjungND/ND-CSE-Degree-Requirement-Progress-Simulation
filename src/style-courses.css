@@ -38,6 +38,20 @@
 /* The schedule cards hold a seven-column table, so they take the whole row
    until the window can fit two of them side by side (2026-09-09). */
 .ov-grid.two > .ov-card { flex: 1 1 min(100%, 1100px); }
+/* In the ND page's frame (?embed=1) the qualifier cards show each course's
+   number and semester tags only, on equal columns (DGS 2026-11-08: "In the
+   iframe embed, the area/category boxes are not aligned nicely. Can you
+   somehow make those boxes show nicely? E.g., by showing only the course
+   codes?"). Content-width cards suit the full page; in the narrower frame they
+   wrapped into a ragged patchwork. Both grids share one column track, so the
+   Core knowledge cards line up with the Specialization cards beneath them.
+   The title stays in the link — read by screen readers, and in the course's
+   hover card on hover or focus — and the full page is unchanged. */
+html.embed .ov-grid:not(.two) { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
+html.embed .ov-grid:not(.two) > .ov-card { min-width: 0; max-width: none; }
+html.embed .ov-grid:not(.two) .ov-item .ctitle { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+html.embed .ov-grid:not(.two) .ov-item { flex-wrap: nowrap; min-height: 24px; align-items: center; } /* a number and two tags fit a 250 px card: one course, one line. 24 px tall: without its 13 px title the line was 20.9 px, 0.2 px short of WCAG 2.2's target spacing (axe target-size) */
+html.embed .ov-grid:not(.two) .ov-item .cid { margin-right: auto; } /* the tags to the card's right edge, in a column */
 /* The schedule tables fit their card at every width above the phone layout
    (DGS 2026-09-29: "shows all the columns without horizontal scrolls, just
    like All courses"): no 980 px floor — that is the sort-header table's — and

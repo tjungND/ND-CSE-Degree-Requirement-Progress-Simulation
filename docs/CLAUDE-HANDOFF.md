@@ -212,7 +212,7 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   (past `latestDatable`) is also an on-page sheet warning on both pages — sheet-warnings.ts
   `lastOfferedTypoIssues(rules, today)`, added at render (courses-page.ts `pageIssues`, app.ts's
   `diagnosticsCard` call) because parse/validate know no date. The tags' night colours are the tokens
-  `--sched-next-bg` / `--sched-next-ink` (style-base.css); drive-a11y pins them.
+  `--sched-next-bg` / `--sched-next-ink` (style-base.css); drive-a11y pins them. In the frame (`html.embed`) the qualifier `.ov-grid:not(.two)` is a CSS grid of 250 px-minimum tracks with `.ctitle` visually hidden and `.ov-item` unwrapped (DGS 2026-11-08); drive-app's driveCoursesEmbed measures it at 1000/760/390 px.
 - **The code was tidied for readers and agents on 2026-09-20** (four review passes, behaviour
   preserved; verified by the 535 unit tests and the e2e suite in both engines). What moved:
   `src/ui/app.ts` 3,141 → 2,185 lines — the ND transcript import is `src/ui/nd-upload.ts`

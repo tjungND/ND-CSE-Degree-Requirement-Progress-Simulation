@@ -813,12 +813,12 @@ async function checkFrameFollowsDevice(s, url, ready) {
 async function checkAxe(s, label) {
   await s.evalJs(AXE_SOURCE + '; true');
   const result = JSON.parse(
-    await s.evalJs(`axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] } }).then(r => JSON.stringify(r.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length, first: v.nodes[0]?.target.join(' ') }))))`),
+    await s.evalJs(`axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] } }).then(r => JSON.stringify(r.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length, first: v.nodes[0]?.target.join(' '), why: (v.nodes[0]?.failureSummary ?? '').replace(/\\s+/g, ' ').slice(0, 300) }))))`),
   );
   if (result.length > 0) {
     throw new Error(
       `axe-core found ${result.length} violation type(s) on the ${label}: ` +
-        result.map((v) => `${v.id} [${v.impact}] ×${v.count} (first: ${v.first})`).join('; '),
+        result.map((v) => `${v.id} [${v.impact}] ×${v.count} (first: ${v.first}${v.why ? ` — ${v.why}` : ''})`).join('; '),
     );
   }
   console.log(`  axe-core: no WCAG 2.x A/AA or landmark violations on the ${label}`);
