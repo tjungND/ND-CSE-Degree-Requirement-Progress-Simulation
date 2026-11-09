@@ -90,3 +90,33 @@ describe('what one row says about the two cards', () => {
     assert.equal(live.filter((r) => rowSchedule(semester, TODAY, r).this === true).length, 13);
   });
 });
+
+// Reading (c), confirmed by the DGS on 2026-11-08 with: "For (c), when there
+// is such a typo, show a warning on the webpage."
+describe('a last_offered too late to be true is warned about on the pages', () => {
+  it('a date past the semester after today’s: one on-page warning per row, naming the cell', async () => {
+    const { buildRules } = await import('./helpers.ts');
+    const { lastOfferedTypoIssues, coursesPageWarnings, diagnosticsContent } = await import('../src/ui/sheet-warnings.ts');
+    const rules = buildRules({ courses: [{ course_id: 'CSE 60641', set: { last_offered: 'Fall 2062' } }] });
+    const issues = lastOfferedTypoIssues(rules, fall(2026));
+    assert.equal(issues.length, 1);
+    const [w] = issues;
+    assert.equal(w!.onPage, true);
+    assert.equal(w!.severity, 'warning');
+    assert.equal(w!.column, 'last_offered');
+    assert.match(w!.message, /^Courses row \d+ \(CSE 60641\): last_offered is Fall 2062, later than Spring 2027 — a course cannot last have been offered then, so it is taken for a typo: it does not set the semester the schedule describes, and the course is left off the schedule\. Correct the cell\.$/);
+    // Shown on both pages: the course-rules page and the self-check's box.
+    assert.equal(coursesPageWarnings(issues, false).masthead.length, 1);
+    assert.equal(coursesPageWarnings(issues, true).notices.length, 1);
+    assert.match(diagnosticsContent(issues)!.summary, /^Rules-sheet warning — for the DGS$/);
+  });
+  it('next semester is not a typo — dating next semester’s courses is how the schedule rolls over', async () => {
+    const { buildRules } = await import('./helpers.ts');
+    const { lastOfferedTypoIssues } = await import('../src/ui/sheet-warnings.ts');
+    assert.deepEqual(lastOfferedTypoIssues(buildRules({ courses: [{ course_id: 'CSE 60641', set: { last_offered: 'Spring 2027' } }] }), fall(2026)), []);
+    assert.deepEqual(lastOfferedTypoIssues(buildRules(), fall(2026)), [], 'the fixture sheet has none');
+    // In the summer, "today's" semester is the coming fall: Spring 2028 is the limit.
+    assert.deepEqual(lastOfferedTypoIssues(buildRules({ courses: [{ course_id: 'CSE 60641', set: { last_offered: 'Spring 2028' } }] }), summer(2027)), []);
+    assert.equal(lastOfferedTypoIssues(buildRules({ courses: [{ course_id: 'CSE 60641', set: { last_offered: 'Fall 2028' } }] }), summer(2027)).length, 1);
+  });
+});

@@ -82,6 +82,7 @@ import { type RequestCardArgs, askDgsCard, askGradAdminCard } from './request-ca
 import { renderReport, renderSummary, reqAnchorId, scoreLine } from './report.ts';
 import { courseworkSentence, nearestDeadline, nextSteps, type NextStep } from './next-steps.ts';
 import { finishedBetween, keepRing, nextAfter, pendingOn, showNextStep, skippedBetween, skippedOf, stillToDo, targetOf, type PendingId } from './next-step.ts';
+import { lastOfferedTypoIssues } from './sheet-warnings.ts'; // a last_offered too late to be true (DGS 2026-11-08)
 import {
   type LoadCleanup,
   type Refusal,
@@ -796,7 +797,8 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
             milestonesCard(classified, report),
             askGradAdminCard(requestCardArgs(), gaRequest),
             saveCard(report),
-            diagnosticsCard(rules.issues),
+            // …with a last_offered too late to be true (DGS 2026-11-08), dated by today.
+            diagnosticsCard([...rules.issues, ...lastOfferedTypoIssues(rules, termOfDate(realTodayIso))]),
           ),
           el(
             'div',

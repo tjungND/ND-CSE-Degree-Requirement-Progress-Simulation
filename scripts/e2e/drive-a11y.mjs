@@ -749,6 +749,23 @@ async function checkNightMode(s, page, label, { frame = false } = {}) {
   if (state.link !== 'rgb(221, 194, 120)') throw new Error(`night mode ${where}: a plain link must be the host theme’s gold, rgb(221, 194, 120) — ` + JSON.stringify(state));
   if (state.h2 !== 'rgb(255, 255, 255)') throw new Error(`night mode ${where}: headings must be the host theme’s white — ` + JSON.stringify(state));
   console.log(`  night mode ${where}: the host theme’s navy page, white headings, gold links (“${state.linkText}”)`);
+  // The course-rules page's next-semester tag (DGS 2026-11-08: "'Spring'27'
+  // aren't quite visible in the dark mode"): a lighter blue than the card it
+  // sits on, with near-white text — not the card's own navy, which hid it.
+  const tag = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const t = document.querySelector('.pill.sched-next');
+    if (!t) return null;
+    const card = t.closest('.ov-card') ?? document.body;
+    return { bg: getComputedStyle(t).backgroundColor, ink: getComputedStyle(t).color, card: getComputedStyle(card).backgroundColor };
+  })())`));
+  if (tag) {
+    if (tag.bg !== 'rgb(31, 74, 128)' || tag.ink !== 'rgb(216, 231, 252)' || tag.bg === tag.card) throw new Error(`night mode ${where}: the next-semester tag must stand out from its card — ` + JSON.stringify(tag));
+    console.log(`  night mode ${where}: the next-semester tag is ${tag.bg} on a ${tag.card} card, its text ${tag.ink}`);
+    if (!frame) {
+      await s.evalJs(`document.querySelector('.pill.sched-next').closest('.overview').id = 'e2e-qualifier-cards'`);
+      await s.shotElement(`${page}-qualifier-dark`, '#e2e-qualifier-cards');
+    }
+  }
   await s.shot(`${page}-dark`);
   await checkAxe(s, `${label}, night mode`);
   await s.evalJs(`document.querySelector('[data-key="theme.auto"]').click()`);

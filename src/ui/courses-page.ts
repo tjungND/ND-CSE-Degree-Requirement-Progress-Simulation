@@ -22,7 +22,7 @@ import { fullPageHref, isEmbedded, notifyEmbedHeight, openFullPageLink, postScro
 import { sectionRef } from './section-ref.ts';
 import { themeToggle } from './theme.ts';
 import { formatYmdLong, handbookLink, rulesDateLine } from './handbook.ts';
-import { coursesPageWarnings, sheetWarningText } from './sheet-warnings.ts';
+import { coursesPageWarnings, lastOfferedTypoIssues, sheetWarningText } from './sheet-warnings.ts';
 import { resultStamp, stampLine } from './stamp.ts';
 import { ndDateOnly } from '../data/rules-date.ts';
 import { sheetSourceLine } from './sheet-source.ts'; // sheetSourceNote is the self-check page's now (trim review P-12)
@@ -248,6 +248,9 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
   // it. src/ui/schedule-terms.ts has the rule. The rule versions shown, the
   // dates and everything else on the page still go by Notre Dame's date.
   const sheetTerm = sheetSemester([...rules.courses.values()].flat(), currentTerm);
+  /** The sheet's issues and, beside them, a last_offered too late to be true
+   * (DGS 2026-11-08: "show a warning on the webpage") — dated by today. */
+  const pageIssues = [...rules.issues, ...lastOfferedTypoIssues(rules, currentTerm)];
   const { thisTerm: thisTeachingTerm, nextTerm: nextTeachingTerm } = scheduleTerms(sheetTerm.term);
   /** The sheet describes the date's own semester: the cards may say "this
    * semester" and "next semester". Otherwise — the sheet rolled over ahead of
@@ -664,7 +667,7 @@ export function renderCoursesPage(root: HTMLElement, rules: Rules, today: NotreD
    * under the rules-date line, and — the embedded page has no masthead — at
    * the head of the notices (round 5, item 17; DGS 2026-10-14). */
   function sheetWarnings(place: 'masthead' | 'notices'): HTMLElement[] {
-    return coursesPageWarnings(rules.issues, isEmbedded())[place].map((i) => el('p', { class: 'issue warning sheet-warning', 'data-key': `sheet-warning.${i.tab}.${i.row ?? ''}` }, sheetWarningText(i)));
+    return coursesPageWarnings(pageIssues, isEmbedded())[place].map((i) => el('p', { class: 'issue warning sheet-warning', 'data-key': `sheet-warning.${i.tab}.${i.row ?? ''}` }, sheetWarningText(i)));
   }
 
   function notices(): HTMLElement[] {

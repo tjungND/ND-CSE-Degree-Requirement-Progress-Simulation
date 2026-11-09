@@ -66,6 +66,10 @@
   --due-ink: #8a3a00;
   --due-line: #e0863a;
   --info-bg: #e7eef9;
+  /* The course-rules page's "next semester" tag (DGS 2026-11-08): the info tint
+     by day; its own colours at night, below. */
+  --sched-next-bg: var(--info-bg);
+  --sched-next-ink: var(--info);
   --combined-bg: #eef4fb;
   --combined-line: #b9cfe8;
   --adgs-bg: #efe8f8;
@@ -120,6 +124,12 @@ html { color-scheme: light; }
     --official-line: #3f6494;
     --official-ink: #cfdcee;
     --info-bg: #12233f;
+    /* The "Spring ’27" tag (DGS 2026-11-08: “aren't quite visible in the dark mode”):
+       on the card's navy the info tint (#12233f) was the card's own colour
+       (1.01:1), so the tag showed as loose text. A lighter blue stands out
+       (1.77:1 against the card) and keeps its text at 7.1:1. */
+    --sched-next-bg: #1f4a80;
+    --sched-next-ink: #d8e7fc;
     --combined-bg: #12233f;
     --combined-line: #3f6494;
     --neutral-bg: #112a4a;

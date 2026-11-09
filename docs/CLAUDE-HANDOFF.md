@@ -208,7 +208,11 @@ git clones OUTSIDE any Drive/OneDrive/Dropbox folder (`MAINTENANCE.md` § repo p
   `latestDatable` → `ahead`, nothing. courses-page.ts `scheduleLabel` says “this/next semester” only while
   `sheetIsNow`, else “Offered in <term>”; `sheetBehind` adds “The schedule in the course rules was last
   updated for <term>.”; `leftOutCounts` feeds the “not shown” line. plan-notes.ts reads the same way. The
-  rule versions shown on the page still resolve against Notre Dame's date (`currentTerm`).
+  rule versions shown on the page still resolve against Notre Dame's date (`currentTerm`). A typo'd date
+  (past `latestDatable`) is also an on-page sheet warning on both pages — sheet-warnings.ts
+  `lastOfferedTypoIssues(rules, today)`, added at render (courses-page.ts `pageIssues`, app.ts's
+  `diagnosticsCard` call) because parse/validate know no date. The tags' night colours are the tokens
+  `--sched-next-bg` / `--sched-next-ink` (style-base.css); drive-a11y pins them.
 - **The code was tidied for readers and agents on 2026-09-20** (four review passes, behaviour
   preserved; verified by the 535 unit tests and the e2e suite in both engines). What moved:
   `src/ui/app.ts` 3,141 → 2,185 lines — the ND transcript import is `src/ui/nd-upload.ts`

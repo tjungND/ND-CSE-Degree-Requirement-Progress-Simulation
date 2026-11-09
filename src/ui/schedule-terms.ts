@@ -104,6 +104,15 @@ export function rowSchedule(semester: Term, today: Term, row: { lastOffered?: Te
   };
 }
 
+/** The rows whose `last_offered` is past `latestDatable(today)`: a typo the
+ * schedule ignores (reading (c), confirmed by the DGS on 2026-11-08 with
+ * "when there is such a typo, show a warning on the webpage" —
+ * sheet-warnings.ts `lastOfferedTypoIssues`). */
+export function lastOfferedTypos<R extends { lastOffered?: Term }>(rows: Iterable<R>, today: Term): R[] {
+  const limit = latestDatable(today);
+  return [...rows].filter((r) => r.lastOffered !== undefined && compareTeaching(teachingTermOf(r.lastOffered), limit) > 0);
+}
+
 /** The two cards' semesters: the schedule's semester and the one after. */
 export function scheduleTerms(semester: Term): { thisTerm: Term; nextTerm: Term } {
   const thisTerm = teachingTermOf(semester);

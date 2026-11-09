@@ -170,7 +170,7 @@ table.course-rules .course-id .pill { margin-left: 6px; }
 .courses-page .pill.no { background: var(--bad-bg); color: var(--bad); }
 .courses-page .pill.approval { background: var(--info-bg); color: var(--info); } /* DGS: blue */
 .courses-page .pill.sched-now { background: var(--ok-bg); color: var(--ok); margin-left: 0; } /* offered this semester (2026-09-17) */
-.courses-page .pill.sched-next { background: var(--info-bg); color: var(--info); margin-left: 0; } /* offered next semester */
+.courses-page .pill.sched-next { background: var(--sched-next-bg); color: var(--sched-next-ink); margin-left: 0; } /* offered next semester (its own night colours, 2026-11-08) */
 .courses-page .sched-key { margin: -4px 0 10px; }
 /* A course line in a qualifier card is a row of parts that must be allowed to
    wrap on a phone: with two semester tags and a title, `white-space: nowrap`
