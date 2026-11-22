@@ -2413,8 +2413,11 @@ async function driveCoursesEmbed(s, baseUrl) {
 
   await driveWordPressSnippet(s, baseUrl);
 
-  // …and the plain page is unchanged (acceptance criterion 2).
-  const plain = JSON.parse(await s.evalJs(`JSON.stringify({ eyebrow: !!document.querySelector('.masthead .eyebrow'), h1Hidden: document.querySelector('.masthead h1')?.classList.contains('visually-hidden') === true, contactInMasthead: !!document.querySelector('.masthead .contact-card'), embedClass: document.documentElement.classList.contains('embed'), exit: !!document.querySelector('.embed-exit') })`));
+  // …and the plain page is unchanged (acceptance criterion 2). Waited for:
+  // under Firefox 160 (2026-11-22) the page was found still on its loading
+  // card at this point, failing the check on code that had passed before.
+  await s.waitFor(`!!document.querySelector('.masthead h1') && !!document.querySelector('.all-courses table.course-rules')`, 30000);
+  const plain = JSON.parse(await s.evalJs(`JSON.stringify({ eyebrow: !!document.querySelector('.masthead .eyebrow'), h1Hidden: document.querySelector('.masthead h1')?.classList.contains('visually-hidden') === true, contactInMasthead: !!document.querySelector('.masthead .contact-card'), embedClass: document.documentElement.classList.contains('embed'), exit: !!document.querySelector('.embed-exit'), href: location.href, body: (document.body?.innerText ?? '').slice(0, 160) })`));
   if (!plain.eyebrow || plain.h1Hidden || !plain.contactInMasthead || plain.embedClass || plain.exit) {
     throw new Error('courses.html without ?embed=1 is not the page it was: ' + JSON.stringify(plain));
   }

@@ -191,6 +191,9 @@ export function isCseCourse(
 ): boolean | undefined {
   if (rule?.isCse !== undefined) return rule.isCse;
   if (cseSubjectCodes === undefined) return undefined;
+  // No course number, no subject to read (DGS 2026-11-22): the DGS's is_cse
+  // cell decides, and until then nothing is assumed.
+  if (hasNoCourseId(courseId)) return undefined;
   return subjectCodes(courseId).some((code) => cseSubjectCodes.includes(code));
 }
 
@@ -225,6 +228,27 @@ export function normalizeCourseId(id: string): string {
   return id.toUpperCase().replace(/[\s\-–—_./]+/g, '');
 }
 
+/** What a student or the DGS types for a course whose transcript prints no
+ * course number — "N/A", "n/a", "NA", "none", "-", "TBD" … — normalized. */
+const NO_COURSE_ID = new Set(['', 'NA', 'NONE', 'NIL', 'NULL', 'TBA', 'TBD', 'NOCODE', 'NOID', 'NONUMBER', 'NOTAPPLICABLE', 'NOTAVAILABLE', 'UNKNOWN', '?']);
+
+/** A course with no course number (DGS 2026-11-22, on Xi'an Jiaotong
+ * University's transcripts, which print none: "When this happens, can you use
+ * the title to match the courses, instead of the course id?"). Such a course
+ * is its university and its TITLE — in the ExternalCourses match
+ * (`findExternalRule`), the review request's rows, the duplicate check and
+ * the CSE test — never "the course N/A". */
+export function hasNoCourseId(id: string | undefined): boolean {
+  return NO_COURSE_ID.has(normalizeCourseId(id ?? ''));
+}
+
+/** A course id as courses are told apart by it: the normalized id, or `''`
+ * for every way of writing "no number" — so "N/A" and "none" are one key and
+ * the title decides. */
+export function courseIdKey(id: string | undefined): string {
+  return hasNoCourseId(id) ? '' : normalizeCourseId(id ?? '');
+}
+
 /** The ExternalCourses rows indexed by university key, then by normalized
  * course id — built once per rows array (a WeakMap keyed on the array itself,
  * so a fresh Rules object gets a fresh index) instead of scanning every row for
@@ -232,8 +256,10 @@ export function normalizeCourseId(id: string): string {
  * id's rows by title; the first matching row wins. */
 interface ExternalIndex {
   /** Every row of a course id, in sheet order: one course id may name several
-   * courses — a topics number — told apart by the title (DGS 2026-11-07). */
-  byUniversity: Map<string, { byCourse: Map<string, ExternalRule[]> }>;
+   * courses — a topics number — told apart by the title (DGS 2026-11-07).
+   * Rows written with no number ("N/A") are under `''` (`courseIdKey`), and
+   * every row is also under its normalized title (DGS 2026-11-22). */
+  byUniversity: Map<string, { byCourse: Map<string, ExternalRule[]>; byTitle: Map<string, ExternalRule[]> }>;
 }
 const EXTERNAL_INDEX = new WeakMap<readonly ExternalRule[], ExternalIndex>();
 function externalIndex(rules: readonly ExternalRule[]): ExternalIndex {
@@ -243,11 +269,13 @@ function externalIndex(rules: readonly ExternalRule[]): ExternalIndex {
   for (const r of rules) {
     let uni = index.byUniversity.get(r.universityKey);
     if (!uni) {
-      uni = { byCourse: new Map() };
+      uni = { byCourse: new Map(), byTitle: new Map() };
       index.byUniversity.set(r.universityKey, uni);
     }
-    const id = normalizeCourseId(r.courseId);
+    const id = courseIdKey(r.courseId);
     uni.byCourse.set(id, [...(uni.byCourse.get(id) ?? []), r]);
+    const title = normalizeCourseTitle(r.title);
+    if (title !== '') uni.byTitle.set(title, [...(uni.byTitle.get(title) ?? []), r]);
   }
   EXTERNAL_INDEX.set(rules, index);
   return index;
@@ -283,14 +311,29 @@ export function findExternalRule(
   title: string | undefined,
 ): ExternalRule | undefined {
   const uni = normalizeUniversity(university);
-  const id = normalizeCourseId(courseId);
-  if (uni === '' || id === '') return undefined;
-  const rows = externalIndex(rules).byUniversity.get(uni)?.byCourse.get(id);
-  if (rows === undefined) return undefined;
-  const codeWide = (): ExternalRule | undefined => rows.find((r) => normalizeCourseTitle(r.title) === '');
+  if (uni === '') return undefined;
+  const index = externalIndex(rules).byUniversity.get(uni);
+  if (index === undefined) return undefined;
   const want = normalizeCourseTitle(title);
-  if (want === '') return rows.length === 1 ? rows[0] : codeWide();
-  return rows.find((r) => normalizeCourseTitle(r.title) === want) ?? codeWide();
+  // No course number on the transcript (DGS 2026-11-22: "use the title to
+  // match the courses, instead of the course id"): the title is the course —
+  // a row written with no number first, else a numbered row of that title
+  // when only one number carries it (two numbers under one title are two
+  // courses, and the page does not guess which).
+  if (hasNoCourseId(courseId)) {
+    if (want === '') return undefined;
+    const same = index.byTitle.get(want) ?? [];
+    const unnumbered = same.find((r) => hasNoCourseId(r.courseId));
+    if (unnumbered) return unnumbered;
+    return new Set(same.map((r) => courseIdKey(r.courseId))).size === 1 ? same[0] : undefined;
+  }
+  const rows = index.byCourse.get(courseIdKey(courseId));
+  const codeWide = (): ExternalRule | undefined => rows?.find((r) => normalizeCourseTitle(r.title) === '');
+  const byId = rows === undefined ? undefined : want === '' ? (rows.length === 1 ? rows[0] : codeWide()) : (rows.find((r) => normalizeCourseTitle(r.title) === want) ?? codeWide());
+  if (byId) return byId;
+  // A row the DGS wrote with no number ("N/A") decides a course of its title
+  // that does print one (DGS 2026-11-22).
+  return want === '' ? undefined : (index.byTitle.get(want) ?? []).find((r) => hasNoCourseId(r.courseId));
 }
 
 /** §5.2: "Credits not earned on the semester system, such as trimester and

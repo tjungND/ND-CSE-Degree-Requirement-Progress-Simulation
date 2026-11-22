@@ -38,7 +38,7 @@ export function pairBlockRows<B extends BlockRow>(rows: readonly CourseEntry[], 
   const out = new Map<B, CourseEntry>();
   const taken = new Set<CourseEntry>();
   const transferBlocks = blocks.filter((b) => b.origin === 'transfer');
-  const probe = (b: B): CourseEntry => ({ courseId: b.courseId, institution: b.institution, origin: 'transfer' }) as CourseEntry;
+  const probe = (b: B): CourseEntry => ({ courseId: b.courseId, title: b.title, institution: b.institution, origin: 'transfer' }) as CourseEntry; // the title for a course with no number (2026-11-22)
   const rowsOf = (b: B): CourseEntry[] => rows.filter((c) => c.fromNdTranscript !== true && c.ndPosted === undefined && sameTransferCourse(c, probe(b)));
   // Decided once per course, before any row is taken.
   const everyRowPosted = new Map<B, boolean>(transferBlocks.map((b) => [b, transferBlocks.filter((x) => sameTransferCourse(probe(x), probe(b))).length >= rowsOf(b).length]));
@@ -76,9 +76,9 @@ export function postingOf(c: Pick<ParsedCourse, 'term' | 'credits' | 'level' | '
 
 /** The row, other than one the Notre Dame import added, that a transfer-block
  * row duplicates: the same course from the same university, in any term. */
-export function twinOfBlockRow(student: Pick<Student, 'courses'>, block: Pick<ParsedCourse, 'courseId' | 'institution' | 'origin'>): CourseEntry | undefined {
+export function twinOfBlockRow(student: Pick<Student, 'courses'>, block: Pick<ParsedCourse, 'courseId' | 'institution' | 'origin'> & { title?: string }): CourseEntry | undefined {
   if (block.origin !== 'transfer') return undefined;
-  const probe = { courseId: block.courseId, institution: block.institution, origin: 'transfer' as const } as CourseEntry;
+  const probe = { courseId: block.courseId, title: block.title, institution: block.institution, origin: 'transfer' as const } as CourseEntry;
   // The attempt the Graduate School could have accepted, when the other
   // transcript lists the course twice (credit-transfer review 2026-10-28, #22).
   return preferredTwin(student.courses.filter((c) => c.fromNdTranscript !== true && sameTransferCourse(c, probe)));

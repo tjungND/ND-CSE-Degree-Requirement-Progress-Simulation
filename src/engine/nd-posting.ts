@@ -13,7 +13,7 @@
 //
 // Shared by the engine (which counts the credit) and the two transcript
 // imports (which keep one row per course, whichever transcript came first).
-import { isNotreDameInstitution, normalizeCourseId, normalizeUniversity } from '../data/external.ts';
+import { hasNoCourseId, isNotreDameInstitution, normalizeCourseId, normalizeCourseTitle, normalizeUniversity } from '../data/external.ts';
 import { meetsGradeFloor } from './grades.ts';
 import { compareTerm } from './term.ts';
 import type { CourseEntry, NdPosting } from './types.ts';
@@ -101,17 +101,15 @@ const RECORD_WORDS = new Set(['official', 'unofficial', 'electronic', 'academic'
 /** Two transfer rows that are one course: the same course number from the same
  * other university, whatever term each transcript dates it (P3-import-1 (c)). */
 export function sameTransferCourse(a: CourseEntry, b: CourseEntry): boolean {
-  return (
-    a.origin === 'transfer' &&
-    b.origin === 'transfer' &&
-    !isNotreDameInstitution(a.institution) &&
-    !isNotreDameInstitution(b.institution) &&
-    // An empty id names no course (a code-less import row is never saved
-    // without one — CC15, DGS 2026-10-09 — but two blanks are not a match).
-    normalizeCourseId(a.courseId) !== '' &&
-    normalizeCourseId(a.courseId) === normalizeCourseId(b.courseId) &&
-    sameUniversity(a.institution, b.institution)
-  );
+  if (!(a.origin === 'transfer' && b.origin === 'transfer' && !isNotreDameInstitution(a.institution) && !isNotreDameInstitution(b.institution) && sameUniversity(a.institution, b.institution))) return false;
+  // No course number (DGS 2026-11-22: "use the title to match the courses,
+  // instead of the course id"): two such rows are one course when their
+  // titles are; a row with a number is never the same as one without.
+  if (hasNoCourseId(a.courseId) || hasNoCourseId(b.courseId)) {
+    const title = normalizeCourseTitle(a.title);
+    return hasNoCourseId(a.courseId) && hasNoCourseId(b.courseId) && title !== '' && title === normalizeCourseTitle(b.title);
+  }
+  return normalizeCourseId(a.courseId) === normalizeCourseId(b.courseId);
 }
 
 /** A record holding BOTH rows of one course — the Notre Dame block's and the

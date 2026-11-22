@@ -9,7 +9,7 @@
 // to the transcript parser, and the one static import of its marker constants
 // (grad-admin-request.ts) pulled the whole 4,000-line parser into every first
 // load. The markers now live in email-html.ts beside the other email helpers.
-import { NOTRE_DAME_ROW_UNIVERSITY, isNotreDameInstitution, normalizeCourseId, normalizeCourseTitle, normalizeUniversity } from '../data/external.ts';
+import { NOTRE_DAME_ROW_UNIVERSITY, courseIdKey, hasNoCourseId, isNotreDameInstitution, normalizeCourseId, normalizeCourseTitle, normalizeUniversity } from '../data/external.ts';
 import { formatCredits } from '../engine/credits.ts';
 import type { PendingDgsReview } from '../engine/review.ts';
 import { termLabel } from '../engine/term.ts';
@@ -253,7 +253,7 @@ function oncePerCourse(courses: readonly PendingReviewCourse[], keyOf: (c: Pendi
  * tells them apart by `course_title` (findExternalRule), so each gets its own
  * row and its own item. The same title again is the same course, taken again. */
 function externalCourseKey(c: PendingReviewCourse): string {
-  return `${normalizeUniversity(c.institution ?? '')}|${normalizeCourseId(c.courseId)}|${normalizeCourseTitle(c.title)}`;
+  return `${normalizeUniversity(c.institution ?? '')}|${courseIdKey(c.courseId)}|${normalizeCourseTitle(c.title)}`;
 }
 
 /** Said only when a repeat was actually folded away, so the DGS knows why the
@@ -421,7 +421,9 @@ export function buildCombinedReviewRequest(opts: {
       },
       {
         rowsIntro: `Rows for the rules sheet — ExternalCourses tab:${repeatNote(extRows, opts.external)}`,
-        rows: extRows.map((c) => [c.institution ?? '', c.courseId, c.title ?? '']),
+        // A course with no number is pasted as "N/A", however it was typed:
+        // the sheet matches it by its title (DGS 2026-11-22).
+        rows: extRows.map((c) => [c.institution ?? '', hasNoCourseId(c.courseId) ? 'N/A' : c.courseId, c.title ?? '']),
       },
       {
         rowsIntro: 'Rows for the rules sheet — Universities tab (university, credit_system):',

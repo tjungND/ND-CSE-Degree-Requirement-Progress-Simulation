@@ -443,7 +443,7 @@ export function readyToAdd(r: Pick<PreviewRow, 'include' | 'courseId' | 'grade' 
  * empty, on the box and on the tick box it locks (W-CL408). */
 export const CODE_MISSING_PLACEHOLDER = 'course number';
 export const CODE_MISSING_NOTE =
-  'This transcript prints no course number for this course. Type the number the university gives it (its course catalog or your syllabus) to add it; until then the row is not ticked.';
+  'This transcript prints no course number for this course. Type the number the university gives it (its course catalog or your syllabus), or N/A if it has none — the DGS then matches it by its title. Until then the row is not ticked.'; // N/A: DGS 2026-11-22
 /** "Is this a transcript at all?" (DGS 2026-10-10, answer 4a; W-CL421): a
  * text PDF with one course-like line, no university named and no GPA or
  * totals — nothing is imported, and the course is typed by hand. */
@@ -478,7 +478,7 @@ export function ocrRawTitle(raw: string): string {
 
 /** The preview's one line when any row has no course number (W-CL409). */
 export function codeMissingHint(n: number): string {
-  return `${n === 1 ? 'One course on this transcript has' : `${n} courses on this transcript have`} no course number printed: type each one in its empty “Course id” box — from the university’s course catalog or your syllabus — and the row is ticked; a course without one is not added. The DGS rules on these courses by the number you type.`;
+  return `${n === 1 ? 'One course on this transcript has' : `${n} courses on this transcript have`} no course number printed: type each one in its empty “Course id” box — from the university’s course catalog or your syllabus, or N/A if it has none — and the row is ticked; a course with the box left empty is not added. The DGS rules on a course by the number you type, or by its title when you type N/A.`;
 }
 
 const BLOCKED_ROW_NOTE =

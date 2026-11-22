@@ -1,6 +1,8 @@
 # Where things stand (kept current by every session — read after CLAUDE.md and docs/CLAUDE-HANDOFF.md)
 
-Last updated: 2026-11-08 (the 2026-11-08 paragraph, the three 2026-11-07 paragraphs, the three 2026-11-05 paragraphs and the two 2026-11-03 paragraphs just below, and “Open for the DGS”, near the end — rebuilt from a sweep of every record on 2026-11-01 — with every question and reading on it answered; the 2026-10-29 paragraph — its answers through question 7 on 2026-10-31 —, the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+Last updated: 2026-11-22 (the 2026-11-22 paragraph, the 2026-11-08 paragraph, the three 2026-11-07 paragraphs, the three 2026-11-05 paragraphs and the two 2026-11-03 paragraphs just below, and “Open for the DGS”, near the end — rebuilt from a sweep of every record on 2026-11-01 — with every question and reading on it answered; the 2026-10-29 paragraph — its answers through question 7 on 2026-10-31 —, the three 2026-10-28 paragraphs and the four 2026-10-27 paragraphs just below by branch `claude/session-2026-10-27`; the 2026-10-15 paragraph below it by branch `claude/elegant-chaum-cab8b3`; the 2026-10-11 paragraph, kept current through 2026-10-16, by branch `claude/policy-compliance-degree-engine-44a431`).
+
+2026-11-22 (DGS: “When this happens, can you use the title to match the courses, instead of the course id?”; one commit): **a course whose transcript prints no number (“N/A”) is its university and title** — in the ExternalCourses match, the review request (pasted as N/A), the duplicate warnings and the CSE test; one number under different titles is no longer warned as a duplicate either. Wording W-CL661–W-CL662 (DECISIONS 2026-11-22).
 
 2026-11-08 (DGS: “The latest semester there is the current semester.”; one commit): **the course-rules page's schedule semester comes from the sheet** — the latest fall or spring in `last_offered` — and `offered_next` is read on every row, so the Spring 2027 card lists all 37 courses marked for it (24 were hidden: they do not run in Fall 2026). `offered_now` still needs the row dated that semester. Readings (a)–(d) confirmed the same day (DGS: “Confirm all four.”); for (c) a `last_offered` later than the semester after today's is now an on-page warning on both pages (W-CL660), and the next-semester tag has its own night colours (DGS: “‘Spring’27’ aren't quite visible in the dark mode”). Wording W-CL652–W-CL660. Later the same day (DGS: “In the iframe embed, the area/category boxes are not aligned nicely”): in the frame the qualifier cards show course numbers and semester tags only, on equal columns that line up across both grids; the full page is unchanged.
 
@@ -990,7 +992,7 @@ read as in progress, a Thai summer session moved to the next calendar year, Budd
 DECISIONS row marked. Older rows marked “the DGS may reverse” are defaults under the 2026-08-31 delegation and
 were never on the list.
 
-**Waiting on the DGS, not rulings:** wording W-CL583–W-CL660 ships as written unless edited by number (item 6 added none);
+**Waiting on the DGS, not rulings:** wording W-CL583–W-CL662 ships as written unless edited by number (item 6 added none);
 the WordPress footer snippet and the `?embed=1` shortcode (Open work, below); when to drop the alpha
 banner and link both pages from cse.nd.edu; optionally the Melbourne / Limerick specimens and a sanitized
 Workday sample for the reader; `docs/HANDBOOK-REVISIONS.md` for the CSE graduate committee (the §5.2

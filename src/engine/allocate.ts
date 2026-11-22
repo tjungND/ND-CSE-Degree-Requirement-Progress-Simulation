@@ -10,7 +10,7 @@
 import { exactCredits, formatCredits } from './credits.ts';
 import { canonicalCourseId, isIncompleteCourseId, resolveRuleRow } from '../data/assemble.ts';
 import { approverToken, needsCourseApproval } from './decider.ts';
-import { NOTRE_DAME_ROW_UNIVERSITY, findExternalRule, isCseCourse, isNotreDameInstitution, ndEquivalentCredits, needsApproval, normalizeUniversity, transferableFor, universityCreditSystem, creditSystemFactor, creditSystemFactorLabel } from '../data/external.ts';
+import { NOTRE_DAME_ROW_UNIVERSITY, findExternalRule, hasNoCourseId, isCseCourse, isNotreDameInstitution, ndEquivalentCredits, needsApproval, normalizeCourseTitle, normalizeUniversity, transferableFor, universityCreditSystem, creditSystemFactor, creditSystemFactorLabel } from '../data/external.ts';
 import type { Counts, ExternalRule, RuleCourse, Rules, Transferable } from '../data/types.ts';
 import { coreTitleSuggestion } from './core-title.ts';
 import { looksNonRegularTitle } from '../data/course-checks.ts';
@@ -1029,13 +1029,24 @@ export function classify(student: Student, rules: Rules, today?: string): {
   // the fixes, 2026-10-29: "3 times" and "2 times — its credits count once").
   const mixedAnswers = new Set<string>();
   for (const c of student.courses) {
-    const key = `${canonicalCourseId(c.courseId)}|${termIndex(c.term)}`;
+    // Every way of writing "no number" is one key; the titles then decide (DGS 2026-11-22).
+    const key = `${hasNoCourseId(c.courseId) ? '' : canonicalCourseId(c.courseId)}|${termIndex(c.term)}`;
     const group = sameTerm.get(key);
     if (group) group.push(c);
     else sameTerm.set(key, [c]);
   }
+  /** Rows of one course number — or of none — whose titles all differ are
+   * different courses (DGS 2026-11-07: "share the same course code but
+   * different course titles, meaning that they are different courses";
+   * 2026-11-22: a course with no number is its title). A row with no title
+   * could be any of them, so it keeps the warning. */
+  const differentCourses = (group: readonly CourseEntry[]): boolean => {
+    const titles = group.map((c) => normalizeCourseTitle(c.title));
+    return titles.every((t) => t !== '') && new Set(titles).size === titles.length;
+  };
   for (const group of sameTerm.values()) {
     if (group.length < 2) continue;
+    if (!group.every((c) => c.origin === 'nd' || isNotreDameInstitution(c.institution)) && differentCourses(group)) continue;
     // All Notre Dame: a regular course's duplicates are the retake rule's
     // below; a seminar, research or independent-study course is counted per
     // row (its credits may accumulate across terms), so a second row in the
@@ -1077,6 +1088,7 @@ export function classify(student: Student, rules: Rules, today?: string): {
     if (group.length < 2) continue;
     for (const c of group) grouped.add(c);
     if (new Set(group.map((c) => termIndex(c.term))).size < 2) continue;
+    if (differentCourses(group)) continue; // one number, different titles: different courses (DGS 2026-11-07)
     // Each row with its own acceptance on the Notre Dame record: the Graduate
     // School took them as separate courses — two topics courses under one
     // number — so there is no duplicate to remove (review of the fixes, 2026-10-29).

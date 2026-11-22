@@ -6,7 +6,7 @@ import { parseTermCode } from '../engine/term.ts';
 import type { Term } from '../engine/types.ts';
 import { looksNonRegularTitle, looksUndergraduateNumber } from './course-checks.ts';
 import { parseCsv } from './csv.ts';
-import { normalizeCourseId, normalizeCourseTitle, normalizeUniversity } from './external.ts';
+import { courseIdKey, normalizeCourseId, normalizeCourseTitle, normalizeUniversity } from './external.ts';
 import type { CourseType, Counts, ExternalRule, RuleCourse, SheetIssue, Transferable, UniversityRow } from './types.ts';
 import { RESERVED_GROUP_CODES } from './types.ts';
 
@@ -601,7 +601,7 @@ export function parseExternalTab(
     const dupIndex = out.findIndex(
       (r) =>
         r.universityKey === rule.universityKey &&
-        normalizeCourseId(r.courseId) === normalizeCourseId(courseId) &&
+        courseIdKey(r.courseId) === courseIdKey(courseId) && // "N/A" and "none" are one key (2026-11-22)
         normalizeCourseTitle(r.title) === normalizeCourseTitle(rule.title),
     );
     if (dupIndex >= 0) {
