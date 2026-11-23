@@ -2297,6 +2297,25 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   expected grade — In progress never counts) and the print header's "SIMULATION — not your
   real record. Printed on <real date>; the current semester in this simulation is <term> — …".
 
+## Print downloads the results as a web page (DGS 2026-11-22)
+
+- `src/ui/results-page.ts`, imported at the click (`printResults` in app.ts), like the advisor
+  summary. It COPIES the live DOM — `#report .audit` and the Coursework card's
+  `h3.subhead, p.course-key, table.courses, p.empty` — rather than rendering again: a second
+  `renderReport` call would reset report.ts's module state (`problemHrefOf`, `currentNext`), and
+  the copy is exactly what the student sees, folds included.
+- `staticCopy(original, copy)` reads dropdowns and boxes off the ORIGINAL (a clone keeps a choice
+  set by script only when it is in the markup), zipped in document order. A new control in the
+  report or the course table needs nothing: it becomes its words. A new floating or live-only
+  element does: add its class to the removal list, and `checkResultsPage` (drive-app.mjs) fails
+  on any button, input, select, textarea, script or dead `#` link in the file.
+- Dark mode: the page's night tokens hang on `:root[data-theme="dark"]` (theme.ts sets it). The
+  file has no script, so `fileCss` copies every such rule under `@media (prefers-color-scheme:
+  dark)` with the selector re-keyed to `:not([data-theme="light"])`. A new dark rule is picked up
+  by itself; a new LIGHT-only rule keyed on `data-theme` would need the same treatment.
+- The page hides the report's score on a phone (style-app.css, the summary shows it); the file
+  un-hides it in `RESULTS_PAGE_CSS`. ⌘P still prints the live page with the print header.
+
 ## Invariants — keep these true
 
 1. `npm test` and `npm run build` green before anything merges; `npm run e2e` for UI changes.

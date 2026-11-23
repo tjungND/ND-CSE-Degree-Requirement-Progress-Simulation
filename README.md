@@ -283,8 +283,9 @@ then ticks the matching box under "Approvals you already have".
 
 ### A6d. A student says the page showed something wrong
 
-Every result names what it was checked with — the last line of both pages' footers, of a
-printout's header and of every email the page writes (since 2026-10-11):
+Every result names what it was checked with — the last line of both pages' footers, of the
+results page that **Print** downloads (since 2026-11-22; a browser printout's header carries it
+too) and of every email the page writes (since 2026-10-11):
 
 > Checked with: course rules 3f9a2c1b (read live, last updated on October 9, 2026) · CSE Graduate
 > Studies Handbook (Updated September 2026) · app version fe64bda of October 11, 2026.
@@ -663,6 +664,20 @@ anchor into its frame, so a cross-link lands at the top of the ND page — the r
 courses for this area" link, which filters the course list on the full page, cannot filter it
 there.
 
+## Print — the results as a web page (DGS 2026-11-22)
+
+Both **Print** buttons (the tools row at the top and the storage card) download the student's
+results as one web page, `cse-degree-audit-<program>-<date>-results.html`, instead of opening the
+browser's print dialog. The page is built in the browser from what the screen shows at the click
+— nothing is sent anywhere — and holds the standing in one sentence, the "Checked with" line, the
+whole report column (score, warnings, Next steps, every requirement card) and the Coursework
+card's course tables. It has no buttons or form fields: a tick box reads ☑ or ☐ and a dropdown
+the choice it shows. Each card's "Relevant Policies" fold still opens and closes (on paper a
+closed fold printed as its heading only), a fold the student left open is open in the file, and
+the page follows the reader's device into dark mode. It opens offline, in any browser; a student
+can print it from there, keep it, or send it. Its footer reminds them it holds their grades.
+The browser's own print command (⌘P / Ctrl+P) still prints the page as before.
+
 ## Simulation mode — what a student sees when planning ahead (DGS 2026-10-09)
 
 "Simulate a future semester" (in the tools row at the top, and at the foot of the Coursework
@@ -676,7 +691,8 @@ screen) asks first, says what would be discarded, and brings the real record bac
 What the mode cannot do, on purpose: nothing done in it ever reaches the real record (the
 simulation is a separate copy in the browser's storage, and the real record is never written
 while the mode is on); transcripts are imported outside the mode; the review request, the Grad
-Admin request and the advisor summary cannot be sent from it. The student can still print, and
+Admin request and the advisor summary cannot be sent from it. The student can still download the
+results page (Print), and
 can **save the plan to a file**: `cse-degree-audit-<program>-simulation-<SP28>.json`, whose
 first line is a note (`"SIMULATION of Spring 2028 — a planning copy, not this student's
 record"`), then `simulation.term`, `savedAt` and the planning copy under `student`. Loading that
@@ -696,9 +712,10 @@ real data — it is imported outside the mode); the two request cards still list
 would put before the DGS and the Grad Admin, and the Next steps list says so in one line instead
 of "Send …". A "Simulation" chip sits after the program name, beside the report's headline (on a phone, beside
 the score summary at the top of the page — the headline a phone shows) and on both request cards,
-so the mode stays in view on a phone too. A printed plan opens with
-"SIMULATION — not your real record", the real date it was printed on and the semester it pretends
-to be in. If a stored plan ever fails to show (a page that cannot draw it), the page offers to
+so the mode stays in view on a phone too. A plan's results page (Print, named
+`cse-degree-audit-<program>-simulation-<SP28>-results.html`) opens with "SIMULATION — not your
+real record", the real date it was saved on and the semester it pretends to be in; a browser
+printout of the page says the same in its header. If a stored plan ever fails to show (a page that cannot draw it), the page offers to
 discard the simulation alone and show the record — the record is never cleared to recover from a
 plan.
 

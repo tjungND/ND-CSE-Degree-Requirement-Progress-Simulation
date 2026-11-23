@@ -992,6 +992,7 @@ export async function driveApp(s, baseUrl) {
   if (foldPrint.padBottom !== '0px') throw new Error(`on paper the page must end where the report does (a blank last sheet): #app padding-bottom ${foldPrint.padBottom}`);
   console.log(`  report folds on paper: the open one prints its text; ${foldPrint.closed} closed ones print their heading only`);
   await checkContactWhilePrinting(s, 'index.html');
+  await checkResultsPage(s);
 
   await driveSimulation(s, baseUrl);
   await driveAppEmbed(s, baseUrl);
@@ -1030,6 +1031,132 @@ async function checkStaleGrades(s) {
   await s.shotElement('stale-grades-warning', '.warnings');
   await s.shotElement('stale-grades-step', '[data-key="report.nextsteps"]');
   console.log('  courses still In progress after their semester ended: one warning, one step — ' + want);
+}
+
+// "Print" downloads the results as a web page (DGS 2026-11-22: "When 'Print'
+// is clicked, can you generate an HTML page instead of a PDF?" — "1. A
+// download; 2. the results only."). The download is caught in the page, as
+// "Save to a file"'s is; the file is then read against the page — every card,
+// every fold and every course row, one fold left open by the student still
+// open — and opened on its own, where it is screenshot. Leaves the page on
+// the file: the caller opens the app again.
+async function checkResultsPage(s) {
+  await loadExampleRecord(s, 'phd');
+  const got = JSON.parse(await s.evalJs(`(async () => {
+    let blob;
+    let printed = 0;
+    const files = [];
+    const click = HTMLAnchorElement.prototype.click;
+    const make = URL.createObjectURL;
+    const print = window.print;
+    HTMLAnchorElement.prototype.click = function () { if (this.download) { files.push(this.download); return; } return click.call(this); };
+    URL.createObjectURL = function (b) { blob = b; return make.call(URL, b); };
+    window.print = () => { printed += 1; };
+    const fold = document.querySelector('#report details.req-more');
+    const wasOpen = fold?.open;
+    if (fold) fold.open = true;
+    try {
+      const button = document.querySelector('[data-key="tools.print"]');
+      button.click();
+      const t0 = Date.now();
+      while (files.length === 0 && Date.now() - t0 < 15000) await new Promise((r) => setTimeout(r, 100));
+      const page = {
+        cards: document.querySelectorAll('#report .req').length,
+        folds: document.querySelectorAll('#report details').length,
+        rows: document.querySelectorAll('#coursework table.courses tr').length,
+        foldTitle: fold?.closest('.req')?.querySelector('.req-title')?.textContent ?? '',
+        label: button.textContent,
+        title: button.title,
+      };
+      return JSON.stringify({ files, printed, page, text: blob ? await blob.text() : null, toast: [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | ') });
+    } finally {
+      HTMLAnchorElement.prototype.click = click;
+      URL.createObjectURL = make;
+      window.print = print;
+      if (fold) fold.open = wasOpen;
+    }
+  })()`));
+  if (!got.text) throw new Error('Print must download the results page: ' + JSON.stringify({ files: got.files, printed: got.printed }));
+  if (got.printed !== 0) throw new Error('Print must no longer open the browser’s print dialog');
+  const today = localToday();
+  const named = new RegExp(`^cse-degree-audit-(phd|mscse)-${today}-results\\.html$`).exec(got.files[0] ?? '');
+  if (got.files.length !== 1 || !named) throw new Error(`the results page must be named for the program and the day (cse-degree-audit-<program>-${today}-results.html): ` + JSON.stringify(got.files));
+  const name = got.files[0];
+  if (got.page.label !== 'Print' || got.page.title !== 'Download your results as a web page') throw new Error('the button keeps its name and says what it does on hover: ' + JSON.stringify(got.page));
+  if (!got.toast.includes(`Your results are downloading as ${name} — open it in any browser to read it, print it or keep it.`)) throw new Error('a toast must name the file: ' + got.toast);
+  // The file, read against the page.
+  const file = JSON.parse(await s.evalJs(`JSON.stringify((() => {
+    const html = ${JSON.stringify(got.text)};
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const ids = new Set([...doc.querySelectorAll('[id]')].map((n) => n.id));
+    const hrefs = [...doc.querySelectorAll('a[href]')].map((a) => a.getAttribute('href'));
+    const open = [...doc.querySelectorAll('#app .req')].find((c) => c.querySelector('.req-title')?.textContent === ${JSON.stringify(got.page.foldTitle)})?.querySelector('details.req-more');
+    return {
+      doctype: html.startsWith('<!doctype html>'),
+      bytes: html.length,
+      h1: doc.querySelector('h1')?.textContent ?? '',
+      standing: doc.querySelector('.results-standing')?.textContent ?? '',
+      checked: doc.querySelector('.results-checked')?.textContent ?? '',
+      stamp: doc.querySelector('.results-stamp')?.textContent ?? '',
+      foot: doc.querySelector('.results-foot')?.textContent ?? '',
+      cards: doc.querySelectorAll('#app .req').length,
+      folds: doc.querySelectorAll('#app .audit details').length,
+      rows: doc.querySelectorAll('#app .results-courses table.courses tr').length,
+      removeColumn: doc.querySelectorAll('.cell-remove').length,
+      controls: doc.querySelectorAll('button, input, select, textarea, script, link, iframe, img[src], [onclick]').length,
+      floating: doc.querySelectorAll('.floating, .folded, .next-step-ring').length,
+      deadJumps: hrefs.filter((h) => h.startsWith('#') && !ids.has(decodeURIComponent(h.slice(1)))),
+      relative: hrefs.filter((h) => !/^(#|mailto:|https?:)/.test(h)),
+      openFold: open?.open ?? null,
+      groups: [...doc.querySelectorAll('.static-choice')].map((n) => n.textContent).filter((t) => /^Specialization group for /.test(t)),
+      darkBlock: /@media \\(prefers-color-scheme: dark\\)[\\s\\S]*:root:not\\(\\[data-theme="light"\\]\\)/.test(html),
+    };
+  })())`));
+  console.log('  results page:', JSON.stringify({ ...file, deadJumps: file.deadJumps.length, relative: file.relative.length }));
+  if (!file.doctype || file.h1 !== 'CSE degree self-check — your results') throw new Error('the file must be a whole page with its heading: ' + JSON.stringify(file));
+  if ((named[1] === 'phd') !== file.standing.startsWith('Ph.D.')) throw new Error('the file name and the standing must name the same program: ' + JSON.stringify({ name, standing: file.standing }));
+  if (!/^(Ph\.D\.|M\.S\.)[^;]*; entered (Fall|Spring) \d{4}; .*; (cumulative GPA [\d.]+|no GPA yet|cumulative GPA not entered yet)\.$/.test(file.standing)) throw new Error('the standing sentence: ' + file.standing);
+  if (!new RegExp(`^Checked on [A-Z][a-z]+ \\d{1,2}, \\d{4} — not an official audit; the A?DGS decides eligibility, the Grad Admin processes it\\.$`).test(file.checked)) throw new Error('the checked line: ' + file.checked);
+  if (!new RegExp(`^Checked with: ${STAMP_RE.source}\\.$`).test(file.stamp)) throw new Error('the file must say what it was checked with: ' + file.stamp);
+  if (file.cards !== got.page.cards || file.folds !== got.page.folds || file.rows !== got.page.rows) throw new Error('the file must carry every card, fold and course row the page shows: ' + JSON.stringify({ file, page: got.page }));
+  if (file.cards < 5 || file.rows < 6) throw new Error('expected the example record’s cards and courses: ' + JSON.stringify(file));
+  if (file.controls !== 0 || file.removeColumn !== 0 || file.floating !== 0) throw new Error('the file holds results only — no controls, no Remove column, no floating boxes: ' + JSON.stringify(file));
+  if (file.deadJumps.length > 0 || file.relative.length > 0) throw new Error('every link in the file must lead somewhere: ' + JSON.stringify({ dead: file.deadJumps, relative: file.relative }));
+  if (file.openFold !== true) throw new Error('a fold the student left open stays open in the file: ' + JSON.stringify(got.page.foldTitle));
+  if (!file.groups.some((t) => /^Specialization group for CSE \d{5}: \S/.test(t))) throw new Error('a specialization-group dropdown reads as its name and its choice: ' + JSON.stringify(file.groups));
+  if (!file.darkBlock) throw new Error('the file must carry the night colours for a dark device');
+  if (!/nothing was sent anywhere/.test(file.foot)) throw new Error('the footer: ' + file.foot);
+  // The file on its own.
+  await s.evalJs(`location.href = URL.createObjectURL(new Blob([${JSON.stringify(got.text)}], { type: 'text/html' }))`);
+  await s.waitFor(`document.querySelector('#app.results-file .audit') && document.readyState === 'complete'`);
+  const look = JSON.parse(await s.evalJs(`JSON.stringify({ bg: getComputedStyle(document.body).backgroundColor, width: document.documentElement.scrollWidth, view: window.innerWidth, policies: [...document.querySelectorAll('details.req-more > summary')].length })`));
+  if (look.width > look.view + 1) throw new Error('the file must not scroll sideways: ' + JSON.stringify(look));
+  await s.shot('results-page');
+  await s.shotElement('results-page-courses', '.results-courses');
+  await s.setViewport({ width: 390, height: 900, mobile: true });
+  await s.evalJs(`window.scrollTo(0, 0)`);
+  // The page hides the report's own score on a phone (its summary shows it); the file has no summary, so it keeps it.
+  const narrow = JSON.parse(await s.evalJs(`JSON.stringify({ width: document.documentElement.scrollWidth, view: window.innerWidth, score: getComputedStyle(document.querySelector('.audit .scorehead')).display, meters: getComputedStyle(document.querySelector('.audit > .meters')).display })`));
+  if (narrow.score === 'none' || narrow.meters === 'none') throw new Error('on a phone the file must still show the score and the meters: ' + JSON.stringify(narrow));
+  await s.shot('results-page-phone');
+  await s.setViewport({ width: 1400, height: 1900 });
+  if (narrow.width > narrow.view + 1) throw new Error('the file must fit a phone: ' + JSON.stringify(narrow));
+  // On a dark device the file takes the page's night colours by itself (it has no theme switch to run).
+  let dark = 'skipped — this harness engine cannot set the device’s light/dark setting';
+  try {
+    await s.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
+    await s.settle(150);
+    const bg = await s.evalJs(`getComputedStyle(document.body).backgroundColor`);
+    if (bg !== 'rgb(9, 27, 52)') throw new Error('on a dark device the file must be the page’s navy night page: ' + bg);
+    await s.shot('results-page-dark');
+    dark = bg;
+  } catch (e) {
+    if (!/no translation/.test(String(e?.message ?? e))) throw e;
+  } finally {
+    await s.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: '' }] }).catch(() => {});
+  }
+  console.log(`  results page on a dark device: ${dark}`);
+  console.log(`  results page opened on its own: ${look.policies} "Relevant Policies" folds, background ${look.bg}, fits a phone (${narrow.width}px)`);
 }
 
 async function checkStamps(s) {

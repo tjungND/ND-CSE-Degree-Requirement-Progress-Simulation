@@ -39,11 +39,12 @@ import {
 } from './simulation.ts';
 import { checkedWithLine, resultStamp, savedStamp } from './stamp.ts';
 import { sourcesLine } from './provenance.ts';
+import { formatYmdLong } from './handbook.ts';
 import { planNotes } from './plan-notes.ts';
 import { requirementProblemHref } from './report-problem.ts';
 import { DGS, applyContactOverrides, contactCard, mailto, deciderContact } from './contacts.ts';
 import { isEmbedded, placeInFrame } from './embed.ts';
-import { deciderTitle } from '../engine/decider.ts';
+import { deciderTitle, decisionWording } from '../engine/decider.ts';
 import {
   BACHELORS_YEAR_RANGE,
   COURSE_CREDITS_RANGE,
@@ -101,6 +102,9 @@ import {
 // (The §4.4.1 core-title keywords moved to src/engine/core-title.ts on
 // 2026-09-04 so the classifier and the import preview share them.)
 
+
+/** What both Print buttons do since 2026-11-22 (results-page.ts), on hover. */
+const PRINT_TITLE = 'Download your results as a web page';
 
 /** The three semesters as <option>s for a season dropdown, `selected` marked. */
 function seasonOptions(selected?: Season): HTMLOptionElement[] {
@@ -885,7 +889,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
       // one import path.
       el('button', { class: 'btn', 'data-key': 'tools.save', onclick: saveActiveToFile }, 'Save to a file'),
       el('button', { class: 'btn', 'data-key': 'tools.load', onclick: () => document.querySelector<HTMLInputElement>('[data-key="save.fileinput"]')?.click() }, 'Load a file'),
-      el('button', { class: 'btn', 'data-key': 'tools.print', onclick: () => window.print() }, 'Print'),
+      el('button', { class: 'btn', 'data-key': 'tools.print', title: PRINT_TITLE, onclick: () => void printResults(report) }, 'Print'),
       // Before Reset (DGS 2026-09-22); it was at the end of the report from
       // the trim review (P-72) until then.
       advisorSummaryButton(report),
@@ -3346,7 +3350,7 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         { class: 'save-buttons' },
         el('button', { class: 'btn primary', 'data-key': 'save.file', onclick: saveActiveToFile }, 'Save to a file'),
         el('button', { class: 'btn', 'data-key': 'save.load', onclick: () => (fileInput as HTMLInputElement).click() }, 'Load a file'),
-        el('button', { class: 'btn', 'data-key': 'save.print', onclick: () => window.print() }, 'Print'),
+        el('button', { class: 'btn', 'data-key': 'save.print', title: PRINT_TITLE, onclick: () => void printResults(report) }, 'Print'),
         // Reset beside Print (DGS 2026-09-22) — the card whose sentence tells a
         // student on a shared machine to clear the record holds the button.
         // Also here (DGS 2026-09-23), with its own key so focus returns to
@@ -3385,6 +3389,32 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
     const saved = savedStamp(stamp, auditDate, audit(student, rules, auditDate).requirements);
     if (simulation) downloadJson(simulationFileName(student.program, simulation.term), simulationFilePayload(student, simulation.term, new Date().toISOString(), saved));
     else exportFile(student, auditDate, saved); // the file is named for the day (U24)
+  }
+
+  /** "Print" (DGS 2026-11-22): the results as a web page, downloaded —
+   * results-page.ts. Copied from the page as it is at the click, so the file
+   * reads what the student sees; the date is the real one even in the mode
+   * (D5), and a plan says it is one first (D10). */
+  async function printResults(report: AuditReport): Promise<void> {
+    const [{ downloadResultsPage, resultsFileName }, { standingSentence }] = await Promise.all([import('./results-page.ts'), import('./advisor-summary.ts')]);
+    const on = formatYmdLong(realTodayIso) ?? realTodayIso;
+    const sources = sourcesLine(student);
+    const name = downloadResultsPage(
+      document,
+      {
+        title: `CSE degree self-check — results, ${on}`,
+        heading: 'CSE degree self-check — your results',
+        ...(simulation ? { simulation: `SIMULATION — not your real record. Saved on ${on}; the current semester in this simulation is ${termLabel(simulation.term)}.` } : {}),
+        standing: standingSentence(report, { entryTerm: termLabel(student.entryTerm), priorStudy: priorStudyLabel(student), gpa: student.gpa }),
+        earlier: [programHistory(student).earlier, sources].filter((x): x is string => !!x).join(' '),
+        checked: decisionWording(student.program, `Checked on ${on} — not an official audit; the DGS decides eligibility, the Grad Admin processes it.`),
+        stamp: checkedWithLine(stamp),
+        coursesHeading: 'Your courses',
+        footer: 'Made in your browser from your record — nothing was sent anywhere. This page holds your grades: share it only with people you choose.',
+      },
+      resultsFileName(student.program, todayIso(), simulation?.term),
+    );
+    toast(`Your results are downloading as ${name} — open it in any browser to read it, print it or keep it.`);
   }
 
   /** The way in. Inactive while a transcript preview is open: the preview's

@@ -761,3 +761,11 @@ The FERPA sentence stays.
 | W-CL660 | on-page sheet warning (course-rules page, after “Rules sheet — for the DGS: ”; the self-check's warning box), a `last_offered` later than the semester after today's (DGS 2026-11-08) | Courses row 12 (CSE 60641): last_offered is Fall 2062, later than Spring 2027 — a course cannot last have been offered then, so it is taken for a typo: it does not set the semester the schedule describes, and the course is left off the schedule. Correct the cell. |
 | W-CL661 | a code-less row's course-id note (title / screen-reader text; replaces W-CL408; DGS 2026-11-22) | This transcript prints no course number for this course. Type the number the university gives it (its course catalog or your syllabus), or N/A if it has none — the DGS then matches it by its title. Until then the row is not ticked. |
 | W-CL662 | the earlier-transcript preview's code-less hint (replaces W-CL409's last two sentences; DGS 2026-11-22) | 3 courses on this transcript have no course number printed: type each one in its empty “Course id” box — from the university’s course catalog or your syllabus, or N/A if it has none — and the row is ticked; a course with the box left empty is not added. The DGS rules on a course by the number you type, or by its title when you type N/A. |
+| W-CL663 | the downloaded results page's browser-tab title (Print; DGS 2026-11-22) | CSE degree self-check — results, November 22, 2026 |
+| W-CL664 | its heading | CSE degree self-check — your results |
+| W-CL665 | its first line in simulation mode | SIMULATION — not your real record. Saved on November 22, 2026; the current semester in this simulation is Spring 2027. |
+| W-CL666 | its checked line (ADGS on the M.S. tab) | Checked on November 22, 2026 — not an official audit; the DGS decides eligibility, the Grad Admin processes it. |
+| W-CL667 | the heading over its course tables | Your courses |
+| W-CL668 | its footer | Made in your browser from your record — nothing was sent anywhere. This page holds your grades: share it only with people you choose. |
+| W-CL669 | the toast after Print | Your results are downloading as cse-degree-audit-phd-2026-11-22-results.html — open it in any browser to read it, print it or keep it. |
+| W-CL670 | both Print buttons, on hover | Download your results as a web page |
