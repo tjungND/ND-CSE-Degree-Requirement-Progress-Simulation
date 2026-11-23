@@ -2313,9 +2313,14 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   file has no script, so `fileCss` copies every such rule under `@media (prefers-color-scheme:
   dark)` with the selector re-keyed to `:not([data-theme="light"])`. A new dark rule is picked up
   by itself; a new LIGHT-only rule keyed on `data-theme` would need the same treatment.
-- No Grade column in the file (DGS 2026-11-22): `staticCopy` drops `td[data-label="Grade"]` and
-  its header, beside the Remove column. A grade named inside an explanation, and the GPA, are
-  still in the file (asked of the DGS on 2026-11-22).
+- **The file names no grade** (DGS 2026-11-22 — it is shared with advisors; the pages keep every
+  grade). `staticCopy` drops the course tables' Grade column; `leaveOutGrades` runs `withoutGrades`
+  over every text node and tooltip except handbook quotes (`.rule-quote`) and the glossary.
+  `GRADE_RULES` rewrites the engine's grade sentences one by one, each rule naming its source;
+  `gradeNets` then blanks a GPA-like figure in any GPA sentence and a bracketed grade after a
+  course or after "graded". **A new engine sentence that prints a grade, a mark or a GPA needs a
+  rule here** — tests/results-page.test.ts fails on it if any scenario or the every-grade record
+  reaches it (add the sentence to that record if none does).
 - The page hides the report's score on a phone (style-app.css, the summary shows it); the file
   un-hides it in `RESULTS_PAGE_CSS`. ⌘P still prints the live page with the print header.
 

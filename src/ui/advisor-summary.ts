@@ -81,9 +81,11 @@ export interface AdvisorTransfers {
 /** The one standing sentence — program, entry term, earlier study, GPA — as
  * the advisor summary and the downloaded results page (results-page.ts, DGS
  * 2026-11-22) both say it. */
-export function standingSentence(report: Pick<AuditReport, 'program' | 'noGpaYet'>, opts: Pick<AdvisorSummaryOptions, 'entryTerm' | 'priorStudy' | 'gpa'>): string {
+export function standingSentence(report: Pick<AuditReport, 'program' | 'noGpaYet'>, opts: Pick<AdvisorSummaryOptions, 'entryTerm' | 'priorStudy' | 'gpa'> & { withoutGpa?: boolean }): string {
   // Mid-sentence, lower-cased — not an acronym ("MSCSE at Notre Dame …", P3-prior-programs-6).
   const prior = /^[A-Z]{2}/.test(opts.priorStudy) ? opts.priorStudy : opts.priorStudy.charAt(0).toLowerCase() + opts.priorStudy.slice(1);
+  // The results page Print downloads names no grade (DGS 2026-11-22).
+  if (opts.withoutGpa) return `${programLabel(report.program)}; entered ${opts.entryTerm}; ${prior}.`;
   return (
     `${programLabel(report.program)}; entered ${opts.entryTerm}; ${prior}; ` +
     // As the §2.2 card prints it — never rounded up past the minimum (2.996

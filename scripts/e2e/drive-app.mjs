@@ -1033,6 +1033,13 @@ async function checkStaleGrades(s) {
   console.log('  courses still In progress after their semester ended: one warning, one step — ' + want);
 }
 
+// What a grade looks like in the file's text — the detector of
+// tests/results-page.test.ts, said independently of the rules that remove one.
+const GRADE_TOKEN_SRC = String.raw`(?<![\w§.+\-–’'])(A-|B\+|B-|C\+|C-|B|C|D|F|S|U|W|V)(?![\w+\-’'])`;
+const RULE_WORDS_SRC = String.raw`\b(?:a|the|of|an)\s+B\b|\bB (?:or (?:higher|better|above)|floor|average|minimum)\b|\(B\)|\bgrade of [A-D]\b|\bAppendix A\b|\bU\.S\.|\bbelow [BC]\b|\bC- (?:and|or) D\b`;
+const GRADE_WORDS_SRC = String.raw`\((A|I)\)|\bgraded (A|I)\b|(?<![\w’'])(A|I) is (?:below|your own)|\bwith an? (A|I)\b|\bIncompletes?\b|\bwithdrawn \(W\)|\baudited \(V\)|\bfailed — earns|\bgraded [A-Z]\b|\bA U\b|\bU grades?\b|pass\/fail|mark “`;
+const GPA_FIGURE_SRC = String.raw`(?<![\w§.–-])\d{1,3}\.\d{2,3}(?![\d.–-]|\s*(?:cr\b|credit))`;
+
 // "Print" downloads the results as a web page (DGS 2026-11-22: "When 'Print'
 // is clicked, can you generate an HTML page instead of a PDF?" — "1. A
 // download; 2. the results only."). The download is caught in the page, as
@@ -1041,7 +1048,13 @@ async function checkStaleGrades(s) {
 // open — and opened on its own, where it is screenshot. Leaves the page on
 // the file: the caller opens the app again.
 async function checkResultsPage(s) {
-  await loadExampleRecord(s, 'phd');
+  // The example, with grades worth hiding: a GPA under 3.0, an F and a W
+  // beside its B- (which already falls under the specialization floor).
+  const record = exampleRecord('phd');
+  const lastFall = { season: 'fall', year: Number(localToday().slice(0, 4)) - 1 };
+  record.gpa = 2.8;
+  record.courses.push({ courseId: 'CSE 60535', title: 'Computer Vision', credits: 3, term: lastFall, grade: 'F', origin: 'nd' }, { courseId: 'CSE 60647', title: 'Data Science', credits: 3, term: lastFall, grade: 'W', origin: 'nd' });
+  await loadExampleRecord(s, 'phd', record);
   const got = JSON.parse(await s.evalJs(`(async () => {
     let blob;
     let printed = 0;
@@ -1065,6 +1078,8 @@ async function checkResultsPage(s) {
         folds: document.querySelectorAll('#report details').length,
         rows: document.querySelectorAll('#coursework table.courses tr').length,
         gradeCells: document.querySelectorAll('#coursework table.courses td[data-label="Grade"]').length,
+        grades: [...document.querySelectorAll('#coursework table.courses td[data-label="Grade"]')].map((td) => td.textContent.trim()),
+        gpaShown: /Cumulative GPA 2\.80 is below the 3\.0 minimum/.test(document.querySelector('#report').textContent),
         foldTitle: fold?.closest('.req')?.querySelector('.req-title')?.textContent ?? '',
         label: button.textContent,
         title: button.title,
@@ -1085,7 +1100,7 @@ async function checkResultsPage(s) {
   const named = new RegExp(`^cse-degree-audit-(phd|mscse)-${today}-results\\.html$`).exec(got.files[0] ?? '');
   if (got.files.length !== 1 || !named) throw new Error(`the results page must be named for the program and the day (cse-degree-audit-<program>-${today}-results.html): ` + JSON.stringify(got.files));
   const name = got.files[0];
-  if (got.page.label !== 'Print' || got.page.title !== 'Download your results as a web page') throw new Error('the button keeps its name and says what it does on hover: ' + JSON.stringify(got.page));
+  if (got.page.label !== 'Print' || got.page.title !== 'Download your results as a web page, without your grades, to share with your advisor') throw new Error('the button keeps its name and says what it does on hover: ' + JSON.stringify(got.page));
   if (!got.toast.includes(`Your results are downloading as ${name} — open it in any browser to read it, print it or keep it.`)) throw new Error('a toast must name the file: ' + got.toast);
   // The file, read against the page.
   const file = JSON.parse(await s.evalJs(`JSON.stringify((() => {
@@ -1113,6 +1128,20 @@ async function checkResultsPage(s) {
       deadJumps: hrefs.filter((h) => h.startsWith('#') && !ids.has(decodeURIComponent(h.slice(1)))),
       relative: hrefs.filter((h) => !/^(#|mailto:|https?:)/.test(h)),
       openFold: open?.open ?? null,
+      // Every word of the file a reader sees, but the handbook's quotes and the glossary's definitions.
+      leaks: (() => {
+        const root = doc.querySelector('#app').cloneNode(true);
+        root.querySelectorAll('.rule-quote, blockquote, q, details.glossary, .visually-hidden').forEach((n) => n.remove());
+        const texts = [...root.querySelectorAll('*')].flatMap((n) => [...n.childNodes].filter((c) => c.nodeType === 3).map((c) => c.nodeValue)).concat([...root.querySelectorAll('[title]')].map((n) => n.getAttribute('title')));
+        const out = [];
+        for (const t of texts) {
+          const rest = t.replace(${JSON.stringify(RULE_WORDS_SRC)}.length ? new RegExp(${JSON.stringify(RULE_WORDS_SRC)}, 'g') : /$^/, ' ');
+          for (const m of rest.matchAll(new RegExp(${JSON.stringify(GRADE_TOKEN_SRC)}, 'g'))) out.push(m[1] + ' in: ' + t.slice(0, 120));
+          for (const m of t.matchAll(new RegExp(${JSON.stringify(GRADE_WORDS_SRC)}, 'g'))) out.push(m[0] + ' in: ' + t.slice(0, 120));
+          if (/GPA|grade-point|\baverage\b/i.test(t)) for (const m of t.matchAll(new RegExp(${JSON.stringify(GPA_FIGURE_SRC)}, 'g'))) out.push('GPA ' + m[0] + ' in: ' + t.slice(0, 120));
+        }
+        return out;
+      })(),
       groups: [...doc.querySelectorAll('.static-choice')].map((n) => n.textContent).filter((t) => /^Specialization group for /.test(t)),
       darkBlock: /@media \\(prefers-color-scheme: dark\\)[\\s\\S]*:root:not\\(\\[data-theme="light"\\]\\)/.test(html),
     };
@@ -1120,7 +1149,11 @@ async function checkResultsPage(s) {
   console.log('  results page:', JSON.stringify({ ...file, deadJumps: file.deadJumps.length, relative: file.relative.length }));
   if (!file.doctype || file.h1 !== 'CSE degree self-check — your results') throw new Error('the file must be a whole page with its heading: ' + JSON.stringify(file));
   if ((named[1] === 'phd') !== file.standing.startsWith('Ph.D.')) throw new Error('the file name and the standing must name the same program: ' + JSON.stringify({ name, standing: file.standing }));
-  if (!/^(Ph\.D\.|M\.S\.)[^;]*; entered (Fall|Spring) \d{4}; .*; (cumulative GPA [\d.]+|no GPA yet|cumulative GPA not entered yet)\.$/.test(file.standing)) throw new Error('the standing sentence: ' + file.standing);
+  if (!/^(Ph\.D\.|M\.S\.)[^;]*; entered (Fall|Spring) \d{4}; [^;]*\.$/.test(file.standing) || /GPA/.test(file.standing)) throw new Error('the standing sentence, without the GPA: ' + file.standing);
+  // No grade in the file (DGS 2026-11-22: "to ensure those HTML files do not show sensitive data like grades … only in the HTML files generated by the 'Print' button"): the page keeps them all.
+  if (!got.page.gpaShown || !['F', 'B-'].every((g) => got.page.grades.includes(g)) || !got.page.grades.some((g) => g.startsWith('W'))) throw new Error('the page itself must still show the grades and the GPA: ' + JSON.stringify({ grades: got.page.grades, gpa: got.page.gpaShown }));
+  if (file.leaks.length > 0) throw new Error('the file must name no grade, mark or GPA figure: ' + JSON.stringify(file.leaks));
+  console.log(`  results page names no grade: the page shows ${got.page.grades.join(' ')} and a 2.80 GPA; the file none of them`);
   if (!new RegExp(`^Checked on [A-Z][a-z]+ \\d{1,2}, \\d{4} — not an official audit; the A?DGS decides eligibility, the Grad Admin processes it\\.$`).test(file.checked)) throw new Error('the checked line: ' + file.checked);
   if (!new RegExp(`^Checked with: ${STAMP_RE.source}\\.$`).test(file.stamp)) throw new Error('the file must say what it was checked with: ' + file.stamp);
   if (file.cards !== got.page.cards || file.folds !== got.page.folds || file.rows !== got.page.rows) throw new Error('the file must carry every card, fold and course row the page shows: ' + JSON.stringify({ file, page: got.page }));

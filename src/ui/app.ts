@@ -104,7 +104,7 @@ import {
 
 
 /** What both Print buttons do since 2026-11-22 (results-page.ts), on hover. */
-const PRINT_TITLE = 'Download your results as a web page';
+const PRINT_TITLE = 'Download your results as a web page, without your grades, to share with your advisor';
 
 /** The three semesters as <option>s for a season dropdown, `selected` marked. */
 function seasonOptions(selected?: Season): HTMLOptionElement[] {
@@ -3405,12 +3405,13 @@ export function startApp(root: HTMLElement, rules: Rules, today: NotreDameNow): 
         title: `CSE degree self-check — results, ${on}`,
         heading: 'CSE degree self-check — your results',
         ...(simulation ? { simulation: `SIMULATION — not your real record. Saved on ${on}; the current semester in this simulation is ${termLabel(simulation.term)}.` } : {}),
-        standing: standingSentence(report, { entryTerm: termLabel(student.entryTerm), priorStudy: priorStudyLabel(student), gpa: student.gpa }),
+        // No grade in the file — not even the GPA (DGS 2026-11-22: "to ensure those HTML files do not show sensitive data like grades").
+        standing: standingSentence(report, { entryTerm: termLabel(student.entryTerm), priorStudy: priorStudyLabel(student), withoutGpa: true }),
         earlier: [programHistory(student).earlier, sources].filter((x): x is string => !!x).join(' '),
         checked: decisionWording(student.program, `Checked on ${on} — not an official audit; the DGS decides eligibility, the Grad Admin processes it.`),
         stamp: checkedWithLine(stamp),
         coursesHeading: 'Your courses',
-        footer: 'Made in your browser from your record — nothing was sent anywhere. This page holds your grades: share it only with people you choose.',
+        footer: 'Made in your browser from your record — nothing was sent anywhere. Your grades and GPA are left out, so you can share this page with your advisor.',
       },
       resultsFileName(student.program, todayIso(), simulation?.term),
     );

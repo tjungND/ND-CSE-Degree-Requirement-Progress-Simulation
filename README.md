@@ -672,10 +672,14 @@ browser's print dialog. The page is built in the browser from what the screen sh
 — nothing is sent anywhere — and holds the standing in one sentence, the "Checked with" line, the
 whole report column (score, warnings, Next steps, every requirement card) and the Coursework
 card's course tables. It has no buttons or form fields: a tick box reads ☑ or ☐ and a dropdown
-the choice it shows. The course tables leave out the Grade column (DGS 2026-11-22). Each card's "Relevant Policies" fold still opens and closes (on paper a
+the choice it shows. **It names no grade** (DGS 2026-11-22: the files are for sharing with
+advisors): no letter grade, transcript mark or GPA figure — the course tables have no Grade
+column, and a sentence that explained a result by its grade says "its grade" instead ("CSE
+60111's grade is below the B floor", "Cumulative GPA is below the 3.0 minimum"). What the grade
+decided — Met or not, counts or not — stays. The app's own pages still show every grade. Each card's "Relevant Policies" fold still opens and closes (on paper a
 closed fold printed as its heading only), a fold the student left open is open in the file, and
 the page follows the reader's device into dark mode. It opens offline, in any browser; a student
-can print it from there, keep it, or send it. Its footer reminds them it holds their grades.
+can print it from there, keep it, or send it to their advisor.
 The browser's own print command (⌘P / Ctrl+P) still prints the page as before.
 
 ## Simulation mode — what a student sees when planning ahead (DGS 2026-10-09)
