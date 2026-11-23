@@ -149,10 +149,11 @@ export function staticCopy(original: Element, copy: Element): void {
   copy.querySelectorAll('button, script, style, template, dialog, .jump-link, .skip-link, .req-problem').forEach((n) => n.remove());
   // The two floating boxes stay where they stand in the report, open.
   for (const n of Array.from(copy.querySelectorAll('.floating, .folded, .next-step-ring, .feeds-hidden'))) n.classList.remove('floating', 'folded', 'next-step-ring', 'feeds-hidden');
-  // The course tables' Remove column.
-  copy.querySelectorAll('td.cell-remove').forEach((n) => n.remove());
+  // The course tables' Remove column, and their Grade column (DGS
+  // 2026-11-22: "In the 'Print', remove the grades from the html.").
+  copy.querySelectorAll('td.cell-remove, td[data-label="Grade"]').forEach((n) => n.remove());
   copy.querySelectorAll('th').forEach((th) => {
-    if ((th.textContent ?? '').trim() === 'Remove' && th.closest('table.courses')) th.remove();
+    if (['Remove', 'Grade'].includes((th.textContent ?? '').trim()) && th.closest('table.courses')) th.remove();
   });
   for (const n of [copy, ...Array.from(copy.querySelectorAll('*'))]) {
     for (const a of ['data-key', 'tabindex', 'aria-controls', 'aria-expanded', 'contenteditable']) n.removeAttribute(a);

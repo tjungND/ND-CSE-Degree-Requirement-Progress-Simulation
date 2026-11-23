@@ -2313,6 +2313,9 @@ pure half (tests: `tests/simulation.test.ts`); the plumbing is in `src/ui/app.ts
   file has no script, so `fileCss` copies every such rule under `@media (prefers-color-scheme:
   dark)` with the selector re-keyed to `:not([data-theme="light"])`. A new dark rule is picked up
   by itself; a new LIGHT-only rule keyed on `data-theme` would need the same treatment.
+- No Grade column in the file (DGS 2026-11-22): `staticCopy` drops `td[data-label="Grade"]` and
+  its header, beside the Remove column. A grade named inside an explanation, and the GPA, are
+  still in the file (asked of the DGS on 2026-11-22).
 - The page hides the report's score on a phone (style-app.css, the summary shows it); the file
   un-hides it in `RESULTS_PAGE_CSS`. ⌘P still prints the live page with the print header.
 

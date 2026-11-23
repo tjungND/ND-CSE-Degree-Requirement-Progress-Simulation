@@ -672,7 +672,7 @@ browser's print dialog. The page is built in the browser from what the screen sh
 — nothing is sent anywhere — and holds the standing in one sentence, the "Checked with" line, the
 whole report column (score, warnings, Next steps, every requirement card) and the Coursework
 card's course tables. It has no buttons or form fields: a tick box reads ☑ or ☐ and a dropdown
-the choice it shows. Each card's "Relevant Policies" fold still opens and closes (on paper a
+the choice it shows. The course tables leave out the Grade column (DGS 2026-11-22). Each card's "Relevant Policies" fold still opens and closes (on paper a
 closed fold printed as its heading only), a fold the student left open is open in the file, and
 the page follows the reader's device into dark mode. It opens offline, in any browser; a student
 can print it from there, keep it, or send it. Its footer reminds them it holds their grades.

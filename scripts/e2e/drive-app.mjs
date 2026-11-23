@@ -1064,6 +1064,7 @@ async function checkResultsPage(s) {
         cards: document.querySelectorAll('#report .req').length,
         folds: document.querySelectorAll('#report details').length,
         rows: document.querySelectorAll('#coursework table.courses tr').length,
+        gradeCells: document.querySelectorAll('#coursework table.courses td[data-label="Grade"]').length,
         foldTitle: fold?.closest('.req')?.querySelector('.req-title')?.textContent ?? '',
         label: button.textContent,
         title: button.title,
@@ -1076,6 +1077,8 @@ async function checkResultsPage(s) {
       if (fold) fold.open = wasOpen;
     }
   })()`));
+  // A copy to open by hand after a run (the example record only — invented data).
+  writeFileSync(join(tmpdir(), 'cse-degree-audit-e2e-results-page.html'), got.text ?? '');
   if (!got.text) throw new Error('Print must download the results page: ' + JSON.stringify({ files: got.files, printed: got.printed }));
   if (got.printed !== 0) throw new Error('Print must no longer open the browser’s print dialog');
   const today = localToday();
@@ -1103,6 +1106,8 @@ async function checkResultsPage(s) {
       folds: doc.querySelectorAll('#app .audit details').length,
       rows: doc.querySelectorAll('#app .results-courses table.courses tr').length,
       removeColumn: doc.querySelectorAll('.cell-remove').length,
+      gradeColumn: doc.querySelectorAll('td[data-label="Grade"]').length + [...doc.querySelectorAll('table.courses th')].filter((th) => th.textContent.trim() === 'Grade').length,
+      headers: [...(doc.querySelector('.results-courses table.courses tr')?.querySelectorAll('th') ?? [])].map((th) => th.textContent.trim()),
       controls: doc.querySelectorAll('button, input, select, textarea, script, link, iframe, img[src], [onclick]').length,
       floating: doc.querySelectorAll('.floating, .folded, .next-step-ring').length,
       deadJumps: hrefs.filter((h) => h.startsWith('#') && !ids.has(decodeURIComponent(h.slice(1)))),
@@ -1120,6 +1125,8 @@ async function checkResultsPage(s) {
   if (!new RegExp(`^Checked with: ${STAMP_RE.source}\\.$`).test(file.stamp)) throw new Error('the file must say what it was checked with: ' + file.stamp);
   if (file.cards !== got.page.cards || file.folds !== got.page.folds || file.rows !== got.page.rows) throw new Error('the file must carry every card, fold and course row the page shows: ' + JSON.stringify({ file, page: got.page }));
   if (file.cards < 5 || file.rows < 6) throw new Error('expected the example record’s cards and courses: ' + JSON.stringify(file));
+  // No grades in the file (DGS 2026-11-22: "In the 'Print', remove the grades from the html."): the page has the column, the file does not.
+  if (got.page.gradeCells < 5 || file.gradeColumn !== 0 || file.headers.join('|') !== 'Course|Term|Cr|Counts toward') throw new Error('the file’s course tables carry no Grade column: ' + JSON.stringify({ page: got.page.gradeCells, file: file.gradeColumn, headers: file.headers }));
   if (file.controls !== 0 || file.removeColumn !== 0 || file.floating !== 0) throw new Error('the file holds results only — no controls, no Remove column, no floating boxes: ' + JSON.stringify(file));
   if (file.deadJumps.length > 0 || file.relative.length > 0) throw new Error('every link in the file must lead somewhere: ' + JSON.stringify({ dead: file.deadJumps, relative: file.relative }));
   if (file.openFold !== true) throw new Error('a fold the student left open stays open in the file: ' + JSON.stringify(got.page.foldTitle));
