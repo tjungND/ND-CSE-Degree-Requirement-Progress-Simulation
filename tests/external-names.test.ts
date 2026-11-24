@@ -58,7 +58,10 @@ describe('every university name the ExternalCourses tab lists is read unchanged 
         assert.equal(r.university, name, 'the name must come back exactly as the sheet lists it');
         assert.equal(r.universityGuessed, undefined, 'read from the printed text, not recovered from an acronym');
         const row = rules.external.find((x) => x.university === name)!;
-        assert.ok(findExternalRule(rules.external, r.university!, row.courseId, undefined), `the read name must find the ruling for ${row.courseId}`);
+        // Looked up as the page looks a course up: by its number and its title —
+        // and a course with no number (course_id N/A) by its title alone (DGS
+        // 2026-11-22), which a lookup without the title can never find.
+        assert.ok(findExternalRule(rules.external, r.university!, row.courseId, row.title), `the read name must find the ruling for ${row.courseId}${row.title ? ` “${row.title}”` : ''}`);
       });
     }
   }
